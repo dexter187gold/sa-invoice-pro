@@ -4,8 +4,8 @@
 window.SA_CONFIG = Object.assign({
   appVersion: '3.1.0',
   // Public HTTPS URLs (leave '' for local-only)
-  defaultLicenseServerUrl: '',
-  defaultUpdateServerUrl: '',
+  defaultLicenseServerUrl: 'https://sa-invoice-license.onrender.com/',
+  defaultUpdateServerUrl: 'https://sa-invoice-updates.onrender.com/',
   defaultOwnerDashboardUrl: '',
   // Optional: public client URL when hosted
   publicAppUrl: '',
