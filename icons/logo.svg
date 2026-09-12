@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="SA Invoice Pro">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#007A4D"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFB81C"/>
+      <stop offset="100%" stop-color="#007A4D"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#g)"/>
+  <rect x="18" y="22" width="92" height="84" rx="10" fill="#fff" opacity="0.95"/>
+  <rect x="28" y="34" width="52" height="8" rx="2" fill="#007A4D"/>
+  <rect x="28" y="48" width="72" height="5" rx="2" fill="#cbd5e1"/>
+  <rect x="28" y="58" width="64" height="5" rx="2" fill="#cbd5e1"/>
+  <rect x="28" y="68" width="40" height="5" rx="2" fill="#94a3b8"/>
+  <circle cx="92" cy="88" r="18" fill="url(#g2)"/>
+  <text x="92" y="94" text-anchor="middle" font-family="system-ui,sans-serif" font-size="16" font-weight="800" fill="#0f172a">R</text>
+  <text x="36" y="98" font-family="system-ui,sans-serif" font-size="14" font-weight="700" fill="#0f172a">SA</text>
+</svg>

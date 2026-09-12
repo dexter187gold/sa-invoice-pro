@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>SA Invoice Pro | 3.1.0</title>
+  <link rel="icon" href="icons/logo.svg" type="image/svg+xml" />
+  <link rel="manifest" href="manifest.json?v=3.1.0" />
+  <link rel="stylesheet" href="css/app.css?v=3.1.0" />
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="libs/lucide.min.js?v=3.1.0"></script>
+  <script src="libs/jspdf.umd.min.js?v=3.1.0"></script>
+  <script src="libs/jspdf.plugin.autotable.min.js?v=3.1.0"></script>
+  <script>
+  /* Force fresh assets after version change – no Ctrl+F5 */
+  (function () {
+    var VER = '3.1.0';
+    window.SA_BUILD = VER;
+    try {
+      var prev = localStorage.getItem('sa_build_ver');
+      if (prev && prev !== VER) {
+        localStorage.setItem('sa_build_ver', VER);
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            return Promise.all(regs.map(function (r) { return r.unregister(); }));
+          }).then(function () {
+            if (window.caches) {
+              return caches.keys().then(function (keys) {
+                return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+              });
+            }
+          }).then(function () {
+            location.reload();
+          }).catch(function () { location.reload(); });
+          return; // stop further boot until reload
+        }
+        location.reload();
+        return;
+      }
+      localStorage.setItem('sa_build_ver', VER);
+    } catch (e) {}
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', function (e) {
+        if (e.data && e.data.type === 'SA_SW_UPDATED') {
+          var k = 'sa_sw_rl_' + (e.data.cache || '');
+          if (!sessionStorage.getItem(k)) {
+            sessionStorage.setItem(k, '1');
+            location.reload();
+          }
+        }
+      });
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js?v=' + VER).then(function (reg) {
+          setInterval(function () { try { reg.update(); } catch (x) {} }, 30000);
+          if (reg.waiting) {
+            try { reg.waiting.postMessage({ type: 'SKIP_WAITING' }); } catch (x) {}
+          }
+          reg.addEventListener('updatefound', function () {
+            var nw = reg.installing;
+            if (!nw) return;
+            nw.addEventListener('statechange', function () {
+              if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+                location.reload();
+              }
+            });
+          });
+        }).catch(function () {});
+      });
+    }
+  })();
+  </script>
+</head>
+<body class="antialiased">
+  <div id="auth-screen" class="fixed inset-0 bg-sa-navy z-50 flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+      <div class="bg-sa-green p-6 text-center text-white">
+        <img src="icons/logo.svg" alt="" width="64" height="64" style="margin:0 auto 12px;background:#fff;border-radius:16px;padding:6px" onerror="this.style.display='none'"/>
+        <h1 class="text-xl font-bold">SA Invoice Pro</h1>
+        <p class="text-sm text-green-100 mt-1">3.1.0</p>
+      </div>
+      <div class="p-6" id="auth-content">
+        <p id="boot-status" class="text-center text-slate-500 text-sm">Starting…</p>
+      </div>
+    </div>
+  </div>
+  <div id="app" class="min-h-screen flex flex-col hidden">
+    <header class="bg-sa-navy text-white shadow-lg sticky top-0 z-40">
+      <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <button id="btn-home" class="w-10 h-10 rounded-lg overflow-hidden hover:opacity-90" title="Home">
+            <img src="icons/logo.svg" alt="SA" class="w-10 h-10" />
+          </button>
+          <div>
+            <h1 class="font-bold text-lg leading-tight">SA Invoice Pro</h1>
+            <p class="text-xs text-slate-400">3.1.0</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btn-theme" class="p-2 hover:bg-slate-700 rounded-lg" title="Theme"><i data-lucide="moon" class="w-5 h-5"></i></button>
+          <button id="btn-lock" class="p-2 hover:bg-slate-700 rounded-lg" title="Lock"><i data-lucide="lock" class="w-5 h-5"></i></button>
+          <button id="btn-install" class="hidden px-3 py-1.5 bg-sa-green rounded-lg text-sm font-medium">Install</button>
+          <button id="btn-menu" class="p-2 hover:bg-slate-700 rounded-lg"><i data-lucide="menu" class="w-6 h-6"></i></button>
+        </div>
+      </div>
+    </header>
+    <div class="flex flex-1 overflow-hidden">
+      <aside id="sidebar" class="w-64 bg-white border-r flex-shrink-0 flex-col">
+        <nav class="flex-1 p-4 space-y-1 overflow-y-auto" id="nav-desktop"></nav>
+        <div class="p-4 border-t text-xs text-slate-500"><p id="user-display">User</p><p class="mt-1">Offline • Templates • Tickets</p></div>
+      </aside>
+      <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-30 hidden lg:hidden"></div>
+      <aside id="mobile-sidebar" class="fixed top-0 left-0 h-full w-72 bg-white z-40 -translate-x-full transition-transform lg:hidden flex flex-col">
+        <div class="p-4 border-b flex items-center justify-between">
+          <span class="font-bold text-lg">Menu</span>
+          <button id="btn-close-menu" class="p-2"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <nav class="flex-1 p-4 space-y-1 overflow-y-auto" id="nav-mobile"></nav>
+      </aside>
+      <main id="main" class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8"></main>
+    </div>
+  </div>
+  <div id="toast" class="fixed bottom-4 right-4 z-50 hidden"></div>
+  <div id="modal-root"></div>
+  <script src="js/config.js?v=3.1.0"></script>
+  <script src="js/api.js?v=3.1.0"></script>
+  <script src="js/db.js?v=3.1.0"></script>
+  <script src="js/crypto.js?v=3.1.0"></script>
+  <script src="js/license.js?v=3.1.0"></script>
+  <script src="js/auth.js?v=3.1.0"></script>
+  <script src="js/templates.js?v=3.1.0"></script>
+  <script src="js/pdf.js?v=3.1.0"></script>
+  <script src="js/app.js?v=3.1.0"></script>
+</body>
+</html>

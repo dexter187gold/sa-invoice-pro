@@ -1,0 +1,40 @@
+{
+  "name": "Professional / Legal / Consulting",
+  "tagline": "Fees, retainers, engagement letters",
+  "modules": {
+    "invoices": true,
+    "quotes": true,
+    "tickets": false,
+    "clients": true,
+    "products": false,
+    "services": true,
+    "expenses": true,
+    "reports": true,
+    "stock": false,
+    "timeTracking": false,
+    "sla": false,
+    "pos": false,
+    "popia": true,
+    "payroll": true
+  },
+  "labels": {
+    "services": "Professional fees",
+    "clients": "Clients",
+    "quotes": "Fee estimates",
+    "invoices": "Fee invoices"
+  },
+  "docTypes": [
+    "engagement",
+    "consulting",
+    "goodstanding",
+    "taxclearance",
+    "demand",
+    "quotation_cover",
+    "privacy"
+  ],
+  "kpiFocus": [
+    "invoices",
+    "clients"
+  ],
+  "terms": "Fees are payable strictly within 14 days of tax invoice. Work product is released on payment where applicable. Interest may be charged on overdue amounts. This engagement is governed by the laws of the Republic of South Africa."
+}

@@ -1,0 +1,35 @@
+{
+  "name": "Health & Wellness",
+  "tagline": "Patient/client billing & services",
+  "modules": {
+    "invoices": true,
+    "quotes": false,
+    "tickets": false,
+    "clients": true,
+    "products": true,
+    "services": true,
+    "expenses": true,
+    "reports": true,
+    "stock": true,
+    "timeTracking": false,
+    "sla": false,
+    "pos": false,
+    "popia": true,
+    "payroll": true
+  },
+  "labels": {
+    "clients": "Patients / clients",
+    "services": "Treatments",
+    "invoices": "Consultation invoices"
+  },
+  "docTypes": [
+    "engagement",
+    "demand",
+    "goodstanding"
+  ],
+  "kpiFocus": [
+    "invoices",
+    "clients"
+  ],
+  "terms": "Payment is due on the date of service unless medical aid / account terms apply. Please present membership details before treatment. Personal health information is processed under POPIA."
+}

@@ -1,0 +1,37 @@
+{
+  "name": "Enterprise",
+  "tagline": "Full suite \u2013 all modules",
+  "modules": {
+    "invoices": true,
+    "quotes": true,
+    "tickets": true,
+    "clients": true,
+    "products": true,
+    "services": true,
+    "expenses": true,
+    "reports": true,
+    "stock": true,
+    "timeTracking": true,
+    "sla": true,
+    "pos": false,
+    "popia": true,
+    "payroll": true
+  },
+  "labels": {},
+  "docTypes": [
+    "sla",
+    "consulting",
+    "engagement",
+    "goodstanding",
+    "taxclearance",
+    "quotation_cover",
+    "demand",
+    "completion"
+  ],
+  "kpiFocus": [
+    "tickets",
+    "invoices",
+    "reports"
+  ],
+  "terms": "Payment terms as per master services agreement or as stated on each tax invoice. All amounts in ZAR. VAT where applicable. Governed by the laws of the Republic of South Africa."
+}
