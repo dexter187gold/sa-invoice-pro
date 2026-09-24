@@ -1,5 +1,5 @@
 // SA Invoice Pro v1.1.0 – Modular business OS (SA)
-const APP_VERSION = '3.2.0';
+const APP_VERSION = '3.2.1';
 const APP_COPYRIGHT = 'SA Invoice Pro  © ' + new Date().getFullYear() + '  ·  All rights reserved';
 const APP_LEGAL_NAME = 'SA Invoice Pro';
 const APP_CHANGELOG = [
@@ -138,30 +138,47 @@ const App = {
 
   async init() {
     const boot = document.getElementById('boot-status');
-    if (boot) boot.textContent = 'Opening database…';
-    try { await this.applyCloudDefaults(); } catch (e) {}
-    this.initViewMode();
-    // Never stay blank: failsafe if init hangs (old SW / network)
+    if (boot) boot.textContent = 'Starting…';
+    // View mode never touches IndexedDB
+    try { this.initViewMode(); } catch (e) {}
+    // Failsafe always armed first – show login even if DB hangs
+    let finished = false;
     const failsafe = setTimeout(() => {
-      if (boot) boot.textContent = 'Taking longer than usual – showing login…';
+      if (finished) return;
+      if (boot) boot.textContent = 'Still loading – showing sign-in…';
       const auth = document.getElementById('auth-screen');
-      const appEl = document.getElementById('app');
-      if (auth && auth.classList.contains('hidden') && appEl && appEl.classList.contains('hidden')) {
-        auth.classList.remove('hidden');
-        try { Auth.renderAuthScreen(); } catch (e) {}
-      }
-    }, 8000);
+      if (auth) auth.classList.remove('hidden');
+      try { Auth.renderAuthScreen(); } catch (e) {}
+    }, 3500);
     try {
+      // Soft DB warm-up with timeout – must not block forever
+      if (boot) boot.textContent = 'Opening database…';
+      try {
+        await Promise.race([
+          DB.openDB(),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('db timeout')), 4000))
+        ]);
+        try { await this.applyCloudDefaults(); } catch (e) {}
+      } catch (dbErr) {
+        console.warn('DB boot:', dbErr);
+        if (boot) boot.textContent = 'Could not open local database. You can still try sign-in.';
+      }
+      if (boot) boot.textContent = 'Checking session…';
       const loggedIn = await Promise.race([
         Auth.init(),
-        new Promise(r => setTimeout(() => r(false), 6000))
+        new Promise(r => setTimeout(() => r(false), 5000))
       ]);
+      finished = true;
+      clearTimeout(failsafe);
       if (loggedIn) await this.onLoginSuccess();
       else await Auth.renderAuthScreen();
     } catch (e) {
       console.error(e);
+      finished = true;
+      clearTimeout(failsafe);
       try { await Auth.renderAuthScreen(); } catch (e2) {}
     } finally {
+      finished = true;
       clearTimeout(failsafe);
     }
   },

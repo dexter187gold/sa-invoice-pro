@@ -12,12 +12,16 @@ const STORES = {
   employees: 'employees', payslips: 'payslips', popiaRequests: 'popiaRequests'
 };
 
+const OPEN_TIMEOUT_MS = 4000;
 async function openDB() {
   if (db) return db;
   return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error('Database open timed out. Try closing other tabs or clear site data for this site.'));
+    }, OPEN_TIMEOUT_MS);
     const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onerror = () => reject(req.error);
-    req.onsuccess = () => { db = req.result; resolve(db); };
+    req.onerror = () => { clearTimeout(timer); reject(req.error); };
+    req.onsuccess = () => { clearTimeout(timer); db = req.result; resolve(db); };
     req.onupgradeneeded = (e) => {
       const d = e.target.result;
       const c = (n, k='id', a=true) => {
