@@ -1,8 +1,9 @@
 // SA Invoice Pro v1.1.0 – Modular business OS (SA)
-const APP_VERSION = '3.1.0';
+const APP_VERSION = '3.2.0';
 const APP_COPYRIGHT = 'SA Invoice Pro  © ' + new Date().getFullYear() + '  ·  All rights reserved';
 const APP_LEGAL_NAME = 'SA Invoice Pro';
 const APP_CHANGELOG = [
+  { v:'3.2.0', date:'2026-09-24', notes:'Mobile/desktop view toggle, login security (block owner-token passwords), auto server URLs' },
   { v:'3.1.0', date:'2026-09-12', notes:'Free online stack (FTP/Pages/Render), modern SA_API, PORT cloud bind, deeper UX' },
   { v:'3.0.0', date:'2026-09-12', notes:'Logic/UX harden, async page render fix, cloud deploy path, roadmap consolidation' },
   { v:'2.2.0', date:'2026-09-12', notes:'Auto SW reload no Ctrl+F5, silent update service, owner dashboard :5060, SARS export pack, industry shells, QES docs' },
@@ -138,6 +139,8 @@ const App = {
   async init() {
     const boot = document.getElementById('boot-status');
     if (boot) boot.textContent = 'Opening database…';
+    try { await this.applyCloudDefaults(); } catch (e) {}
+    this.initViewMode();
     // Never stay blank: failsafe if init hangs (old SW / network)
     const failsafe = setTimeout(() => {
       if (boot) boot.textContent = 'Taking longer than usual – showing login…';
@@ -616,17 +619,18 @@ const App = {
     this.bindActions();
     this.drawFinancePie();
     this.bindClausePack();
-    // Prefill update server URL on About page
-    const upd = document.getElementById('update-server-url');
-    if (upd && !upd.value) {
-      DB.getSetting('updateServerUrl', '').then(v => { if (v) upd.value = v; });
-    }
-    // Fill license server URL if field present
-    const ls = document.getElementById('license-server-url');
-    if (ls && !ls.dataset.filled) {
-      ls.dataset.filled = '1';
-      DB.getSetting('licenseServerUrl', '').then(u => { if (u) ls.value = u; });
-    }
+    // Auto-fill server URLs (from config / saved settings – no manual paste needed)
+    const fillUrl = async (id, key, cfgKey) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      let v = await DB.getSetting(key, '');
+      if (!v && window.SA_CONFIG && SA_CONFIG[cfgKey]) v = SA_CONFIG[cfgKey];
+      if (v) el.value = v;
+      el.readOnly = false;
+      el.placeholder = v || el.placeholder;
+    };
+    fillUrl('update-server-url', 'updateServerUrl', 'defaultUpdateServerUrl');
+    fillUrl('license-server-url', 'licenseServerUrl', 'defaultLicenseServerUrl');
   },
 
   bindActions() {
@@ -2664,10 +2668,24 @@ const App = {
   async applyCloudDefaults() {
     try {
       const cfg = window.SA_CONFIG || {};
-      const lic = await DB.getSetting('licenseServerUrl', '');
-      const upd = await DB.getSetting('updateServerUrl', '');
-      if (!lic && cfg.defaultLicenseServerUrl) await DB.setSetting('licenseServerUrl', cfg.defaultLicenseServerUrl);
-      if (!upd && cfg.defaultUpdateServerUrl) await DB.setSetting('updateServerUrl', cfg.defaultUpdateServerUrl);
+      let lic = (await DB.getSetting('licenseServerUrl', '')) || '';
+      let upd = (await DB.getSetting('updateServerUrl', '')) || '';
+      const dLic = (cfg.defaultLicenseServerUrl || '').trim();
+      const dUpd = (cfg.defaultUpdateServerUrl || '').trim();
+      // Prefer config.js defaults when settings empty
+      if (!lic && dLic) { lic = dLic; await DB.setSetting('licenseServerUrl', lic); }
+      if (!upd && dUpd) { upd = dUpd; await DB.setSetting('updateServerUrl', upd); }
+      // Local dev fallback only when still empty and on localhost
+      const host = (location.hostname || '');
+      if (!lic && (host === 'localhost' || host === '127.0.0.1')) {
+        lic = 'http://127.0.0.1:5055';
+        await DB.setSetting('licenseServerUrl', lic);
+      }
+      if (!upd && (host === 'localhost' || host === '127.0.0.1')) {
+        upd = 'http://127.0.0.1:5056';
+        await DB.setSetting('updateServerUrl', upd);
+      }
+      this._serverUrls = { license: lic, update: upd };
     } catch (e) {}
   },
 
@@ -2948,21 +2966,25 @@ const App = {
 
   async ownerUnlock() {
     const token = document.getElementById('owner-token')?.value || '';
-    const custom = await DB.getSetting('ownerToken', '');
-    // Prefer custom token; default only if never changed (dev). Production: set ownerToken in settings.
-    const allowed = custom
-      ? [custom]
-      : ['sa-owner-2026'];
-    if (!allowed.includes(token)) return this.toast('Invalid owner token', 'error');
+    const custom = (await DB.getSetting('ownerToken', '') || '').trim();
+    // No hardcoded default token – must set custom owner token in About first (min 12 chars).
+    if (!custom || custom.length < 12) {
+      return this.toast('Set a custom owner token first (About → Save owner token, min 12 characters)', 'error');
+    }
+    if (token !== custom) return this.toast('Invalid owner token', 'error');
+    // Owner mode is NOT a user login – session flag only, never creates/opens user account
     this._ownerMode = true;
     sessionStorage.setItem('sa_owner', '1');
-    this.toast('Owner mode unlocked for this session only');
+    this.toast('Owner tools unlocked for this session only (not a user login)');
     this.render();
   },
 
   async setOwnerToken() {
     const t = document.getElementById('new-owner-token')?.value?.trim() || '';
-    if (t.length < 10) return this.toast('Token must be at least 10 characters', 'error');
+    if (t.length < 12) return this.toast('Token must be at least 12 characters', 'error');
+    if (/^sa-owner-/i.test(t) || t.toLowerCase() === 'sa-owner-2026') {
+      return this.toast('That token is banned. Choose a unique private token.', 'error');
+    }
     await DB.setSetting('ownerToken', t);
     this.toast('Owner token saved on this device');
   },

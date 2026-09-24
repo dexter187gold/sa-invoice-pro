@@ -1,16 +1,15 @@
-/* SA Invoice Pro 3.1 – endpoints for online mode
-   Fill these after Cloudflare Pages + Render/Oracle deploy.
+/* SA Invoice Pro 3.2 – auto server URLs
+   Fill these once when you deploy. The app applies them automatically
+   so users do not type/copy/paste license or update URLs.
 */
 window.SA_CONFIG = Object.assign({
-  appVersion: '3.1.0',
-  // Public HTTPS URLs (leave '' for local-only)
-  defaultLicenseServerUrl: 'https://sa-invoice-license.onrender.com/',
-  defaultUpdateServerUrl: 'https://sa-invoice-updates.onrender.com/',
+  appVersion: '3.2.0',
+  // >>> SET YOUR RENDER (or other) HTTPS URLS HERE <<<
+  defaultLicenseServerUrl: '', // e.g. 'https://sa-invoice-license.onrender.com'
+  defaultUpdateServerUrl: '',  // e.g. 'https://sa-invoice-updates.onrender.com'
   defaultOwnerDashboardUrl: '',
-  // Optional: public client URL when hosted
   publicAppUrl: '',
   githubReleasesUrl: '',
-  // Feature toggles
   features: {
     autoUpdateCheck: true,
     mandatoryUpdateGate: true,

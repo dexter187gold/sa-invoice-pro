@@ -54,7 +54,24 @@ const Auth = {
     if (!/[A-Z]/.test(p)) return 'Password needs an uppercase letter';
     if (!/[0-9]/.test(p)) return 'Password needs a number';
     if (!/[^a-zA-Z0-9]/.test(p)) return 'Password needs a symbol (!@#$% etc.)';
+    // Reserved / dangerous passwords (owner tokens must never be account passwords)
+    const reserved = [
+      'sa-owner-2026', 'sa-owner-2025', 'saowner2026', 'owner-token',
+      'password', 'Password1!', 'Admin123!', 'Welcome1!'
+    ];
+    const lower = p.toLowerCase();
+    if (reserved.some(r => lower === r.toLowerCase() || lower.includes('sa-owner'))) {
+      return 'This password is reserved and not allowed. Choose a different password.';
+    }
     return null;
+  },
+
+  /** Owner token must never authenticate as a normal user */
+  isReservedCredential(value) {
+    const v = (value || '').trim().toLowerCase();
+    if (!v) return false;
+    if (v === 'sa-owner-2026' || v.startsWith('sa-owner-')) return true;
+    return false;
   },
 
   _persistSession(user, remember = true) {
@@ -105,6 +122,9 @@ const Auth = {
   },
 
   async login(username, password, remember = true) {
+    if (this.isReservedCredential(password) || this.isReservedCredential(username)) {
+      throw new Error('Invalid credentials');
+    }
     const users = await DB.getAll(DB.STORES.users);
     const user = users.find(u => u.username.toLowerCase() === (username || '').toLowerCase().trim());
     if (!user) throw new Error('User not found');
@@ -119,6 +139,9 @@ const Auth = {
 
   /** Password-only when a single primary user is selected */
   async loginByPasswordOnly(password, remember = true) {
+    if (this.isReservedCredential(password)) {
+      throw new Error('Invalid credentials');
+    }
     const users = await DB.getAll(DB.STORES.users);
     if (!users.length) throw new Error('No accounts');
     const hash = await DB.hashPassword(password);
