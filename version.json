@@ -1,0 +1,9 @@
+{
+  "version": "3.2.1",
+  "message": "Fix stuck Opening database on mobile/Pages",
+  "changelog": [
+    "Boot failsafe before DB",
+    "IndexedDB open timeout",
+    "Never block login UI"
+  ]
+}

@@ -503,4 +503,5 @@ if __name__ == "__main__":
     print("  Data:", DATA)
     print("=" * 50)
     threading.Thread(target=open_browser, daemon=True).start()
-    app.run(host="0.0.0.0", port=5055, debug=False, use_reloader=False)
+    port = int(__import__("os").environ.get("PORT", "5055"))
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)

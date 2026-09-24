@@ -1,5 +1,5 @@
 /* SA Invoice Pro SW – network-first code, auto-activate, notify clients to reload */
-const CACHE = 'sa-invoice-v3.1.0';
+const CACHE = 'sa-invoice-v3.2.1';
 const CORE = ['./index.html', './manifest.json', './icons/logo.svg'];
 
 self.addEventListener('install', e => {
