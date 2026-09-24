@@ -528,3 +528,112 @@ body.dark #sidebar { background: #0f172a; }
 body.dark .stat-card { background:#1e293b; border-color:#334155; }
 body.dark .card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.25); }
 .toast { border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
+
+/* === v3.2 Mobile / Desktop view modes === */
+#view-mode-toggle {
+  position: fixed;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  pointer-events: auto;
+}
+.view-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #0f172a;
+  color: #f8fafc;
+  border: 1px solid #334155;
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  cursor: pointer;
+}
+.view-toggle-btn:hover { background: #1e293b; }
+.view-toggle-switch {
+  width: 2rem;
+  height: 1rem;
+  border-radius: 999px;
+  background: #007A4D;
+  position: relative;
+}
+.view-toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s ease;
+}
+html[data-view="desktop"] .view-toggle-switch::after { transform: translateX(14px); }
+
+/* Force mobile chrome layout */
+html[data-view="mobile"] aside#sidebar {
+  display: none !important;
+}
+html[data-view="mobile"] #btn-menu {
+  display: inline-flex !important;
+}
+html[data-view="mobile"] main#main {
+  padding: 0.75rem !important;
+}
+html[data-view="mobile"] .page-header {
+  flex-direction: column;
+  align-items: stretch;
+}
+html[data-view="mobile"] .page-actions {
+  width: 100%;
+}
+html[data-view="mobile"] .page-actions .btn {
+  flex: 1;
+}
+html[data-view="mobile"] .grid {
+  grid-template-columns: 1fr !important;
+}
+html[data-view="mobile"] .home-hero-inner {
+  flex-direction: column;
+}
+html[data-view="mobile"] .max-w-7xl {
+  max-width: 100% !important;
+}
+html[data-view="mobile"] table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+html[data-view="mobile"] .card {
+  border-radius: 12px;
+}
+html[data-view="mobile"] body,
+html[data-view="mobile"] #app {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Force desktop layout even on narrow screens */
+html[data-view="desktop"] aside#sidebar {
+  display: flex !important;
+}
+html[data-view="desktop"] #mobile-sidebar,
+html[data-view="desktop"] #sidebar-overlay {
+  display: none !important;
+}
+html[data-view="desktop"] #btn-menu {
+  display: none !important;
+}
+html[data-view="desktop"] .flex.flex-1 {
+  flex-direction: row !important;
+}
+
+/* Safe area for toggle above phone home indicator */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  #view-mode-toggle {
+    bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+}
