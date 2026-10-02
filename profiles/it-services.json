@@ -1,0 +1,40 @@
+{
+  "name": "IT Services",
+  "tagline": "Support tickets, SLA, time & hardware",
+  "modules": {
+    "invoices": true,
+    "quotes": true,
+    "tickets": true,
+    "clients": true,
+    "products": true,
+    "services": true,
+    "expenses": true,
+    "reports": true,
+    "stock": true,
+    "timeTracking": true,
+    "sla": true,
+    "pos": false,
+    "popia": true,
+    "payroll": true
+  },
+  "labels": {
+    "tickets": "Tickets / SLA",
+    "services": "Support & retainers",
+    "products": "Hardware & licences",
+    "quotes": "Project quotes"
+  },
+  "docTypes": [
+    "sla",
+    "consulting",
+    "engagement",
+    "demand",
+    "completion",
+    "goodstanding",
+    "taxclearance"
+  ],
+  "kpiFocus": [
+    "tickets",
+    "invoices"
+  ],
+  "terms": "Payment due within 7 days unless otherwise stated. Support is provided during business hours unless a retainer/SLA applies. Client must maintain backups. Call-outs and parts are additional. Laws of South Africa apply."
+}

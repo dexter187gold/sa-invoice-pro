@@ -1,0 +1,43 @@
+# CI – runs on every push/PR. No secrets required for basic checks.
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Syntax-check JavaScript
+        run: |
+          set -e
+          for f in js/*.js; do
+            echo "check $f"
+            node --check "$f"
+          done
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Syntax-check Python
+        run: |
+          python -m py_compile license_server.py update_server.py owner_saas_dashboard.py updater_core.py update_service.py server_secrets.py || true
+          python -m py_compile license_server.py update_server.py
+
+      - name: Ensure no obvious secret files committed
+        run: |
+          if [ -f .env ]; then echo "ERROR: .env must not be committed"; exit 1; fi
+          if git ls-files | grep -E '\\.pem$|secrets/'; then echo "ERROR: secret files tracked"; exit 1; fi
+          echo "OK – no .env in repo"

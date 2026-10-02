@@ -1,0 +1,40 @@
+{
+  "name": "Agriculture & Farming",
+  "tagline": "Produce, livestock, feed & farm services",
+  "modules": {
+    "invoices": true,
+    "quotes": true,
+    "tickets": false,
+    "clients": true,
+    "products": true,
+    "services": true,
+    "expenses": true,
+    "reports": true,
+    "stock": true,
+    "timeTracking": false,
+    "sla": false,
+    "pos": false,
+    "popia": true,
+    "payroll": false
+  },
+  "labels": {
+    "products": "Produce & supplies",
+    "services": "Farm services",
+    "clients": "Buyers & suppliers",
+    "invoices": "Farm invoices",
+    "quotes": "Produce quotes"
+  },
+  "docTypes": [
+    "goodstanding",
+    "engagement",
+    "quotation_cover",
+    "demand",
+    "completion"
+  ],
+  "kpiFocus": [
+    "stock",
+    "invoices",
+    "clients"
+  ],
+  "terms": "Payment due within 14 days of invoice unless COD agreed. Prices may vary with market conditions for produce and feed. Delivery risk passes on collection or agreed drop-off. Governed by the laws of the Republic of South Africa."
+}

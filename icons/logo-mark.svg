@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="SA">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00A86B"/>
+      <stop offset="100%" stop-color="#007A4D"/>
+    </linearGradient>
+  </defs>
+  <!-- Transparent outside the circle -->
+  <circle cx="64" cy="64" r="58" fill="url(#g)"/>
+  <circle cx="64" cy="64" r="58" fill="none" stroke="#FFB81C" stroke-width="3"/>
+  <text x="64" y="78" text-anchor="middle" font-family="Segoe UI, system-ui, sans-serif"
+        font-size="48" font-weight="800" fill="#fff" letter-spacing="-1">SA</text>
+</svg>

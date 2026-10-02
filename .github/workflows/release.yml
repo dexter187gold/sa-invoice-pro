@@ -1,0 +1,33 @@
+# Create a GitHub Release ZIP when you push a tag like v3.2.0
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build zip
+        run: |
+          zip -r "sa-invoice-${{ github.ref_name }}.zip" . \
+            -x "*.git*" \
+            -x ".github/*" \
+            -x "*__pycache__*" \
+            -x "*.env*" \
+            -x "backups/*" \
+            -x "releases/*.zip"
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: sa-invoice-${{ github.ref_name }}.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,35 @@
+{
+  "name": "Transport & Logistics",
+  "tagline": "Deliveries, freight & COD",
+  "modules": {
+    "invoices": true,
+    "quotes": true,
+    "tickets": false,
+    "clients": true,
+    "products": false,
+    "services": true,
+    "expenses": true,
+    "reports": true,
+    "stock": false,
+    "timeTracking": false,
+    "sla": false,
+    "pos": false,
+    "popia": true,
+    "payroll": false
+  },
+  "labels": {
+    "services": "Trips",
+    "clients": "Shippers",
+    "quotes": "Freight quotes"
+  },
+  "docTypes": [
+    "quotation_cover",
+    "demand",
+    "completion",
+    "goodstanding"
+  ],
+  "kpiFocus": [
+    "invoices"
+  ],
+  "terms": "Freight charges are payable as invoiced. Waiting time may be charged after the free period stated on the quote. COD available by agreement. Risk of goods as per INCOTERMS or as written."
+}

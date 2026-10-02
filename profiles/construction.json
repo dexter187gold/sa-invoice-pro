@@ -1,0 +1,39 @@
+{
+  "name": "Construction & Trades",
+  "tagline": "Quotes, job cards, COD & completion",
+  "modules": {
+    "invoices": true,
+    "quotes": true,
+    "tickets": true,
+    "clients": true,
+    "products": true,
+    "services": true,
+    "expenses": true,
+    "reports": true,
+    "stock": true,
+    "timeTracking": true,
+    "sla": false,
+    "pos": false,
+    "popia": true,
+    "payroll": false
+  },
+  "labels": {
+    "tickets": "Job cards",
+    "products": "Materials",
+    "services": "Labour",
+    "quotes": "Tenders / quotes"
+  },
+  "docTypes": [
+    "quotation_cover",
+    "completion",
+    "demand",
+    "engagement",
+    "goodstanding"
+  ],
+  "kpiFocus": [
+    "tickets",
+    "invoices",
+    "quotes"
+  ],
+  "terms": "Progress claims as agreed. COD may apply for materials. Snag lists do not delay payment for completed works. Site access and safety are the client\u2019s responsibility unless otherwise agreed. SA law applies."
+}

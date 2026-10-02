@@ -1,0 +1,35 @@
+{
+  "name": "Hospitality",
+  "tagline": "Bookings, events & supplier invoices",
+  "modules": {
+    "invoices": true,
+    "quotes": true,
+    "tickets": false,
+    "clients": true,
+    "products": true,
+    "services": true,
+    "expenses": true,
+    "reports": true,
+    "stock": true,
+    "timeTracking": false,
+    "sla": false,
+    "pos": false,
+    "popia": true,
+    "payroll": true
+  },
+  "labels": {
+    "products": "Menu / stock",
+    "services": "Events & catering"
+  },
+  "docTypes": [
+    "quotation_cover",
+    "engagement",
+    "demand",
+    "goodstanding"
+  ],
+  "kpiFocus": [
+    "invoices",
+    "stock"
+  ],
+  "terms": "Deposit may be required to confirm bookings. Cancellation terms as quoted. Balance due on or before the event date unless account facilities exist. ZAR only."
+}

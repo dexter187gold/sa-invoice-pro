@@ -1,0 +1,35 @@
+{
+  "name": "Education & Training",
+  "tagline": "Course fees, materials & invoices",
+  "modules": {
+    "invoices": true,
+    "quotes": true,
+    "tickets": false,
+    "clients": true,
+    "products": true,
+    "services": true,
+    "expenses": true,
+    "reports": true,
+    "stock": false,
+    "timeTracking": false,
+    "sla": false,
+    "pos": false,
+    "popia": true,
+    "payroll": true
+  },
+  "labels": {
+    "services": "Programmes",
+    "clients": "Students / schools",
+    "quotes": "Course quotes"
+  },
+  "docTypes": [
+    "engagement",
+    "quotation_cover",
+    "demand",
+    "goodstanding"
+  ],
+  "kpiFocus": [
+    "invoices"
+  ],
+  "terms": "Course fees are payable as per the invoice schedule. Materials remain our property until paid. Refunds only as stated in the enrolment terms. SA law applies."
+}

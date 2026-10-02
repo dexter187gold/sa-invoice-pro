@@ -1,0 +1,31 @@
+{
+  "name": "Startup / Solo",
+  "tagline": "Simple invoices, quotes & clients",
+  "modules": {
+    "invoices": true,
+    "quotes": true,
+    "tickets": false,
+    "clients": true,
+    "products": true,
+    "services": true,
+    "expenses": true,
+    "reports": true,
+    "stock": true,
+    "timeTracking": false,
+    "sla": false,
+    "pos": false,
+    "popia": true,
+    "payroll": true
+  },
+  "labels": {},
+  "docTypes": [
+    "quotation_cover",
+    "engagement",
+    "demand",
+    "goodstanding"
+  ],
+  "kpiFocus": [
+    "invoices"
+  ],
+  "terms": "Payment due within 7 days. Thank you for your business. All amounts in South African Rand. VAT charged if we are a registered vendor."
+}
