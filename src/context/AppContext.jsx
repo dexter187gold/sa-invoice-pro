@@ -20,6 +20,7 @@ export function AppProvider({ children }) {
   const [expenses, setExpenses] = useState([])
   const [payments, setPayments] = useState([])
   const [employees, setEmployees] = useState([])
+  const [payslips, setPayslips] = useState([])
   const [bankTxns, setBankTxns] = useState([])
   const [journal, setJournal] = useState([])
   const [accounts, setAccounts] = useState([])
@@ -48,6 +49,7 @@ export function AppProvider({ children }) {
       [STORES.expenses, setExpenses],
       [STORES.payments, setPayments],
       [STORES.employees, setEmployees],
+      [STORES.payslips, setPayslips],
       [STORES.bankTxns, setBankTxns],
       [STORES.journal, setJournal],
       [STORES.accounts, setAccounts],
@@ -127,7 +129,7 @@ export function AppProvider({ children }) {
 
   const value = {
     ready, user, company, clients, invoices, quotes, tickets, products, services,
-    expenses, payments, employees, bankTxns, journal, accounts, timeEntries,
+    expenses, payments, employees, payslips, bankTxns, journal, accounts, timeEntries,
     toasts, toast, theme, setTheme, vatEnabled, vatRate, setVatEnabled, setVatRate,
     online, refresh, login, register, logout, setCompany,
   }
