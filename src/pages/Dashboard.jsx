@@ -1,9 +1,9 @@
-
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { formatMoney } from '../lib/money'
 import { agedBuckets } from '../lib/accounting'
+import { StatCard, ProgressBar, formatDateZA, relativeTime } from '../components/ui'
 
 export default function Dashboard() {
   const { invoices, quotes, tickets, clients, expenses, payments } = useApp()
@@ -14,34 +14,44 @@ export default function Dashboard() {
   const exp = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0)
   const aged = agedBuckets(invoices)
   const openT = tickets.filter((t) => !['closed', 'resolved', 'cancelled'].includes(String(t.status || '').toLowerCase()))
+  const totalAged = Object.values(aged.buckets || {}).reduce((s, v) => s + (Number(v) || 0), 0) || 1
+  const collectionRate = rev + ar > 0 ? Math.round((rev / (rev + ar)) * 100) : 0
 
   return (
     <div>
       <div className="page-header">
         <div>
           <h1>Dashboard</h1>
-          <p className="subtitle">Live operational snapshot (separate from Home summary)</p>
+          <p className="subtitle">Live operational snapshot · {formatDateZA(new Date().toISOString())}</p>
         </div>
         <Link className="btn btn-primary" to="/invoices/new">New invoice</Link>
       </div>
       <div className="grid-stats">
-        <div className="card stat"><div className="label">Revenue (paid)</div><div className="value">{formatMoney(rev)}</div></div>
-        <div className="card stat"><div className="label">AR outstanding</div><div className="value">{formatMoney(ar)}</div></div>
-        <div className="card stat"><div className="label">Expenses</div><div className="value">{formatMoney(exp)}</div></div>
-        <div className="card stat"><div className="label">Net</div><div className="value">{formatMoney(rev - exp)}</div></div>
-        <div className="card stat"><div className="label">Open invoices</div><div className="value">{openInv.length}</div></div>
-        <div className="card stat"><div className="label">Quotes</div><div className="value">{quotes.length}</div></div>
-        <div className="card stat"><div className="label">Open tickets</div><div className="value">{openT.length}</div></div>
-        <div className="card stat"><div className="label">Clients</div><div className="value">{clients.length}</div></div>
+        <StatCard label="Revenue (paid)" value={formatMoney(rev)} tone="good" />
+        <StatCard label="AR outstanding" value={formatMoney(ar)} tone={ar > 0 ? 'warn' : 'good'} hint={`${openInv.length} open`} />
+        <StatCard label="Expenses" value={formatMoney(exp)} />
+        <StatCard label="Net" value={formatMoney(rev - exp)} tone={rev - exp >= 0 ? 'good' : 'bad'} />
+        <StatCard label="Collection rate" value={`${collectionRate}%`} hint="Paid / (paid + AR)" />
+        <StatCard label="Quotes" value={quotes.length} />
+        <StatCard label="Open tickets" value={openT.length} tone={openT.length ? 'warn' : undefined} />
+        <StatCard label="Clients" value={clients.length} />
       </div>
       <div className="card" style={{ marginBottom: '1rem' }}>
         <h3 style={{ marginTop: 0 }}>Aged debtors</h3>
         <div className="grid-stats">
-          <div><div className="muted">Current</div><strong>{formatMoney(aged.buckets.current)}</strong></div>
-          <div><div className="muted">1–30</div><strong>{formatMoney(aged.buckets.d30)}</strong></div>
-          <div><div className="muted">31–60</div><strong>{formatMoney(aged.buckets.d60)}</strong></div>
-          <div><div className="muted">61–90</div><strong>{formatMoney(aged.buckets.d90)}</strong></div>
-          <div><div className="muted">90+</div><strong>{formatMoney(aged.buckets.older)}</strong></div>
+          {[
+            ['Current', aged.buckets.current, 'good'],
+            ['1–30', aged.buckets.d30, null],
+            ['31–60', aged.buckets.d60, 'warn'],
+            ['61–90', aged.buckets.d90, 'warn'],
+            ['90+', aged.buckets.older, 'bad'],
+          ].map(([label, val, tone]) => (
+            <div key={label}>
+              <div className="muted">{label}</div>
+              <strong>{formatMoney(val)}</strong>
+              <ProgressBar value={val} max={totalAged} tone={tone} />
+            </div>
+          ))}
         </div>
       </div>
       <div className="card">
@@ -49,8 +59,9 @@ export default function Dashboard() {
         {!payments.length && <p className="muted">No payments recorded yet.</p>}
         {payments.slice(-8).reverse().map((p) => (
           <div key={p.id} className="list-card" style={{ marginBottom: 6 }}>
-            {formatMoney(p.amount)} · {(p.date || '').slice(0, 10)} · {p.method || 'payment'}
+            {formatMoney(p.amount)} · {formatDateZA(p.date)} · {p.method || 'payment'}
             {p.reference ? ` · ${p.reference}` : ''}
+            {p.date ? <span className="muted" style={{ marginLeft: 8, fontSize: 12 }}>{relativeTime(p.date)}</span> : null}
           </div>
         ))}
       </div>
