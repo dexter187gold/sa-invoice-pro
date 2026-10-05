@@ -1,4 +1,3 @@
-
 import { getSetting, setSetting } from './db.js'
 import { SA_CONFIG } from '../config.js'
 
@@ -11,7 +10,7 @@ export async function getHardwareId() {
     navigator.userAgent || '',
     screen.width + 'x' + screen.height,
     String(navigator.hardwareConcurrency || ''),
-    Date.now().toString(36),
+    (navigator.language || ''),
   ].join('|')
   let h = 0
   for (let i = 0; i < raw.length; i++) h = ((h << 5) - h + raw.charCodeAt(i)) | 0
@@ -30,18 +29,38 @@ export async function getServerUrl() {
   return url
 }
 
+async function postJson(base, paths, body) {
+  const errors = []
+  for (const path of paths) {
+    try {
+      const res = await fetch(base + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const text = await res.text()
+      let j = {}
+      try { j = text ? JSON.parse(text) : {} } catch { j = { raw: text.slice(0, 400) } }
+      if (res.ok) return { ...j, _path: path, _status: res.status }
+      errors.push(path + ' ' + res.status + ': ' + (j.error || j.message || text.slice(0, 180)))
+    } catch (e) {
+      errors.push(path + ' network: ' + (e.message || e))
+    }
+  }
+  const err = new Error(errors.join(' | ') || 'License server unreachable')
+  err.details = errors
+  throw err
+}
+
 export async function handshake() {
   const base = await getServerUrl()
   if (!base) throw new Error('License server URL not set')
   const hwid = await getHardwareId()
-  const res = await fetch(base + '/api/handshake', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ hwid, app: 'sa-invoice-pro', version: SA_CONFIG.appVersion }),
+  const j = await postJson(base, ['/api/handshake', '/api/license/handshake'], {
+    hwid, app: 'sa-invoice-pro', version: SA_CONFIG.appVersion,
   })
-  const j = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(j.error || 'Handshake failed')
   await setSetting('handshakeOk', true)
+  await setSetting('lastLicenseExchange', { step: 'handshake', at: new Date().toISOString(), response: j })
   if (j.key) await setSetting('pendingLicenseKey', j.key)
   return j
 }
@@ -50,50 +69,43 @@ export async function requestLicense() {
   const base = await getServerUrl()
   if (!base) throw new Error('License server URL not set')
   const hwid = await getHardwareId()
-  const res = await fetch(base + '/api/request-license', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ hwid }),
+  const j = await postJson(base, ['/api/request-license', '/api/license/request', '/api/license/request-license'], {
+    hwid,
+    app: 'sa-invoice-pro',
+    version: SA_CONFIG.appVersion,
+    email: (await getSetting('licenseEmail', '')) || '',
   })
-  const j = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(j.error || 'Request failed')
-  if (j.key) {
-    await setSetting('pendingLicenseKey', j.key)
-    await setSetting('licenseKey', j.key)
-    await setSetting('licenseMeta', j.meta || { plan: j.plan || 'trial', at: new Date().toISOString() })
+  await setSetting('lastLicenseExchange', { step: 'request', at: new Date().toISOString(), response: j })
+  const key = j.key || j.licenseKey || j.license_key
+  if (key) {
+    await setSetting('pendingLicenseKey', key)
+    await setSetting('licenseMeta', j.meta || { plan: j.plan || 'pending', requestedAt: new Date().toISOString(), status: j.status || 'requested' })
   }
   return j
 }
 
 export async function activate(key) {
-  const k = (key || (await getSetting('pendingLicenseKey', '')) || '').trim()
-  if (!k) throw new Error('No license key')
+  const k = (key || (await getSetting('pendingLicenseKey', '')) || (await getSetting('licenseKey', '')) || '').trim()
+  if (!k) throw new Error('No license key — run Request first so the server can issue one')
   const base = await getServerUrl()
+  if (!base) throw new Error('License server URL not set')
   const hwid = await getHardwareId()
-  if (base) {
-    try {
-      const res = await fetch(base + '/api/activate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hwid, key: k }),
-      })
-      const j = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(j.error || 'Activation rejected')
-      await setSetting('licenseKey', k)
-      await setSetting('licenseMeta', j.meta || { activatedAt: new Date().toISOString(), plan: j.plan || 'standard' })
-      await setSetting('licenseOfflineBlob', { key: k, meta: j.meta || {} })
-      try { localStorage.setItem('sa_license_cache', JSON.stringify({ key: k, meta: j.meta })) } catch {}
-      return j
-    } catch (e) {
-      // offline activate store
-      await setSetting('licenseKey', k)
-      await setSetting('licenseMeta', { activatedAt: new Date().toISOString(), offline: true })
-      throw e
-    }
-  }
-  await setSetting('licenseKey', k)
-  await setSetting('licenseMeta', { activatedAt: new Date().toISOString(), local: true })
-  return { ok: true }
+  const j = await postJson(base, ['/api/activate', '/api/license/activate'], { hwid, key: k, app: 'sa-invoice-pro' })
+  if (j.ok === false || j.activated === false) throw new Error(j.error || 'Server did not confirm activation')
+  await setSetting('licenseKey', j.key || k)
+  await setSetting('licenseMeta', j.meta || { activatedAt: new Date().toISOString(), plan: j.plan || 'standard', server: true })
+  await setSetting('licenseOfflineBlob', { key: j.key || k, meta: j.meta || {} })
+  await setSetting('lastLicenseExchange', { step: 'activate', at: new Date().toISOString(), response: j })
+  try { localStorage.setItem('sa_license_cache', JSON.stringify({ key: j.key || k, meta: j.meta })) } catch {}
+  return j
+}
+
+export async function fullActivate() {
+  const hs = await handshake()
+  const req = await requestLicense()
+  const key = req.key || req.licenseKey || req.license_key || hs.key
+  const act = await activate(key)
+  return { handshake: hs, request: req, activate: act }
 }
 
 export async function getLicenseStatus() {
@@ -106,12 +118,14 @@ export async function getLicenseStatus() {
     const elapsed = (Date.now() - new Date(trialStart).getTime()) / 86400000
     trialDaysLeft = Math.max(0, Math.ceil(7 - elapsed))
   }
+  const exchange = await getSetting('lastLicenseExchange', null)
   return {
-    licensed: !!(key && meta),
+    licensed: !!(key && meta && meta.server),
     key,
     meta,
     hwid,
     trialDaysLeft,
     handshakeOk: !!(await getSetting('handshakeOk', false)),
+    exchange,
   }
 }
