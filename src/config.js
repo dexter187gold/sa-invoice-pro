@@ -1,6 +1,7 @@
-export const APP_VERSION = '2.3.0'
+export const APP_VERSION = '2.4.0'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
+export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
 export const SA_CONFIG = {
   appVersion: APP_VERSION,
@@ -8,6 +9,7 @@ export const SA_CONFIG = {
   helixUrl: (typeof window !== 'undefined' && window.SA_CONFIG?.helixUrl) || '',
   helixPathDesk: '/desk/tickets',
   helixEmbedTickets: true,
+  oliveRepo: OLIVE_REPO,
 }
 
 export const VAT_RATE_DEFAULT = 0.15
