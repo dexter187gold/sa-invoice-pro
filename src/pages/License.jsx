@@ -1,18 +1,17 @@
-
 import React, { useEffect, useState } from 'react'
 import { useApp } from '../context/AppContext'
-import * as License from '../lib/license'
+import * as LicenseApi from '../lib/license'
 import * as db from '../lib/db'
 
-export default function License() {
+export default function LicensePage() {
   const { toast, online } = useApp()
   const [status, setStatus] = useState(null)
   const [serverUrl, setServerUrl] = useState('')
   const [busy, setBusy] = useState(false)
 
   const reload = async () => {
-    setStatus(await License.getLicenseStatus())
-    setServerUrl(await License.getServerUrl())
+    setStatus(await LicenseApi.getLicenseStatus())
+    setServerUrl(await LicenseApi.getServerUrl())
   }
 
   useEffect(() => { reload() }, [])
@@ -59,9 +58,9 @@ export default function License() {
         {status?.meta && <pre style={{ fontSize: 12, overflow: 'auto' }}>{JSON.stringify(status.meta, null, 2)}</pre>}
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        <button type="button" className="btn btn-primary" disabled={busy} onClick={() => run(() => License.handshake(), 'Handshake OK')}>1. Handshake</button>
-        <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => run(() => License.requestLicense(), 'License requested')}>2. Request + refresh</button>
-        <button type="button" className="btn btn-outline" disabled={busy} onClick={() => run(() => License.activate(), 'Activated')}>3. Activate</button>
+        <button type="button" className="btn btn-primary" disabled={busy} onClick={() => run(() => LicenseApi.handshake(), 'Handshake OK')}>1. Handshake</button>
+        <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => run(() => LicenseApi.requestLicense(), 'License requested')}>2. Request + refresh</button>
+        <button type="button" className="btn btn-outline" disabled={busy} onClick={() => run(() => LicenseApi.activate(), 'Activated')}>3. Activate</button>
         <button type="button" className="btn btn-outline" onClick={reload}>Refresh status</button>
       </div>
     </div>
