@@ -1,9 +1,10 @@
 
 import { formatMoney } from './money.js'
 import { APP_NAME, APP_COPYRIGHT, APP_VERSION } from '../config.js'
+import { loadJsPdf } from './loadJsPdf.js'
 
 export async function buildInvoicePdf(invoice, { company, client, payments = [] } = {}) {
-  const { jsPDF } = await import('jspdf')
+  const jsPDF = await loadJsPdf()
   const doc = new jsPDF()
   const co = company || {}
   const cl = client || {}
@@ -104,6 +105,9 @@ export async function openInvoicePdf(invoice, ctx) {
   const doc = await buildInvoicePdf(invoice, ctx)
   const blob = doc.output('blob')
   const url = URL.createObjectURL(blob)
-  window.open(url, '_blank')
+  const w = window.open(url, '_blank')
+  if (!w) {
+    doc.save((invoice.number || 'document') + '.pdf')
+  }
   return url
 }
