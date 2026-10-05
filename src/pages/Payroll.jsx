@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from 'react'
 import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
@@ -11,6 +10,8 @@ import {
   isValidSaId,
   ageFromSaId,
 } from '../lib/saTaxEngine'
+import { generatePayslipPdf } from '../lib/pdfPayslip'
+import { ConfirmDialog, LoadingButton, StatCard } from '../components/ui'
 
 function currentPeriod() {
   const d = new Date()
@@ -24,6 +25,8 @@ export default function Payroll() {
   const [selected, setSelected] = useState({})
   const [busy, setBusy] = useState(false)
   const [preview, setPreview] = useState(null)
+  const [confirm, setConfirm] = useState(null)
+  const [pdfBusy, setPdfBusy] = useState(null)
 
   const loadPayslips = async () => {
     const all = (await db.getAll(STORES.payslips)) || []
@@ -111,11 +114,32 @@ export default function Payroll() {
     }
   }
 
-  const delPayslip = async (id) => {
-    if (!confirm('Delete this payslip?')) return
-    await db.remove(STORES.payslips, id)
-    await loadPayslips()
-    toast('Payslip deleted', 'success')
+  const delPayslip = (id) => {
+    setConfirm({
+      title: 'Delete this payslip?',
+      message: 'The payslip record will be removed from history.',
+      danger: true,
+      confirmLabel: 'Delete',
+      action: async () => {
+        await db.remove(STORES.payslips, id)
+        await loadPayslips()
+        toast('Payslip deleted', 'success')
+        setConfirm(null)
+      },
+    })
+  }
+
+  const downloadPdf = async (p) => {
+    setPdfBusy(p.id)
+    try {
+      await generatePayslipPdf(p, company, { download: true, preview: true })
+      toast('Payslip PDF ready', 'success')
+    } catch (e) {
+      console.error(e)
+      toast('PDF failed: ' + (e.message || e), 'error')
+    } finally {
+      setPdfBusy(null)
+    }
   }
 
   const exportCsv = () => {
@@ -176,14 +200,9 @@ export default function Payroll() {
           <button type="button" className="btn btn-secondary" onClick={exportCsv}>
             Export CSV
           </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            disabled={busy || !employees.length}
-            onClick={runPayroll}
-          >
-            {busy ? 'Running…' : 'Run payroll for period'}
-          </button>
+          <LoadingButton loading={busy} disabled={!employees.length} onClick={runPayroll}>
+            Run payroll for period
+          </LoadingButton>
         </div>
       </div>
 
@@ -222,22 +241,10 @@ export default function Payroll() {
 
       {periodPayslips.length > 0 && (
         <div className="grid-stats" style={{ marginBottom: '1rem' }}>
-          <div className="card stat">
-            <div className="label">Gross (period)</div>
-            <div className="value">{formatMoney(totals.gross)}</div>
-          </div>
-          <div className="card stat">
-            <div className="label">PAYE est.</div>
-            <div className="value">{formatMoney(totals.paye)}</div>
-          </div>
-          <div className="card stat">
-            <div className="label">UIF (emp)</div>
-            <div className="value">{formatMoney(totals.uif)}</div>
-          </div>
-          <div className="card stat">
-            <div className="label">Net pay</div>
-            <div className="value">{formatMoney(totals.net)}</div>
-          </div>
+          <StatCard label="Gross (period)" value={formatMoney(totals.gross)} />
+          <StatCard label="PAYE est." value={formatMoney(totals.paye)} tone="warn" />
+          <StatCard label="UIF (emp)" value={formatMoney(totals.uif)} />
+          <StatCard label="Net pay" value={formatMoney(totals.net)} tone="good" />
         </div>
       )}
 
@@ -291,7 +298,7 @@ export default function Payroll() {
 
       <h3 style={{ margin: '1.5rem 0 .75rem' }}>Payslips — {period}</h3>
       {periodPayslips.map((p) => (
-        <div key={p.id} className="list-card" style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+        <div key={p.id} className="list-card" style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <div>
             <strong>{p.employeeName}</strong>
             <div className="muted" style={{ fontSize: 13 }}>
@@ -299,21 +306,31 @@ export default function Payroll() {
               <strong>{formatMoney(p.net)}</strong>
             </div>
           </div>
-          <button type="button" className="btn btn-outline btn-sm" onClick={() => delPayslip(p.id)}>
-            Del
-          </button>
+          <div className="list-card-actions">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              disabled={pdfBusy === p.id}
+              onClick={() => downloadPdf(p)}
+            >
+              {pdfBusy === p.id ? 'PDF…' : 'PDF'}
+            </button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => delPayslip(p.id)}>
+              Del
+            </button>
+          </div>
         </div>
       ))}
       {!periodPayslips.length && <div className="card empty">No payslips for this period yet.</div>}
 
       {preview && (
         <div
-          className="sidebar-backdrop show"
-          style={{ display: 'grid', placeItems: 'center', zIndex: 80 }}
+          className="modal-backdrop"
+          style={{ zIndex: 80 }}
           onClick={() => setPreview(null)}
         >
           <div
-            className="card"
+            className="modal-card"
             style={{ width: 'min(420px, 94vw)', maxHeight: '90vh', overflow: 'auto' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -343,6 +360,16 @@ export default function Payroll() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!confirm}
+        title={confirm?.title}
+        message={confirm?.message}
+        confirmLabel={confirm?.confirmLabel}
+        danger={confirm?.danger}
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => confirm?.action?.()}
+      />
     </div>
   )
 }
