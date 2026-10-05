@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import * as db from '../lib/db'
 import { STORES } from '../lib/db'
@@ -27,14 +26,19 @@ export function AppProvider({ children }) {
   const [timeEntries, setTimeEntries] = useState([])
   const [toasts, setToasts] = useState([])
   const [theme, setTheme] = useState(() => localStorage.getItem('sa_theme') || 'light')
+  const [density, setDensity] = useState(() => localStorage.getItem('sa_density') || 'comfortable')
   const [vatEnabled, setVatEnabled] = useState(true)
   const [vatRate, setVatRate] = useState(VAT_RATE_DEFAULT)
   const [online, setOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
 
+  const dismissToast = useCallback((id) => {
+    setToasts((t) => t.filter((x) => x.id !== id))
+  }, [])
+
   const toast = useCallback((message, type = 'info') => {
     const id = crypto.randomUUID()
     setToasts((t) => [...t, { id, message, type }])
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3200)
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4000)
   }, [])
 
   const refresh = useCallback(async () => {
@@ -100,6 +104,11 @@ export function AppProvider({ children }) {
     localStorage.setItem('sa_theme', theme)
   }, [theme])
 
+  useEffect(() => {
+    localStorage.setItem('sa_density', density)
+    document.documentElement.dataset.density = density
+  }, [density])
+
   const login = async (username, password) => {
     const users = (await db.getAll(STORES.users)) || []
     const u = users.find((x) => (x.username === username || x.email === username) && x.password === password)
@@ -130,7 +139,8 @@ export function AppProvider({ children }) {
   const value = {
     ready, user, company, clients, invoices, quotes, tickets, products, services,
     expenses, payments, employees, payslips, bankTxns, journal, accounts, timeEntries,
-    toasts, toast, theme, setTheme, vatEnabled, vatRate, setVatEnabled, setVatRate,
+    toasts, toast, dismissToast, theme, setTheme, density, setDensity,
+    vatEnabled, vatRate, setVatEnabled, setVatRate,
     online, refresh, login, register, logout, setCompany,
   }
 
