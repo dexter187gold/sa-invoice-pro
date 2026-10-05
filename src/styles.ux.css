@@ -1,0 +1,110 @@
+
+/* === Frontend UX pack 2.2.0 === */
+.search-wrap { position: relative; flex: 1; min-width: 160px; max-width: 320px; }
+.search-input { padding-right: 2rem; }
+.search-clear {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  border: 0; background: transparent; color: var(--muted); cursor: pointer;
+  font-size: 1.2rem; line-height: 1; padding: 2px 6px; border-radius: 6px;
+}
+.search-clear:hover { color: var(--text); background: var(--bg); }
+
+.toolbar {
+  display: flex; flex-wrap: wrap; gap: .5rem; align-items: center;
+  margin-bottom: 1rem;
+}
+.filter-chips { display: flex; flex-wrap: wrap; gap: .35rem; }
+.chip {
+  border: 1px solid var(--border); background: var(--card); color: var(--text);
+  border-radius: 999px; padding: .3rem .7rem; font-size: .8rem; font-weight: 600;
+  cursor: pointer;
+}
+.chip:hover { border-color: var(--green); }
+.chip-active { background: rgba(0,122,77,.14); border-color: var(--green); color: var(--green-dark); }
+html.dark .chip-active { color: #6ee7b7; }
+.chip-count {
+  margin-left: .35rem; opacity: .7; font-weight: 500;
+}
+
+.empty-rich { padding: 2.5rem 1.25rem; }
+.empty-title { font-weight: 700; font-size: 1.05rem; margin-bottom: .35rem; }
+
+.stat-hint { font-size: .72rem; margin-top: .2rem; }
+.stat-good .value { color: var(--green); }
+.stat-warn .value { color: #b45309; }
+.stat-bad .value { color: var(--danger); }
+
+.nav-section {
+  font-size: .65rem; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); padding: .65rem .75rem .25rem; font-weight: 700;
+}
+
+.list-card-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+.table tbody tr { transition: background .12s; }
+.table tbody tr:hover { background: rgba(0,122,77,.04); }
+html.dark .table tbody tr:hover { background: rgba(110,231,183,.06); }
+
+.kbd {
+  font-size: .7rem; border: 1px solid var(--border); border-radius: 4px;
+  padding: 1px 5px; color: var(--muted); background: var(--bg);
+}
+
+.quick-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .5rem;
+}
+.quick-tile {
+  display: flex; flex-direction: column; gap: .2rem; padding: .85rem;
+  border: 1px solid var(--border); border-radius: 12px; background: var(--card);
+  color: var(--text); text-decoration: none; transition: border-color .15s, box-shadow .15s;
+}
+.quick-tile:hover { border-color: var(--green); box-shadow: var(--shadow); }
+.quick-tile strong { font-size: .95rem; }
+.quick-tile span { font-size: .75rem; color: var(--muted); }
+
+.skip-link {
+  position: absolute; left: -999px; top: 0; background: var(--green); color: #fff;
+  padding: .5rem 1rem; z-index: 200; border-radius: 0 0 8px 0;
+}
+.skip-link:focus { left: 0; }
+
+.focus-ring:focus-visible, .btn:focus-visible, .input:focus-visible, .select:focus-visible, .textarea:focus-visible, .nav-link:focus-visible {
+  outline: 2px solid var(--green); outline-offset: 2px;
+}
+
+.sticky-tools {
+  position: sticky; top: 0; z-index: 5; background: var(--bg);
+  padding: .5rem 0; margin-bottom: .5rem;
+}
+@media (max-width: 860px) {
+  .sticky-tools { top: 48px; }
+}
+
+.pulse-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--green);
+  display: inline-block; animation: pulse 1.6s ease infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .45; transform: scale(.85); }
+}
+
+.progress-bar {
+  height: 6px; border-radius: 999px; background: var(--border); overflow: hidden;
+}
+.progress-bar > span {
+  display: block; height: 100%; background: var(--green); border-radius: 999px;
+}
+
+.page-header h1 { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.muted-pill {
+  font-size: .7rem; font-weight: 600; padding: .15rem .45rem; border-radius: 6px;
+  background: rgba(0,122,77,.1); color: var(--green-dark);
+}
+html.dark .muted-pill { color: #6ee7b7; }
+
+@media print {
+  .sidebar, .mobile-bar, .btn, .toast-host, .sidebar-backdrop { display: none !important; }
+  .main { max-width: 100%; padding: 0; }
+  .card { box-shadow: none; border: 1px solid #ccc; }
+}
