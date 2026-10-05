@@ -1,1 +1,4 @@
-/*    /index.html   200
+# Intentionally empty.
+# /* /index.html 200 causes Cloudflare Workers error 100324 (infinite loop).
+# SPA routing: set Not Found Handling = Single-page application in Pages settings,
+# or use wrangler assets not_found_handling = "single-page-application".
