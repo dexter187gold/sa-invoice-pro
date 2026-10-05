@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext'
 import * as LicenseApi from '../lib/license'
 import * as db from '../lib/db'
 
+// Component named LicensePage (not License) to avoid clash with any License import/symbol
 export default function LicensePage() {
   const { toast, online } = useApp()
   const [status, setStatus] = useState(null)
