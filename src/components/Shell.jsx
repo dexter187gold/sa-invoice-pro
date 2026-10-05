@@ -1,8 +1,8 @@
-
 import React, { useEffect, useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { APP_VERSION } from '../config'
+import CommandPalette from './CommandPalette'
 
 const sections = [
   {
@@ -48,32 +48,62 @@ const sections = [
   },
 ]
 
+const crumbMap = {
+  '/': 'Home',
+  '/dashboard': 'Dashboard',
+  '/invoices': 'Invoices',
+  '/quotes': 'Quotes',
+  '/clients': 'Clients',
+  '/products': 'Products',
+  '/tickets': 'Tickets',
+  '/expenses': 'Expenses',
+  '/payments': 'Payments',
+  '/employees': 'Employees',
+  '/payroll': 'Payroll',
+  '/accounting': 'Accounting',
+  '/reports': 'Reports',
+  '/documents': 'Documents',
+  '/license': 'License',
+  '/settings': 'Settings',
+}
+
 export default function Shell({ children }) {
-  const { company, user, logout, theme, setTheme, online } = useApp()
+  const { company, user, logout, theme, setTheme, online, density, setDensity } = useApp()
   const [open, setOpen] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
   const nav = useNavigate()
+  const loc = useLocation()
 
   useEffect(() => {
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
-        const el = document.querySelector('.search-input')
-        if (el) el.focus()
+        setPaletteOpen(true)
       }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'n') {
         e.preventDefault()
         nav('/invoices/new')
       }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd') {
+        e.preventDefault()
+        setTheme(theme === 'dark' ? 'light' : 'dark')
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [nav])
+  }, [nav, theme, setTheme])
+
+  const path = loc.pathname
+  const crumb =
+    crumbMap[path] ||
+    (path.startsWith('/invoices/') ? 'Invoice' : path.split('/').filter(Boolean).pop() || 'Home')
 
   return (
     <>
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <div className={`sidebar-backdrop ${open ? 'show' : ''}`} onClick={() => setOpen(false)} />
       <div className="mobile-bar">
         <button type="button" className="btn btn-outline btn-sm" onClick={() => setOpen(true)} aria-label="Open menu">
@@ -115,8 +145,19 @@ export default function Shell({ children }) {
           </nav>
           <div style={{ marginTop: 'auto', padding: '.75rem .5rem', display: 'grid', gap: '.5rem' }}>
             <div className="muted" style={{ fontSize: 11 }}>
-              Shortcuts: Ctrl+N new invoice · Ctrl+K search
+              <kbd className="kbd">Ctrl+K</kbd> palette · <kbd className="kbd">Ctrl+N</kbd> invoice ·{' '}
+              <kbd className="kbd">Ctrl+D</kbd> theme
             </div>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => setPaletteOpen(true)}>
+              Search…
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={() => setDensity(density === 'compact' ? 'comfortable' : 'compact')}
+            >
+              Density: {density === 'compact' ? 'Compact' : 'Comfortable'}
+            </button>
             <button
               type="button"
               className="btn btn-outline btn-sm"
@@ -140,6 +181,11 @@ export default function Shell({ children }) {
           </div>
         </aside>
         <main className="main" id="main-content">
+          <div className="breadcrumb" aria-label="Breadcrumb">
+            <span className="muted">Workspace</span>
+            <span className="muted">/</span>
+            <strong>{crumb}</strong>
+          </div>
           {children}
         </main>
       </div>
