@@ -18,6 +18,7 @@ import Settings from './pages/Settings'
 import Products from './pages/Products'
 import Expenses from './pages/Expenses'
 import Employees from './pages/Employees'
+import Payroll from './pages/Payroll'
 import Reports from './pages/Reports'
 import Documents from './pages/Documents'
 import License from './pages/License'
@@ -64,6 +65,7 @@ export default function App() {
                 <Route path="/products" element={<Products />} />
                 <Route path="/expenses" element={<Expenses />} />
                 <Route path="/employees" element={<Employees />} />
+                <Route path="/payroll" element={<Payroll />} />
                 <Route path="/payments" element={<Payments />} />
                 <Route path="/accounting" element={<Accounting />} />
                 <Route path="/reports" element={<Reports />} />

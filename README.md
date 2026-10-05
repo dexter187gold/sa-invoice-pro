@@ -1,4 +1,4 @@
-# SA Invoice Pro 2.0.1 (modern React + full feature pack)
+# SA Invoice Pro 2.1.0 (modern React + full feature pack)
 
 React 19 + Vite 6 rewrite with core **and** extended modules from classic SA Invoice Pro.
 
@@ -9,7 +9,8 @@ React 19 + Vite 6 rewrite with core **and** extended modules from classic SA Inv
 - Clients, Products & services (stock), Invoices (PDF, payments, WhatsApp/email)
 - Quotes → convert to invoice
 - Tickets (classic + Helix embed)
-- Expenses, Payments (EFT + PayFast), Employees (UIF flag)
+- Expenses, Payments (EFT + PayFast), Employees (UIF flag, SA ID Luhn check)
+- **Payroll** — monthly runs with 2026/27 PAYE brackets, UIF (capped), SDL, ETI skeleton, payslips + CSV export
 - Accounting (CoA seed, bank recon, journals, auto-post, TB/P&L)
 - Reports + CSV export
 - Document generator (SLA, POPIA, letters…)
@@ -17,6 +18,10 @@ React 19 + Vite 6 rewrite with core **and** extended modules from classic SA Inv
 - Settings (company, VAT, PayFast, backup/restore)
 - Online/offline indicator, dark mode
 - `public/legacy/` — full 1.0.18 static app fallback
+
+## Payroll notes
+
+Client-side statutory **estimates** only (tax year 2026/27 tables). Not a substitute for SARS e@syFile or a registered tax practitioner. Medical tax credits, tax directives, and full ETI eligibility rules are intentionally simplified.
 
 ## Deploy
 

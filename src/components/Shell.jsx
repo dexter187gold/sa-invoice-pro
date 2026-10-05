@@ -15,6 +15,7 @@ const links = [
   { to: '/expenses', label: 'Expenses' },
   { to: '/payments', label: 'Payments' },
   { to: '/employees', label: 'Employees' },
+  { to: '/payroll', label: 'Payroll' },
   { to: '/accounting', label: 'Accounting' },
   { to: '/reports', label: 'Reports' },
   { to: '/documents', label: 'Documents' },
