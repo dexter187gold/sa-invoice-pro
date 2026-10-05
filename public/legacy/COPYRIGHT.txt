@@ -1,0 +1,15 @@
+SA Invoice Pro
+Copyright (c) 2026 SA Invoice Pro and its owner(s). All rights reserved.
+
+This software and its source code, design, documentation, trademarks, and
+associated materials are proprietary. You may not copy, modify, distribute,
+sublicense, reverse engineer, or create derivative works except as expressly
+permitted in writing by the copyright owner.
+
+Display of the product name and copyright notice on documents and in the
+application must not be removed.
+
+For licensing enquiries, use the in-app License / About section or contact the
+product owner.
+
+THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND.

@@ -1,0 +1,33 @@
+{
+  "name": "Custom",
+  "tagline": "All tools enabled \u2013 configure yourself",
+  "modules": {
+    "invoices": true,
+    "quotes": true,
+    "tickets": true,
+    "clients": true,
+    "products": true,
+    "services": true,
+    "expenses": true,
+    "reports": true,
+    "stock": true,
+    "timeTracking": true,
+    "sla": true,
+    "pos": false,
+    "popia": true,
+    "payroll": true
+  },
+  "labels": {},
+  "docTypes": [
+    "sla",
+    "consulting",
+    "engagement",
+    "goodstanding",
+    "taxclearance",
+    "quotation_cover",
+    "demand",
+    "completion"
+  ],
+  "kpiFocus": [],
+  "terms": "Payment due within 30 days of invoice date. Thank you for your business. Amounts in South African Rand."
+}

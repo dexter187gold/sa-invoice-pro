@@ -1,0 +1,35 @@
+{
+  "name": "Retail / Shop",
+  "tagline": "Point of sale, stock & customer invoices",
+  "modules": {
+    "invoices": true,
+    "quotes": false,
+    "tickets": false,
+    "clients": true,
+    "products": true,
+    "services": false,
+    "expenses": true,
+    "reports": true,
+    "stock": true,
+    "timeTracking": false,
+    "sla": false,
+    "pos": true,
+    "popia": true,
+    "payroll": false
+  },
+  "labels": {
+    "products": "Stock / POS",
+    "clients": "Customers",
+    "invoices": "Sales invoices"
+  },
+  "docTypes": [
+    "demand",
+    "quotation_cover",
+    "goodstanding"
+  ],
+  "kpiFocus": [
+    "stock",
+    "invoices"
+  ],
+  "terms": "Payment due on invoice unless account terms apply. Goods remain the property of the seller until paid in full. Returns only with prior authorisation and original proof of purchase. Prices in ZAR; VAT as indicated."
+}

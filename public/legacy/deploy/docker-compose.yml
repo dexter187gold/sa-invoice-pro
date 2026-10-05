@@ -1,0 +1,28 @@
+services:
+  license:
+    image: python:3.12-slim
+    working_dir: /app
+    volumes:
+      - ../:/app
+    command: bash -c "pip install -q flask && python license_server.py"
+    ports:
+      - "5055:5055"
+    restart: unless-stopped
+  updates:
+    image: python:3.12-slim
+    working_dir: /app
+    volumes:
+      - ../:/app
+    command: bash -c "pip install -q flask && python update_server.py"
+    ports:
+      - "5056:5056"
+    restart: unless-stopped
+  owner:
+    image: python:3.12-slim
+    working_dir: /app
+    volumes:
+      - ../:/app
+    command: bash -c "pip install -q flask && python owner_saas_dashboard.py"
+    ports:
+      - "5060:5060"
+    restart: unless-stopped

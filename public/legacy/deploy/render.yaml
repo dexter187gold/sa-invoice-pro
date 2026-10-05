@@ -1,0 +1,18 @@
+# Render.com blueprint – https://render.com
+services:
+  - type: web
+    name: sa-invoice-license
+    runtime: python
+    buildCommand: pip install flask
+    startCommand: python license_server.py
+    envVars:
+      - key: PORT
+        value: "5055"
+  - type: web
+    name: sa-invoice-updates
+    runtime: python
+    buildCommand: pip install flask
+    startCommand: python update_server.py
+    envVars:
+      - key: PORT
+        value: "5056"

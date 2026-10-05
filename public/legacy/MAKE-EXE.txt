@@ -1,0 +1,85 @@
+SA INVOICE PRO – BUILD BOTH .EXE FILES (Windows)
+================================================
+Run these commands from the MAIN folder (where index.html and launcher.py live).
+
+  cd path\to\sa-invoice-v1
+
+1) Install tools (once)
+-----------------------
+  pip install pyinstaller flask
+
+
+2) Main application EXE (user PCs)
+----------------------------------
+  pyinstaller --onefile --noconsole --name "SA-Invoice-Pro" launcher.py
+
+  After build:
+    copy dist\SA-Invoice-Pro.exe .
+  (must sit next to index.html, css\, js\, libs\)
+
+  Start:
+    SA-Invoice-Pro.exe
+    OR double-click Start-SA-Invoice.bat
+
+
+3) License server EXE (YOUR PC only – vendor)
+---------------------------------------------
+  pyinstaller --onefile --console --name "SA-License-Server" license_server.py
+
+  After build:
+    copy dist\SA-License-Server.exe .
+
+  Start:
+    SA-License-Server.exe
+    OR double-click Start-License-Server.bat
+
+  Browser opens http://127.0.0.1:5055/
+  Keep the console window open while clients connect.
+
+
+4) One-shot build both
+----------------------
+  pip install pyinstaller flask
+  pyinstaller --onefile --noconsole --name "SA-Invoice-Pro" launcher.py
+  pyinstaller --onefile --console --name "SA-License-Server" license_server.py
+  copy dist\SA-Invoice-Pro.exe .
+  copy dist\SA-License-Server.exe .
+
+
+FOLDER LAYOUT (after build)
+---------------------------
+  sa-invoice-v1\
+    index.html
+    launcher.py
+    license_server.py
+    Start-SA-Invoice.bat
+    Start-License-Server.bat
+    SA-Invoice-Pro.exe          ← users
+    SA-License-Server.exe       ← you only
+    css\  js\  libs\  ...
+    users.json                  ← created by license server
+
+
+CLIENT SETUP
+------------
+  On user app → License → Server URL:
+    http://YOUR-PC-LAN-IP:5055
+  (same PC test: http://127.0.0.1:5055)
+
+
+TROUBLESHOOTING
+---------------
+• App EXE loops opening pages = rebuild with current launcher.py (in-process server)
+• License server blank = allow port 5055 in Windows Firewall
+• Flask missing = pip install flask before building server EXE
+• users.json grows next to the license server EXE
+
+
+OWNER COMBO / CLIENT-ONLY (scripts)
+-----------------------------------
+  Start-All-Owner.bat     → license :5055 + updates :5056 + app :8080
+  Start-Client-Only.bat   → app only
+
+  pyinstaller --onefile --console --name "SA-Update-Server" update_server.py
+
+Owner token default: sa-owner-2026 (env SA_OWNER_TOKEN)

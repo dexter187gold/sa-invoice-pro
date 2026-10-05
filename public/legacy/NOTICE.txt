@@ -1,0 +1,6 @@
+Third-party components may include:
+- jsPDF (PDF generation) — see library license
+- Lucide icons — ISC License
+- Google Identity Services (optional) — Google terms
+
+SA Invoice Pro proprietary code remains under COPYRIGHT.txt / LICENSE.txt.

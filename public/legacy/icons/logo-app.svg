@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="SA Invoice Pro">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00A86B"/>
+      <stop offset="50%" stop-color="#007A4D"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFB81C"/>
+      <stop offset="100%" stop-color="#FCD34D"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#bg)"/>
+  <text x="128" y="130" text-anchor="middle" font-family="Segoe UI, system-ui, -apple-system, sans-serif"
+        font-size="92" font-weight="800" fill="#FFFFFF" letter-spacing="-3">SA</text>
+  <text x="128" y="175" text-anchor="middle" font-family="Segoe UI, system-ui, -apple-system, sans-serif"
+        font-size="22" font-weight="700" fill="#FFFFFF" opacity="0.95">Invoice Pro</text>
+  <rect x="88" y="188" width="80" height="3" rx="1.5" fill="url(#gold)"/>
+  <text x="128" y="218" text-anchor="middle" font-family="Segoe UI, system-ui, -apple-system, sans-serif"
+        font-size="16" font-weight="600" fill="#A7F3D0">v3.3</text>
+</svg>

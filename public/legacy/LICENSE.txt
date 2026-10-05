@@ -1,0 +1,26 @@
+SA INVOICE PRO — PROPRIETARY SOFTWARE LICENSE
+
+1. Grant
+   Subject to a valid licence (trial or paid) issued by the product owner,
+   you are granted a non-exclusive, non-transferable right to use SA Invoice Pro
+   on authorised devices for your internal business purposes.
+
+2. Restrictions
+   You may not: (a) redistribute the application or source; (b) remove copyright
+   or licence notices; (c) circumvent licence, update, or security controls;
+   (d) use the software to provide a competing hosted service without written
+   permission.
+
+3. Data
+   Business data you enter remains yours. You are responsible for backups and
+   POPIA compliance for personal information you process.
+
+4. Termination
+   Licence ends when trial expires without activation, or on material breach.
+
+5. Governing law
+   Laws of the Republic of South Africa apply.
+
+Note: Copyright law protects the code automatically on creation in South Africa
+(Berne Convention). Registration is not required for protection, but keep dated
+copies of your releases and consider attorney advice for commercial enforcement.
