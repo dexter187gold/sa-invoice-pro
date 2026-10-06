@@ -1,4 +1,4 @@
-/** Invoice layout defaults + load/save (IndexedDB settings + localStorage cache) */
+/** Simple invoice preferences (saved to IndexedDB + localStorage) */
 import * as db from './db.js'
 
 export const LAYOUT_KEY = 'invoiceLayout'
@@ -6,22 +6,31 @@ export const LAYOUT_KEY = 'invoiceLayout'
 export const DEFAULT_LAYOUT = {
   formDensity: 'comfortable',
   formFontSize: 14,
-  showLayoutPanel: true,
-  pdfFontSize: 9,
-  pdfTitleSize: 14,
-  headerStyle: 'modern',
+  showJobBlock: true,
+  showBankBlock: true,
+  showPaymentBlock: true,
   defaultTemplateId: 'standard',
-  showClientGrid: true,
+  defaultAccountType: 'COD Account',
+  defaultNotes: 'Thank you for your business.',
+  defaultPaymentNote: 'Payment due as stated. EFT, cash or card as arranged.',
+  defaultDueDays: 7,
+  showPo: true,
+  showSite: true,
+  showTech: true,
+  showSerials: true,
   showDevices: true,
   showServiceType: true,
   showTerms: true,
   showAcceptance: true,
   showBankDetails: true,
-  footerText: '',
-  defaultNotes: '',
-  defaultPaymentNote: '',
+  showClientGrid: true,
+  headerStyle: 'modern',
   accentHex: '#007A4D',
+  pdfFontSize: 9,
+  pdfTitleSize: 14,
   marginMm: 14,
+  footerText: '',
+  showLayoutPanel: true,
   paper: 'a4',
 }
 
