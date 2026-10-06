@@ -3,6 +3,8 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { APP_VERSION } from '../config'
 import CommandPalette from './CommandPalette'
+import AppLogo from './AppLogo'
+import AppAssistant from './AppAssistant'
 
 const sections = [
   {
@@ -88,6 +90,10 @@ export default function Shell({ children }) {
         e.preventDefault()
         setTheme(theme === 'dark' ? 'light' : 'dark')
       }
+      if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+        e.preventDefault()
+        document.querySelector('.app-assist-fab')?.click()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -100,24 +106,20 @@ export default function Shell({ children }) {
 
   return (
     <>
-      <a className="skip-link" href="#main-content">
-        Skip to content
-      </a>
+      <a className="skip-link" href="#main-content">Skip to content</a>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <AppAssistant />
       <div className={`sidebar-backdrop ${open ? 'show' : ''}`} onClick={() => setOpen(false)} />
       <div className="mobile-bar">
-        <button type="button" className="btn btn-outline btn-sm" onClick={() => setOpen(true)} aria-label="Open menu">
-          Menu
-        </button>
-        <strong>{company?.name || 'SA Invoice Pro'}</strong>
+        <button type="button" className="btn btn-outline btn-sm" onClick={() => setOpen(true)} aria-label="Open menu">Menu</button>
+        <AppLogo size={28} />
+        <strong style={{ fontSize: 13 }}>{company?.name || 'SA Invoice Pro'}</strong>
         <span className={`status-dot ${online ? 'on' : 'off'}`} title={online ? 'Online' : 'Offline'} />
       </div>
       <div className="shell">
         <aside className={`sidebar ${open ? 'open' : ''}`} aria-label="Main navigation">
           <div className="brand">
-            <div className="logo-mark" style={{ width: 36, height: 36, fontSize: 12 }}>
-              SA
-            </div>
+            <AppLogo size={40} />
             <div>
               <div>{company?.name || 'SA Invoice Pro'}</div>
               <div className="muted" style={{ fontWeight: 500, fontSize: 12 }}>
@@ -145,39 +147,17 @@ export default function Shell({ children }) {
           </nav>
           <div style={{ marginTop: 'auto', padding: '.75rem .5rem', display: 'grid', gap: '.5rem' }}>
             <div className="muted" style={{ fontSize: 11 }}>
-              <kbd className="kbd">Ctrl+K</kbd> palette · <kbd className="kbd">Ctrl+N</kbd> invoice ·{' '}
-              <kbd className="kbd">Ctrl+D</kbd> theme
+              <kbd className="kbd">Ctrl+K</kbd> palette · <kbd className="kbd">Ctrl+/</kbd> help
             </div>
-            <button type="button" className="btn btn-outline btn-sm" onClick={() => setPaletteOpen(true)}>
-              Search…
-            </button>
-            <button
-              type="button"
-              className="btn btn-outline btn-sm"
-              onClick={() => setDensity(density === 'compact' ? 'comfortable' : 'compact')}
-            >
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => setPaletteOpen(true)}>Search…</button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => setDensity(density === 'compact' ? 'comfortable' : 'compact')}>
               Density: {density === 'compact' ? 'Compact' : 'Comfortable'}
             </button>
-            <button
-              type="button"
-              className="btn btn-outline btn-sm"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            >
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
               {theme === 'dark' ? 'Light mode' : 'Dark mode'}
             </button>
-            <div className="muted" style={{ fontSize: 12 }}>
-              {user?.username || user?.email}
-            </div>
-            <button
-              type="button"
-              className="btn btn-outline btn-sm"
-              onClick={() => {
-                logout()
-                nav('/login')
-              }}
-            >
-              Sign out
-            </button>
+            <div className="muted" style={{ fontSize: 12 }}>{user?.username || user?.email}</div>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => { logout(); nav('/login') }}>Sign out</button>
           </div>
         </aside>
         <main className="main" id="main-content">
