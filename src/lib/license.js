@@ -57,7 +57,7 @@ export async function handshake() {
   if (!base) throw new Error('License server URL not set')
   const hwid = await getHardwareId()
   const j = await postJson(base, ['/api/handshake', '/api/license/handshake'], {
-    hwid, app: 'sa-invoice-pro', version: SA_CONFIG.appVersion,
+    hwid, app: 'sa-invoice-pro', appVersion: SA_CONFIG.appVersion, version: SA_CONFIG.appVersion,
   })
   await setSetting('handshakeOk', true)
   await setSetting('lastLicenseExchange', { step: 'handshake', at: new Date().toISOString(), response: j })
@@ -69,10 +69,11 @@ export async function requestLicense() {
   const base = await getServerUrl()
   if (!base) throw new Error('License server URL not set')
   const hwid = await getHardwareId()
-  const j = await postJson(base, ['/api/request-license', '/api/license/request', '/api/license/request-license'], {
+  const j = await postJson(base, ['/api/request-license', '/api/license/request', '/api/request', '/api/claim'], {
     hwid,
     app: 'sa-invoice-pro',
     version: SA_CONFIG.appVersion,
+    appVersion: SA_CONFIG.appVersion,
     email: (await getSetting('licenseEmail', '')) || '',
   })
   await setSetting('lastLicenseExchange', { step: 'request', at: new Date().toISOString(), response: j })
@@ -90,8 +91,11 @@ export async function activate(key) {
   const base = await getServerUrl()
   if (!base) throw new Error('License server URL not set')
   const hwid = await getHardwareId()
-  const j = await postJson(base, ['/api/activate', '/api/license/activate'], { hwid, key: k, app: 'sa-invoice-pro' })
-  if (j.ok === false || j.activated === false) throw new Error(j.error || 'Server did not confirm activation')
+  const j = await postJson(base, ['/api/activate', '/api/license/activate', '/api/activate-validate'], { hwid, key: k, app: 'sa-invoice-pro' })
+  if (j.valid === false || j.ok === false || j.activated === false) throw new Error(j.error || j.message || 'Server did not confirm activation')
+  // Normalise activate-validate response shape
+  if (j.valid === true && j.ok === undefined) { j.ok = true; j.activated = true }
+  if (j.valid === true && !j.meta) j.meta = { plan: j.plan, label: j.label, expiresAt: j.expiresAt, server: true, activatedAt: new Date().toISOString() }
   await setSetting('licenseKey', j.key || k)
   await setSetting('licenseMeta', j.meta || { activatedAt: new Date().toISOString(), plan: j.plan || 'standard', server: true })
   await setSetting('licenseOfflineBlob', { key: j.key || k, meta: j.meta || {} })
