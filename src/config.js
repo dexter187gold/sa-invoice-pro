@@ -1,9 +1,9 @@
-export const APP_VERSION = '2.4.2'
+export const APP_VERSION = '2.4.3'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
-/** Real Helix (olive-yellow-reef-quartz) desk routes */
+/** Legacy Helix routes (optional external desk — not the default tickets UI) */
 export const HELIX_ROUTES = {
   desk: '/desk',
   tickets: '/desk/tickets',
@@ -19,10 +19,10 @@ export const HELIX_ROUTES = {
 export const SA_CONFIG = {
   appVersion: APP_VERSION,
   defaultLicenseServerUrl: 'https://sa-invoice-license.onrender.com',
-  // Set after you deploy Helix (Vercel / Cloudflare Pages). Also editable in Settings → Integrations.
-  helixUrl: (typeof window !== 'undefined' && window.SA_CONFIG?.helixUrl) || '',
+  // Helix is optional and OFF by default — Tickets page is native team desk
+  helixUrl: '',
   helixPathDesk: HELIX_ROUTES.tickets,
-  helixEmbedTickets: true,
+  helixEmbedTickets: false,
   oliveRepo: OLIVE_REPO,
   helixRoutes: HELIX_ROUTES,
 }
