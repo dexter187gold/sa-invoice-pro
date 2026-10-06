@@ -1,6 +1,6 @@
 
 const DB_NAME = 'SAInvoicePro_v2'
-const DB_VERSION = 2
+const DB_VERSION = 3
 
 export const STORES = {
   users: 'users',
@@ -11,6 +11,7 @@ export const STORES = {
   invoices: 'invoices',
   quotes: 'quotes',
   tickets: 'tickets',
+  ticketComments: 'ticketComments',
   timeEntries: 'timeEntries',
   expenses: 'expenses',
   payments: 'payments',
@@ -22,6 +23,9 @@ export const STORES = {
   accounts: 'accounts',
   reconciliations: 'reconciliations',
   popiaRequests: 'popiaRequests',
+  documentTemplates: 'documentTemplates',
+  documentRenders: 'documentRenders',
+  reminders: 'reminders',
 }
 
 let dbp = null
@@ -104,7 +108,7 @@ export async function exportAll() {
   const out = {}
   for (const k of Object.keys(STORES)) out[k] = await getAll(STORES[k])
   out.exportedAt = new Date().toISOString()
-  out.version = '2.0.1'
+  out.version = '2.5.0'
   return out
 }
 export async function importAll(data, { wipe = false } = {}) {
@@ -122,4 +126,21 @@ export async function importAll(data, { wipe = false } = {}) {
       try { await put(STORES[k], row) } catch (e) { console.warn(k, e) }
     }
   }
+}
+
+export async function listTicketComments(ticketId) {
+  const all = await getAll(STORES.ticketComments)
+  return all
+    .filter((c) => String(c.ticketId) === String(ticketId))
+    .sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')))
+}
+
+export async function addTicketComment(ticketId, { text, internal = false, author = '' }) {
+  return add(STORES.ticketComments, {
+    ticketId,
+    text: String(text || '').trim(),
+    internal: !!internal,
+    author: author || 'staff',
+    createdAt: new Date().toISOString(),
+  })
 }
