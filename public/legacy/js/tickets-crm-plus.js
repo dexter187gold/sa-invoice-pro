@@ -1,11 +1,13 @@
 /** Tickets CRM+ 1.1.1 */
 (async function(){
 try{
-var b64="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_TRUNCATED";
-var bin=atob(b64),bytes=new Uint8Array(bin.length);
-for(var i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
-var ds=new DecompressionStream("deflate-raw");
-var code=new TextDecoder().decode(await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer());
-(0,eval)(code);
-}catch(e){console.error("[SA] CRM+",e);}
+  await new Promise(function(res,rej){var s=document.createElement('script');s.src='js/tickets-crm-plus-0.js?v='+(window.SA_BUILD||'1.1.1');s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+  await new Promise(function(res,rej){var s=document.createElement('script');s.src='js/tickets-crm-plus-1.js?v='+(window.SA_BUILD||'1.1.1');s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+  var b64=window.__SA_PLUS_0+window.__SA_PLUS_1;
+  var bin=atob(b64),bytes=new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  var ds=new DecompressionStream('deflate-raw');
+  var code=new TextDecoder().decode(await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer());
+  (0,eval)(code);
+}catch(e){console.error('[SA] CRM+',e);}
 })();
