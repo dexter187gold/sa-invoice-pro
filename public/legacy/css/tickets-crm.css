@@ -58,3 +58,10 @@
   border: 1px solid #e2e8f0;
   border-radius: 0.5rem;
 }
+
+/* CRM+ 1.1.1 */
+.ticket-dragging { opacity: 0.55; }
+.ticket-col-drop { outline: 2px dashed #007A4D; outline-offset: 2px; }
+.ticket-pinned { border-left: 3px solid #eab308; }
+.ticket-preset-bar .btn { font-size: 0.75rem; }
+.ticket-plus-panel .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem; }
