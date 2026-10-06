@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.4.3'
+export const APP_VERSION = '2.4.4'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
@@ -19,7 +19,6 @@ export const HELIX_ROUTES = {
 export const SA_CONFIG = {
   appVersion: APP_VERSION,
   defaultLicenseServerUrl: 'https://sa-invoice-license.onrender.com',
-  // Helix is optional and OFF by default — Tickets page is native team desk
   helixUrl: '',
   helixPathDesk: HELIX_ROUTES.tickets,
   helixEmbedTickets: false,
