@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""SA Invoice Pro – Vendor License Server v1.5 (handshake + validate)"""
+"""SA Invoice Pro – Vendor License Server v2.4 (handshake + validate + v24 aliases)"""
 from flask import Flask, request, jsonify, render_template_string, redirect, url_for
 from datetime import datetime, timedelta
 import json, os, secrets, string, sys
@@ -206,6 +206,10 @@ def add_cors_headers(response):
 @app.route("/api/claim", methods=["OPTIONS"])
 @app.route("/api/activate-validate", methods=["OPTIONS"])
 @app.route("/api/heartbeat", methods=["OPTIONS"])
+@app.route("/api/request-license", methods=["OPTIONS"])
+@app.route("/api/license/request", methods=["OPTIONS"])
+@app.route("/api/activate", methods=["OPTIONS"])
+@app.route("/api/license/activate", methods=["OPTIONS"])
 def cors_preflight(path=None):
     return ("", 204)
 
@@ -585,10 +589,10 @@ function money(n){ return 'R '+Number(n||0).toLocaleString('en-ZA',{minimumFract
 /* Minimal MD5 (PayFast signature) */
 function md5(string){
   function cmn(q,a,b,x,s,t){a=add32(add32(a,q),add32(x,t));return add32((a<<s)|(a>>>32-s),b);}
-  function ff(a,b,c,d,x,s,t){return cmn((b&c)|((~b)&d),a,b,x,s,t);}
-  function gg(a,b,c,d,x,s,t){return cmn((b&d)|(c&(~d)),a,b,x,s,t);}
+  function ff(a,b,c,d,x,s,t){return cmn((b&c)|((\~b)&d),a,b,x,s,t);}
+  function gg(a,b,c,d,x,s,t){return cmn((b&d)|(c&(\~d)),a,b,x,s,t);}
   function hh(a,b,c,d,x,s,t){return cmn(b^c^d,a,b,x,s,t);}
-  function ii(a,b,c,d,x,s,t){return cmn(c^(b|(~d)),a,b,x,s,t);}
+  function ii(a,b,c,d,x,s,t){return cmn(c^(b|(\~d)),a,b,x,s,t);}
   function md5cycle(x,k){
     var a=x[0],b=x[1],c=x[2],d=x[3];
     a=ff(a,b,c,d,k[0],7,-680876936);d=ff(d,a,b,c,k[1],12,-389564586);c=ff(c,d,a,b,k[2],17,606105819);b=ff(b,c,d,a,k[3],22,-1044525330);
@@ -677,17 +681,17 @@ async function load(){
     const bankBits = [co.bankName, co.accountNumber && ('Acc '+co.accountNumber), co.branchCode && ('Branch '+co.branchCode)].filter(Boolean).join(' · ');
 
     let html = `<div class="card"><h1>${co.name||'Invoices'}</h1>
-      <p class="muted">For ${cl.name||'client'}${cl.email?' · '+cl.email:''}</p></div>`;
+      <p class="muted">For \( {cl.name||'client'} \){cl.email?' · '+cl.email:''}</p></div>`;
     if(!inv.length){
       html += `<div class="card"><p>No open invoices.</p></div>`;
     } else {
       inv.forEach(i=>{
         const due = Number(i.amountDue!=null?i.amountDue:i.total||0);
         html += `<div class="card">
-          <div class="row"><strong>${i.number||i.id}</strong><span class="badge">${i.status||'unpaid'}</span></div>
+          <div class="row"><strong>\( {i.number||i.id}</strong><span class="badge"> \){i.status||'unpaid'}</span></div>
           <div class="row"><span>Amount due</span><strong>${money(due)}</strong></div>
           <div class="row"><span>Due</span><span>${i.dueDate||'—'}</span></div>
-          <button type="button" class="btn btn-primary" data-pay="${i.id}" data-amt="${due}" data-num="${String(i.number||i.id).replace(/"/g,'')}">Pay this invoice</button>
+          <button type="button" class="btn btn-primary" data-pay="\( {i.id}" data-amt=" \){due}" data-num="${String(i.number||i.id).replace(/"/g,'')}">Pay this invoice</button>
         </div>`;
       });
       if(inv.length>1){
@@ -855,6 +859,16 @@ button{margin-top:1rem;width:100%;padding:.75rem;border:0;border-radius:10px;bac
 """
 
 
+# --- v2.4 route aliases (request-license / activate) ---
+# license_routes_v24.py must sit next to this file.
+try:
+    from license_routes_v24 import register_v24
+    register_v24(app)
+    print('[v2.4] license_routes_v24 registered')
+except Exception as _e:
+    print('[v2.4] license_routes_v24 not loaded:', _e)
+
+
 if __name__ == "__main__":
     import webbrowser, threading, time
     def open_browser():
@@ -862,7 +876,7 @@ if __name__ == "__main__":
         webbrowser.open("http://127.0.0.1:5055/")
     free_port(5055)
     print("=" * 50)
-    print("  SA Invoice Pro – License Server v1.5")
+    print("  SA Invoice Pro – License Server v2.4")
     print("  http://127.0.0.1:5055/")
     print("  Data:", DATA)
     print("=" * 50)
