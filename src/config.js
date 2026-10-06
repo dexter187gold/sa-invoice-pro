@@ -1,9 +1,8 @@
-export const APP_VERSION = '2.4.4'
+export const APP_VERSION = '2.4.5'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
-/** Legacy Helix routes (optional external desk — not the default tickets UI) */
 export const HELIX_ROUTES = {
   desk: '/desk',
   tickets: '/desk/tickets',
