@@ -16,22 +16,18 @@ export default function Settings() {
     bankName: company?.bankName || '', accountNumber: company?.accountNumber || '', branchCode: company?.branchCode || '',
   })
   const [pf, setPf] = useState({ merchantId: '', merchantKey: '', passphrase: '', sandbox: true })
-  const [look, setLook] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('sa_template') || '{}') } catch { return {} }
-  })
-  const [invLayout, setInvLayout] = useState(DEFAULT_LAYOUT)
+  const [look, setLook] = useState(() => { try { return JSON.parse(localStorage.getItem('sa_template') || '{}') } catch { return {} } })
+  const [inv, setInv] = useState(DEFAULT_LAYOUT)
 
   useEffect(() => { PayFast.getConfig().then(setPf).catch(() => {}) }, [])
   useEffect(() => {
-    if (company) {
-      setForm({
-        name: company.name || '', email: company.email || '', phone: company.phone || '',
-        vatNumber: company.vatNumber || '', address: company.address || '',
-        bankName: company.bankName || '', accountNumber: company.accountNumber || '', branchCode: company.branchCode || '',
-      })
-    }
+    if (company) setForm({
+      name: company.name || '', email: company.email || '', phone: company.phone || '',
+      vatNumber: company.vatNumber || '', address: company.address || '',
+      bankName: company.bankName || '', accountNumber: company.accountNumber || '', branchCode: company.branchCode || '',
+    })
   }, [company])
-  useEffect(() => { loadInvoiceLayout().then(setInvLayout).catch(() => {}) }, [])
+  useEffect(() => { loadInvoiceLayout().then(setInv).catch(() => {}) }, [])
 
   const saveCompany = async (e) => {
     e.preventDefault()
@@ -43,7 +39,7 @@ export default function Settings() {
   const saveVat = async () => {
     await db.setSetting('vatEnabled', vatEnabled)
     await db.setSetting('vatRate', vatRate)
-    toast('VAT settings saved', 'success')
+    toast('VAT saved', 'success')
   }
   const savePf = async () => { await PayFast.saveConfig(pf); toast('PayFast saved', 'success') }
   const doExport = async () => {
@@ -73,23 +69,21 @@ export default function Settings() {
     if (next.accent) r.style.setProperty('--green', next.accent)
     if (next.radius) r.style.setProperty('--radius', next.radius + 'px')
     if (next.font) r.style.setProperty('font-family', next.font)
-    toast('Template applied', 'success')
+    toast('Look applied', 'success')
   }
-  const patchInv = (patch) => setInvLayout((L) => mergeLayout({ ...L, ...patch }))
-  const saveInvLayout = async () => {
-    const saved = await saveInvoiceLayout(invLayout)
-    setInvLayout(saved)
-    toast('Invoicing layout saved', 'success')
+  const patch = (p) => setInv((L) => mergeLayout({ ...L, ...p }))
+  const saveInv = async () => {
+    setInv(await saveInvoiceLayout(inv))
+    toast('Invoice preferences saved', 'success')
   }
-  const resetInvLayout = async () => {
-    const saved = await saveInvoiceLayout({ ...DEFAULT_LAYOUT })
-    setInvLayout(saved)
-    toast('Invoicing layout reset', 'success')
+  const resetInv = async () => {
+    setInv(await saveInvoiceLayout({ ...DEFAULT_LAYOUT }))
+    toast('Preferences reset', 'success')
   }
 
   const tabs = [
     ['company', 'Company'],
-    ['invoicing', 'Invoicing'],
+    ['invoicing', 'Invoice preferences'],
     ['vat', 'VAT & theme'],
     ['look', 'App look'],
     ['payfast', 'PayFast'],
@@ -127,94 +121,95 @@ export default function Settings() {
       )}
 
       {tab === 'invoicing' && (
-        <div className="card form-grid">
-          <h3 style={{ marginTop: 0 }}>Invoicing layout & editor</h3>
-          <p className="muted" style={{ marginTop: 0 }}>Applies to the invoice form and PDF. Save once — new invoices pick this up.</p>
-
-          <h4 style={{ marginBottom: 4 }}>Form layout</h4>
-          <div className="form-grid cols-2">
-            <div>
-              <label className="label">Form density</label>
-              <select className="select" value={invLayout.formDensity} onChange={(e) => patchInv({ formDensity: e.target.value })}>
-                <option value="compact">Compact</option>
-                <option value="comfortable">Comfortable</option>
-                <option value="spacious">Spacious</option>
-              </select>
-            </div>
-            <div>
-              <label className="label">Form font size ({invLayout.formFontSize}px)</label>
-              <input className="input" type="range" min={12} max={18} value={invLayout.formFontSize} onChange={(e) => patchInv({ formFontSize: Number(e.target.value) })} />
-            </div>
+        <div>
+          <div className="card" style={{ marginBottom: 12 }}>
+            <h3 style={{ marginTop: 0 }}>Invoice preferences</h3>
+            <p className="muted" style={{ marginTop: 0 }}>Simple defaults for every new invoice. Change what you need, hit Save once.</p>
           </div>
-          <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <input type="checkbox" checked={!!invLayout.showLayoutPanel} onChange={(e) => patchInv({ showLayoutPanel: e.target.checked })} />
-            Show layout panel on invoice editor
-          </label>
 
-          <h4 style={{ marginBottom: 4 }}>PDF document</h4>
-          <div className="form-grid cols-2">
-            <div>
-              <label className="label">Default template</label>
-              <select className="select" value={invLayout.defaultTemplateId} onChange={(e) => patchInv({ defaultTemplateId: e.target.value })}>
-                {TEMPLATE_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-              </select>
+          <div className="inv-prefs-group">
+            <h4>Defaults for new invoices</h4>
+            <div className="form-grid cols-2">
+              <div>
+                <label className="label">Package / style</label>
+                <select className="select" value={inv.defaultTemplateId} onChange={(e) => patch({ defaultTemplateId: e.target.value })}>
+                  {TEMPLATE_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label">Account type</label>
+                <input className="input" value={inv.defaultAccountType || ''} onChange={(e) => patch({ defaultAccountType: e.target.value })} placeholder="COD Account" />
+              </div>
+              <div>
+                <label className="label">Due in (days)</label>
+                <input className="input" type="number" min={0} max={90} value={inv.defaultDueDays ?? 7} onChange={(e) => patch({ defaultDueDays: Number(e.target.value) })} />
+              </div>
+              <div>
+                <label className="label">Form spacing</label>
+                <select className="select" value={inv.formDensity} onChange={(e) => patch({ formDensity: e.target.value })}>
+                  <option value="compact">Compact</option>
+                  <option value="comfortable">Comfortable</option>
+                  <option value="spacious">Spacious</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="label">Header style</label>
-              <select className="select" value={invLayout.headerStyle} onChange={(e) => patchInv({ headerStyle: e.target.value })}>
-                <option value="modern">Modern (green brand)</option>
-                <option value="classic">Classic</option>
-                <option value="minimal">Minimal</option>
-                <option value="banner">Strong banner</option>
-              </select>
-            </div>
-            <div>
-              <label className="label">PDF body font ({invLayout.pdfFontSize}pt)</label>
-              <input className="input" type="range" min={7} max={12} step={0.5} value={invLayout.pdfFontSize} onChange={(e) => patchInv({ pdfFontSize: Number(e.target.value) })} />
-            </div>
-            <div>
-              <label className="label">PDF title size ({invLayout.pdfTitleSize}pt)</label>
-              <input className="input" type="range" min={10} max={18} value={invLayout.pdfTitleSize} onChange={(e) => patchInv({ pdfTitleSize: Number(e.target.value) })} />
-            </div>
-            <div>
-              <label className="label">Accent colour</label>
-              <input className="input" type="color" value={invLayout.accentHex || '#007A4D'} onChange={(e) => patchInv({ accentHex: e.target.value })} />
-            </div>
-            <div>
-              <label className="label">Side margin (mm)</label>
-              <input className="input" type="number" min={10} max={24} value={invLayout.marginMm} onChange={(e) => patchInv({ marginMm: Number(e.target.value) })} />
+            <label className="label" style={{ marginTop: 8 }}>Default notes</label>
+            <textarea className="textarea" rows={2} value={inv.defaultNotes || ''} onChange={(e) => patch({ defaultNotes: e.target.value })} />
+            <label className="label">Default payment note</label>
+            <textarea className="textarea" rows={2} value={inv.defaultPaymentNote || ''} onChange={(e) => patch({ defaultPaymentNote: e.target.value })} />
+          </div>
+
+          <div className="inv-prefs-group">
+            <h4>What to show on the invoice form</h4>
+            <div className="inv-check-grid">
+              <label><input type="checkbox" checked={inv.showJobBlock !== false} onChange={(e) => patch({ showJobBlock: e.target.checked })} /> Job details block</label>
+              <label><input type="checkbox" checked={inv.showPo !== false} onChange={(e) => patch({ showPo: e.target.checked })} /> PO / order ref</label>
+              <label><input type="checkbox" checked={inv.showDevices !== false} onChange={(e) => patch({ showDevices: e.target.checked })} /> Devices</label>
+              <label><input type="checkbox" checked={inv.showServiceType !== false} onChange={(e) => patch({ showServiceType: e.target.checked })} /> Service type</label>
+              <label><input type="checkbox" checked={inv.showTech !== false} onChange={(e) => patch({ showTech: e.target.checked })} /> Technician</label>
+              <label><input type="checkbox" checked={inv.showSite !== false} onChange={(e) => patch({ showSite: e.target.checked })} /> Site address</label>
+              <label><input type="checkbox" checked={inv.showSerials !== false} onChange={(e) => patch({ showSerials: e.target.checked })} /> Serial numbers</label>
+              <label><input type="checkbox" checked={inv.showPaymentBlock !== false} onChange={(e) => patch({ showPaymentBlock: e.target.checked })} /> Payment wording block</label>
+              <label><input type="checkbox" checked={inv.showBankBlock !== false} onChange={(e) => patch({ showBankBlock: e.target.checked })} /> Bank details block</label>
             </div>
           </div>
 
-          <div className="form-grid cols-2">
-            <label style={{ display: 'flex', gap: 8 }}><input type="checkbox" checked={!!invLayout.showClientGrid} onChange={(e) => patchInv({ showClientGrid: e.target.checked })} /> Client / devices grid</label>
-            <label style={{ display: 'flex', gap: 8 }}><input type="checkbox" checked={!!invLayout.showDevices} onChange={(e) => patchInv({ showDevices: e.target.checked })} /> Devices field</label>
-            <label style={{ display: 'flex', gap: 8 }}><input type="checkbox" checked={!!invLayout.showServiceType} onChange={(e) => patchInv({ showServiceType: e.target.checked })} /> Service type field</label>
-            <label style={{ display: 'flex', gap: 8 }}><input type="checkbox" checked={!!invLayout.showTerms} onChange={(e) => patchInv({ showTerms: e.target.checked })} /> T&Cs on PDF</label>
-            <label style={{ display: 'flex', gap: 8 }}><input type="checkbox" checked={!!invLayout.showAcceptance} onChange={(e) => patchInv({ showAcceptance: e.target.checked })} /> Acceptance block</label>
-            <label style={{ display: 'flex', gap: 8 }}><input type="checkbox" checked={!!invLayout.showBankDetails} onChange={(e) => patchInv({ showBankDetails: e.target.checked })} /> Bank details</label>
-          </div>
-
-          <label className="label">Default notes (new invoices)</label>
-          <textarea className="textarea" rows={2} value={invLayout.defaultNotes || ''} onChange={(e) => patchInv({ defaultNotes: e.target.value })} placeholder="Thank you for your business…" />
-
-          <label className="label">Default payment note (PDF)</label>
-          <textarea className="textarea" rows={2} value={invLayout.defaultPaymentNote || ''} onChange={(e) => patchInv({ defaultPaymentNote: e.target.value })} placeholder="Payment due on completion. EFT / cash / card." />
-
-          <label className="label">Custom footer line</label>
-          <input className="input" value={invLayout.footerText || ''} onChange={(e) => patchInv({ footerText: e.target.value })} placeholder="Optional extra footer text" />
-
-          <div className="card" style={{ background: 'var(--bg)', borderColor: invLayout.accentHex || '#007A4D' }}>
-            <strong>Live preview</strong>
-            <div className="muted" style={{ fontSize: invLayout.formFontSize, marginTop: 6 }}>
-              Density: {invLayout.formDensity} · Header: {invLayout.headerStyle} · Template: {invLayout.defaultTemplateId}
+          <div className="inv-prefs-group">
+            <h4>What goes on the PDF</h4>
+            <div className="inv-check-grid">
+              <label><input type="checkbox" checked={inv.showClientGrid !== false} onChange={(e) => patch({ showClientGrid: e.target.checked })} /> Client / devices grid</label>
+              <label><input type="checkbox" checked={inv.showTerms !== false} onChange={(e) => patch({ showTerms: e.target.checked })} /> Terms & conditions</label>
+              <label><input type="checkbox" checked={inv.showAcceptance !== false} onChange={(e) => patch({ showAcceptance: e.target.checked })} /> Signature / acceptance</label>
+              <label><input type="checkbox" checked={inv.showBankDetails !== false} onChange={(e) => patch({ showBankDetails: e.target.checked })} /> Bank details</label>
             </div>
-            <div style={{ marginTop: 8, height: 8, borderRadius: 4, background: invLayout.accentHex || '#007A4D' }} />
+            <div className="form-grid cols-2" style={{ marginTop: 10 }}>
+              <div>
+                <label className="label">Header look</label>
+                <select className="select" value={inv.headerStyle} onChange={(e) => patch({ headerStyle: e.target.value })}>
+                  <option value="modern">Modern</option>
+                  <option value="classic">Classic</option>
+                  <option value="minimal">Minimal</option>
+                  <option value="banner">Strong banner</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">Brand colour</label>
+                <input className="input" type="color" value={inv.accentHex || '#007A4D'} onChange={(e) => patch({ accentHex: e.target.value })} />
+              </div>
+              <div>
+                <label className="label">PDF text size ({inv.pdfFontSize}pt)</label>
+                <input className="input" type="range" min={7} max={12} step={0.5} value={inv.pdfFontSize} onChange={(e) => patch({ pdfFontSize: Number(e.target.value) })} />
+              </div>
+              <div>
+                <label className="label">Extra footer line</label>
+                <input className="input" value={inv.footerText || ''} onChange={(e) => patch({ footerText: e.target.value })} placeholder="Optional" />
+              </div>
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button type="button" className="btn btn-primary" onClick={saveInvLayout}>Save invoicing layout</button>
-            <button type="button" className="btn btn-outline" onClick={resetInvLayout}>Reset defaults</button>
+            <button type="button" className="btn btn-primary" onClick={saveInv}>Save preferences</button>
+            <button type="button" className="btn btn-outline" onClick={resetInv}>Reset to defaults</button>
           </div>
         </div>
       )}
@@ -230,17 +225,11 @@ export default function Settings() {
 
       {tab === 'look' && (
         <div className="card form-grid">
-          <h3 style={{ marginTop: 0 }}>App look (UI chrome)</h3>
+          <h3 style={{ marginTop: 0 }}>App colours & chrome</h3>
           <label className="label">Accent</label>
           <input className="input" type="color" value={look.accent || '#007A4D'} onChange={(e) => applyLook({ ...look, accent: e.target.value })} />
           <label className="label">Corner radius</label>
           <input className="input" type="number" min="0" max="28" value={look.radius || 14} onChange={(e) => applyLook({ ...look, radius: Number(e.target.value) })} />
-          <label className="label">Font</label>
-          <select className="select" value={look.font || ''} onChange={(e) => applyLook({ ...look, font: e.target.value })}>
-            <option value="">System</option>
-            <option value="Georgia, serif">Georgia</option>
-            <option value="ui-monospace, monospace">Mono</option>
-          </select>
           <button type="button" className="btn btn-outline" onClick={() => {
             localStorage.removeItem('sa_template')
             document.documentElement.style.removeProperty('--green')
@@ -271,7 +260,7 @@ export default function Settings() {
       {tab === 'about' && (
         <div className="card">
           <h3 style={{ marginTop: 0 }}>SA Invoice Pro {APP_VERSION}</h3>
-          <p className="muted">License server: {SA_CONFIG.defaultLicenseServerUrl}</p>
+          <p className="muted">License: {SA_CONFIG.defaultLicenseServerUrl}</p>
         </div>
       )}
     </div>
