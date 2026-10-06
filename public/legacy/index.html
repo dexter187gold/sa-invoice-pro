@@ -7,19 +7,18 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <title>SA Invoice Pro | 1.1.0</title>
+  <title>SA Invoice Pro | 1.1.1</title>
   <link rel="icon" href="icons/logo.svg" type="image/svg+xml" />
-  <link rel="manifest" href="manifest.json?v=1.1.0" />
-  <link rel="stylesheet" href="css/app.css?v=1.1.0" />
-  <link rel="stylesheet" href="css/tickets-crm.css?v=1.1.0" />
+  <link rel="manifest" href="manifest.json?v=1.1.1" />
+  <link rel="stylesheet" href="css/app.css?v=1.1.1" />
+  <link rel="stylesheet" href="css/tickets-crm.css?v=1.1.1" />
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="libs/lucide.min.js?v=1.1.0"></script>
-  <script src="libs/jspdf.umd.min.js?v=1.1.0"></script>
-  <script src="libs/jspdf.plugin.autotable.min.js?v=1.1.0"></script>
+  <script src="libs/lucide.min.js?v=1.1.1"></script>
+  <script src="libs/jspdf.umd.min.js?v=1.1.1"></script>
+  <script src="libs/jspdf.plugin.autotable.min.js?v=1.1.1"></script>
   <script>
-  /* Force fresh assets after version change – no Ctrl+F5 */
   (function () {
-    var VER = '1.1.0';
+    var VER = '1.1.1';
     window.SA_BUILD = VER;
     try {
       var prev = localStorage.getItem('sa_build_ver');
@@ -34,9 +33,7 @@
                 return Promise.all(keys.map(function (k) { return caches.delete(k); }));
               });
             }
-          }).then(function () {
-            location.reload();
-          }).catch(function () { location.reload(); });
+          }).then(function () { location.reload(); }).catch(function () { location.reload(); });
           return;
         }
         location.reload();
@@ -44,33 +41,9 @@
       }
       localStorage.setItem('sa_build_ver', VER);
     } catch (e) {}
-
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.addEventListener('message', function (e) {
-        if (e.data && e.data.type === 'SA_SW_UPDATED') {
-          var k = 'sa_sw_rl_' + (e.data.cache || '');
-          if (!sessionStorage.getItem(k)) {
-            sessionStorage.setItem(k, '1');
-            location.reload();
-          }
-        }
-      });
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('sw.js?v=' + VER).then(function (reg) {
-          setInterval(function () { try { reg.update(); } catch (x) {} }, 30000);
-          if (reg.waiting) {
-            try { reg.waiting.postMessage({ type: 'SKIP_WAITING' }); } catch (x) {}
-          }
-          reg.addEventListener('updatefound', function () {
-            var nw = reg.installing;
-            if (!nw) return;
-            nw.addEventListener('statechange', function () {
-              if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-                location.reload();
-              }
-            });
-          });
-        }).catch(function () {});
+        navigator.serviceWorker.register('sw.js?v=' + VER).catch(function () {});
       });
     }
   })();
@@ -96,7 +69,7 @@
         <div class="bg-sa-green p-6 text-center text-white auth-card-header">
           <img src="icons/logo-mark.svg" alt="SA Invoice Pro" width="72" height="72" style="margin:0 auto 12px;display:block" onerror="this.src='icons/logo.svg'"/>
           <h1 class="text-xl font-bold">SA Invoice Pro</h1>
-          <p class="text-sm text-green-100 mt-1">1.1.0</p>
+          <p class="text-sm text-green-100 mt-1">1.1.1</p>
         </div>
         <div class="p-6 auth-card-body" id="auth-content">
           <p id="boot-status" class="text-center text-slate-500 text-sm">Starting…</p>
@@ -113,7 +86,7 @@
           </button>
           <div>
             <h1 class="font-bold text-lg leading-tight">SA Invoice Pro</h1>
-            <p class="text-xs text-slate-400">1.1.0 · Tickets CRM</p>
+            <p class="text-xs text-slate-400">1.1.1 · Tickets CRM+</p>
           </div>
         </div>
         <div class="flex items-center gap-2">
@@ -127,7 +100,7 @@
     <div class="flex flex-1 overflow-hidden min-h-0" style="min-height:0;flex:1;">
       <aside id="sidebar" class="w-64 bg-white border-r flex-shrink-0 flex-col hidden lg:flex">
         <nav class="flex-1 p-4 space-y-1 overflow-y-auto" id="nav-desktop"></nav>
-        <div class="p-4 border-t text-xs text-slate-500"><p id="user-display">User</p><p class="mt-1">Offline • Templates • Tickets CRM</p></div>
+        <div class="p-4 border-t text-xs text-slate-500"><p id="user-display">User</p><p class="mt-1">Offline · Tickets CRM+</p></div>
       </aside>
       <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-30 hidden lg:hidden"></div>
       <aside id="mobile-sidebar" class="fixed top-0 left-0 h-full w-72 bg-white z-40 -translate-x-full transition-transform lg:hidden flex flex-col">
@@ -142,16 +115,17 @@
   </div>
   <div id="toast" class="fixed bottom-4 right-4 z-50 hidden"></div>
   <div id="modal-root"></div>
-  <script src="js/config.js?v=1.1.0"></script>
-  <script src="js/api.js?v=1.1.0"></script>
-  <script src="js/db.js?v=1.1.0"></script>
-  <script src="js/crypto.js?v=1.1.0"></script>
-  <script src="js/license.js?v=1.1.0"></script>
-  <script src="js/payfast.js?v=1.1.0"></script>
-  <script src="js/auth.js?v=1.1.0"></script>
-  <script src="js/templates.js?v=1.1.0"></script>
-  <script src="js/pdf.js?v=1.1.0"></script>
-  <script src="js/app.js?v=1.1.0"></script>
-  <script src="js/tickets-crm.js?v=1.1.0"></script>
+  <script src="js/config.js?v=1.1.1"></script>
+  <script src="js/api.js?v=1.1.1"></script>
+  <script src="js/db.js?v=1.1.1"></script>
+  <script src="js/crypto.js?v=1.1.1"></script>
+  <script src="js/license.js?v=1.1.1"></script>
+  <script src="js/payfast.js?v=1.1.1"></script>
+  <script src="js/auth.js?v=1.1.1"></script>
+  <script src="js/templates.js?v=1.1.1"></script>
+  <script src="js/pdf.js?v=1.1.1"></script>
+  <script src="js/app.js?v=1.1.1"></script>
+  <script src="js/tickets-crm.js?v=1.1.1"></script>
+  <script src="js/tickets-crm-plus.js?v=1.1.1"></script>
 </body>
 </html>
