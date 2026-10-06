@@ -1,280 +1,251 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
 import { STORES } from '../lib/db'
-import { Segmented } from '../components/ui'
-import { SA_CONFIG, HELIX_ROUTES, OLIVE_REPO } from '../config'
 
-const DESK_PATHS = [
-  { id: 'tickets', path: HELIX_ROUTES.tickets, label: 'Tickets' },
-  { id: 'inbox', path: HELIX_ROUTES.inbox, label: 'Inbox' },
-  { id: 'clients', path: HELIX_ROUTES.clients, label: 'Clients' },
-  { id: 'channels', path: HELIX_ROUTES.channels, label: 'Channels' },
-  { id: 'knowledge', path: HELIX_ROUTES.knowledge, label: 'Knowledge' },
-  { id: 'reports', path: HELIX_ROUTES.reports, label: 'Reports' },
-  { id: 'desk', path: HELIX_ROUTES.desk, label: 'Desk home' },
-  { id: 'portal', path: HELIX_ROUTES.portal, label: 'Portal' },
+const STATUSES = [
+  { id: 'open', label: 'Open' },
+  { id: 'in_progress', label: 'In progress' },
+  { id: 'waiting', label: 'Waiting' },
+  { id: 'resolved', label: 'Resolved' },
+  { id: 'closed', label: 'Closed' },
 ]
-
-function buildHelixSrc(base, path, extra = {}) {
-  const b = (base || '').trim().replace(/\/$/, '')
-  if (!b) return ''
-  let p = (path || HELIX_ROUTES.tickets).trim()
-  if (!p.startsWith('/')) p = '/' + p
-  const qs = new URLSearchParams({ source: 'sa-invoice-pro', ...extra })
-  return `${b}${p}?${qs.toString()}`
-}
+const PRIORITIES = [
+  { id: 'low', label: 'Low' },
+  { id: 'normal', label: 'Normal' },
+  { id: 'high', label: 'High' },
+  { id: 'urgent', label: 'Urgent' },
+]
 
 export default function Tickets() {
   const { toast, company } = useApp()
-  const [mode, setMode] = useState(() => localStorage.getItem('sa_ticket_mode') || 'classic')
   const [tickets, setTickets] = useState([])
   const [clients, setClients] = useState([])
-  const [title, setTitle] = useState('')
-  const [clientId, setClientId] = useState('')
-  const [priority, setPriority] = useState('normal')
+  const [view, setView] = useState('list')
   const [q, setQ] = useState('')
-  const [embed, setEmbed] = useState(true)
-  const [helixUrl, setHelixUrl] = useState('')
-  const [helixPath, setHelixPath] = useState(HELIX_ROUTES.tickets)
-  const [cfgOpen, setCfgOpen] = useState(false)
-  const [draftUrl, setDraftUrl] = useState('')
-  const [draftPath, setDraftPath] = useState(HELIX_ROUTES.tickets)
-  const [testStatus, setTestStatus] = useState(null)
-  const [iframeError, setIframeError] = useState(false)
+  const [filterStatus, setFilterStatus] = useState('')
+  const [showClosed, setShowClosed] = useState(false)
+  const [editing, setEditing] = useState(null)
+  const [form, setForm] = useState({ title: '', clientId: '', status: 'open', priority: 'normal', notes: '' })
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setTickets((await db.getAll(STORES.tickets)) || [])
     setClients((await db.getAll(STORES.clients)) || [])
-    const url = (await db.getSetting('helixUrl', '')) || SA_CONFIG.helixUrl || ''
-    const path = (await db.getSetting('helixPathDesk', '')) || SA_CONFIG.helixPathDesk || HELIX_ROUTES.tickets
-    setHelixUrl(url)
-    setHelixPath(path)
-    setDraftUrl(url)
-    setDraftPath(path)
-  }
+  }, [])
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    try { localStorage.setItem('sa_ticket_mode', 'classic') } catch (e) {}
+  }, [load])
 
-  const switchMode = (m) => {
-    setMode(m)
-    localStorage.setItem('sa_ticket_mode', m)
-    setIframeError(false)
-  }
-
-  const saveHelixCfg = async () => {
-    const u = draftUrl.trim().replace(/\/$/, '')
-    const p = (draftPath || HELIX_ROUTES.tickets).trim() || HELIX_ROUTES.tickets
-    await db.setSetting('helixUrl', u)
-    await db.setSetting('helixPathDesk', p)
-    setHelixUrl(u)
-    setHelixPath(p)
-    setCfgOpen(false)
-    setIframeError(false)
-    setTestStatus(null)
-    toast(u ? 'Helix URL saved' : 'Helix URL cleared', 'success')
-  }
-
-  const testHelix = async () => {
-    const base = (draftUrl || helixUrl || '').trim().replace(/\/$/, '')
-    if (!base) {
-      setTestStatus({ ok: false, msg: 'Enter a Helix base URL first' })
-      return
+  const list = useMemo(() => {
+    let rows = (tickets || []).filter((t) => !t.parentId)
+    const qq = q.trim().toLowerCase()
+    if (qq) {
+      rows = rows.filter((t) => {
+        const c = clients.find((x) => String(x.id) === String(t.clientId))
+        return [t.title, t.subject, t.notes, t.status, c?.name].join(' ').toLowerCase().includes(qq)
+      })
     }
-    setTestStatus({ ok: null, msg: 'Checking…' })
-    try {
-      const ctrl = new AbortController()
-      const t = setTimeout(() => ctrl.abort(), 8000)
-      await fetch(base, { method: 'GET', mode: 'no-cors', signal: ctrl.signal })
-      clearTimeout(t)
-      setTestStatus({ ok: true, msg: 'Host reachable (open in new tab to confirm login / desk)' })
-    } catch (e) {
-      setTestStatus({ ok: false, msg: e.name === 'AbortError' ? 'Timed out — check URL / network' : (e.message || 'Unreachable') })
+    if (filterStatus) rows = rows.filter((t) => String(t.status || 'open') === filterStatus)
+    if (!showClosed) rows = rows.filter((t) => !['closed', 'cancelled'].includes(String(t.status || '').toLowerCase()))
+    rows.sort((a, b) => String(b.updatedAt || b.createdAt || b.date || '').localeCompare(String(a.updatedAt || a.createdAt || a.date || '')))
+    return rows
+  }, [tickets, clients, q, filterStatus, showClosed])
+
+  const stats = useMemo(() => {
+    const root = (tickets || []).filter((t) => !t.parentId)
+    return {
+      open: root.filter((t) => (t.status || 'open') === 'open').length,
+      prog: root.filter((t) => t.status === 'in_progress').length,
+      wait: root.filter((t) => t.status === 'waiting').length,
+      urgent: root.filter((t) => t.priority === 'urgent' && !['closed', 'resolved'].includes(t.status)).length,
     }
+  }, [tickets])
+
+  const openNew = () => {
+    setForm({ title: '', clientId: '', status: 'open', priority: 'normal', notes: '' })
+    setEditing('new')
   }
 
-  const add = async (e) => {
-    e.preventDefault()
-    if (!title.trim()) return toast('Title required', 'error')
-    await db.add(STORES.tickets, {
-      title: title.trim(),
-      clientId: clientId || null,
-      priority,
-      status: 'open',
-      system: mode === 'helix' ? 'helix' : 'classic',
-      date: new Date().toISOString().slice(0, 10),
+  const openEdit = (t) => {
+    setForm({
+      title: t.title || t.subject || '',
+      clientId: t.clientId ? String(t.clientId) : '',
+      status: t.status || 'open',
+      priority: t.priority || 'normal',
+      notes: t.notes || t.description || '',
     })
-    setTitle('')
-    toast(mode === 'helix' ? 'Helix-tagged ticket saved locally' : 'Classic ticket created', 'success')
+    setEditing(t)
+  }
+
+  const save = async (e) => {
+    e?.preventDefault?.()
+    if (!form.title.trim()) return toast('Title required', 'error')
+    const payload = {
+      title: form.title.trim(),
+      subject: form.title.trim(),
+      clientId: form.clientId || null,
+      status: form.status || 'open',
+      priority: form.priority || 'normal',
+      notes: form.notes || '',
+      updatedAt: new Date().toISOString(),
+      system: 'classic',
+    }
+    try {
+      if (editing && editing !== 'new' && editing.id != null) {
+        await db.put(STORES.tickets, { ...editing, ...payload })
+        toast('Ticket updated', 'success')
+      } else {
+        await db.add(STORES.tickets, {
+          ...payload,
+          date: new Date().toISOString().slice(0, 10),
+          createdAt: new Date().toISOString(),
+        })
+        toast('Ticket created', 'success')
+      }
+      setEditing(null)
+      await load()
+    } catch (err) {
+      toast(err.message || 'Save failed', 'error')
+    }
+  }
+
+  const remove = async (id) => {
+    if (!confirm('Delete this ticket?')) return
+    await db.remove(STORES.tickets, id)
+    toast('Deleted', 'success')
+    setEditing(null)
     await load()
   }
 
-  const list = useMemo(() => {
-    return tickets
-      .filter((t) => (mode === 'helix' ? t.system === 'helix' : t.system !== 'helix'))
-      .filter((t) => !q || String(t.title || '').toLowerCase().includes(q.toLowerCase()))
-  }, [tickets, mode, q])
+  const setStatus = async (t, status) => {
+    await db.put(STORES.tickets, { ...t, status, updatedAt: new Date().toISOString() })
+    await load()
+    toast('Status → ' + status, 'success')
+  }
 
-  const companyQs = company?.name ? { company: company.name } : {}
-  const src = buildHelixSrc(helixUrl, helixPath, companyQs)
+  const card = (t) => {
+    const c = clients.find((x) => String(x.id) === String(t.clientId))
+    return (
+      <div key={t.id} className="list-card" style={{ marginBottom: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+          <div>
+            <strong>{t.title || t.subject || 'Ticket'}</strong>
+            <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+              <span className="badge">{t.status || 'open'}</span>{' '}
+              <span className="badge warn">{t.priority || 'normal'}</span>
+              {c ? ` · ${c.name}` : ''}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => openEdit(t)}>Open</button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => setStatus(t, 'in_progress')}>Start</button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => setStatus(t, 'resolved')}>Resolve</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
       <div className="page-header" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h1 style={{ margin: 0 }}>Tickets</h1>
+          <h1 style={{ margin: 0 }}>Tickets · Team desk</h1>
           <p className="muted" style={{ margin: '4px 0 0' }}>
-            Classic local jobs · Helix desk from{' '}
-            <a href={OLIVE_REPO} target="_blank" rel="noreferrer">olive-yellow-reef-quartz</a>
+            Native jobs for {company?.name || 'your business'} — Helix iframe removed
           </p>
         </div>
-        <Segmented
-          options={[{ id: 'classic', label: 'Classic' }, { id: 'helix', label: 'Helix' }]}
-          value={mode === 'helix' ? 'helix' : 'classic'}
-          onChange={switchMode}
-        />
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" className={`btn btn-sm ${view === 'list' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setView('list')}>List</button>
+          <button type="button" className={`btn btn-sm ${view === 'board' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setView('board')}>Board</button>
+          <button type="button" className="btn btn-primary" onClick={openNew}>New ticket</button>
+        </div>
       </div>
 
-      {mode === 'helix' && (
-        <div className="card" style={{ marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <strong>Helix desk</strong>
-              <div className="muted" style={{ fontSize: 13, wordBreak: 'break-all' }}>
-                {src || 'No Helix URL — configure below or Settings → Integrations'}
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button type="button" className="btn btn-outline" onClick={() => setCfgOpen((v) => !v)}>
-                {cfgOpen ? 'Close' : 'Configure'}
-              </button>
-              <button type="button" className="btn btn-outline" disabled={!src} onClick={() => window.open(src, '_blank', 'noopener')}>
-                Open new tab
-              </button>
-              <button type="button" className="btn btn-outline" disabled={!src} onClick={() => { if (src) window.location.assign(src) }}>
-                Full page
-              </button>
-            </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(100px,1fr))', gap: 8, marginBottom: 12 }}>
+        {[['Open', stats.open], ['In progress', stats.prog], ['Waiting', stats.wait], ['Urgent', stats.urgent]].map(([label, n]) => (
+          <div key={label} className="card" style={{ padding: '10px 12px', textAlign: 'center' }}>
+            <div style={{ fontWeight: 700, fontSize: 18 }}>{n}</div>
+            <div className="muted" style={{ fontSize: 11, textTransform: 'uppercase' }}>{label}</div>
           </div>
+        ))}
+      </div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
-            {DESK_PATHS.map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                className={`btn btn-sm ${helixPath === r.path ? 'btn-primary' : 'btn-outline'}`}
-                onClick={async () => {
-                  setHelixPath(r.path)
-                  setDraftPath(r.path)
-                  await db.setSetting('helixPathDesk', r.path)
-                  setIframeError(false)
-                }}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
+      <div className="card" style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+        <input className="input" style={{ flex: 1, minWidth: 140 }} placeholder="Search…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <select className="select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+          <option value="">All statuses</option>
+          {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+        </select>
+        <label className="muted" style={{ fontSize: 13, display: 'flex', gap: 6, alignItems: 'center' }}>
+          <input type="checkbox" checked={showClosed} onChange={(e) => setShowClosed(e.target.checked)} /> Show closed
+        </label>
+      </div>
 
-          {cfgOpen && (
-            <div className="form-grid" style={{ marginTop: 12 }}>
-              <label className="label">Helix base URL (your deployed olive app)</label>
-              <input
-                className="input"
-                placeholder="https://your-helix.pages.dev  or  https://your-helix.vercel.app"
-                value={draftUrl}
-                onChange={(e) => setDraftUrl(e.target.value)}
-              />
-              <label className="label">Desk path</label>
-              <input
-                className="input"
-                placeholder="/desk/tickets"
-                value={draftPath}
-                onChange={(e) => setDraftPath(e.target.value)}
-              />
-              <p className="muted" style={{ fontSize: 12, gridColumn: '1 / -1' }}>
-                1. Deploy <code>olive-yellow-reef-quartz</code> to Vercel or Cloudflare Pages.<br />
-                2. Paste the live origin here (no trailing slash).<br />
-                3. Default path <code>/desk/tickets</code> matches Helix file routes.
-                Staff desk requires Helix login (WorkspaceGate expect=staff).
-                If the iframe stays blank, the host may block framing — use <strong>Open new tab</strong>.
-              </p>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button type="button" className="btn btn-primary" onClick={saveHelixCfg}>Save</button>
-                <button type="button" className="btn btn-outline" onClick={testHelix}>Test host</button>
+      {view === 'board' ? (
+        <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8 }}>
+          {STATUSES.filter((s) => s.id !== 'closed' || showClosed).map((col) => {
+            const items = list.filter((t) => String(t.status || 'open') === col.id)
+            return (
+              <div key={col.id} style={{ minWidth: 260, width: 280, background: 'var(--surface-2, #f1f5f9)', borderRadius: 12, padding: 8 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, padding: '6px 8px 10px' }}>{col.label} ({items.length})</div>
+                {items.length ? items.map(card) : <p className="muted" style={{ fontSize: 12, padding: 8 }}>Empty</p>}
               </div>
-              {testStatus && (
-                <p className="muted" style={{ color: testStatus.ok === false ? '#b91c1c' : testStatus.ok ? '#047857' : undefined }}>
-                  {testStatus.msg}
-                </p>
-              )}
-            </div>
-          )}
-
-          {!helixUrl && !cfgOpen && (
-            <div className="card empty" style={{ marginTop: 12 }}>
-              Helix is a <strong>separate app</strong>. Deploy olive-yellow-reef-quartz, then click <strong>Configure</strong> and paste the live URL.
-              You can also set it under <strong>Settings → Integrations</strong>.
-            </div>
-          )}
-
-          {helixUrl && (
-            <label style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '12px 0 0' }}>
-              <input type="checkbox" checked={embed} onChange={(e) => setEmbed(e.target.checked)} />
-              Embed Helix in this page
-            </label>
-          )}
-
-          {embed && src && (
-            <div className="iframe-wrap" style={{ marginTop: 12, minHeight: 480, border: '1px solid var(--border, #e2e8f0)', borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
-              {iframeError && (
-                <div className="card empty" style={{ position: 'absolute', inset: 0, zIndex: 1, margin: 0, borderRadius: 0 }}>
-                  Embed blocked or failed to load. Use <strong>Open new tab</strong> — many hosts set X-Frame-Options.
-                </div>
-              )}
-              <iframe
-                title="Helix desk"
-                src={src}
-                style={{ width: '100%', height: 560, border: 0 }}
-                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-top-navigation-by-user-activation"
-                referrerPolicy="no-referrer-when-downgrade"
-                onError={() => setIframeError(true)}
-                onLoad={() => setIframeError(false)}
-              />
+            )
+          })}
+        </div>
+      ) : (
+        <div>
+          {list.map(card)}
+          {!list.length && (
+            <div className="card empty">
+              No tickets yet. Click <strong>New ticket</strong> to log a job or support request.
             </div>
           )}
         </div>
       )}
 
-      <form className="card form-grid cols-3" onSubmit={add} style={{ marginBottom: '1rem' }}>
-        <input className="input" placeholder={mode === 'helix' ? 'Helix subject (local mirror)' : 'Ticket title'} value={title} onChange={(e) => setTitle(e.target.value)} />
-        <select className="select" value={clientId} onChange={(e) => setClientId(e.target.value)}>
-          <option value="">Client (optional)</option>
-          {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-        <select className="select" value={priority} onChange={(e) => setPriority(e.target.value)}>
-          <option value="low">Low</option>
-          <option value="normal">Normal</option>
-          <option value="high">High</option>
-          <option value="urgent">Urgent</option>
-        </select>
-        <button className="btn btn-primary" type="submit">Add {mode === 'helix' ? 'Helix' : 'classic'} ticket</button>
-        <input className="input" placeholder="Search" value={q} onChange={(e) => setQ(e.target.value)} />
-      </form>
-
-      {list.map((t) => {
-        const c = clients.find((x) => String(x.id) === String(t.clientId))
-        return (
-          <div key={t.id} className="list-card">
-            <strong>{t.title}</strong>
-            <div className="muted" style={{ fontSize: 13 }}>
-              <span className="badge">{t.status || 'open'}</span>
-              <span className="badge warn" style={{ marginLeft: 6 }}>{t.priority || 'normal'}</span>
-              {c ? ` · ${c.name}` : ''} · {t.system || 'classic'}
-            </div>
+      {editing && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setEditing(null)}>
+          <div className="card" style={{ width: '100%', maxWidth: 480, maxHeight: '90vh', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ marginTop: 0 }}>{editing === 'new' ? 'New ticket' : 'Edit ticket'}</h2>
+            <form className="form-grid" onSubmit={save}>
+              <label className="label">Title *</label>
+              <input className="input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+              <label className="label">Client</label>
+              <select className="select" value={form.clientId} onChange={(e) => setForm({ ...form, clientId: e.target.value })}>
+                <option value="">—</option>
+                {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div>
+                  <label className="label">Status</label>
+                  <select className="select" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                    {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Priority</label>
+                  <select className="select" value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}>
+                    {PRIORITIES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                  </select>
+                </div>
+              </div>
+              <label className="label">Details</label>
+              <textarea className="input" rows={4} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                <button type="submit" className="btn btn-primary">Save</button>
+                <button type="button" className="btn btn-outline" onClick={() => setEditing(null)}>Cancel</button>
+                {editing !== 'new' && editing.id != null && (
+                  <button type="button" className="btn btn-outline" style={{ color: '#b91c1c' }} onClick={() => remove(editing.id)}>Delete</button>
+                )}
+              </div>
+            </form>
           </div>
-        )
-      })}
-      {!list.length && <div className="card empty">No {mode} tickets yet.</div>}
+        </div>
+      )}
     </div>
   )
 }
