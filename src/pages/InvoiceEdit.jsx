@@ -1,12 +1,11 @@
-
 import React, { useMemo, useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
 import { STORES } from '../lib/db'
 import { formatMoney, invoiceTotals } from '../lib/money'
-import { downloadInvoicePdf, openInvoicePdf } from '../lib/pdfInvoice'
 import { downloadProfessionalPdf, openProfessionalPdf, TEMPLATE_PRESETS } from '../lib/pdfTemplate'
+import { loadInvoiceLayout, DEFAULT_LAYOUT } from '../lib/invoiceLayout'
 
 export default function InvoiceEdit() {
   const { id } = useParams()
@@ -16,6 +15,7 @@ export default function InvoiceEdit() {
   const existing = invoices.find((i) => String(i.id) === String(id))
   const invPayments = payments.filter((p) => String(p.invoiceId) === String(id))
 
+  const [layout, setLayout] = useState(DEFAULT_LAYOUT)
   const [clientId, setClientId] = useState('')
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const [dueDate, setDueDate] = useState('')
@@ -25,9 +25,26 @@ export default function InvoiceEdit() {
   const [devices, setDevices] = useState('')
   const [serviceType, setServiceType] = useState('')
   const [accountType, setAccountType] = useState('COD Account')
+  const [intro, setIntro] = useState('')
+  const [paymentNote, setPaymentNote] = useState('')
+  const [includeTerms, setIncludeTerms] = useState(true)
   const [lines, setLines] = useState([{ description: '', qty: 1, price: 0 }])
   const [showClient, setShowClient] = useState(false)
   const [newClient, setNewClient] = useState({ name: '', email: '', phone: '' })
+  const [layoutOpen, setLayoutOpen] = useState(true)
+
+  useEffect(() => {
+    loadInvoiceLayout().then((L) => {
+      setLayout(L)
+      if (isNew) {
+        setTemplateId(L.defaultTemplateId || 'standard')
+        setNotes(L.defaultNotes || '')
+        setPaymentNote(L.defaultPaymentNote || '')
+        setIncludeTerms(L.showTerms !== false)
+        if (L.formDensity === 'compact') setLayoutOpen(false)
+      }
+    }).catch(() => {})
+  }, [isNew])
 
   useEffect(() => {
     if (existing) {
@@ -40,6 +57,9 @@ export default function InvoiceEdit() {
       setDevices(existing.devices || '')
       setServiceType(existing.serviceType || '')
       setAccountType(existing.accountType || 'COD Account')
+      setIntro(existing.intro || '')
+      setPaymentNote(existing.paymentNote || '')
+      setIncludeTerms(existing.includeTerms !== false)
       setLines(existing.lines?.length ? existing.lines : [{ description: '', qty: 1, price: 0 }])
     }
   }, [existing])
@@ -50,7 +70,6 @@ export default function InvoiceEdit() {
   const addLine = () => setLines((L) => [...L, { description: '', qty: 1, price: 0 }])
   const setLine = (i, patch) => setLines((L) => L.map((row, idx) => (idx === i ? { ...row, ...patch } : row)))
   const removeLine = (i) => setLines((L) => L.filter((_, idx) => idx !== i))
-
   const pickCatalog = (i, item) => {
     if (!item) return
     setLine(i, { description: item.name || item.description || '', price: Number(item.price) || 0 })
@@ -80,6 +99,20 @@ export default function InvoiceEdit() {
       devices,
       serviceType,
       accountType,
+      intro,
+      paymentNote,
+      includeTerms,
+      layoutSnapshot: {
+        headerStyle: layout.headerStyle,
+        accentHex: layout.accentHex,
+        pdfFontSize: layout.pdfFontSize,
+        showClientGrid: layout.showClientGrid,
+        showTerms: includeTerms && layout.showTerms,
+        showAcceptance: layout.showAcceptance,
+        showBankDetails: layout.showBankDetails,
+        footerText: layout.footerText,
+        marginMm: layout.marginMm,
+      },
       lines,
       exclusive: totals.exclusive,
       vatAmount: totals.vat,
@@ -109,12 +142,19 @@ export default function InvoiceEdit() {
     company,
     client: clients.find((c) => String(c.id) === String(clientId)),
     payments: invPayments,
+    layout,
   })
 
   const doPdf = async (open) => {
     try {
       const payload = existing ? { ...existing, ...buildPayload(), id: existing.id } : buildPayload()
-      const opts = { ...pdfCtx(), isQuote: false, templateId: payload.templateId || templateId, accountType }
+      const opts = {
+        ...pdfCtx(),
+        isQuote: false,
+        templateId: payload.templateId || templateId,
+        accountType,
+        layout,
+      }
       if (open) await openProfessionalPdf(payload, opts)
       else await downloadProfessionalPdf(payload, opts)
       toast(open ? 'Preview opened' : 'PDF downloaded', 'success')
@@ -124,24 +164,15 @@ export default function InvoiceEdit() {
   }
 
   const catalog = [...(products || []), ...(services || [])]
-  const shareWhatsApp = () => {
-    const c = clients.find((x) => String(x.id) === String(clientId))
-    const text = encodeURIComponent(`Hi ${c?.name || ''},\nInvoice ${existing?.number || ''}\nTotal: ${formatMoney(totals.total)}\n${company?.name || ''}`)
-    window.open('https://wa.me/?text=' + text, '_blank')
-  }
-  const shareEmail = () => {
-    const c = clients.find((x) => String(x.id) === String(clientId))
-    const sub = encodeURIComponent(`Invoice ${existing?.number || ''} from ${company?.name || ''}`)
-    const body = encodeURIComponent(`Please find invoice details.\nTotal: ${formatMoney(totals.total)}\n`)
-    window.location.href = `mailto:${c?.email || ''}?subject=${sub}&body=${body}`
-  }
+  const gap = layout.formDensity === 'compact' ? 6 : layout.formDensity === 'spacious' ? 16 : 10
+  const fontSize = layout.formFontSize || 14
 
   return (
-    <div>
+    <div style={{ fontSize }}>
       <div className="page-header">
         <div>
           <h1>{isNew ? 'New invoice' : 'Edit invoice'}</h1>
-          <p className="subtitle">ZAR · VAT {vatEnabled ? `${(vatRate * 100).toFixed(0)}%` : 'off'}</p>
+          <p className="subtitle">ZAR · VAT {vatEnabled ? `${(vatRate * 100).toFixed(0)}%` : 'off'} · layout: {layout.formDensity}</p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" className="btn btn-outline" onClick={() => nav('/invoices')}>Back</button>
@@ -149,8 +180,66 @@ export default function InvoiceEdit() {
           <button type="button" className="btn btn-secondary" onClick={() => doPdf(false)}>Download PDF</button>
         </div>
       </div>
-      <form className="card form-grid" onSubmit={save}>
-        <div className="form-grid cols-2">
+
+      {layout.showLayoutPanel !== false && (
+        <div className="card" style={{ marginBottom: 12, borderLeft: `4px solid ${layout.accentHex || '#007A4D'}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            <strong>Document layout</strong>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => setLayoutOpen((o) => !o)}>
+                {layoutOpen ? 'Hide' : 'Show'} details
+              </button>
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => nav('/settings')}>
+                Open Settings → Invoicing
+              </button>
+            </div>
+          </div>
+          {layoutOpen && (
+            <div className="form-grid cols-2" style={{ marginTop: gap, gap }}>
+              <div>
+                <label className="label">Template</label>
+                <select className="select" value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
+                  {TEMPLATE_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label">Account type</label>
+                <input className="input" value={accountType} onChange={(e) => setAccountType(e.target.value)} placeholder="COD Account" />
+              </div>
+              {layout.showDevices !== false && (
+                <div>
+                  <label className="label">Devices</label>
+                  <input className="input" value={devices} onChange={(e) => setDevices(e.target.value)} placeholder="e.g. 2 × Laptops · 1 × Desktop" />
+                </div>
+              )}
+              {layout.showServiceType !== false && (
+                <div>
+                  <label className="label">Service type</label>
+                  <input className="input" value={serviceType} onChange={(e) => setServiceType(e.target.value)} placeholder="e.g. Drivers + Office install" />
+                </div>
+              )}
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label className="label">Intro paragraph (PDF)</label>
+                <textarea className="textarea" rows={2} value={intro} onChange={(e) => setIntro(e.target.value)} placeholder="Optional intro under the client grid…" />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label className="label">Payment note (PDF)</label>
+                <textarea className="textarea" rows={2} value={paymentNote} onChange={(e) => setPaymentNote(e.target.value)} placeholder="Override default payment wording…" />
+              </div>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input type="checkbox" checked={includeTerms} onChange={(e) => setIncludeTerms(e.target.checked)} />
+                Include T&Cs + acceptance on PDF
+              </label>
+              <div className="muted" style={{ fontSize: 12 }}>
+                Header: {layout.headerStyle} · PDF font {layout.pdfFontSize}pt · accent {layout.accentHex}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <form className="card form-grid" onSubmit={save} style={{ gap }}>
+        <div className="form-grid cols-2" style={{ gap }}>
           <div>
             <label className="label">Client</label>
             <select className="select" value={clientId} onChange={(e) => setClientId(e.target.value)} required>
@@ -161,7 +250,7 @@ export default function InvoiceEdit() {
               {showClient ? 'Hide' : '+ Add client here'}
             </button>
           </div>
-          <div className="form-grid cols-2">
+          <div className="form-grid cols-2" style={{ gap }}>
             <div>
               <label className="label">Date</label>
               <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -173,34 +262,12 @@ export default function InvoiceEdit() {
           </div>
         </div>
         {showClient && (
-          <div className="form-grid cols-3" style={{ background: 'var(--bg)', padding: '0.75rem', borderRadius: 12 }}>
+          <div className="form-grid cols-3" style={{ background: 'var(--bg)', padding: '0.75rem', borderRadius: 12, gap }}>
             <input className="input" placeholder="Name" value={newClient.name} onChange={(e) => setNewClient({ ...newClient, name: e.target.value })} />
             <input className="input" placeholder="Email" value={newClient.email} onChange={(e) => setNewClient({ ...newClient, email: e.target.value })} />
             <button type="button" className="btn btn-secondary" onClick={saveClientInline}>Save client</button>
           </div>
         )}
-        <div className="form-grid cols-2">
-          <div>
-            <label className="label">Document template</label>
-            <select className="select" value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
-              {TEMPLATE_PRESETS.map((p) => (
-                <option key={p.id} value={p.id}>{p.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="label">Account type</label>
-            <input className="input" value={accountType} onChange={(e) => setAccountType(e.target.value)} placeholder="COD Account" />
-          </div>
-          <div>
-            <label className="label">Devices (optional)</label>
-            <input className="input" value={devices} onChange={(e) => setDevices(e.target.value)} placeholder="e.g. 2 × Laptops · 1 × Desktop" />
-          </div>
-          <div>
-            <label className="label">Service type (optional)</label>
-            <input className="input" value={serviceType} onChange={(e) => setServiceType(e.target.value)} placeholder="e.g. Apps + Drivers Installation" />
-          </div>
-        </div>
         <div>
           <label className="label">Status</label>
           <select className="select" value={status} onChange={(e) => setStatus(e.target.value)}>
@@ -213,7 +280,7 @@ export default function InvoiceEdit() {
             <button type="button" className="btn btn-outline btn-sm" onClick={addLine}>Add line</button>
           </div>
           {lines.map((line, i) => (
-            <div key={i} className="form-grid cols-3" style={{ marginBottom: 8 }}>
+            <div key={i} className="form-grid cols-3" style={{ marginBottom: 8, gap }}>
               <div>
                 <input className="input" placeholder="Description" value={line.description} onChange={(e) => setLine(i, { description: e.target.value })} required />
                 {catalog.length > 0 && (
@@ -245,22 +312,12 @@ export default function InvoiceEdit() {
             </>
           )}
         </div>
-        {!!invPayments.length && (
-          <div>
-            <label className="label">Payments on this invoice</label>
-            {invPayments.map((p) => (
-              <div key={p.id} className="muted" style={{ fontSize: 13 }}>{(p.date || '').slice(0, 10)} · {formatMoney(p.amount)} · {p.method}</div>
-            ))}
-          </div>
-        )}
         <div>
           <label className="label">Notes</label>
           <textarea className="textarea" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           <button type="submit" className="btn btn-primary">Save invoice</button>
-          <button type="button" className="btn btn-outline" onClick={shareWhatsApp}>WhatsApp</button>
-          <button type="button" className="btn btn-outline" onClick={shareEmail}>Email</button>
         </div>
       </form>
     </div>
