@@ -1,9 +1,9 @@
-
 import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useApp } from './context/AppContext'
 import Shell from './components/Shell'
 import ToastHost from './components/ToastHost'
+import AppLogo from './components/AppLogo'
 import Login from './pages/Login'
 import Setup from './pages/Setup'
 import Home from './pages/Home'
@@ -31,7 +31,9 @@ function Guard({ children, needCompany }) {
     return (
       <div className="boot">
         <div className="boot-card">
-          <div className="logo-mark">SA</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+            <AppLogo size={64} />
+          </div>
           <p>Loading workspace…</p>
           <span className="muted">v{APP_VERSION}</span>
         </div>
