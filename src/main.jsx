@@ -6,6 +6,7 @@ import App from './App'
 import './styles.css'
 import './styles.ux.css'
 import './styles.invoice.css'
+import './styles.modern.css'
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
