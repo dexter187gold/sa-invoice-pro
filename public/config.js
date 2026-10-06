@@ -1,7 +1,7 @@
-/* Runtime config – edit after deploy without rebuild if loaded as separate asset.
-   For Vite, values are also in src/config.js; this file is optional overlay. */
+/* Runtime config – edit after deploy without rebuild.
+   Set helixUrl to your live Helix (olive-yellow-reef-quartz) deployment. */
 window.SA_CONFIG = Object.assign({
-  appVersion: '2.4.1',
+  appVersion: '2.4.2',
   defaultLicenseServerUrl: 'https://sa-invoice-license.onrender.com',
   helixUrl: '',
   helixPathDesk: '/desk/tickets',
