@@ -196,6 +196,17 @@ export default function InvoiceEdit() {
         <div className="inv-chip"><div className="k">Balance due</div><div className="v">{formatMoney(balance)}</div></div>
       </div>
 
+      {existing && (existing.fromQuoteId || existing.fromTicketId || existing.ticketId || (existing.notes && String(existing.notes).includes('Job card'))) && (
+        <div className="card" style={{ marginBottom: '1rem', borderLeft: '4px solid var(--green)' }}>
+          <strong>Template pre-filled</strong>
+          <p className="muted" style={{ margin: '0.25rem 0 0' }}>
+            {existing.fromQuoteId
+              ? 'Converted from a quote — lines and notes carried over. Review due date, save, then PDF/share.'
+              : 'Converted from a job card — client, site, technician and lines included. Review and send.'}
+          </p>
+        </div>
+      )}
+
       <form onSubmit={save}>
         <div className="inv-two" style={{ marginBottom: gap }}>
           <div className="inv-block">
