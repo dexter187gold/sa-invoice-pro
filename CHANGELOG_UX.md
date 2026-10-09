@@ -1,3 +1,18 @@
+
+## 3.9.0 — Commercial quarters 1–6
+
+- Invoices: bulk mark paid, aging, CSV export
+- Quotes: convert fills invoice template; status filters; CSV
+- Clients / Products / Expenses / Payments / Employees: CSV exports
+- Reports: 5-file CSV pack (summary, invoices, aged, expenses, payments)
+- Payroll: statutory disclaimer; Excel-safe CSV
+- License: activation steps, trial banners
+- Accounting: trial balance + journal CSV
+- Job cards nav label; invoice convert banner
+- Mobile breakpoints + print styles; ErrorBoundary
+- Home onboarding; Login/Setup sales polish
+
+
 # Frontend UX pack 2.3.0
 
 Single cohesive update: product + frontend (~200 improvements). Builds on 2.2.0.
