@@ -6,7 +6,7 @@ import { STORES } from '../lib/db'
 import { formatMoney } from '../lib/money'
 import { DEFAULT_COA, buildTrialBalance } from '../lib/accounting'
 import {
-  StatCard, Segmented, EmptyState, PageFade, formatDateZA, LoadingButton,
+  StatCard, Segmented, EmptyState, PageFade, formatDateZA, LoadingButton, downloadCsv,
 } from '../components/ui'
 
 export default function Accounting() {
@@ -146,12 +146,34 @@ export default function Accounting() {
     { id: 'reports', label: 'TB / P&L' },
   ]
 
+  const exportTb = () => {
+    downloadCsv(`trial-balance-${period || 'all'}.csv`,
+      ['Code', 'Name', 'Debit', 'Credit'],
+      (tb.rows || []).map((r) => [r.code, r.name, r.debit, r.credit])
+    )
+    toast('Trial balance CSV exported', 'success')
+  }
+  const exportJournal = () => {
+    downloadCsv(`journal-${period || 'all'}.csv`,
+      ['Date', 'Memo', 'Debit code', 'Credit code', 'Debit', 'Credit', 'Source'],
+      jFiltered.map((j) => [
+        j.date || '', j.memo || j.description || '', j.debitCode || '', j.creditCode || '',
+        j.debit ?? j.amount ?? '', j.credit ?? '', j.sourceKey || j.autoPost || '',
+      ])
+    )
+    toast('Journal CSV exported', 'success')
+  }
+
   return (
     <PageFade>
       <div className="page-header">
         <div>
           <h1>Accounting</h1>
-          <p className="subtitle">Bookkeeping · CoA · journals · bank · trial balance</p>
+          <p className="subtitle">Bookkeeping · CoA · journals · bank · trial balance · SA chart</p>
+        </div>
+        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+          <button type="button" className="btn btn-outline" onClick={exportTb}>Export TB CSV</button>
+          <button type="button" className="btn btn-outline" onClick={exportJournal}>Export journal CSV</button>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <input
