@@ -11,7 +11,8 @@ const STATIC_ACTIONS = [
   { id: 'nav-quotes', label: 'Go to Quotes', path: '/quotes', group: 'Navigate' },
   { id: 'nav-clients', label: 'Go to Clients', path: '/clients', group: 'Navigate' },
   { id: 'nav-products', label: 'Go to Products', path: '/products', group: 'Navigate' },
-  { id: 'nav-tickets', label: 'Go to Tickets', path: '/tickets', group: 'Navigate' },
+  { id: 'nav-tickets', label: 'Go to Job cards', path: '/tickets', group: 'Navigate' },
+  { id: 'nav-new-job', label: 'New job card', path: '/tickets', group: 'Actions' },
   { id: 'nav-expenses', label: 'Go to Expenses', path: '/expenses', group: 'Navigate' },
   { id: 'nav-payments', label: 'Go to Payments', path: '/payments', group: 'Navigate' },
   { id: 'nav-employees', label: 'Go to Employees', path: '/employees', group: 'Navigate' },
@@ -115,11 +116,13 @@ export default function CommandPalette({ open, onClose }) {
         <input
           ref={inputRef}
           className="input cmd-input"
-          placeholder="Search pages, invoices, clients… (↑↓ Enter Esc)"
+          placeholder="Search pages, invoices, job cards, clients… (↑↓ Enter Esc)"
+          aria-label="Command palette search"
+          aria-controls="cmd-results"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
-        <div className="cmd-list" role="listbox">
+        <div className="cmd-list" id="cmd-results" role="listbox">
           {!items.length && <div className="cmd-empty muted">No matches</div>}
           {items.map((item, i) => (
             <button
