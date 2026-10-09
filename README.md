@@ -1,29 +1,34 @@
-# SA Invoice Pro 2.3.0 (modern React + full feature pack)
+# SA Invoice Pro 3.0.0
 
-React 19 + Vite 6 rewrite with core **and** extended modules from classic SA Invoice Pro.
+Professional offline-first invoicing for South Africa — React 19 + Vite 6.
 
-## Features in this build
+## What’s new in 3.0
+
+- **Design system overhaul** — refined colour tokens, typography, spacing, shadows, radius scale
+- Tighter sidebar, segmented controls, density modes, improved dark theme
+- Polished cards, tables, badges, buttons, modals, command palette
+- Stronger focus states, reduced-motion support, print styles
+- Same full feature set as 2.x (payroll, accounting, tickets, PayFast, license, etc.)
+
+## Features
 
 - Auth (register / login), company setup
 - Home + Dashboard (aged debtors, KPIs, collection rate)
-- Clients, Products & services (stock), Invoices (PDF, payments, WhatsApp/email)
+- Clients, Products & services, Invoices (PDF, payments, WhatsApp/email)
 - Quotes → convert to invoice
 - Tickets (classic + Helix embed)
-- Expenses, Payments (EFT + PayFast), Employees (UIF flag, SA ID Luhn check)
-- **Payroll** — monthly runs with 2026/27 PAYE brackets, UIF (capped), SDL, ETI skeleton, payslips + **PDF** + CSV export
-- Accounting (CoA seed, bank recon, journals, auto-post, TB/P&L)
-- Reports + CSV export
-- Document generator (SLA, POPIA, letters…)
-- License (HWID, handshake, activate)
-- Settings (company, VAT, PayFast, backup/restore)
-- Online/offline indicator, dark mode, **density** (compact / comfortable)
-- **Command palette** (Ctrl+K) — jump to pages, invoices, clients
-- Bulk invoice select/delete, sortable columns, confirm dialogs
-- `public/legacy/` — full 1.0.18 static app fallback
+- Expenses, Payments (EFT + PayFast), Employees (UIF, SA ID Luhn)
+- **Payroll** — 2026/27 PAYE brackets, UIF, SDL, payslips PDF + CSV
+- Accounting (CoA, bank recon, journals, TB/P&L)
+- Reports, document generator (SLA, POPIA, letters…)
+- License (HWID, handshake), Settings, backup/restore
+- Online/offline, dark mode, density (compact / comfortable)
+- **Command palette** (Ctrl+K), Ctrl+N new invoice, Ctrl+D theme
+- `public/legacy/` — full classic app fallback
 
-## Payroll notes
+## Payroll note
 
-Client-side statutory **estimates** only (tax year 2026/27 tables). Not a substitute for SARS e@syFile or a registered tax practitioner. Medical tax credits, tax directives, and full ETI eligibility rules are intentionally simplified.
+Client-side statutory **estimates** only (tax year 2026/27). Not a substitute for SARS e@syFile or a registered tax practitioner.
 
 ## Deploy
 
@@ -47,3 +52,4 @@ npm install && npm run dev
 - `Ctrl/Cmd+K` — command palette
 - `Ctrl/Cmd+N` — new invoice
 - `Ctrl/Cmd+D` — toggle theme
+- `Ctrl/Cmd+/` — assistant
