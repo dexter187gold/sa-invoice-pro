@@ -6,7 +6,7 @@ import * as db from '../lib/db'
 import { STORES } from '../lib/db'
 import {
   SearchInput, FilterChips, StatusBadge, EmptyState, formatDateZA, matchesQuery,
-  SortableTh, useSort, ConfirmDialog, relativeTime,
+  SortableTh, useSort, ConfirmDialog, relativeTime, daysOverdue, downloadCsv, PageFade,
 } from '../components/ui'
 
 export default function Invoices() {
@@ -97,6 +97,50 @@ export default function Invoices() {
     })
   }
 
+  const markPaidBulk = () => {
+    if (!selectedIds.length) return
+    setConfirm({
+      title: `Mark ${selectedIds.length} as paid?`,
+      message: 'Selected invoices will be set to paid and amount due to zero.',
+      confirmLabel: 'Mark paid',
+      action: async () => {
+        for (const id of selectedIds) {
+          const inv = invoices.find((i) => String(i.id) === String(id))
+          if (!inv) continue
+          await db.put(STORES.invoices, {
+            ...inv,
+            status: 'paid',
+            amountDue: 0,
+            paidAt: new Date().toISOString(),
+          })
+        }
+        setSelected({})
+        await refresh()
+        toast(`Marked ${selectedIds.length} paid`, 'success')
+        setConfirm(null)
+      },
+    })
+  }
+
+  const exportCsv = () => {
+    const headers = ['Number', 'Client', 'Date', 'Due date', 'Status', 'Total', 'Amount due', 'Notes']
+    const rows = list.map((inv) => {
+      const c = clients.find((x) => String(x.id) === String(inv.clientId))
+      return [
+        inv.number || '',
+        c?.name || '',
+        inv.date || '',
+        inv.dueDate || '',
+        inv.status || 'unpaid',
+        Number(inv.total) || 0,
+        Number(inv.amountDue ?? inv.total) || 0,
+        inv.notes || '',
+      ]
+    })
+    downloadCsv(`invoices-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows)
+    toast('CSV exported', 'success')
+  }
+
   const chips = [
     { id: 'all', label: 'All', count: counts.all },
     { id: 'unpaid', label: 'Unpaid', count: counts.unpaid },
@@ -106,7 +150,7 @@ export default function Invoices() {
   ]
 
   return (
-    <div>
+    <PageFade>
       <div className="page-header">
         <div>
           <h1>Invoices</h1>
@@ -114,7 +158,12 @@ export default function Invoices() {
             {list.length} shown{q || status !== 'all' ? ` · filtered from ${invoices.length}` : ` · ${invoices.length} total`}
           </p>
         </div>
-        <Link className="btn btn-primary" to="/invoices/new">New invoice</Link>
+        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+          <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={!list.length}>
+            Export CSV
+          </button>
+          <Link className="btn btn-primary" to="/invoices/new">New invoice</Link>
+        </div>
       </div>
 
       <div className="sticky-tools toolbar">
@@ -125,6 +174,7 @@ export default function Invoices() {
       {selectedIds.length > 0 && (
         <div className="bulk-bar">
           <strong>{selectedIds.length} selected</strong>
+          <button type="button" className="btn btn-primary btn-sm" onClick={markPaidBulk}>Mark paid</button>
           <button type="button" className="btn btn-danger btn-sm" onClick={delBulk}>Delete selected</button>
           <button type="button" className="btn btn-outline btn-sm" onClick={() => setSelected({})}>Clear</button>
         </div>
@@ -133,7 +183,7 @@ export default function Invoices() {
       {!list.length ? (
         <EmptyState
           title={invoices.length ? 'No matches' : 'No invoices yet'}
-          hint={invoices.length ? 'Try another search or filter.' : 'Create your first tax invoice for a client.'}
+          hint={invoices.length ? 'Try another search or filter.' : 'Create your first tax invoice — clients get paid faster with clear PDFs and WhatsApp share.'}
           action={!invoices.length ? <Link className="btn btn-primary" to="/invoices/new">New invoice</Link> : null}
         />
       ) : (
@@ -155,6 +205,7 @@ export default function Invoices() {
                 <SortableTh id="status" label="Status" sort={sort} onSort={onSort} />
                 <SortableTh id="total" label="Total" sort={sort} onSort={onSort} />
                 <SortableTh id="due" label="Due" sort={sort} onSort={onSort} />
+                <th>Aging</th>
                 <th></th>
               </tr>
             </thead>
@@ -162,8 +213,10 @@ export default function Invoices() {
               {list.map((inv) => {
                 const c = clients.find((x) => String(x.id) === String(inv.clientId))
                 const due = Number(inv.amountDue ?? inv.total) || 0
+                const age = daysOverdue(inv.dueDate || inv.date)
+                const isOpen = ['unpaid', 'partial', 'overdue'].includes(inv.status || 'unpaid')
                 return (
-                  <tr key={inv.id}>
+                  <tr key={inv.id} className={inv.status === 'overdue' ? 'row-overdue' : ''}>
                     <td>
                       <input
                         type="checkbox"
@@ -184,6 +237,13 @@ export default function Invoices() {
                     </td>
                     <td>{formatMoney(inv.total)}</td>
                     <td>{formatMoney(due)}</td>
+                    <td className="muted" style={{ whiteSpace: 'nowrap' }}>
+                      {isOpen && age != null ? (
+                        age > 0 ? <span className="text-danger">{age}d overdue</span> :
+                        age === 0 ? 'Due today' :
+                        `In ${-age}d`
+                      ) : '—'}
+                    </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       <Link className="btn btn-outline btn-sm" to={`/invoices/${inv.id}`}>
                         Edit
@@ -209,6 +269,6 @@ export default function Invoices() {
         onCancel={() => setConfirm(null)}
         onConfirm={() => confirm?.action?.()}
       />
-    </div>
+    </PageFade>
   )
 }
