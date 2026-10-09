@@ -18,8 +18,39 @@ const PRIORITIES = [
   { id: 'high', label: 'High' },
   { id: 'urgent', label: 'Urgent' },
 ]
+const CATEGORIES = [
+  '',
+  'Hardware',
+  'Software',
+  'Network',
+  'Printer',
+  'Email / Microsoft 365',
+  'Backup',
+  'Security',
+  'Onboarding',
+  'Site visit',
+  'Other',
+]
 
 const DEFAULT_RATES = { onsite: 450, remote: 300 }
+
+const EMPTY_FORM = {
+  title: '',
+  clientId: '',
+  status: 'open',
+  priority: 'normal',
+  notes: '',
+  description: '',
+  workDone: '',
+  siteAddress: '',
+  contactName: '',
+  contactPhone: '',
+  contactEmail: '',
+  category: '',
+  dueDate: '',
+  assignee: '',
+  supportType: 'remote',
+}
 
 function formatElapsed(ms) {
   const totalSec = Math.max(0, Math.floor(Number(ms) / 1000))
@@ -43,8 +74,51 @@ function supportLabel(type) {
   return type === 'onsite' ? 'Onsite support' : 'Remote support'
 }
 
+/** SA-friendly: strip to digits, add 27 if local 0… */
+function toWaNumber(phone) {
+  let d = String(phone || '').replace(/\D/g, '')
+  if (!d) return ''
+  if (d.startsWith('0') && d.length >= 9) d = '27' + d.slice(1)
+  if (d.length < 10) return ''
+  return d
+}
+
+function buildJobMessage(t, client, company, opts = {}) {
+  const co = company?.name || 'SA Invoice Pro'
+  const lines = [
+    `*Job card update — ${co}*`,
+    '',
+    `*Job:* ${t.title || t.subject || 'Support job'}`,
+    `*Status:* ${t.status || 'open'}`,
+    `*Priority:* ${t.priority || 'normal'}`,
+    `*Type:* ${supportLabel(t.supportType === 'onsite' ? 'onsite' : 'remote')}`,
+  ]
+  if (t.category) lines.push(`*Category:* ${t.category}`)
+  if (client?.name) lines.push(`*Client:* ${client.name}`)
+  if (t.contactName) lines.push(`*Contact:* ${t.contactName}`)
+  if (t.contactPhone) lines.push(`*Contact phone:* ${t.contactPhone}`)
+  if (t.siteAddress) lines.push(`*Site:* ${t.siteAddress}`)
+  if (t.dueDate) lines.push(`*Due:* ${String(t.dueDate).slice(0, 10)}`)
+  if (t.assignee) lines.push(`*Assigned:* ${t.assignee}`)
+  if (t.description) {
+    lines.push('', '*Description:*', t.description)
+  }
+  if (t.workDone) {
+    lines.push('', '*Work done:*', t.workDone)
+  }
+  if (t.notes) {
+    lines.push('', '*Notes:*', t.notes)
+  }
+  if (opts.minutes) {
+    lines.push('', `*Time logged:* ${opts.minutes} min`)
+  }
+  if (t.invoiceNumber) lines.push('', `*Invoice:* ${t.invoiceNumber}`)
+  lines.push('', `— Sent from ${co}`)
+  return lines.join('\n')
+}
+
 export default function Tickets() {
-  const { toast, company, timeEntries, invoices, vatRate, vatEnabled, refresh } = useApp()
+  const { toast, company, timeEntries, vatRate, vatEnabled, refresh } = useApp()
   const nav = useNavigate()
   const [tickets, setTickets] = useState([])
   const [clients, setClients] = useState([])
@@ -53,20 +127,13 @@ export default function Tickets() {
   const [filterStatus, setFilterStatus] = useState('')
   const [showClosed, setShowClosed] = useState(false)
   const [editing, setEditing] = useState(null)
-  const [form, setForm] = useState({
-    title: '',
-    clientId: '',
-    status: 'open',
-    priority: 'normal',
-    notes: '',
-    supportType: 'remote',
-  })
+  const [form, setForm] = useState({ ...EMPTY_FORM })
   const [tick, setTick] = useState(0)
   const [manualMinutes, setManualMinutes] = useState('60')
   const [manualNote, setManualNote] = useState('')
   const [manualBillable, setManualBillable] = useState(true)
   const [rates, setRates] = useState(DEFAULT_RATES)
-  const [convertOpen, setConvertOpen] = useState(null) // ticket object
+  const [convertOpen, setConvertOpen] = useState(null)
   const [convertType, setConvertType] = useState('remote')
   const [convertIncludeTimer, setConvertIncludeTimer] = useState(true)
   const [convertBusy, setConvertBusy] = useState(false)
@@ -102,7 +169,11 @@ export default function Tickets() {
     if (qq) {
       rows = rows.filter((t) => {
         const c = clients.find((x) => String(x.id) === String(t.clientId))
-        return [t.title, t.subject, t.notes, t.status, c?.name, t.supportType].join(' ').toLowerCase().includes(qq)
+        return [
+          t.title, t.subject, t.notes, t.description, t.workDone, t.siteAddress,
+          t.contactName, t.contactPhone, t.contactEmail, t.category, t.assignee,
+          t.status, t.supportType, c?.name,
+        ].join(' ').toLowerCase().includes(qq)
       })
     }
     if (filterStatus) rows = rows.filter((t) => String(t.status || 'open') === filterStatus)
@@ -144,8 +215,10 @@ export default function Tickets() {
 
   const rateFor = (type) => (type === 'onsite' ? rates.onsite : rates.remote)
 
+  const clientOf = (t) => clients.find((x) => String(x.id) === String(t?.clientId))
+
   const openNew = () => {
-    setForm({ title: '', clientId: '', status: 'open', priority: 'normal', notes: '', supportType: 'remote' })
+    setForm({ ...EMPTY_FORM })
     setEditing('new')
   }
 
@@ -155,7 +228,16 @@ export default function Tickets() {
       clientId: t.clientId ? String(t.clientId) : '',
       status: t.status || 'open',
       priority: t.priority || 'normal',
-      notes: t.notes || t.description || '',
+      notes: t.notes || '',
+      description: t.description || '',
+      workDone: t.workDone || '',
+      siteAddress: t.siteAddress || '',
+      contactName: t.contactName || '',
+      contactPhone: t.contactPhone || '',
+      contactEmail: t.contactEmail || '',
+      category: t.category || '',
+      dueDate: (t.dueDate || '').slice(0, 10),
+      assignee: t.assignee || '',
       supportType: t.supportType === 'onsite' ? 'onsite' : 'remote',
     })
     setManualMinutes('60')
@@ -179,6 +261,15 @@ export default function Tickets() {
       status: form.status || 'open',
       priority: form.priority || 'normal',
       notes: form.notes || '',
+      description: form.description || '',
+      workDone: form.workDone || '',
+      siteAddress: form.siteAddress || '',
+      contactName: form.contactName || '',
+      contactPhone: form.contactPhone || '',
+      contactEmail: form.contactEmail || '',
+      category: form.category || '',
+      dueDate: form.dueDate || null,
+      assignee: form.assignee || '',
       supportType: form.supportType === 'onsite' ? 'onsite' : 'remote',
       updatedAt: new Date().toISOString(),
       system: 'classic',
@@ -186,7 +277,7 @@ export default function Tickets() {
     try {
       if (editing && editing !== 'new' && editing.id != null) {
         await db.put(STORES.tickets, { ...editing, ...payload })
-        toast('Ticket updated', 'success')
+        toast('Job card updated', 'success')
       } else {
         await db.add(STORES.tickets, {
           ...payload,
@@ -195,7 +286,7 @@ export default function Tickets() {
           timerStatus: 'idle',
           timerAccumulatedMs: 0,
         })
-        toast('Ticket created', 'success')
+        toast('Job card created', 'success')
       }
       setEditing(null)
       await load()
@@ -205,9 +296,9 @@ export default function Tickets() {
   }
 
   const remove = async (id) => {
-    if (!confirm('Delete this ticket?')) return
+    if (!confirm('Delete this job card? This cannot be undone.')) return
     await db.remove(STORES.tickets, id)
-    toast('Deleted', 'success')
+    toast('Job card deleted', 'success')
     setEditing(null)
     await load()
   }
@@ -216,6 +307,30 @@ export default function Tickets() {
     await db.put(STORES.tickets, { ...t, status, updatedAt: new Date().toISOString() })
     await load()
     toast('Status → ' + status, 'success')
+  }
+
+  const shareWhatsApp = (t) => {
+    const c = clientOf(t)
+    const phone = t.contactPhone || c?.phone || ''
+    const wa = toWaNumber(phone)
+    const msg = buildJobMessage(t, c, company, { minutes: totalMinutesFor(t.id) })
+    const url = wa
+      ? `https://wa.me/${wa}?text=${encodeURIComponent(msg)}`
+      : `https://wa.me/?text=${encodeURIComponent(msg)}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+    if (!wa) toast('No phone on job/client — WhatsApp opened without number', 'info')
+    else toast('Opening WhatsApp…', 'success')
+  }
+
+  const shareEmail = (t) => {
+    const c = clientOf(t)
+    const to = t.contactEmail || c?.email || ''
+    const subject = `Job card: ${t.title || t.subject || 'Support'} — ${company?.name || 'SA Invoice Pro'}`
+    const body = buildJobMessage(t, c, company, { minutes: totalMinutesFor(t.id) }).replace(/\*/g, '')
+    const url = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    window.location.href = url
+    if (!to) toast('No email on job/client — mail app opened without recipient', 'info')
+    else toast('Opening email…', 'success')
   }
 
   const pauseOthers = async (exceptId) => {
@@ -359,17 +474,15 @@ export default function Tickets() {
     if (!convertOpen) return null
     const t = convertOpen
     let minutes = billableMinutesFor(t.id)
-    let timerExtra = 0
     if (convertIncludeTimer && (t.timerStatus === 'running' || t.timerStatus === 'paused')) {
-      timerExtra = Math.max(0, Math.round(currentElapsedMs(t) / 60000))
-      minutes += timerExtra
+      minutes += Math.max(0, Math.round(currentElapsedMs(t) / 60000))
     }
     if (minutes < 1) minutes = 0
     const hours = Math.round((minutes / 60) * 100) / 100
     const rate = rateFor(convertType)
     const exclusive = hours * rate
     const vat = vatEnabled ? exclusive * (Number(vatRate) || 0.15) : 0
-    return { minutes, timerExtra, hours, rate, exclusive, vat, total: exclusive + vat }
+    return { minutes, hours, rate, exclusive, vat, total: exclusive + vat }
   }, [convertOpen, convertType, convertIncludeTimer, billableMinutesFor, rates, vatEnabled, vatRate, tick])
 
   const doConvertToInvoice = async () => {
@@ -381,7 +494,6 @@ export default function Tickets() {
 
     setConvertBusy(true)
     try {
-      // If timer still running/paused and included, stop & log first
       let ticket = t
       if (convertIncludeTimer && (t.timerStatus === 'running' || t.timerStatus === 'paused')) {
         const ms = currentElapsedMs(t)
@@ -439,8 +551,9 @@ export default function Tickets() {
         date: today,
         dueDate: due.toISOString().slice(0, 10),
         status: 'unpaid',
-        notes: `From job card: ${t.title || t.subject || t.id}\n${t.notes || ''}`.trim(),
+        notes: `From job card: ${t.title || t.subject || t.id}\n${t.description || ''}\n${t.workDone || ''}\n${t.notes || ''}`.trim(),
         serviceType: label,
+        siteAddress: t.siteAddress || '',
         ticketId: t.id,
         lines,
         exclusive: totals.exclusive,
@@ -493,7 +606,6 @@ export default function Tickets() {
               background: status === 'running' ? 'var(--green, #16a34a)' : '#ca8a04',
               color: '#fff',
             }}
-            title={status === 'running' ? 'Timer running' : 'Timer paused'}
           >
             {status === 'running' ? '● ' : '❚❚ '}{elapsed}
           </span>
@@ -518,31 +630,46 @@ export default function Tickets() {
   }
 
   const card = (t) => {
-    const c = clients.find((x) => String(x.id) === String(t.clientId))
+    const c = clientOf(t)
     const mins = totalMinutesFor(t.id)
     const billMins = billableMinutesFor(t.id)
     const st = t.supportType === 'onsite' ? 'onsite' : 'remote'
+    const snippet = (t.description || t.notes || '').trim()
     return (
       <div key={t.id} className="list-card" style={{ marginBottom: 8 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-          <div>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <strong>{t.title || t.subject || 'Ticket'}</strong>
             <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
               <span className="badge">{t.status || 'open'}</span>{' '}
               <span className="badge warn">{t.priority || 'normal'}</span>{' '}
               <span className="badge">{st === 'onsite' ? 'Onsite R' + rates.onsite : 'Remote R' + rates.remote}/h</span>
+              {t.category ? <> · {t.category}</> : null}
               {c ? ` · ${c.name}` : ''}
-              {mins > 0 ? ` · ${mins} min logged` : ''}
+              {t.assignee ? ` · ${t.assignee}` : ''}
+              {mins > 0 ? ` · ${mins} min` : ''}
               {billMins > 0 && billMins !== mins ? ` (${billMins} billable)` : ''}
               {t.invoiceNumber ? ` · ${t.invoiceNumber}` : ''}
             </div>
+            {snippet && (
+              <div className="muted" style={{ fontSize: 12, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 420 }}>
+                {snippet}
+              </div>
+            )}
+            {(t.siteAddress || t.dueDate) && (
+              <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
+                {t.siteAddress ? t.siteAddress : ''}{t.siteAddress && t.dueDate ? ' · ' : ''}{t.dueDate ? `Due ${String(t.dueDate).slice(0, 10)}` : ''}
+              </div>
+            )}
             <div style={{ marginTop: 6 }}>{timerControls(t)}</div>
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-            <button type="button" className="btn btn-outline btn-sm" onClick={() => openEdit(t)}>Open</button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => openEdit(t)}>Edit</button>
             <button type="button" className="btn btn-primary btn-sm" onClick={() => openConvert(t)}>To invoice</button>
-            <button type="button" className="btn btn-outline btn-sm" onClick={() => setStatus(t, 'in_progress')}>In progress</button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => shareWhatsApp(t)} title="WhatsApp">WhatsApp</button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => shareEmail(t)} title="Email">Email</button>
             <button type="button" className="btn btn-outline btn-sm" onClick={() => setStatus(t, 'resolved')}>Resolve</button>
+            <button type="button" className="btn btn-outline btn-sm" style={{ color: '#b91c1c' }} onClick={() => remove(t.id)}>Delete</button>
           </div>
         </div>
       </div>
@@ -555,13 +682,13 @@ export default function Tickets() {
         <div>
           <h1 style={{ margin: 0 }}>Tickets · Job cards</h1>
           <p className="muted" style={{ margin: '4px 0 0' }}>
-            Timer · log time · convert to invoice (Onsite R{rates.onsite}/h · Remote R{rates.remote}/h)
+            Edit · delete · WhatsApp / email · timer · invoice (Onsite R{rates.onsite}/h · Remote R{rates.remote}/h)
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <button type="button" className={`btn btn-sm ${view === 'list' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setView('list')}>List</button>
           <button type="button" className={`btn btn-sm ${view === 'board' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setView('board')}>Board</button>
-          <button type="button" className="btn btn-primary" onClick={openNew}>New ticket</button>
+          <button type="button" className="btn btn-primary" onClick={openNew}>New job card</button>
         </div>
       </div>
 
@@ -569,28 +696,12 @@ export default function Tickets() {
         <span className="muted" style={{ fontSize: 13, fontWeight: 600 }}>Hourly rates</span>
         <label style={{ fontSize: 13, display: 'flex', gap: 6, alignItems: 'center' }}>
           Onsite R
-          <input
-            className="input"
-            style={{ width: 88 }}
-            type="number"
-            min={0}
-            step={1}
-            value={rates.onsite}
-            onChange={(e) => saveRates({ ...rates, onsite: Number(e.target.value) || 0 })}
-          />
+          <input className="input" style={{ width: 88 }} type="number" min={0} step={1} value={rates.onsite} onChange={(e) => saveRates({ ...rates, onsite: Number(e.target.value) || 0 })} />
           /h
         </label>
         <label style={{ fontSize: 13, display: 'flex', gap: 6, alignItems: 'center' }}>
           Remote R
-          <input
-            className="input"
-            style={{ width: 88 }}
-            type="number"
-            min={0}
-            step={1}
-            value={rates.remote}
-            onChange={(e) => saveRates({ ...rates, remote: Number(e.target.value) || 0 })}
-          />
+          <input className="input" style={{ width: 88 }} type="number" min={0} step={1} value={rates.remote} onChange={(e) => saveRates({ ...rates, remote: Number(e.target.value) || 0 })} />
           /h
         </label>
       </div>
@@ -605,7 +716,7 @@ export default function Tickets() {
       </div>
 
       <div className="card" style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-        <input className="input" style={{ flex: 1, minWidth: 140 }} placeholder="Search…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className="input" style={{ flex: 1, minWidth: 140 }} placeholder="Search jobs, clients, sites…" value={q} onChange={(e) => setQ(e.target.value)} />
         <select className="select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
           <option value="">All statuses</option>
           {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
@@ -620,7 +731,7 @@ export default function Tickets() {
           {STATUSES.filter((s) => s.id !== 'closed' || showClosed).map((col) => {
             const items = list.filter((t) => String(t.status || 'open') === col.id)
             return (
-              <div key={col.id} style={{ minWidth: 260, width: 280, background: 'var(--surface-2, #f1f5f9)', borderRadius: 12, padding: 8 }}>
+              <div key={col.id} style={{ minWidth: 280, width: 300, background: 'var(--surface-2, #f1f5f9)', borderRadius: 12, padding: 8 }}>
                 <div style={{ fontWeight: 600, fontSize: 13, padding: '6px 8px 10px' }}>{col.label} ({items.length})</div>
                 {items.length ? items.map(card) : <p className="muted" style={{ fontSize: 12, padding: 8 }}>Empty</p>}
               </div>
@@ -632,7 +743,7 @@ export default function Tickets() {
           {list.map(card)}
           {!list.length && (
             <div className="card empty">
-              No tickets yet. Click <strong>New ticket</strong> to log a job, track time, then <strong>To invoice</strong>.
+              No job cards yet. Click <strong>New job card</strong>, add details, track time, then invoice or share via WhatsApp / email.
             </div>
           )}
         </div>
@@ -640,16 +751,18 @@ export default function Tickets() {
 
       {editing && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setEditing(null)}>
-          <div className="card" style={{ width: '100%', maxWidth: 520, maxHeight: '90vh', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ marginTop: 0 }}>{editing === 'new' ? 'New ticket' : 'Edit ticket'}</h2>
+          <div className="card" style={{ width: '100%', maxWidth: 560, maxHeight: '92vh', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ marginTop: 0 }}>{editing === 'new' ? 'New job card' : 'Edit job card'}</h2>
             <form className="form-grid" onSubmit={save}>
               <label className="label">Title *</label>
-              <input className="input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+              <input className="input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required placeholder="e.g. Printer offline — head office" />
+
               <label className="label">Client</label>
               <select className="select" value={form.clientId} onChange={(e) => setForm({ ...form, clientId: e.target.value })}>
                 <option value="">—</option>
                 {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                 <div>
                   <label className="label">Status</label>
@@ -671,8 +784,47 @@ export default function Tickets() {
                   </select>
                 </div>
               </div>
-              <label className="label">Details</label>
-              <textarea className="input" rows={4} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div>
+                  <label className="label">Category</label>
+                  <select className="select" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+                    {CATEGORIES.map((c) => <option key={c || 'none'} value={c}>{c || '—'}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Due date</label>
+                  <input className="input" type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
+                </div>
+              </div>
+
+              <label className="label">Assigned to</label>
+              <input className="input" value={form.assignee} onChange={(e) => setForm({ ...form, assignee: e.target.value })} placeholder="Technician / staff name" />
+
+              <label className="label">Description / problem</label>
+              <textarea className="input" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What was reported? Symptoms, error messages, devices…" />
+
+              <label className="label">Work done / resolution</label>
+              <textarea className="input" rows={3} value={form.workDone} onChange={(e) => setForm({ ...form, workDone: e.target.value })} placeholder="What you did on site or remotely…" />
+
+              <label className="label">Site / location</label>
+              <input className="input" value={form.siteAddress} onChange={(e) => setForm({ ...form, siteAddress: e.target.value })} placeholder="Address or branch" />
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div>
+                  <label className="label">Contact name</label>
+                  <input className="input" value={form.contactName} onChange={(e) => setForm({ ...form, contactName: e.target.value })} />
+                </div>
+                <div>
+                  <label className="label">Contact phone</label>
+                  <input className="input" value={form.contactPhone} onChange={(e) => setForm({ ...form, contactPhone: e.target.value })} placeholder="+27…" />
+                </div>
+              </div>
+              <label className="label">Contact email</label>
+              <input className="input" type="email" value={form.contactEmail} onChange={(e) => setForm({ ...form, contactEmail: e.target.value })} />
+
+              <label className="label">Internal notes</label>
+              <textarea className="input" rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Private notes (included in share if filled)" />
 
               {editing !== 'new' && editing.id != null && (
                 <div style={{ marginTop: 8, padding: 12, background: 'var(--surface-2, #f1f5f9)', borderRadius: 10 }}>
@@ -696,25 +848,24 @@ export default function Tickets() {
                   {entriesFor(editing.id).length > 0 && (
                     <div style={{ marginTop: 12 }}>
                       <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>
-                        Time entries · total {totalMinutesFor(editing.id)} min · unbilled billable {billableMinutesFor(editing.id)} min
+                        Time · total {totalMinutesFor(editing.id)} min · unbilled billable {billableMinutesFor(editing.id)} min
                       </div>
                       <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
                         {entriesFor(editing.id).slice(0, 12).map((e) => (
                           <li key={e.id}>
                             {e.minutes} min{e.billable === false ? ' · non-billable' : e.invoiced ? ' · invoiced' : ' · billable'}
                             {e.note ? ` — ${e.note}` : ''}
-                            <span className="muted"> · {(e.at || e.createdAt || '').slice(0, 16).replace('T', ' ')}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
                   )}
-                  <div style={{ marginTop: 12 }}>
-                    <button type="button" className="btn btn-primary" onClick={() => openConvert(editing)}>
-                      Convert to invoice
-                    </button>
+                  <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    <button type="button" className="btn btn-primary" onClick={() => openConvert(editing)}>Convert to invoice</button>
+                    <button type="button" className="btn btn-outline" onClick={() => shareWhatsApp(editing)}>WhatsApp</button>
+                    <button type="button" className="btn btn-outline" onClick={() => shareEmail(editing)}>Email</button>
                     {editing.invoiceId && (
-                      <button type="button" className="btn btn-outline" style={{ marginLeft: 8 }} onClick={() => nav(`/invoices/${editing.invoiceId}`)}>
+                      <button type="button" className="btn btn-outline" onClick={() => nav(`/invoices/${editing.invoiceId}`)}>
                         Open {editing.invoiceNumber || 'invoice'}
                       </button>
                     )}

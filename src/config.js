@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.5.2'
+export const APP_VERSION = '2.5.3'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
@@ -27,7 +27,6 @@ export const SA_CONFIG = {
 
 export const VAT_RATE_DEFAULT = 0.15
 
-/** Default support billing rates (ZAR / hour) — overridable in Tickets UI */
 export const SUPPORT_RATES_DEFAULT = {
   onsite: 450,
   remote: 300,
