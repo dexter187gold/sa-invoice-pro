@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import * as licenseApi from '../lib/license'
 import * as db from '../lib/db'
 import { APP_VERSION, SA_CONFIG } from '../config'
-import { PageFade, StatCard, LoadingButton, CopyButton } from '../components/ui'
+import { PageFade, StatCard, LoadingButton, CopyButton, EmptyState } from '../components/ui'
 
 export default function License() {
   const { toast, online } = useApp()
@@ -42,28 +43,50 @@ export default function License() {
     }
   }
 
+  const licensed = !!status?.licensed
+  const trialLeft = status?.trialDaysLeft
+
   return (
     <PageFade>
       <div className="page-header">
         <div>
           <h1>License</h1>
           <p className="subtitle">
-            {online ? 'Online' : 'Offline'} · handshake then server activate · v{APP_VERSION}
+            {online ? 'Online' : 'Offline'} · HWID handshake · server activate · v{APP_VERSION}
           </p>
         </div>
         <button type="button" className="btn btn-outline" onClick={reload} disabled={busy}>Refresh</button>
       </div>
 
+      {!licensed && (
+        <div className="card" style={{ marginBottom: '1rem', borderLeft: '4px solid var(--warn, #f59e0b)' }}>
+          <strong>{trialLeft != null && trialLeft <= 0 ? 'Trial ended' : 'Trial / unlicensed workspace'}</strong>
+          <p className="muted" style={{ margin: '0.35rem 0 0' }}>
+            Copy your HWID below, send it to your vendor, then run <strong>Activate on server</strong> once they approve.
+            Default server: <code>{SA_CONFIG.defaultLicenseServerUrl}</code>
+          </p>
+        </div>
+      )}
+
+      {licensed && (
+        <div className="card" style={{ marginBottom: '1rem', borderLeft: '4px solid var(--green, #10b981)' }}>
+          <strong>Licensed</strong>
+          <p className="muted" style={{ margin: '0.35rem 0 0' }}>
+            This device is activated. Keep a backup from Settings → Backup in case you move machines.
+          </p>
+        </div>
+      )}
+
       <div className="grid-stats" style={{ marginBottom: '1rem' }}>
         <StatCard
-          label="Licensed"
-          value={status?.licensed ? 'Yes' : 'Trial'}
-          tone={status?.licensed ? 'good' : 'warn'}
+          label="Status"
+          value={licensed ? 'Licensed' : 'Trial'}
+          tone={licensed ? 'good' : 'warn'}
         />
         <StatCard
           label="Trial days left"
-          value={status?.trialDaysLeft ?? '—'}
-          tone={status?.trialDaysLeft != null && status.trialDaysLeft <= 7 ? 'bad' : undefined}
+          value={trialLeft ?? '—'}
+          tone={trialLeft != null && trialLeft <= 7 ? 'bad' : undefined}
         />
         <StatCard
           label="Handshake"
@@ -71,6 +94,16 @@ export default function License() {
           tone={status?.handshakeOk ? 'good' : 'warn'}
         />
         <StatCard label="Connectivity" value={online ? 'Online' : 'Offline'} tone={online ? 'good' : 'warn'} />
+      </div>
+
+      <div className="card" style={{ marginBottom: '1rem' }}>
+        <h3 style={{ marginTop: 0 }}>Activation steps</h3>
+        <ol style={{ margin: '0.25rem 0 0', paddingLeft: '1.2rem' }}>
+          <li>Confirm license server URL (or use the default).</li>
+          <li>Copy your <strong>Hardware ID</strong> and send it to the seller / admin.</li>
+          <li>When approved, click <strong>Activate on server</strong> (requires network).</li>
+          <li>Optional: <em>Handshake only</em> to test connectivity without activating.</li>
+        </ol>
       </div>
 
       <div className="card form-grid" style={{ marginBottom: '1rem' }}>
@@ -85,8 +118,8 @@ export default function License() {
         </div>
         <button type="button" className="btn btn-secondary" onClick={saveUrl}>Save URL</button>
         <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-          Deploy <code>license_routes_v24.py</code> on the server so <code>/api/request-license</code> and{' '}
-          <code>/api/activate</code> are recorded.
+          Server must expose <code>/api/request-license</code> and <code>/api/activate</code>
+          (see <code>license_server.py</code> / <code>license_routes_v24.py</code>).
         </p>
       </div>
 
@@ -115,6 +148,7 @@ export default function License() {
         <button type="button" className="btn btn-outline" disabled={busy} onClick={() => run(() => licenseApi.requestLicense(), 'Request queued')}>
           Request only
         </button>
+        <Link className="btn btn-outline" to="/settings">Settings / backup</Link>
       </div>
 
       {log && (
@@ -124,6 +158,10 @@ export default function License() {
             {JSON.stringify(log, null, 2)}
           </pre>
         </div>
+      )}
+
+      {!status && (
+        <EmptyState title="Loading license status…" hint="If this hangs, check network and server URL." />
       )}
     </PageFade>
   )
