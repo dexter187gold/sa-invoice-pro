@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
 import { STORES } from '../lib/db'
@@ -11,7 +12,9 @@ import {
   ageFromSaId,
 } from '../lib/saTaxEngine'
 import { generatePayslipPdf } from '../lib/pdfPayslip'
-import { ConfirmDialog, LoadingButton, StatCard } from '../components/ui'
+import {
+  ConfirmDialog, LoadingButton, StatCard, EmptyState, PageFade, SearchInput, matchesQuery,
+} from '../components/ui'
 
 function currentPeriod() {
   const d = new Date()
@@ -27,16 +30,15 @@ export default function Payroll() {
   const [preview, setPreview] = useState(null)
   const [confirm, setConfirm] = useState(null)
   const [pdfBusy, setPdfBusy] = useState(null)
+  const [q, setQ] = useState('')
 
   const loadPayslips = async () => {
     const all = (await db.getAll(STORES.payslips)) || []
-    all.sort((a, b) => String(b.period).localeCompare(String(a.period)) || String(b.createdAt).localeCompare(String(a.createdAt)))
+    all.sort((a, b) => String(b.period).localeCompare(String(a.period)) || String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
     setPayslips(all)
   }
 
-  useEffect(() => {
-    loadPayslips()
-  }, [])
+  useEffect(() => { loadPayslips() }, [])
 
   useEffect(() => {
     const map = {}
@@ -50,6 +52,11 @@ export default function Payroll() {
   )
 
   const alreadyRunIds = useMemo(() => new Set(periodPayslips.map((p) => p.employeeId)), [periodPayslips])
+
+  const filteredEmployees = useMemo(
+    () => employees.filter((e) => matchesQuery(e, q, ['name', 'role', 'idNumber'])),
+    [employees, q]
+  )
 
   const calcForEmployee = (emp) => {
     const age =
@@ -144,21 +151,10 @@ export default function Payroll() {
 
   const exportCsv = () => {
     const rows = periodPayslips.length ? periodPayslips : payslips
-    const lines = [
-      'Period,Employee,Gross,PAYE,UIF,Net,ETI,SDL_Employer',
-    ]
+    const lines = ['Period,Employee,Gross,PAYE,UIF,Net,ETI,SDL_Employer']
     for (const p of rows) {
       lines.push(
-        [
-          p.period,
-          JSON.stringify(p.employeeName || ''),
-          p.gross,
-          p.paye,
-          p.uif,
-          p.net,
-          p.eti,
-          p.sdl,
-        ].join(',')
+        [p.period, JSON.stringify(p.employeeName || ''), p.gross, p.paye, p.uif, p.net, p.eti, p.sdl].join(',')
       )
     }
     const blob = new Blob([lines.join('\n')], { type: 'text/csv' })
@@ -188,18 +184,17 @@ export default function Payroll() {
   }
 
   return (
-    <div>
+    <PageFade>
       <div className="page-header">
         <div>
           <h1>Payroll</h1>
           <p className="subtitle">
-            SA statutory estimates (PAYE · UIF · SDL · ETI skeleton) · tax year 2026/27 · not e@syFile
+            SA statutory estimates (PAYE · UIF · SDL · ETI) · tax year 2026/27 · not e@syFile
           </p>
         </div>
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
-          <button type="button" className="btn btn-secondary" onClick={exportCsv}>
-            Export CSV
-          </button>
+          <Link className="btn btn-outline" to="/employees">Employees</Link>
+          <button type="button" className="btn btn-secondary" onClick={exportCsv}>Export CSV</button>
           <LoadingButton loading={busy} disabled={!employees.length} onClick={runPayroll}>
             Run payroll for period
           </LoadingButton>
@@ -210,12 +205,7 @@ export default function Payroll() {
         <div className="form-grid cols-3" style={{ alignItems: 'end' }}>
           <div>
             <label className="label">Pay period (YYYY-MM)</label>
-            <input
-              className="input"
-              type="month"
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-            />
+            <input className="input" type="month" value={period} onChange={(e) => setPeriod(e.target.value)} />
           </div>
           <div>
             <label className="label">Employees selected</label>
@@ -224,18 +214,13 @@ export default function Payroll() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '.4rem' }}>
-            <button type="button" className="btn btn-outline btn-sm" onClick={() => toggleAll(true)}>
-              Select all
-            </button>
-            <button type="button" className="btn btn-outline btn-sm" onClick={() => toggleAll(false)}>
-              Clear
-            </button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => toggleAll(true)}>Select all</button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => toggleAll(false)}>Clear</button>
           </div>
         </div>
         <p className="muted" style={{ margin: '.75rem 0 0', fontSize: 13 }}>
-          Calculations use cents internally, 2026/27 SARS brackets + primary rebate, UIF 1% capped at
-          R17 712/mo, SDL 1% employer. Medical credits, directives, and full ETI rules are not applied.
-          Always verify with a tax practitioner before SARS submission.
+          2026/27 SARS brackets + primary rebate, UIF 1% capped, SDL 1% employer. Medical credits and full ETI
+          rules are simplified. Verify with a tax practitioner before SARS submission.
         </p>
       </div>
 
@@ -245,13 +230,25 @@ export default function Payroll() {
           <StatCard label="PAYE est." value={formatMoney(totals.paye)} tone="warn" />
           <StatCard label="UIF (emp)" value={formatMoney(totals.uif)} />
           <StatCard label="Net pay" value={formatMoney(totals.net)} tone="good" />
+          <StatCard label="SDL (employer)" value={formatMoney(totals.sdl)} />
+          <StatCard label="ETI credit" value={formatMoney(totals.eti)} />
         </div>
       )}
 
-      <h3 style={{ margin: '0 0 .75rem' }}>Employees</h3>
-      {!employees.length && <div className="card empty">No employees — add them under Employees first.</div>}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+        <h3 style={{ margin: 0 }}>Employees</h3>
+        <SearchInput value={q} onChange={setQ} placeholder="Filter employees…" />
+      </div>
 
-      {employees.map((emp) => {
+      {!employees.length && (
+        <EmptyState
+          title="No employees"
+          hint="Add staff under Employees before running payroll."
+          action={<Link className="btn btn-primary" to="/employees">Add employees</Link>}
+        />
+      )}
+
+      {filteredEmployees.map((emp) => {
         const calc = calcForEmployee(emp)
         const ran = alreadyRunIds.has(emp.id)
         const idOk = emp.idNumber ? isValidSaId(emp.idNumber) : null
@@ -282,12 +279,7 @@ export default function Payroll() {
                   PAYE {formatMoney(calc.payeR)} · UIF {formatMoney(calc.uifR)} · Net{' '}
                   <strong>{formatMoney(calc.netR)}</strong>
                 </div>
-                <button
-                  type="button"
-                  className="btn btn-outline btn-sm"
-                  style={{ marginTop: 6 }}
-                  onClick={() => setPreview({ emp, calc })}
-                >
+                <button type="button" className="btn btn-outline btn-sm" style={{ marginTop: 6 }} onClick={() => setPreview({ emp, calc })}>
                   Preview
                 </button>
               </div>
@@ -307,37 +299,20 @@ export default function Payroll() {
             </div>
           </div>
           <div className="list-card-actions">
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              disabled={pdfBusy === p.id}
-              onClick={() => downloadPdf(p)}
-            >
+            <button type="button" className="btn btn-secondary btn-sm" disabled={pdfBusy === p.id} onClick={() => downloadPdf(p)}>
               {pdfBusy === p.id ? 'PDF…' : 'PDF'}
             </button>
-            <button type="button" className="btn btn-outline btn-sm" onClick={() => delPayslip(p.id)}>
-              Del
-            </button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => delPayslip(p.id)}>Delete</button>
           </div>
         </div>
       ))}
-      {!periodPayslips.length && <div className="card empty">No payslips for this period yet.</div>}
+      {!periodPayslips.length && <EmptyState title="No payslips for this period" hint="Select employees and run payroll above." />}
 
       {preview && (
-        <div
-          className="modal-backdrop"
-          style={{ zIndex: 80 }}
-          onClick={() => setPreview(null)}
-        >
-          <div
-            className="modal-card"
-            style={{ width: 'min(420px, 94vw)', maxHeight: '90vh', overflow: 'auto' }}
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="modal-backdrop" style={{ zIndex: 80 }} onClick={() => setPreview(null)}>
+          <div className="modal-card" style={{ width: 'min(420px, 94vw)', maxHeight: '90vh', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ marginTop: 0 }}>Payslip preview</h3>
-            <p className="muted" style={{ marginTop: 0 }}>
-              {preview.emp.name} · {period}
-            </p>
+            <p className="muted" style={{ marginTop: 0 }}>{preview.emp.name} · {period}</p>
             <table className="table">
               <tbody>
                 <tr><td>Basic salary (3601)</td><td style={{ textAlign: 'right' }}>{formatMoney(fromCents(preview.calc.sarsSourceCode3601))}</td></tr>
@@ -347,16 +322,14 @@ export default function Payroll() {
                 <tr><td>UIF employee</td><td style={{ textAlign: 'right' }}>{formatMoney(preview.calc.uifR)}</td></tr>
                 <tr><td>UIF employer</td><td style={{ textAlign: 'right' }}>{formatMoney(fromCents(preview.calc.uifEmployerCents))}</td></tr>
                 <tr><td>SDL employer (info)</td><td style={{ textAlign: 'right' }}>{formatMoney(preview.calc.sdlR)}</td></tr>
-                <tr><td>ETI credit (4118, skeleton)</td><td style={{ textAlign: 'right' }}>{formatMoney(preview.calc.etiR)}</td></tr>
+                <tr><td>ETI credit (4118)</td><td style={{ textAlign: 'right' }}>{formatMoney(preview.calc.etiR)}</td></tr>
                 <tr>
                   <td><strong>Net pay</strong></td>
                   <td style={{ textAlign: 'right' }}><strong>{formatMoney(preview.calc.netR)}</strong></td>
                 </tr>
               </tbody>
             </table>
-            <button type="button" className="btn btn-primary" style={{ width: '100%', marginTop: 8 }} onClick={() => setPreview(null)}>
-              Close
-            </button>
+            <button type="button" className="btn btn-primary" style={{ width: '100%', marginTop: 8 }} onClick={() => setPreview(null)}>Close</button>
           </div>
         </div>
       )}
@@ -370,6 +343,6 @@ export default function Payroll() {
         onCancel={() => setConfirm(null)}
         onConfirm={() => confirm?.action?.()}
       />
-    </div>
+    </PageFade>
   )
 }
