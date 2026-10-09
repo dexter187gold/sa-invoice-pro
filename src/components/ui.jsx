@@ -30,6 +30,7 @@ export function SearchInput({ value, onChange, placeholder = 'Search…', id, au
         type="search"
         value={value}
         placeholder={placeholder}
+        aria-label={placeholder}
         onChange={(e) => onChange(e.target.value)}
         autoComplete="off"
         autoFocus={autoFocus}
