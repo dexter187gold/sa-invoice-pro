@@ -1,17 +1,17 @@
-
 import React, { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
 import { STORES } from '../lib/db'
 import { formatMoney } from '../lib/money'
-import { SearchInput, EmptyState, matchesQuery } from '../components/ui'
+import { SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, CopyButton } from '../components/ui'
 
 export default function Clients() {
   const { clients, invoices, refresh, toast } = useApp()
   const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', vatNumber: '', address: '' })
   const [show, setShow] = useState(false)
   const [q, setQ] = useState('')
+  const [confirm, setConfirm] = useState(null)
 
   const filtered = useMemo(
     () => clients.filter((c) => matchesQuery(c, q, ['name', 'email', 'phone', 'company', 'vatNumber', 'address'])),
@@ -28,6 +28,8 @@ export default function Clients() {
     return map
   }, [invoices])
 
+  const totalAr = useMemo(() => Object.values(arByClient).reduce((s, v) => s + v, 0), [arByClient])
+
   const save = async (e) => {
     e.preventDefault()
     if (!form.name.trim()) return toast('Name required', 'error')
@@ -41,22 +43,32 @@ export default function Clients() {
     toast('Client saved', 'success')
   }
 
-  const del = async (id) => {
+  const del = (id) => {
     const linked = invoices.some((i) => String(i.clientId) === String(id))
-    if (linked && !confirm('This client has invoices. Delete client record anyway?')) return
-    if (!linked && !confirm('Delete client?')) return
-    await db.remove(STORES.clients, id)
-    await refresh()
-    toast('Deleted', 'success')
+    setConfirm({
+      title: 'Delete client?',
+      message: linked
+        ? 'This client has invoices. The client record will be removed; invoices remain.'
+        : 'This cannot be undone.',
+      danger: true,
+      confirmLabel: 'Delete',
+      action: async () => {
+        await db.remove(STORES.clients, id)
+        await refresh()
+        toast('Deleted', 'success')
+        setConfirm(null)
+      },
+    })
   }
 
   return (
-    <div>
+    <PageFade>
       <div className="page-header">
         <div>
           <h1>Clients</h1>
           <p className="subtitle">
             {filtered.length} shown · {clients.length} total
+            {totalAr > 0 ? ` · AR ${formatMoney(totalAr)}` : ''}
           </p>
         </div>
         <button type="button" className="btn btn-primary" onClick={() => setShow((s) => !s)}>
@@ -112,24 +124,31 @@ export default function Clients() {
       ) : (
         filtered
           .slice()
-          .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
+          .sort((a, b) => {
+            const arA = arByClient[String(a.id)] || 0
+            const arB = arByClient[String(b.id)] || 0
+            if (arB !== arA) return arB - arA
+            return String(a.name || '').localeCompare(String(b.name || ''))
+          })
           .map((c) => {
             const ar = arByClient[String(c.id)] || 0
             return (
               <div key={c.id} className="list-card" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-                <div>
+                <div style={{ minWidth: 0, flex: 1 }}>
                   <strong>{c.name}</strong>
                   <div className="muted" style={{ fontSize: 13 }}>
                     {[c.company, c.email, c.phone, c.vatNumber && `VAT ${c.vatNumber}`].filter(Boolean).join(' · ')}
                   </div>
+                  {c.address ? <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{c.address}</div> : null}
                   {ar > 0 && (
                     <div style={{ fontSize: 13, marginTop: 4 }}>
-                      Outstanding <strong>{formatMoney(ar)}</strong>
+                      Outstanding <strong style={{ color: 'var(--warn)' }}>{formatMoney(ar)}</strong>
                     </div>
                   )}
                 </div>
                 <div className="list-card-actions">
-                  <Link className="btn btn-secondary btn-sm" to={`/invoices/new`}>
+                  {c.email ? <CopyButton text={c.email} label="Email" /> : null}
+                  <Link className="btn btn-secondary btn-sm" to="/invoices/new">
                     Invoice
                   </Link>
                   <button type="button" className="btn btn-outline btn-sm" onClick={() => del(c.id)}>
@@ -140,6 +159,16 @@ export default function Clients() {
             )
           })
       )}
-    </div>
+
+      <ConfirmDialog
+        open={!!confirm}
+        title={confirm?.title}
+        message={confirm?.message}
+        confirmLabel={confirm?.confirmLabel}
+        danger={confirm?.danger}
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => confirm?.action?.()}
+      />
+    </PageFade>
   )
 }

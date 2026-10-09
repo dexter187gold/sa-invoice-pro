@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
 import { STORES } from '../lib/db'
@@ -12,6 +11,9 @@ import {
   demoHourlyLines,
   demoFlatLines,
 } from '../lib/pdfTemplate'
+import {
+  SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, StatusBadge, formatDateZA,
+} from '../components/ui'
 
 export default function Quotes() {
   const { quotes, clients, invoices, company, vatRate, vatEnabled, refresh, toast } = useApp()
@@ -23,6 +25,19 @@ export default function Quotes() {
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
   const [lines, setLines] = useState([])
+  const [q, setQ] = useState('')
+  const [confirm, setConfirm] = useState(null)
+
+  const filtered = useMemo(() => {
+    return quotes.filter((qt) => {
+      const c = clients.find((x) => String(x.id) === String(qt.clientId))
+      return matchesQuery(
+        { ...qt, clientName: c?.name || '' },
+        q,
+        ['number', 'status', 'clientName', 'templateId', 'devices', 'serviceType']
+      )
+    })
+  }, [quotes, clients, q])
 
   const loadDemoRates = () => {
     if (templateId === 'hourly') setLines(demoHourlyLines())
@@ -86,11 +101,11 @@ export default function Quotes() {
     toast('Quote saved', 'success')
   }
 
-  const pdf = async (q, open) => {
+  const pdf = async (qt, open) => {
     try {
-      const client = clients.find((c) => String(c.id) === String(q.clientId))
-      const payload = { ...q, isQuote: true }
-      const opts = { company, client, isQuote: true, templateId: q.templateId || 'standard', accountType: q.accountType }
+      const client = clients.find((c) => String(c.id) === String(qt.clientId))
+      const payload = { ...qt, isQuote: true }
+      const opts = { company, client, isQuote: true, templateId: qt.templateId || 'standard', accountType: qt.accountType }
       if (open) await openProfessionalPdf(payload, opts)
       else await downloadProfessionalPdf(payload, opts)
       toast(open ? 'Preview opened' : 'PDF downloaded', 'success')
@@ -99,47 +114,59 @@ export default function Quotes() {
     }
   }
 
-  const convert = async (q) => {
+  const convert = async (qt) => {
     const inv = {
-      clientId: q.clientId,
+      clientId: qt.clientId,
       number: `INV-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(4, '0')}`,
       date: new Date().toISOString().slice(0, 10),
       dueDate: new Date().toISOString().slice(0, 10),
       status: 'unpaid',
-      lines: q.lines || [],
-      exclusive: q.exclusive,
-      vatAmount: q.vatAmount,
-      total: q.total,
+      lines: qt.lines || [],
+      exclusive: qt.exclusive,
+      vatAmount: qt.vatAmount,
+      total: qt.total,
       amountPaid: 0,
-      amountDue: q.total,
-      fromQuoteId: q.id,
-      templateId: q.templateId === 'adhoc' || q.templateId === 'hourly' || q.templateId === 'flatrate' ? 'standard' : q.templateId,
-      devices: q.devices,
-      serviceType: q.serviceType,
-      accountType: q.accountType,
-      notes: q.notes || '',
+      amountDue: qt.total,
+      fromQuoteId: qt.id,
+      templateId: qt.templateId === 'adhoc' || qt.templateId === 'hourly' || qt.templateId === 'flatrate' ? 'standard' : qt.templateId,
+      devices: qt.devices,
+      serviceType: qt.serviceType,
+      accountType: qt.accountType,
+      notes: qt.notes || '',
     }
     await db.add(STORES.invoices, inv)
-    await db.put(STORES.quotes, { ...q, status: 'converted' })
+    await db.put(STORES.quotes, { ...qt, status: 'converted' })
     await refresh()
     toast('Converted to invoice', 'success')
   }
 
-  const del = async (id) => {
-    if (!confirm('Delete quote?')) return
-    await db.remove(STORES.quotes, id)
-    await refresh()
+  const del = (id) => {
+    setConfirm({
+      title: 'Delete quote?',
+      message: 'This cannot be undone.',
+      danger: true,
+      confirmLabel: 'Delete',
+      action: async () => {
+        await db.remove(STORES.quotes, id)
+        await refresh()
+        toast('Deleted', 'success')
+        setConfirm(null)
+      },
+    })
   }
 
   return (
-    <div>
+    <PageFade>
       <div className="page-header">
         <div>
           <h1>Quotes</h1>
-          <p className="subtitle">Professional COD templates · hourly · flat-rate · ad-hoc rate card</p>
+          <p className="subtitle">
+            Professional COD templates · hourly · flat-rate · ad-hoc · {quotes.length} total
+          </p>
         </div>
         <button type="button" className="btn btn-outline" onClick={loadDemoRates}>Load demo rate card</button>
       </div>
+
       <form className="card form-grid" onSubmit={save} style={{ marginBottom: '1rem' }}>
         <div className="form-grid cols-2">
           <div>
@@ -193,29 +220,54 @@ export default function Quotes() {
         )}
         <button className="btn btn-primary" type="submit">Save quote</button>
       </form>
-      {quotes.map((q) => {
-        const c = clients.find((x) => String(x.id) === String(q.clientId))
-        return (
-          <div key={q.id} className="list-card" style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-            <div>
-              <strong>{q.number}</strong> · {c?.name || '—'}
-              <div className="muted" style={{ fontSize: 13 }}>
-                {formatMoney(q.total)} · {q.status} · {q.templateId || 'standard'}
-                {q.devices ? ` · ${q.devices}` : ''}
+
+      <div className="toolbar sticky-tools">
+        <SearchInput value={q} onChange={setQ} placeholder="Search number, client, status…" />
+      </div>
+
+      {!filtered.length ? (
+        <EmptyState
+          title={quotes.length ? 'No matches' : 'No quotes yet'}
+          hint={quotes.length ? 'Try another search.' : 'Load a demo rate card or enter a single amount.'}
+        />
+      ) : (
+        filtered
+          .slice()
+          .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
+          .map((qt) => {
+            const c = clients.find((x) => String(x.id) === String(qt.clientId))
+            return (
+              <div key={qt.id} className="list-card" style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                <div>
+                  <strong>{qt.number}</strong> · {c?.name || '—'}
+                  <div className="muted" style={{ fontSize: 13 }}>
+                    {formatMoney(qt.total)} · <StatusBadge status={qt.status || 'draft'} /> · {qt.templateId || 'standard'}
+                    {qt.date ? ` · ${formatDateZA(qt.date)}` : ''}
+                    {qt.devices ? ` · ${qt.devices}` : ''}
+                  </div>
+                </div>
+                <div className="list-card-actions">
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => pdf(qt, true)}>Preview</button>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => pdf(qt, false)}>PDF</button>
+                  {qt.status !== 'converted' && (
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => convert(qt)}>To invoice</button>
+                  )}
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => del(qt.id)}>Delete</button>
+                </div>
               </div>
-            </div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => pdf(q, true)}>Preview</button>
-              <button type="button" className="btn btn-outline btn-sm" onClick={() => pdf(q, false)}>PDF</button>
-              {q.status !== 'converted' && (
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => convert(q)}>To invoice</button>
-              )}
-              <button type="button" className="btn btn-outline btn-sm" onClick={() => del(q.id)}>Del</button>
-            </div>
-          </div>
-        )
-      })}
-      {!quotes.length && <div className="card empty">No quotes yet. Load a demo rate card or enter a single amount.</div>}
-    </div>
+            )
+          })
+      )}
+
+      <ConfirmDialog
+        open={!!confirm}
+        title={confirm?.title}
+        message={confirm?.message}
+        confirmLabel={confirm?.confirmLabel}
+        danger={confirm?.danger}
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => confirm?.action?.()}
+      />
+    </PageFade>
   )
 }

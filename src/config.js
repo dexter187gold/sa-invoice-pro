@@ -1,4 +1,4 @@
-export const APP_VERSION = '3.0.0'
+export const APP_VERSION = '3.1.0'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
