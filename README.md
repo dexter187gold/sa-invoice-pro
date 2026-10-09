@@ -1,55 +1,64 @@
-# SA Invoice Pro 3.0.0
+# SA Invoice Pro 3.4
 
-Professional offline-first invoicing for South Africa — React 19 + Vite 6.
+**Professional offline-first invoicing, job cards, payroll & accounting for South African businesses.**
 
-## What’s new in 3.0
+Built for trades, IT support, consultants and SMEs who need clean tax invoices, job cards that convert to invoices, PAYE estimates, and PayFast — without a monthly SaaS lock-in.
 
-- **Design system overhaul** — refined colour tokens, typography, spacing, shadows, radius scale
-- Tighter sidebar, segmented controls, density modes, improved dark theme
-- Polished cards, tables, badges, buttons, modals, command palette
-- Stronger focus states, reduced-motion support, print styles
-- Same full feature set as 2.x (payroll, accounting, tickets, PayFast, license, etc.)
+## Why teams buy it
 
-## Features
+- **Get paid faster** — Tax invoices with VAT, professional PDF, WhatsApp/email share, aging & collection rate
+- **Job card → invoice** — Log time on site or remote, stop the timer, convert with client, site, tech, notes and lines pre-filled
+- **Quotes that close** — Convert accepted quotes to invoices in one click
+- **SA payroll estimates** — 2026/27 PAYE brackets, UIF, SDL, payslip PDF + CSV (not a substitute for e@syFile)
+- **Accounting lite** — Chart of accounts, journals, trial balance / P&L, bank recon helpers
+- **PayFast** — Sandbox + live, EFT tracking
+- **Documents** — SLA, POPIA notice, NDA lite, engagement letters
+- **License-ready** — HWID handshake vendor server included
+- **Offline-first** — IndexedDB local data; works when the network does not
 
-- Auth (register / login), company setup
-- Home + Dashboard (aged debtors, KPIs, collection rate)
-- Clients, Products & services, Invoices (PDF, payments, WhatsApp/email)
-- Quotes → convert to invoice
-- Tickets (classic + Helix embed)
-- Expenses, Payments (EFT + PayFast), Employees (UIF, SA ID Luhn)
-- **Payroll** — 2026/27 PAYE brackets, UIF, SDL, payslips PDF + CSV
-- Accounting (CoA, bank recon, journals, TB/P&L)
-- Reports, document generator (SLA, POPIA, letters…)
-- License (HWID, handshake), Settings, backup/restore
-- Online/offline, dark mode, density (compact / comfortable)
-- **Command palette** (Ctrl+K), Ctrl+N new invoice, Ctrl+D theme
-- `public/legacy/` — full classic app fallback
+## What’s new in 3.4
 
-## Payroll note
+- Invoice **CSV export** (Excel-friendly UTF-8 BOM)
+- **Bulk mark paid** + bulk delete on invoice list
+- **Aging column** (days overdue / due today / due in N days)
+- First-run **onboarding** path on Home
+- **Error boundary** so one page crash does not take down the app
+- Hardened ZAR money math (cent rounding)
+- Job cards already convert with full template fill (v3.3.2)
+- Design system from 3.0 (tokens, dark mode, density, command palette)
 
-Client-side statutory **estimates** only (tax year 2026/27). Not a substitute for SARS e@syFile or a registered tax practitioner.
+## Stack
 
-## Deploy
+React 19 · Vite 6 · jsPDF · IndexedDB · optional Node license server
+
+## Quick start
 
 ```bash
 npm install
+npm run dev
+```
+
+Build for production:
+
+```bash
 npm run build
 ```
 
-Cloudflare Pages: build `npm run build`, output `dist`.
-
-Render: deploy `license_server.py` as before.
-
-## Local
-
-```bash
-npm install && npm run dev
-```
+Deploy `dist/` to Cloudflare Pages, Netlify, or any static host.  
+License server: see `DEPLOY_LICENSE_SERVER.md` / `license_server.py`.
 
 ## Keyboard
 
-- `Ctrl/Cmd+K` — command palette
-- `Ctrl/Cmd+N` — new invoice
-- `Ctrl/Cmd+D` — toggle theme
-- `Ctrl/Cmd+/` — assistant
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+K` | Command palette |
+| `Ctrl+N` | New invoice |
+| `Ctrl+D` | Toggle theme |
+
+## Compliance note
+
+Payroll figures are **client-side statutory estimates** for planning only. Use SARS e@syFile / a registered tax practitioner for filings. POPIA document templates are starting points — review with counsel for your practice.
+
+## License
+
+Commercial product. See `LICENSE.txt` in `public/legacy/` and your purchase terms.
