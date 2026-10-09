@@ -24,6 +24,7 @@ import Documents from './pages/Documents'
 import License from './pages/License'
 import Payments from './pages/Payments'
 import { APP_VERSION } from './config'
+import { ErrorBoundary } from './components/ui'
 
 function Guard({ children, needCompany }) {
   const { ready, user, company } = useApp()
@@ -46,6 +47,14 @@ function Guard({ children, needCompany }) {
 }
 
 export default function App() {
+  return (
+    <ErrorBoundary>
+      <AppInner />
+    </ErrorBoundary>
+  )
+}
+
+function AppInner() {
   return (
     <>
       <ToastHost />
