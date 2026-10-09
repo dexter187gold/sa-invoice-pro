@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import * as db from '../lib/db'
 import { STORES } from '../lib/db'
 import { getSession, setSession } from '../lib/storage'
+import { hashPassword, looksHashed } from '../lib/hash'
 import { VAT_RATE_DEFAULT } from '../config'
 
 const AppCtx = createContext(null)
@@ -111,8 +112,22 @@ export function AppProvider({ children }) {
 
   const login = async (username, password) => {
     const users = (await db.getAll(STORES.users)) || []
-    const u = users.find((x) => (x.username === username || x.email === username) && x.password === password)
+    const u = users.find((x) => x.username === username || x.email === username)
     if (!u) throw new Error('Invalid username or password')
+
+    const hashedInput = await hashPassword(password)
+    let ok = false
+    if (looksHashed(u.password)) {
+      ok = u.password === hashedInput
+    } else {
+      // Legacy plaintext: accept once, then re-hash and store
+      ok = u.password === password
+      if (ok) {
+        await db.put(STORES.users, { ...u, password: hashedInput })
+      }
+    }
+    if (!ok) throw new Error('Invalid username or password')
+
     const session = { id: u.id, username: u.username, email: u.email, name: u.name }
     setSession(session)
     setUser(session)
@@ -124,7 +139,13 @@ export function AppProvider({ children }) {
     const users = (await db.getAll(STORES.users)) || []
     if (users.some((u) => u.username === username || u.email === email)) throw new Error('User already exists')
     if (!password || password.length < 6) throw new Error('Password must be at least 6 characters')
-    const u = await db.add(STORES.users, { username, email, password, name: name || username })
+    const hashed = await hashPassword(password)
+    const u = await db.add(STORES.users, {
+      username,
+      email,
+      password: hashed,
+      name: name || username,
+    })
     const session = { id: u.id, username, email, name: name || username }
     setSession(session)
     setUser(session)

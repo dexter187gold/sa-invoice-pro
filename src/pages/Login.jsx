@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { APP_VERSION } from '../config'
 import AppLogo from '../components/AppLogo'
+import * as db from '../lib/db'
 
 const SPLASH_MS = 5000
 
 export default function Login() {
-  const { login, register, toast, user, company } = useApp()
+  const { login, register, toast, user, company, refresh } = useApp()
   const nav = useNavigate()
   const [mode, setMode] = useState('in')
   const [form, setForm] = useState({ username: '', email: '', password: '', name: '' })
@@ -42,13 +43,16 @@ export default function Login() {
       if (mode === 'in') {
         await login(form.username || form.email, form.password)
         toast('Welcome back', 'success')
+        await refresh?.()
+        const co = await db.getCompany()
+        nav(co?.name ? '/' : '/setup', { replace: true })
       } else {
         if (!form.username || !form.email || !form.password) throw new Error('Fill username, email and password')
         if (form.password.length < 6) throw new Error('Password must be at least 6 characters')
         await register(form)
         toast('Account created', 'success')
+        nav('/setup', { replace: true })
       }
-      nav('/setup', { replace: true })
     } catch (err) {
       toast(err.message || String(err), 'error')
     } finally {
