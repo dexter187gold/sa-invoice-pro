@@ -572,3 +572,84 @@ html.dark .row-overdue td { background: rgba(239, 68, 68, 0.12); }
     content: none !important;
   }
 }
+
+
+/* === 3.10 a11y + focus polish === */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--green, #10b981);
+  outline-offset: 2px;
+}
+.btn:focus-visible,
+.nav-link:focus-visible,
+.chip:focus-visible,
+.seg-btn:focus-visible,
+.input:focus-visible,
+.select:focus-visible,
+.textarea:focus-visible {
+  outline: 2px solid var(--green, #10b981);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+}
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 9999;
+  padding: 0.6rem 1rem;
+  background: var(--green, #007A4D);
+  color: #fff;
+  font-weight: 600;
+  border-radius: 0 0 8px 0;
+}
+.skip-link:focus {
+  left: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-fade,
+  .login-splash,
+  .skeleton-line,
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+.toast-host {
+  position: fixed;
+  z-index: 10000;
+  bottom: 1rem;
+  right: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: min(360px, calc(100vw - 2rem));
+  pointer-events: none;
+}
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  background: var(--card, #fff);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+}
+.toast.error, .toast.danger {
+  border-color: var(--danger, #ef4444);
+}
+.toast.success {
+  border-color: var(--green, #10b981);
+}
+.toast-msg { flex: 1; font-size: 0.9rem; }
+.toast-dismiss {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--muted);
+  padding: 0 0.2rem;
+}
