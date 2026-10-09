@@ -4,7 +4,7 @@ import * as db from '../lib/db'
 import { STORES } from '../lib/db'
 import { formatMoney } from '../lib/money'
 import {
-  SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, formatDateZA, StatCard,
+  SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, formatDateZA, StatCard, downloadCsv,
 } from '../components/ui'
 
 const CATEGORIES = ['General', 'Travel', 'Office', 'Software', 'Marketing', 'Utilities', 'Salaries', 'Other']
@@ -45,6 +45,14 @@ export default function Expenses() {
     toast('Expense saved', 'success')
   }
 
+  const exportCsv = () => {
+    downloadCsv(`expenses-${new Date().toISOString().slice(0, 10)}.csv`,
+      ['Date', 'Description', 'Category', 'Vendor', 'Account', 'Amount'],
+      filtered.map((e) => [e.date || '', e.description || '', e.category || '', e.vendor || '', e.accountCode || '', Number(e.amount) || 0])
+    )
+    toast('CSV exported', 'success')
+  }
+
   const del = (id) => {
     setConfirm({
       title: 'Delete expense?',
@@ -70,6 +78,7 @@ export default function Expenses() {
             {q ? ` · filtered ${formatMoney(filteredTotal)}` : ''}
           </p>
         </div>
+        <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={!filtered.length}>Export CSV</button>
       </div>
 
       <div className="grid-stats" style={{ marginBottom: '1rem' }}>
