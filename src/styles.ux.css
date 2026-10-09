@@ -502,3 +502,73 @@ html.dark .row-overdue td { background: rgba(239, 68, 68, 0.12); }
 @media (prefers-reduced-motion: reduce) {
   .skeleton-line { animation: none; }
 }
+
+
+/* === 3.8 mobile + print commercial polish === */
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+  .page-header .btn,
+  .page-header-actions {
+    width: 100%;
+  }
+  .grid-stats {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .table {
+    font-size: 0.82rem;
+  }
+  .table th, .table td {
+    padding: 0.4rem 0.45rem;
+  }
+  .sticky-tools.toolbar {
+    position: static;
+  }
+  .list-card-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .form-grid.cols-2,
+  .form-grid.cols-3 {
+    grid-template-columns: 1fr !important;
+  }
+  .shell-main {
+    padding: 0.75rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .grid-stats {
+    grid-template-columns: 1fr !important;
+  }
+  .chip {
+    font-size: 0.72rem;
+  }
+}
+
+@media print {
+  .shell-sidebar,
+  .sticky-tools,
+  .bulk-bar,
+  .page-header .btn,
+  .page-header-actions,
+  .toast-host,
+  .command-palette,
+  nav,
+  .btn {
+    display: none !important;
+  }
+  .shell-main, .page-fade, .card {
+    box-shadow: none !important;
+    border: none !important;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  a[href]::after {
+    content: none !important;
+  }
+}
