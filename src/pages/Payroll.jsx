@@ -13,7 +13,7 @@ import {
 } from '../lib/saTaxEngine'
 import { generatePayslipPdf } from '../lib/pdfPayslip'
 import {
-  ConfirmDialog, LoadingButton, StatCard, EmptyState, PageFade, SearchInput, matchesQuery,
+  ConfirmDialog, LoadingButton, StatCard, EmptyState, PageFade, SearchInput, matchesQuery, downloadCsv,
 } from '../components/ui'
 
 function currentPeriod() {
@@ -151,17 +151,11 @@ export default function Payroll() {
 
   const exportCsv = () => {
     const rows = periodPayslips.length ? periodPayslips : payslips
-    const lines = ['Period,Employee,Gross,PAYE,UIF,Net,ETI,SDL_Employer']
-    for (const p of rows) {
-      lines.push(
-        [p.period, JSON.stringify(p.employeeName || ''), p.gross, p.paye, p.uif, p.net, p.eti, p.sdl].join(',')
-      )
-    }
-    const blob = new Blob([lines.join('\n')], { type: 'text/csv' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = `payroll-${period || 'all'}.csv`
-    a.click()
+    downloadCsv(`payroll-${period || 'all'}.csv`,
+      ['Period', 'Employee', 'Gross', 'PAYE', 'UIF', 'Net', 'ETI', 'SDL employer'],
+      rows.map((p) => [p.period, p.employeeName || '', p.gross, p.paye, p.uif, p.net, p.eti, p.sdl])
+    )
+    toast('CSV exported', 'success')
   }
 
   const totals = periodPayslips.reduce(
@@ -199,6 +193,14 @@ export default function Payroll() {
             Run payroll for period
           </LoadingButton>
         </div>
+      </div>
+
+      <div className="card statutory-disclaimer" style={{ marginBottom: '1rem', borderLeft: '4px solid var(--warn, #f59e0b)' }}>
+        <strong>Client-side estimates only</strong>
+        <p className="muted" style={{ margin: '0.35rem 0 0' }}>
+          PAYE, UIF, SDL and ETI figures use 2026/27 tables for planning and payslip PDFs.
+          They are <strong>not</strong> a substitute for SARS e@syFile, EMP201/EMP501, or a registered tax practitioner.
+        </p>
       </div>
 
       <div className="card" style={{ marginBottom: '1rem' }}>
