@@ -4,7 +4,7 @@ import * as db from '../lib/db'
 import { STORES } from '../lib/db'
 import { formatMoney } from '../lib/money'
 import {
-  SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, Segmented,
+  SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, Segmented, downloadCsv,
 } from '../components/ui'
 
 export default function Products() {
@@ -53,6 +53,19 @@ export default function Products() {
     })
   }
 
+
+  const exportCsv = () => {
+    const headers = tab === 'products'
+      ? ['Name', 'SKU', 'Price', 'Stock', 'Description']
+      : ['Name', 'SKU', 'Price', 'Description']
+    const rows = filtered.map((p) => {
+      if (tab === 'products') return [p.name || '', p.sku || '', Number(p.price) || 0, p.stock ?? '', p.description || '']
+      return [p.name || '', p.sku || '', Number(p.price) || 0, p.description || '']
+    })
+    downloadCsv(`${tab}-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows)
+    toast('CSV exported', 'success')
+  }
+
   const lowStock = tab === 'products' ? filtered.filter((p) => p.stock != null && Number(p.stock) <= 5) : []
 
   return (
@@ -65,6 +78,7 @@ export default function Products() {
             {lowStock.length ? ` · ${lowStock.length} low stock` : ''}
           </p>
         </div>
+        <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={!filtered.length}>Export CSV</button>
       </div>
 
       <div className="toolbar sticky-tools">
