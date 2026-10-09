@@ -1,3 +1,13 @@
+## 4.0.0 — Commercial release
+
+Final sales pack on the 3.4–3.12 train:
+
+- Unified version **4.0.0** (package, config, version.json, public runtime)
+- README rewritten as buyer-facing product sheet
+- Job card → invoice, quote convert, CSV packs, payroll disclaimer
+- Mobile / print / a11y, license UX, backup reliability
+- Ready to demo, license, and sell
+
 ## 3.12.0 — Version alignment
 
 - `version.json` and `public/config.js` synced to 3.12.0
