@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
 import { STORES } from '../lib/db'
@@ -12,7 +13,8 @@ import {
   demoFlatLines,
 } from '../lib/pdfTemplate'
 import {
-  SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, StatusBadge, formatDateZA,
+  SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, StatusBadge,
+  formatDateZA, FilterChips, downloadCsv, daysOverdue,
 } from '../components/ui'
 
 export default function Quotes() {
@@ -26,10 +28,21 @@ export default function Quotes() {
   const [amount, setAmount] = useState('')
   const [lines, setLines] = useState([])
   const [q, setQ] = useState('')
+  const [status, setStatus] = useState('all')
   const [confirm, setConfirm] = useState(null)
+
+  const counts = useMemo(() => {
+    const c = { all: quotes.length, draft: 0, converted: 0, accepted: 0, expired: 0 }
+    for (const qt of quotes) {
+      const s = String(qt.status || 'draft').toLowerCase()
+      if (c[s] != null) c[s]++
+    }
+    return c
+  }, [quotes])
 
   const filtered = useMemo(() => {
     return quotes.filter((qt) => {
+      if (status !== 'all' && String(qt.status || 'draft').toLowerCase() !== status) return false
       const c = clients.find((x) => String(x.id) === String(qt.clientId))
       return matchesQuery(
         { ...qt, clientName: c?.name || '' },
@@ -37,7 +50,7 @@ export default function Quotes() {
         ['number', 'status', 'clientName', 'templateId', 'devices', 'serviceType']
       )
     })
-  }, [quotes, clients, q])
+  }, [quotes, clients, q, status])
 
   const loadDemoRates = () => {
     if (templateId === 'hourly') setLines(demoHourlyLines())
@@ -94,6 +107,7 @@ export default function Quotes() {
       exampleTotal,
       isQuote: true,
       includeTerms: true,
+      notes: [serviceType, devices].filter(Boolean).join(' · '),
     })
     setDescription('')
     setAmount('')
@@ -115,29 +129,43 @@ export default function Quotes() {
   }
 
   const convert = async (qt) => {
+    if (String(qt.status || '').toLowerCase() === 'converted') {
+      return toast('Already converted', 'error')
+    }
+    const notesParts = [
+      qt.notes || '',
+      qt.serviceType ? `Service: ${qt.serviceType}` : '',
+      qt.devices ? `Devices: ${qt.devices}` : '',
+      `Converted from quote ${qt.number || qt.id}`,
+    ].filter(Boolean)
     const inv = {
       clientId: qt.clientId,
       number: `INV-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(4, '0')}`,
       date: new Date().toISOString().slice(0, 10),
-      dueDate: new Date().toISOString().slice(0, 10),
+      dueDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
       status: 'unpaid',
-      lines: qt.lines || [],
+      lines: (qt.lines || []).map((l) => ({
+        description: l.description || l.name || 'Line',
+        qty: l.qty != null ? l.qty : 1,
+        price: Number(l.price) || 0,
+        unit: l.unit,
+      })),
       exclusive: qt.exclusive,
       vatAmount: qt.vatAmount,
       total: qt.total,
       amountPaid: 0,
       amountDue: qt.total,
       fromQuoteId: qt.id,
-      templateId: qt.templateId === 'adhoc' || qt.templateId === 'hourly' || qt.templateId === 'flatrate' ? 'standard' : qt.templateId,
+      templateId: ['adhoc', 'hourly', 'flatrate'].includes(qt.templateId) ? 'standard' : (qt.templateId || 'standard'),
       devices: qt.devices,
       serviceType: qt.serviceType,
       accountType: qt.accountType,
-      notes: qt.notes || '',
+      notes: notesParts.join('\n'),
     }
     await db.add(STORES.invoices, inv)
-    await db.put(STORES.quotes, { ...qt, status: 'converted' })
+    await db.put(STORES.quotes, { ...qt, status: 'converted', convertedAt: new Date().toISOString() })
     await refresh()
-    toast('Converted to invoice', 'success')
+    toast('Converted to invoice — open Invoices to edit & send', 'success')
   }
 
   const del = (id) => {
@@ -155,16 +183,46 @@ export default function Quotes() {
     })
   }
 
+  const exportCsv = () => {
+    const headers = ['Number', 'Client', 'Date', 'Valid until', 'Status', 'Template', 'Total', 'Service', 'Devices']
+    const rows = filtered.map((qt) => {
+      const c = clients.find((x) => String(x.id) === String(qt.clientId))
+      return [
+        qt.number || '',
+        c?.name || '',
+        qt.date || '',
+        qt.validUntil || '',
+        qt.status || 'draft',
+        qt.templateId || '',
+        Number(qt.total) || 0,
+        qt.serviceType || '',
+        qt.devices || '',
+      ]
+    })
+    downloadCsv(`quotes-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows)
+    toast('CSV exported', 'success')
+  }
+
+  const chips = [
+    { id: 'all', label: 'All', count: counts.all },
+    { id: 'draft', label: 'Draft', count: counts.draft },
+    { id: 'converted', label: 'Converted', count: counts.converted },
+    { id: 'accepted', label: 'Accepted', count: counts.accepted },
+  ]
+
   return (
     <PageFade>
       <div className="page-header">
         <div>
           <h1>Quotes</h1>
           <p className="subtitle">
-            Professional COD templates · hourly · flat-rate · ad-hoc · {quotes.length} total
+            COD · hourly · flat-rate · ad-hoc · {quotes.length} total · convert fills the invoice template
           </p>
         </div>
-        <button type="button" className="btn btn-outline" onClick={loadDemoRates}>Load demo rate card</button>
+        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+          <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={!filtered.length}>Export CSV</button>
+          <button type="button" className="btn btn-outline" onClick={loadDemoRates}>Load demo rate card</button>
+        </div>
       </div>
 
       <form className="card form-grid" onSubmit={save} style={{ marginBottom: '1rem' }}>
@@ -223,12 +281,13 @@ export default function Quotes() {
 
       <div className="toolbar sticky-tools">
         <SearchInput value={q} onChange={setQ} placeholder="Search number, client, status…" />
+        <FilterChips options={chips} value={status} onChange={setStatus} />
       </div>
 
       {!filtered.length ? (
         <EmptyState
           title={quotes.length ? 'No matches' : 'No quotes yet'}
-          hint={quotes.length ? 'Try another search.' : 'Load a demo rate card or enter a single amount.'}
+          hint={quotes.length ? 'Try another search or filter.' : 'Load a demo rate card or enter a single amount — convert later fills the invoice fully.'}
         />
       ) : (
         filtered
@@ -236,6 +295,8 @@ export default function Quotes() {
           .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
           .map((qt) => {
             const c = clients.find((x) => String(x.id) === String(qt.clientId))
+            const age = daysOverdue(qt.validUntil)
+            const expired = age != null && age > 0 && String(qt.status || 'draft').toLowerCase() === 'draft'
             return (
               <div key={qt.id} className="list-card" style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                 <div>
@@ -243,16 +304,23 @@ export default function Quotes() {
                   <div className="muted" style={{ fontSize: 13 }}>
                     {formatMoney(qt.total)} · <StatusBadge status={qt.status || 'draft'} /> · {qt.templateId || 'standard'}
                     {qt.date ? ` · ${formatDateZA(qt.date)}` : ''}
+                    {qt.validUntil ? ` · valid ${formatDateZA(qt.validUntil)}` : ''}
+                    {expired ? <span className="text-danger"> · expired</span> : null}
                     {qt.devices ? ` · ${qt.devices}` : ''}
                   </div>
                 </div>
                 <div className="list-card-actions">
                   <button type="button" className="btn btn-secondary btn-sm" onClick={() => pdf(qt, true)}>Preview</button>
                   <button type="button" className="btn btn-outline btn-sm" onClick={() => pdf(qt, false)}>PDF</button>
-                  {qt.status !== 'converted' && (
-                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => convert(qt)}>To invoice</button>
+                  {String(qt.status || '').toLowerCase() !== 'converted' && (
+                    <button type="button" className="btn btn-primary btn-sm" onClick={() => convert(qt)}>
+                      Convert to invoice
+                    </button>
                   )}
-                  <button type="button" className="btn btn-outline btn-sm" onClick={() => del(qt.id)}>Delete</button>
+                  {String(qt.status || '').toLowerCase() === 'converted' && (
+                    <Link className="btn btn-outline btn-sm" to="/invoices">View invoices</Link>
+                  )}
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => del(qt.id)}>Del</button>
                 </div>
               </div>
             )
