@@ -1,3 +1,9 @@
+## 3.12.0 — Version alignment
+
+- `version.json` and `public/config.js` synced to 3.12.0
+- Help assistant: job-card language + search aria-label
+- Continues commercial train from 3.4–3.11
+
 
 ## 3.9.0 — Commercial quarters 1–6
 
