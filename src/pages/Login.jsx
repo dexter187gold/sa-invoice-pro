@@ -68,7 +68,10 @@ export default function Login() {
             <AppLogo size={96} />
             <div className="login-splash-title">SA INVOICE PRO</div>
             <p className="muted" style={{ color: 'rgba(236,253,245,0.75)', margin: '0.35rem 0 0' }}>
-              Invoicing · Tickets · Documents
+              Invoices · Job cards · Payroll · Accounting · SA
+            </p>
+            <p className="muted" style={{ color: 'rgba(236,253,245,0.55)', margin: '0.2rem 0 0', fontSize: 12 }}>
+              Offline-first · Tax invoices · PayFast · POPIA templates
             </p>
             <div className="login-splash-bar" aria-hidden><span /></div>
           </div>
