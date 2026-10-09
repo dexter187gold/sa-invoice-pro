@@ -18,6 +18,8 @@ export default function Dashboard() {
   const collectionRate = rev + ar > 0 ? Math.round((rev / (rev + ar)) * 100) : 0
   const overdueCount = invoices.filter((i) => i.status === 'overdue').length
   const recentPayments = [...payments].slice(-10).reverse()
+  const draftQuotes = quotes.filter((q) => String(q.status || 'draft').toLowerCase() === 'draft')
+  const openTickets = openT
 
   return (
     <PageFade>
@@ -28,6 +30,8 @@ export default function Dashboard() {
         </div>
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
           <Link className="btn btn-primary" to="/invoices/new">New invoice</Link>
+          <Link className="btn btn-secondary" to="/tickets">Job cards</Link>
+          <Link className="btn btn-outline" to="/quotes">Quotes{draftQuotes.length ? ` (${draftQuotes.length})` : ''}</Link>
           <Link className="btn btn-outline" to="/reports">Reports</Link>
         </div>
       </div>
