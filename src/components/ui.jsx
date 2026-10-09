@@ -1,5 +1,4 @@
-
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, Component } from 'react'
 
 /** Status badge with consistent colour mapping */
 export function StatusBadge({ status, map }) {
@@ -44,7 +43,7 @@ export function SearchInput({ value, onChange, placeholder = 'Search…', id, au
   )
 }
 
-/** Empty state with optional action */
+/** Empty state with optional action — sales-ready CTAs */
 export function EmptyState({ title = 'Nothing here yet', hint, action, icon }) {
   return (
     <div className="card empty empty-rich">
@@ -121,6 +120,20 @@ export function relativeTime(iso) {
   }
 }
 
+/** Days overdue (positive) or days until due (negative/zero). null if no due date. */
+export function daysOverdue(dueIso) {
+  if (!dueIso) return null
+  try {
+    const due = new Date(dueIso)
+    due.setHours(0, 0, 0, 0)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return Math.round((today - due) / 86400000)
+  } catch {
+    return null
+  }
+}
+
 export function matchesQuery(obj, query, fields) {
   const q = String(query || '').trim().toLowerCase()
   if (!q) return true
@@ -168,6 +181,7 @@ export function SortableTh({ id, label, sort, onSort, align }) {
       onClick={() => onSort?.(id)}
       style={{ cursor: 'pointer', userSelect: 'none' }}
       title="Sort"
+      scope="col"
     >
       {label}
       <span className="sort-ind">{dir === 'asc' ? ' ▲' : dir === 'desc' ? ' ▼' : ' ⇅'}</span>
@@ -276,4 +290,67 @@ export function ProgressBar({ value, max = 100, tone }) {
 /** Page fade wrapper */
 export function PageFade({ children }) {
   return <div className="page-fade">{children}</div>
+}
+
+/** Consistent page header */
+export function PageHeader({ title, subtitle, actions }) {
+  return (
+    <div className="page-header">
+      <div>
+        <h1>{title}</h1>
+        {subtitle ? <p className="subtitle">{subtitle}</p> : null}
+      </div>
+      {actions ? <div className="page-header-actions">{actions}</div> : null}
+    </div>
+  )
+}
+
+/** Keyboard shortcut hint */
+export function Kbd({ children }) {
+  return <kbd className="kbd">{children}</kbd>
+}
+
+/** Download rows as CSV (UTF-8 BOM for Excel ZA) */
+export function downloadCsv(filename, headers, rows) {
+  const esc = (v) => {
+    const s = v == null ? '' : String(v)
+    if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`
+    return s
+  }
+  const lines = [headers.map(esc).join(',')]
+  for (const row of rows) lines.push(row.map(esc).join(','))
+  const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
+
+/** React error boundary for production resilience */
+export class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { error: null }
+  }
+  static getDerivedStateFromError(error) {
+    return { error }
+  }
+  componentDidCatch(error, info) {
+    console.error('[SA Invoice Pro]', error, info)
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="card empty empty-rich" style={{ margin: '2rem auto', maxWidth: 480 }}>
+          <div className="empty-title">Something went wrong</div>
+          <p className="muted">{this.state.error?.message || 'Unexpected error'}</p>
+          <button type="button" className="btn btn-primary" onClick={() => this.setState({ error: null })}>
+            Try again
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
 }
