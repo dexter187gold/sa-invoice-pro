@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
 import { APP_VERSION, SA_CONFIG } from '../config'
@@ -59,6 +60,7 @@ export default function Settings() {
       a.href = URL.createObjectURL(blob)
       a.download = `sa-invoice-backup-${new Date().toISOString().slice(0, 10)}.json`
       a.click()
+      localStorage.setItem('sa_last_backup', new Date().toISOString())
       toast('Backup downloaded', 'success')
     } finally {
       setBusy(false)
@@ -128,7 +130,7 @@ export default function Settings() {
       <div className="page-header">
         <div>
           <h1>Settings</h1>
-          <p className="subtitle">v{APP_VERSION} · company, VAT, invoices, PayFast, backup</p>
+          <p className="subtitle">v{APP_VERSION} · company · VAT · invoices · PayFast · backup · license</p>
         </div>
       </div>
 
@@ -312,12 +314,28 @@ export default function Settings() {
       )}
 
       {tab === 'backup' && (
-        <div className="card form-grid">
-          <p className="muted" style={{ marginTop: 0 }}>Download a JSON backup of local data, or merge an existing backup.</p>
-          <LoadingButton loading={busy} onClick={doExport}>Download backup</LoadingButton>
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>Workspace backup</h3>
+          <p className="muted" style={{ marginTop: 0 }}>
+            Download a full JSON backup of invoices, clients, tickets, payroll, and settings — or merge a previous backup.
+            Store copies off-device (Drive, email, NAS).
+          </p>
+          <p className="muted" style={{ fontSize: 13 }}>
+            Last download:{' '}
+            {(() => {
+              try {
+                const iso = localStorage.getItem('sa_last_backup')
+                return iso ? new Date(iso).toLocaleString('en-ZA') : 'never on this browser'
+              } catch { return 'never' }
+            })()}
+          </p>
+          <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', marginBottom: 12 }}>
+            <LoadingButton loading={busy} onClick={doExport}>Download backup</LoadingButton>
+          </div>
           <div>
             <label className="label">Import backup file</label>
-            <input type="file" accept="application/json" onChange={doImport} />
+            <input type="file" accept="application/json,.json" onChange={doImport} />
+            <p className="muted" style={{ fontSize: 12, marginTop: 6 }}>Import merges records. It does not wipe existing data unless you clear the workspace first.</p>
           </div>
         </div>
       )}
@@ -327,6 +345,9 @@ export default function Settings() {
           <h3 style={{ marginTop: 0 }}>SA Invoice Pro {APP_VERSION}</h3>
           <p className="muted">Offline-first invoicing for South Africa.</p>
           <p className="muted" style={{ marginBottom: 0 }}>
+            <p style={{ marginTop: 12 }}>
+              <Link className="btn btn-secondary btn-sm" to="/license">Open license activation</Link>
+            </p>
             Default license server: <code>{SA_CONFIG.defaultLicenseServerUrl}</code>
           </p>
         </div>
