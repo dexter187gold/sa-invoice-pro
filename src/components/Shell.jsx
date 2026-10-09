@@ -26,7 +26,7 @@ const sections = [
   {
     title: 'Operations',
     links: [
-      { to: '/tickets', label: 'Tickets' },
+      { to: '/tickets', label: 'Job cards' },
       { to: '/expenses', label: 'Expenses' },
       { to: '/payments', label: 'Payments' },
       { to: '/employees', label: 'Employees' },
@@ -57,7 +57,7 @@ const crumbMap = {
   '/quotes': 'Quotes',
   '/clients': 'Clients',
   '/products': 'Products',
-  '/tickets': 'Tickets',
+  '/tickets': 'Job cards',
   '/expenses': 'Expenses',
   '/payments': 'Payments',
   '/employees': 'Employees',
