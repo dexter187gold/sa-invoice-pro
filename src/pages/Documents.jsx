@@ -250,7 +250,7 @@ export default function Documents() {
       <div className="page-header">
         <div>
           <h1>Document generator</h1>
-          <p className="subtitle">SLA, letters, POPIA notice and more · type-specific templates</p>
+          <p className="subtitle">SLA · POPIA · NDA · engagement letters · job card summary · tax cover — buyer-ready PDFs</p>
         </div>
         <button type="button" className="btn btn-outline" onClick={fillDemo}>
           Load demo
