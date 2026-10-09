@@ -49,7 +49,8 @@ export default function AppAssistant() {
             <div className="app-assist-label">Search workflows</div>
             <input
               className="input"
-              placeholder="e.g. partial payment, VAT, backup…"
+              placeholder="e.g. job card, partial payment, VAT, backup…"
+              aria-label="Search help topics"
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
@@ -60,7 +61,7 @@ export default function AppAssistant() {
                   <p>{mdLite(f.a)}</p>
                 </details>
               ))}
-              {!results.length && <p className="muted">No matches — try “invoice” or “ticket”.</p>}
+              {!results.length && <p className="muted">No matches — try “invoice”, “job card” or “payroll”.</p>}
             </div>
           </div>
         </div>
