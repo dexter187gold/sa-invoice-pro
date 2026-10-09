@@ -1,4 +1,4 @@
-# SA Invoice Pro 3.4
+# SA Invoice Pro 3.11
 
 **Professional offline-first invoicing, job cards, payroll & accounting for South African businesses.**
 
@@ -6,30 +6,29 @@ Built for trades, IT support, consultants and SMEs who need clean tax invoices, 
 
 ## Why teams buy it
 
-- **Get paid faster** — Tax invoices with VAT, professional PDF, WhatsApp/email share, aging & collection rate
-- **Job card → invoice** — Log time on site or remote, stop the timer, convert with client, site, tech, notes and lines pre-filled
-- **Quotes that close** — Convert accepted quotes to invoices in one click
-- **SA payroll estimates** — 2026/27 PAYE brackets, UIF, SDL, payslip PDF + CSV (not a substitute for e@syFile)
-- **Accounting lite** — Chart of accounts, journals, trial balance / P&L, bank recon helpers
+- **Get paid faster** — Tax invoices with VAT, professional PDF, aging, bulk mark paid, CSV export
+- **Job card → invoice** — Timer, convert with client, site, tech, notes and lines pre-filled
+- **Quotes that close** — Convert fills the invoice template in one click
+- **Reports pack** — Summary, invoices, aged debtors, expenses, payments CSVs (Excel ZA)
+- **SA payroll estimates** — 2026/27 PAYE, UIF, SDL, ETI, payslip PDF + CSV (not e@syFile)
+- **Accounting lite** — CoA, journals, trial balance CSV, bank recon helpers
 - **PayFast** — Sandbox + live, EFT tracking
-- **Documents** — SLA, POPIA notice, NDA lite, engagement letters
-- **License-ready** — HWID handshake vendor server included
-- **Offline-first** — IndexedDB local data; works when the network does not
+- **Documents** — SLA, POPIA, NDA lite, engagement letters
+- **License-ready** — HWID handshake + vendor server
+- **Offline-first** — IndexedDB; works when the network does not
 
-## What’s new in 3.4
+## Recent releases (3.4 → 3.11)
 
-- Invoice **CSV export** (Excel-friendly UTF-8 BOM)
-- **Bulk mark paid** + bulk delete on invoice list
-- **Aging column** (days overdue / due today / due in N days)
-- First-run **onboarding** path on Home
-- **Error boundary** so one page crash does not take down the app
-- Hardened ZAR money math (cent rounding)
-- Job cards already convert with full template fill (v3.3.2)
-- Design system from 3.0 (tokens, dark mode, density, command palette)
+- Design system, ErrorBoundary, onboarding, money cent-safe math
+- Invoice aging + bulk actions; quote/job-card convert banners
+- CSV exports across invoices, clients, products, expenses, payments, employees, payroll, accounting
+- Reports 5-file export pack; Settings backup timestamp; License activation steps
+- Mobile + print CSS; accessibility focus rings; command palette “Job cards”
+- Login/Setup sales polish; SEO meta (`en-ZA`)
 
 ## Stack
 
-React 19 · Vite 6 · jsPDF · IndexedDB · optional Node license server
+React 19 · Vite 6 · jsPDF · IndexedDB · optional Python license server
 
 ## Quick start
 
@@ -38,14 +37,12 @@ npm install
 npm run dev
 ```
 
-Build for production:
-
 ```bash
 npm run build
 ```
 
 Deploy `dist/` to Cloudflare Pages, Netlify, or any static host.  
-License server: see `DEPLOY_LICENSE_SERVER.md` / `license_server.py`.
+License server: `DEPLOY_LICENSE_SERVER.md` / `license_server.py`.
 
 ## Keyboard
 
@@ -57,7 +54,7 @@ License server: see `DEPLOY_LICENSE_SERVER.md` / `license_server.py`.
 
 ## Compliance note
 
-Payroll figures are **client-side statutory estimates** for planning only. Use SARS e@syFile / a registered tax practitioner for filings. POPIA document templates are starting points — review with counsel for your practice.
+Payroll figures are **client-side statutory estimates** for planning only. Use SARS e@syFile / a registered tax practitioner for filings. POPIA templates are starting points — review with counsel.
 
 ## License
 
