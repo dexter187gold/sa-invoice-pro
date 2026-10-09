@@ -52,8 +52,13 @@ export default function Setup() {
           </div>
           <h1 style={{ marginTop: 0, textAlign: 'center' }}>Company setup</h1>
           <p className="muted" style={{ textAlign: 'center' }}>
-            Required once for invoices and quotes · ZAR · SA · v{APP_VERSION}
+            One-time setup · ZAR · SA tax invoices · v{APP_VERSION}
           </p>
+          <ol className="onboard-steps" style={{ fontSize: 13, marginBottom: 12 }}>
+            <li>Business name & contact (required)</li>
+            <li>VAT number if registered</li>
+            <li>Bank details for invoice footers</li>
+          </ol>
           <form className="form-grid" onSubmit={save}>
             <div>
               <label className="label">Business name *</label>
