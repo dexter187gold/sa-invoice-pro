@@ -6,8 +6,7 @@ import { STORES } from '../lib/db'
 import { formatMoney } from '../lib/money'
 import { PayFast } from '../lib/payfast'
 import {
-  SearchInput, EmptyState, matchesQuery, formatDateZA, relativeTime, PageFade, StatCard, StatusBadge,
-} from '../components/ui'
+  SearchInput, EmptyState, matchesQuery, formatDateZA, relativeTime, PageFade, StatCard, StatusBadge, downloadCsv} from '../components/ui'
 
 export default function Payments() {
   const { payments, invoices, clients, refresh, toast } = useApp()
@@ -87,6 +86,14 @@ export default function Payments() {
     if (inv) setAmount(String(Number(inv.amountDue ?? inv.total) || ''))
   }
 
+  const exportCsv = () => {
+    downloadCsv(`payments-${new Date().toISOString().slice(0, 10)}.csv`,
+      ['Date', 'Amount', 'Method', 'Reference', 'Invoice id'],
+      payments.map((p) => [p.date || '', Number(p.amount) || 0, p.method || '', p.reference || '', p.invoiceId || ''])
+    )
+    toast('CSV exported', 'success')
+  }
+
   return (
     <PageFade>
       <div className="page-header">
@@ -94,7 +101,10 @@ export default function Payments() {
           <h1>Payments</h1>
           <p className="subtitle">Record EFT / cash · PayFast when configured</p>
         </div>
-        <Link className="btn btn-outline" to="/invoices">Invoices</Link>
+        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+          <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={!payments.length}>Export CSV</button>
+          <Link className="btn btn-outline" to="/invoices">Invoices</Link>
+        </div>
       </div>
 
       <div className="grid-stats" style={{ marginBottom: '1rem' }}>
