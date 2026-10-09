@@ -6,7 +6,7 @@ import { STORES } from '../lib/db'
 import { formatMoney } from '../lib/money'
 import { isValidSaId, ageFromSaId } from '../lib/saTaxEngine'
 import {
-  SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, StatCard,
+  SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, StatCard, downloadCsv,
 } from '../components/ui'
 
 const empty = {
@@ -74,6 +74,19 @@ export default function Employees() {
     toast('Employee saved', 'success')
   }
 
+  const exportCsv = () => {
+    downloadCsv(`employees-${new Date().toISOString().slice(0, 10)}.csv`,
+      ['Name', 'ID number', 'Tax number', 'Role', 'Salary', 'Travel', 'Other allowance', 'UIF', 'ETI months', 'Email', 'Age'],
+      filtered.map((e) => [
+        e.name || '', e.idNumber || '', e.taxNumber || '', e.role || '',
+        Number(e.salary) || 0, Number(e.transportAllowance) || 0, Number(e.otherAllowance) || 0,
+        e.uif !== false ? 'yes' : 'no', Number(e.etiMonth) || 0, e.email || '',
+        e.age ?? (e.idNumber ? ageFromSaId(e.idNumber) : '') ?? '',
+      ])
+    )
+    toast('CSV exported', 'success')
+  }
+
   const del = (id) => {
     setConfirm({
       title: 'Remove employee?',
@@ -99,6 +112,7 @@ export default function Employees() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+          <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={!filtered.length}>Export CSV</button>
           <Link className="btn btn-secondary" to="/payroll">Run payroll</Link>
           <button type="button" className="btn btn-primary" onClick={() => setShow((s) => !s)}>
             {show ? 'Close' : 'Add employee'}
@@ -181,6 +195,9 @@ export default function Employees() {
                   <div className="muted" style={{ fontSize: 13 }}>
                     {emp.role || 'Staff'} · {formatMoney(emp.salary)}/mo
                     {emp.uif !== false ? ' · UIF' : ' · no UIF'}
+                    {(emp.age ?? (emp.idNumber ? ageFromSaId(emp.idNumber) : null)) != null
+                      ? ` · age ${emp.age ?? ageFromSaId(emp.idNumber)}`
+                      : ''}
                     {emp.idNumber ? ` · ${emp.idNumber}` : ''}
                     {idOk === true && <span className="badge" style={{ marginLeft: 6 }}>ID OK</span>}
                     {idOk === false && <span className="badge bad" style={{ marginLeft: 6 }}>ID fail</span>}
