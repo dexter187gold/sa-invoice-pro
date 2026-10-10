@@ -1,6 +1,6 @@
-/* Runtime config – edit after deploy without rebuild. */
+/* Runtime config */
 window.SA_CONFIG = Object.assign({
-  appVersion: '4.1.0',
+  appVersion: '4.2.0',
   defaultLicenseServerUrl: 'https://sa-invoice-license.onrender.com',
   helixUrl: '',
   helixPathDesk: '/desk/tickets',
