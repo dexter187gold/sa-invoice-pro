@@ -72,6 +72,21 @@ export default function Clients() {
     })
   }
 
+  const exportStatement = (client) => {
+    const rows = invoices
+      .filter((i) => String(i.clientId) === String(client.id))
+      .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
+    downloadCsv(
+      `statement-${(client.name || 'client').replace(/\s+/g, '-').slice(0, 40)}-${new Date().toISOString().slice(0, 10)}.csv`,
+      ['Number', 'Date', 'Due date', 'Status', 'Total', 'Amount due', 'Notes'],
+      rows.map((i) => [
+        i.number || '', i.date || '', i.dueDate || '', i.status || '',
+        Number(i.total) || 0, Number(i.amountDue ?? i.total) || 0, i.notes || '',
+      ])
+    )
+    toast('Client statement exported', 'success')
+  }
+
   const exportCsv = () => {
     const headers = ['Name', 'Company', 'Email', 'Phone', 'VAT', 'Address', 'Outstanding AR', 'Invoices']
     const rows = filtered.map((c) => [
