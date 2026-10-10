@@ -8,6 +8,7 @@ import { exportAll, importAll } from '../lib/db'
 import { DEFAULT_LAYOUT, loadInvoiceLayout, saveInvoiceLayout, mergeLayout } from '../lib/invoiceLayout'
 import { TEMPLATE_PRESETS } from '../lib/pdfTemplate'
 import { Segmented, PageFade, ConfirmDialog, LoadingButton } from '../components/ui'
+import { loadDemoWorkspace } from '../lib/demoData'
 
 export default function Settings() {
   const {
@@ -65,6 +66,26 @@ export default function Settings() {
     } finally {
       setBusy(false)
     }
+  }
+  const doDemo = () => {
+    setConfirm({
+      title: 'Load demo data?',
+      message: 'Adds sample client, invoice, quote, job card, product and expense for sales demos. Safe to re-run (fixed demo IDs).',
+      confirmLabel: 'Load demo',
+      action: async () => {
+        setBusy(true)
+        try {
+          await loadDemoWorkspace({ companyName: company?.name })
+          await refresh()
+          toast('Demo data loaded — open Invoices, Quotes or Job cards', 'success')
+        } catch (err) {
+          toast(err.message || String(err), 'error')
+        } finally {
+          setBusy(false)
+          setConfirm(null)
+        }
+      },
+    })
   }
   const doImport = async (e) => {
     const file = e.target.files?.[0]
