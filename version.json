@@ -1,4 +1,4 @@
 {
-  "version": "4.1.0",
-  "message": "Demo workspace seeder + WhatsApp/email invoice share"
+  "version": "4.2.0",
+  "message": "Duplicate invoice, flag overdue, client statement CSV"
 }
