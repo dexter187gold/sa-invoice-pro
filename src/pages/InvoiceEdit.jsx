@@ -174,6 +174,26 @@ export default function InvoiceEdit() {
   const catalog = [...(products || []), ...(services || [])]
   const gap = layout.formDensity === 'compact' ? 6 : layout.formDensity === 'spacious' ? 14 : 10
 
+  const shareWhatsApp = () => {
+    const c = clients.find((x) => String(x.id) === String(clientId))
+    const phone = String(c?.phone || '').replace(/\D/g, '')
+    const text = encodeURIComponent(
+      `Hi${c?.name ? ' ' + c.name : ''}, please find tax invoice ${invNumber} for ${formatMoney(totals.total)} (balance due ${formatMoney(balance)}). Thank you — ${company?.name || 'SA Invoice Pro'}.`
+    )
+    const url = phone
+      ? `https://wa.me/${phone.startsWith('0') ? '27' + phone.slice(1) : phone}?text=${text}`
+      : `https://wa.me/?text=${text}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+  const shareEmail = () => {
+    const c = clients.find((x) => String(x.id) === String(clientId))
+    const subject = encodeURIComponent(`Tax invoice ${invNumber} — ${company?.name || 'SA Invoice Pro'}`)
+    const body = encodeURIComponent(
+      `Dear ${c?.name || 'Client'},\n\nPlease find tax invoice ${invNumber}.\nTotal: ${formatMoney(totals.total)}\nBalance due: ${formatMoney(balance)}\nDue: ${dueDate || 'on receipt'}\n\nRegards,\n${company?.name || ''}`
+    )
+    window.location.href = `mailto:${c?.email || ''}?subject=${subject}&body=${body}`
+  }
+
   return (
     <div className="inv-page" style={{ fontSize: layout.formFontSize || 14 }}>
       <div className="page-header">
@@ -186,6 +206,8 @@ export default function InvoiceEdit() {
           <button type="button" className="btn btn-outline" onClick={() => nav('/settings')}>Invoice preferences</button>
           <button type="button" className="btn btn-secondary" onClick={() => doPdf(true)}>Preview PDF</button>
           <button type="button" className="btn btn-secondary" onClick={() => doPdf(false)}>Download</button>
+          <button type="button" className="btn btn-outline" onClick={shareWhatsApp} title="Share via WhatsApp">WhatsApp</button>
+          <button type="button" className="btn btn-outline" onClick={shareEmail} title="Share via email">Email</button>
         </div>
       </div>
 
