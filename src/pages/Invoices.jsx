@@ -97,6 +97,46 @@ export default function Invoices() {
     })
   }
 
+
+  const duplicate = async (inv) => {
+    const copy = {
+      ...inv,
+      id: undefined,
+      number: `INV-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(4, '0')}`,
+      date: new Date().toISOString().slice(0, 10),
+      dueDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+      status: 'unpaid',
+      amountPaid: 0,
+      amountDue: inv.total,
+      paidAt: undefined,
+      fromQuoteId: undefined,
+      notes: [inv.notes, `Duplicated from ${inv.number || inv.id}`].filter(Boolean).join('\n'),
+    }
+    delete copy.id
+    await db.add(STORES.invoices, copy)
+    await refresh()
+    toast(`Duplicated as ${copy.number}`, 'success')
+  }
+
+  const flagOverdue = async () => {
+    let n = 0
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    for (const inv of invoices) {
+      if (!['unpaid', 'partial'].includes(inv.status || 'unpaid')) continue
+      const dueStr = inv.dueDate || inv.date
+      if (!dueStr) continue
+      const due = new Date(dueStr)
+      due.setHours(0, 0, 0, 0)
+      if (due < today) {
+        await db.put(STORES.invoices, { ...inv, status: 'overdue' })
+        n++
+      }
+    }
+    await refresh()
+    toast(n ? `Flagged ${n} invoice(s) overdue` : 'No unpaid invoices past due date', n ? 'success' : 'info')
+  }
+
   const markPaidBulk = () => {
     if (!selectedIds.length) return
     setConfirm({
@@ -161,6 +201,9 @@ export default function Invoices() {
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
           <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={!list.length}>
             Export CSV
+          </button>
+          <button type="button" className="btn btn-outline" onClick={flagOverdue} title="Set unpaid past due date to overdue">
+            Flag overdue
           </button>
           <Link className="btn btn-primary" to="/invoices/new">New invoice</Link>
         </div>
@@ -248,6 +291,9 @@ export default function Invoices() {
                       <Link className="btn btn-outline btn-sm" to={`/invoices/${inv.id}`}>
                         Edit
                       </Link>{' '}
+                      <button type="button" className="btn btn-outline btn-sm" onClick={() => duplicate(inv)} title="Duplicate">
+                        Dup
+                      </button>{' '}
                       <button type="button" className="btn btn-outline btn-sm" onClick={() => delOne(inv.id)}>
                         Del
                       </button>
