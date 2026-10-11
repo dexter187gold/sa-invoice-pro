@@ -1,6 +1,6 @@
 /* SA Invoice Pro – server URLs & integrations */
 window.SA_CONFIG = Object.assign({
-  appVersion: '1.0.18',
+  appVersion: '1.0.19',
   defaultLicenseServerUrl: 'https://sa-invoice-license.onrender.com',
   defaultUpdateServerUrl: '',
   defaultOwnerDashboardUrl: '',
@@ -10,6 +10,9 @@ window.SA_CONFIG = Object.assign({
   helixUrl: '',
   helixPathDesk: '/desk/tickets',
   helixEmbedTickets: true,
+  /* Cloud sync (multi-device + AutoResponder live status) */
+  syncServerUrl: 'https://saip-sync.onrender.com',
+  syncEnabled: true,
   features: {
     autoUpdateCheck: true,
     mandatoryUpdateGate: true,
