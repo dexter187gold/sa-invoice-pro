@@ -1,4 +1,4 @@
-export const APP_VERSION = '4.2.0'
+export const APP_VERSION = '4.2.1'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
@@ -18,6 +18,8 @@ export const HELIX_ROUTES = {
 export const SA_CONFIG = {
   appVersion: APP_VERSION,
   defaultLicenseServerUrl: 'https://sa-invoice-license.onrender.com',
+  syncServerUrl: 'https://saip-sync.onrender.com',
+  syncEnabled: true,
   helixUrl: '',
   helixPathDesk: HELIX_ROUTES.tickets,
   helixEmbedTickets: false,
