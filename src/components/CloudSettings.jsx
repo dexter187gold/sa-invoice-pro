@@ -82,8 +82,7 @@ export default function CloudSettings({ toast }) {
     <div className="card form-grid">
       <h3 style={{ marginTop: 0 }}>☁ Cloud Sync</h3>
       <p className="muted" style={{ marginTop: 0 }}>
-        Login with the account you created at saip-sync.onrender.com/register
-        so this device can push live invoice status for AutoResponder.
+        Login with your cloud account so this device can push live invoice status for AutoResponder.
       </p>
       <div>
         <label className="label">Email</label>
@@ -125,7 +124,11 @@ export default function CloudSettings({ toast }) {
         </LoadingButton>
       </div>
       <p className="muted" style={{ fontSize: 12, marginBottom: 0 }}>
-        Same account works on phone + desktop. After login, saving an invoice will push status to the cloud.
+        <a href={`${Sync.base}/forgot-password`} target="_blank" rel="noreferrer">
+          Forgot password?
+        </a>
+        {' · '}
+        Same account works on phone + desktop.
       </p>
     </div>
   )
