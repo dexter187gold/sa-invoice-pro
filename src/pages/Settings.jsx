@@ -9,6 +9,7 @@ import { DEFAULT_LAYOUT, loadInvoiceLayout, saveInvoiceLayout, mergeLayout } fro
 import { TEMPLATE_PRESETS } from '../lib/pdfTemplate'
 import { Segmented, PageFade, ConfirmDialog, LoadingButton } from '../components/ui'
 import { loadDemoWorkspace } from '../lib/demoData'
+import CloudSettings from '../components/CloudSettings'
 
 export default function Settings() {
   const {
@@ -138,6 +139,7 @@ export default function Settings() {
 
   const tabs = [
     { id: 'company', label: 'Company' },
+    { id: 'cloud', label: '☁ Cloud' },
     { id: 'invoicing', label: 'Invoices' },
     { id: 'vat', label: 'VAT' },
     { id: 'look', label: 'Look' },
@@ -151,7 +153,7 @@ export default function Settings() {
       <div className="page-header">
         <div>
           <h1>Settings</h1>
-          <p className="subtitle">v{APP_VERSION} · company · VAT · invoices · PayFast · backup · license</p>
+          <p className="subtitle">v{APP_VERSION} · company · cloud · VAT · invoices · PayFast · backup</p>
         </div>
       </div>
 
@@ -177,6 +179,10 @@ export default function Settings() {
           </div>
           <button className="btn btn-primary" type="submit">Save company</button>
         </form>
+      )}
+
+      {tab === 'cloud' && (
+        <CloudSettings toast={toast} />
       )}
 
       {tab === 'invoicing' && (
@@ -364,25 +370,27 @@ export default function Settings() {
       {tab === 'about' && (
         <div className="card">
           <h3 style={{ marginTop: 0 }}>SA Invoice Pro {APP_VERSION}</h3>
-          <p className="muted">Offline-first invoicing for South Africa.</p>
+          <p className="muted">Offline-first invoicing for South Africa · Cloud sync enabled.</p>
           <p className="muted" style={{ marginBottom: 0 }}>
-            <p style={{ marginTop: 12 }}>
-              <Link className="btn btn-secondary btn-sm" to="/license">Open license activation</Link>
-            </p>
-            Default license server: <code>{SA_CONFIG.defaultLicenseServerUrl}</code>
+            Sync server: {SA_CONFIG.syncServerUrl || 'https://saip-sync.onrender.com'}
+          </p>
+          <p style={{ marginTop: 12 }}>
+            <Link className="btn btn-secondary btn-sm" to="/license">Open license activation</Link>
           </p>
         </div>
       )}
 
-      <ConfirmDialog
-        open={!!confirm}
-        title={confirm?.title}
-        message={confirm?.message}
-        confirmLabel={confirm?.confirmLabel}
-        danger={confirm?.danger}
-        onCancel={() => setConfirm(null)}
-        onConfirm={() => confirm?.action?.()}
-      />
+      {confirm && (
+        <ConfirmDialog
+          open
+          title={confirm.title}
+          message={confirm.message}
+          confirmLabel={confirm.confirmLabel}
+          danger={confirm.danger}
+          onConfirm={confirm.action}
+          onCancel={() => setConfirm(null)}
+        />
+      )}
     </PageFade>
   )
 }
