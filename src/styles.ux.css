@@ -334,23 +334,31 @@ html.dark .muted-pill { color: #6ee7b7; }
   100% { background-position: -200% 0; }
 }
 
-/* Segmented */
+/* Segmented – scrollable on narrow screens */
 .segmented {
   display: inline-flex;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   background: var(--bg-elevated);
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
+.segmented::-webkit-scrollbar { height: 4px; }
+.segmented::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 .seg-btn {
   border: 0;
   background: transparent;
-  padding: 0.35rem 0.75rem;
+  padding: 0.4rem 0.85rem;
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
   color: var(--muted);
   transition: all 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .seg-active {
   background: var(--card);
