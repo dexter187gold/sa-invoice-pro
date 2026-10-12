@@ -7,9 +7,12 @@ import {
   StatCard, ProgressBar, EmptyState, PageFade, formatDateZA, SearchInput, matchesQuery,
   StatusBadge, downloadCsv,
 } from '../components/ui'
+import {
+  openWhatsApp, openEmail, buildAgedRowReminder, buildReportSummaryShare,
+} from '../lib/share'
 
 export default function Reports() {
-  const { invoices, expenses, clients, company, payments, quotes } = useApp()
+  const { invoices, expenses, clients, company, payments, quotes, toast } = useApp()
   const [q, setQ] = useState('')
 
   const paid = invoices.filter((i) => i.status === 'paid' && !i.isCredit)
@@ -40,6 +43,44 @@ export default function Reports() {
   }, [aged.rows, clients, q])
 
   const clientName = (id) => clients.find((x) => String(x.id) === String(id))?.name || ''
+  const clientOf = (id) => clients.find((x) => String(x.id) === String(id))
+
+  const remindAgedWa = (r) => {
+    const c = clientOf(r.clientId)
+    const ok = openWhatsApp(c?.phone, buildAgedRowReminder(r, c, company))
+    toast?.(ok ? 'Opening WhatsApp reminder…' : 'No phone — WhatsApp opened without number', ok ? 'success' : 'info')
+  }
+  const remindAgedEmail = (r) => {
+    const c = clientOf(r.clientId)
+    const body = buildAgedRowReminder(r, c, company).replace(/\*/g, '')
+    const ok = openEmail(c?.email, `Payment reminder: ${r.number || 'invoice'} — ${company?.name || 'SA Invoice Pro'}`, body)
+    toast?.(ok ? 'Opening email…' : 'No email on client', ok ? 'success' : 'info')
+  }
+
+  const shareSummaryWa = () => {
+    const text = buildReportSummaryShare({
+      rev: formatMoney(rev),
+      out: formatMoney(out),
+      collectionRate,
+      exp: formatMoney(exp),
+      net: formatMoney(rev - exp),
+      openCount: open.length,
+    }, company)
+    openWhatsApp('', text)
+    toast?.('Opening WhatsApp with report summary…', 'success')
+  }
+  const shareSummaryEmail = () => {
+    const text = buildReportSummaryShare({
+      rev: formatMoney(rev),
+      out: formatMoney(out),
+      collectionRate,
+      exp: formatMoney(exp),
+      net: formatMoney(rev - exp),
+      openCount: open.length,
+    }, company).replace(/\*/g, '')
+    openEmail(company?.email || '', `${company?.name || 'SA Invoice Pro'} — Report ${stamp}`, text)
+    toast?.('Opening email with report summary…', 'success')
+  }
 
   const exportInvoicesCsv = () => {
     downloadCsv(`invoices-report-${stamp}.csv`,
@@ -132,7 +173,9 @@ export default function Reports() {
         </div>
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
           <button type="button" className="btn btn-primary" onClick={exportAllPack}>Export pack (5 CSVs)</button>
-          <button type="button" className="btn btn-secondary" onClick={exportSummaryCsv}>Summary</button>
+          <button type="button" className="btn btn-secondary" onClick={shareSummaryWa}>Share WA</button>
+          <button type="button" className="btn btn-secondary" onClick={shareSummaryEmail}>Share email</button>
+          <button type="button" className="btn btn-outline" onClick={exportSummaryCsv}>Summary</button>
           <button type="button" className="btn btn-outline" onClick={exportInvoicesCsv}>Invoices</button>
           <button type="button" className="btn btn-outline" onClick={exportAgedCsv}>Aged</button>
           <button type="button" className="btn btn-outline" onClick={exportExpensesCsv}>Expenses</button>
@@ -181,6 +224,7 @@ export default function Reports() {
               <th>Days</th>
               <th>Due</th>
               <th>Bucket</th>
+              <th>Remind</th>
             </tr>
           </thead>
           <tbody>
@@ -202,6 +246,10 @@ export default function Reports() {
                     <span className="muted" style={{ marginLeft: 6, fontSize: 12 }}>
                       {bucketLabels[r.bucket] || r.bucket}
                     </span>
+                  </td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => remindAgedWa(r)}>WA</button>{' '}
+                    <button type="button" className="btn btn-outline btn-sm" onClick={() => remindAgedEmail(r)}>Email</button>
                   </td>
                 </tr>
               )
