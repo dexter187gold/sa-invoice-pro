@@ -5,23 +5,40 @@ import * as db from '../lib/db'
 import { STORES } from '../lib/db'
 import { formatMoney } from '../lib/money'
 import {
-  SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, CopyButton, downloadCsv,
+  SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, CopyButton, downloadCsv, FilterChips,
 } from '../components/ui'
 import { contactsPickerSupported, pickContactsFromPhone, normalizeSaPhone } from '../lib/contacts'
+import { CLIENT_CATEGORIES, categoryLabel, categoryOf } from '../lib/clientCategories'
 
 export default function Clients() {
   const { clients, invoices, refresh, toast } = useApp()
-  const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', vatNumber: '', address: '' })
+  const [form, setForm] = useState({
+    name: '', email: '', phone: '', company: '', vatNumber: '', address: '', category: 'cod',
+  })
   const [show, setShow] = useState(false)
   const [q, setQ] = useState('')
+  const [catFilter, setCatFilter] = useState('all')
   const [confirm, setConfirm] = useState(null)
   const [busy, setBusy] = useState(false)
   const canPick = contactsPickerSupported()
 
-  const filtered = useMemo(
-    () => clients.filter((c) => matchesQuery(c, q, ['name', 'email', 'phone', 'company', 'vatNumber', 'address'])),
-    [clients, q]
-  )
+  const catCounts = useMemo(() => {
+    const c = { all: clients.length }
+    for (const cat of CLIENT_CATEGORIES) c[cat.id] = 0
+    for (const client of clients) {
+      const id = categoryOf(client)
+      if (c[id] != null) c[id]++
+      else c.other = (c.other || 0) + 1
+    }
+    return c
+  }, [clients])
+
+  const filtered = useMemo(() => {
+    return clients.filter((c) => {
+      if (catFilter !== 'all' && categoryOf(c) !== catFilter) return false
+      return matchesQuery(c, q, ['name', 'email', 'phone', 'company', 'vatNumber', 'address', 'category'])
+    })
+  }, [clients, q, catFilter])
 
   const arByClient = useMemo(() => {
     const map = {}
@@ -50,11 +67,22 @@ export default function Clients() {
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       return toast('Invalid email address', 'error')
     }
-    await db.add(STORES.clients, { ...form, name: form.name.trim(), createdAt: new Date().toISOString() })
-    setForm({ name: '', email: '', phone: '', company: '', vatNumber: '', address: '' })
+    await db.add(STORES.clients, {
+      ...form,
+      name: form.name.trim(),
+      category: form.category || 'cod',
+      createdAt: new Date().toISOString(),
+    })
+    setForm({ name: '', email: '', phone: '', company: '', vatNumber: '', address: '', category: 'cod' })
     setShow(false)
     await refresh()
     toast('Client saved', 'success')
+  }
+
+  const setCategory = async (client, category) => {
+    await db.put(STORES.clients, { ...client, category, updatedAt: new Date().toISOString() })
+    await refresh()
+    toast(`Category → ${categoryLabel(category)}`, 'success')
   }
 
   const importFromPhone = async () => {
@@ -91,6 +119,7 @@ export default function Clients() {
           company: '',
           vatNumber: '',
           address: '',
+          category: 'walk_in',
           createdAt: new Date().toISOString(),
           source: 'phonebook',
         })
@@ -101,7 +130,7 @@ export default function Clients() {
       await refresh()
       toast(
         added
-          ? `Imported ${added} contact${added === 1 ? '' : 's'}${skipped ? ` (${skipped} already existed)` : ''}`
+          ? `Imported ${added} as Walk-in${skipped ? ` (${skipped} skipped)` : ''}`
           : skipped
             ? 'All selected contacts already in your list'
             : 'Nothing imported',
@@ -132,25 +161,11 @@ export default function Clients() {
     })
   }
 
-  const exportStatement = (client) => {
-    const rows = invoices
-      .filter((i) => String(i.clientId) === String(client.id))
-      .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
-    downloadCsv(
-      `statement-${(client.name || 'client').replace(/\s+/g, '-').slice(0, 40)}-${new Date().toISOString().slice(0, 10)}.csv`,
-      ['Number', 'Date', 'Due date', 'Status', 'Total', 'Amount due', 'Notes'],
-      rows.map((i) => [
-        i.number || '', i.date || '', i.dueDate || '', i.status || '',
-        Number(i.total) || 0, Number(i.amountDue ?? i.total) || 0, i.notes || '',
-      ])
-    )
-    toast('Client statement exported', 'success')
-  }
-
   const exportCsv = () => {
-    const headers = ['Name', 'Company', 'Email', 'Phone', 'VAT', 'Address', 'Outstanding AR', 'Invoices']
+    const headers = ['Name', 'Category', 'Company', 'Email', 'Phone', 'VAT', 'Address', 'Outstanding AR', 'Invoices']
     const rows = filtered.map((c) => [
       c.name || '',
+      categoryLabel(categoryOf(c)),
       c.company || '',
       c.email || '',
       c.phone || '',
@@ -163,6 +178,15 @@ export default function Clients() {
     toast('CSV exported', 'success')
   }
 
+  const chips = [
+    { id: 'all', label: 'All', count: catCounts.all },
+    ...CLIENT_CATEGORIES.map((cat) => ({
+      id: cat.id,
+      label: cat.label,
+      count: catCounts[cat.id] || 0,
+    })),
+  ]
+
   return (
     <PageFade>
       <div className="page-header">
@@ -171,6 +195,7 @@ export default function Clients() {
           <p className="subtitle">
             {filtered.length} shown · {clients.length} total
             {totalAr > 0 ? ` · AR ${formatMoney(totalAr)}` : ''}
+            {' · COD · SLA · Account'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
@@ -186,15 +211,12 @@ export default function Clients() {
         </div>
       </div>
 
-      {!canPick && (
-        <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
-          Tip: On Android Chrome (HTTPS), you can import contacts with <strong>From phone book</strong>. Otherwise add clients manually or use + New client on invoices/quotes/job cards.
-        </p>
-      )}
-
-      <div className="sticky-tools toolbar">
-        <SearchInput value={q} onChange={setQ} placeholder="Search name, email, phone, VAT…" />
-        <Link className="btn btn-outline btn-sm" to="/invoices/new">Invoice client</Link>
+      <div className="sticky-tools toolbar" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <SearchInput value={q} onChange={setQ} placeholder="Search name, email, phone, VAT…" />
+          <Link className="btn btn-outline btn-sm" to="/invoices/new">Invoice client</Link>
+        </div>
+        <FilterChips options={chips} value={catFilter} onChange={setCatFilter} />
       </div>
 
       {show && (
@@ -202,6 +224,14 @@ export default function Clients() {
           <div>
             <label className="label">Name *</label>
             <input className="input focus-ring" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
+          </div>
+          <div>
+            <label className="label">Category</label>
+            <select className="select" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+              {CLIENT_CATEGORIES.map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.label} — {cat.description}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="label">Company</label>
@@ -219,7 +249,7 @@ export default function Clients() {
             <label className="label">VAT number</label>
             <input className="input" value={form.vatNumber} onChange={(e) => setForm({ ...form, vatNumber: e.target.value })} placeholder="4xxxxxxxxx" />
           </div>
-          <div>
+          <div style={{ gridColumn: '1 / -1' }}>
             <label className="label">Address</label>
             <input className="input" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
           </div>
@@ -230,14 +260,9 @@ export default function Clients() {
       {!filtered.length ? (
         <EmptyState
           title={clients.length ? 'No matches' : 'No clients yet'}
-          hint={clients.length ? 'Clear search to see everyone.' : 'Add your first customer — or import from your phone book on Android Chrome.'}
+          hint={clients.length ? 'Try another category or clear search.' : 'Add clients and tag them COD, SLA, Account, etc.'}
           action={!clients.length ? (
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-              <button type="button" className="btn btn-primary" onClick={() => setShow(true)}>Add client</button>
-              {canPick && (
-                <button type="button" className="btn btn-secondary" disabled={busy} onClick={importFromPhone}>📱 From phone book</button>
-              )}
-            </div>
+            <button type="button" className="btn btn-primary" onClick={() => setShow(true)}>Add client</button>
           ) : null}
         />
       ) : (
@@ -252,10 +277,12 @@ export default function Clients() {
           .map((c) => {
             const ar = arByClient[String(c.id)] || 0
             const invN = invCountByClient[String(c.id)] || 0
+            const cat = categoryOf(c)
             return (
               <div key={c.id} className="list-card" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <strong>{c.name}</strong>
+                  <strong>{c.name}</strong>{' '}
+                  <span className="muted-pill" style={{ marginLeft: 4 }}>{categoryLabel(cat)}</span>
                   <div className="muted" style={{ fontSize: 13 }}>
                     {[c.company, c.email, c.phone, c.vatNumber && `VAT ${c.vatNumber}`].filter(Boolean).join(' · ')}
                   </div>
@@ -265,6 +292,19 @@ export default function Clients() {
                     {ar > 0 && (
                       <> · Outstanding <strong style={{ color: 'var(--warn)' }}>{formatMoney(ar)}</strong></>
                     )}
+                  </div>
+                  <div style={{ marginTop: 6 }}>
+                    <label className="muted" style={{ fontSize: 11, marginRight: 6 }}>Category</label>
+                    <select
+                      className="select"
+                      style={{ maxWidth: 200, fontSize: 12, padding: '4px 8px' }}
+                      value={cat}
+                      onChange={(e) => setCategory(c, e.target.value)}
+                    >
+                      {CLIENT_CATEGORIES.map((x) => (
+                        <option key={x.id} value={x.id}>{x.label}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
                 <div className="list-card-actions">

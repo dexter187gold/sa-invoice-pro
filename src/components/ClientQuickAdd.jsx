@@ -2,19 +2,8 @@ import React, { useState } from 'react'
 import * as db from '../lib/db'
 import { STORES } from '../lib/db'
 import { contactsPickerSupported, pickContactsFromPhone, normalizeSaPhone } from '../lib/contacts'
+import { CLIENT_CATEGORIES } from '../lib/clientCategories'
 
-/**
- * Client dropdown + "+ New client" + optional "From phone".
- * Props:
- *  - clients: array
- *  - value: clientId
- *  - onChange(clientId)
- *  - refresh()
- *  - toast(msg, type)
- *  - required?: boolean
- *  - label?: string
- *  - onClientCreated?(client)
- */
 export default function ClientQuickAdd({
   clients = [],
   value = '',
@@ -26,7 +15,7 @@ export default function ClientQuickAdd({
   onClientCreated,
 }) {
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', phone: '', company: '' })
+  const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', category: 'cod' })
   const [busy, setBusy] = useState(false)
   const canPick = contactsPickerSupported()
 
@@ -42,12 +31,13 @@ export default function ClientQuickAdd({
         email: form.email.trim(),
         phone: form.phone.trim(),
         company: form.company.trim(),
+        category: form.category || 'cod',
         createdAt: new Date().toISOString(),
       })
       await refresh?.()
       onChange?.(row.id)
       onClientCreated?.(row)
-      setForm({ name: '', email: '', phone: '', company: '' })
+      setForm({ name: '', email: '', phone: '', company: '', category: 'cod' })
       setOpen(false)
       toast?.('Client added', 'success')
     } catch (e) {
@@ -71,9 +61,10 @@ export default function ClientQuickAdd({
         email: c.email || '',
         phone: normalizeSaPhone(c.phone) || c.phone || '',
         company: '',
+        category: 'cod',
       })
       setOpen(true)
-      toast?.('Contact loaded — review and Save client', 'success')
+      toast?.('Contact loaded — set category and Save client', 'success')
     } catch (e) {
       toast?.(e.message || 'Could not open contacts', 'error')
     } finally {
@@ -92,7 +83,9 @@ export default function ClientQuickAdd({
       >
         <option value="">Select client…</option>
         {(clients || []).slice().sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))).map((c) => (
-          <option key={c.id} value={c.id}>{c.name}{c.phone ? ` · ${c.phone}` : ''}</option>
+          <option key={c.id} value={c.id}>
+            {c.name}{c.category ? ` [${String(c.category).toUpperCase()}]` : ''}{c.phone ? ` · ${c.phone}` : ''}
+          </option>
         ))}
       </select>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
@@ -111,6 +104,11 @@ export default function ClientQuickAdd({
           <input className="input" placeholder="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           <input className="input" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           <input className="input" placeholder="Company" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
+          <select className="select" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+            {CLIENT_CATEGORIES.map((cat) => (
+              <option key={cat.id} value={cat.id}>{cat.label} — {cat.description}</option>
+            ))}
+          </select>
           <button type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={save}>
             {busy ? 'Saving…' : 'Save client'}
           </button>
