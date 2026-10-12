@@ -1,6 +1,6 @@
 /**
- * SA Invoice Pro – Cloud Sync client
- * Auto-push workspace + invoice status when cloud session exists
+ * SA Invoice Pro – Cloud Sync client v1.3
+ * Auto-push + notifications + WA pending clients
  */
 const BASE = 'https://saip-sync.onrender.com'
 const TOKEN_KEY = 'saip_sync_token'
@@ -89,7 +89,7 @@ export const Sync = {
     const balance = Math.max(0, total - paid)
     let status = inv.status || 'unpaid'
     if (balance <= 0) status = 'paid'
-    else if (paid > 0 && status !== 'overdue') status = status === 'overdue' ? 'overdue' : 'partial'
+    else if (paid > 0 && status !== 'overdue') status = 'partial'
     else if (inv.dueDate && new Date(inv.dueDate) < new Date() && status !== 'paid') status = 'overdue'
 
     return {
@@ -104,10 +104,6 @@ export const Sync = {
     }
   },
 
-  /**
-   * Push full workspace snapshot + invoice statuses.
-   * Safe to call often — network errors are swallowed.
-   */
   async pushAll(snapshot = {}) {
     if (!getToken()) return { ok: false, reason: 'not_logged_in' }
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
@@ -161,7 +157,6 @@ export const Sync = {
     }
   },
 
-  /** Debounced auto-push (2s) after local data changes */
   scheduleAutoPush(snapshot, delayMs = 2000) {
     if (!getToken()) return
     if (_autoTimer) clearTimeout(_autoTimer)
@@ -173,6 +168,29 @@ export const Sync = {
 
   lastPushAt() {
     return _lastPushAt
+  },
+
+  async getNotifications({ unreadOnly = false } = {}) {
+    const q = unreadOnly ? '?unread=1' : ''
+    return request('/api/notifications' + q)
+  },
+
+  async markNotificationsRead(ids, all = false) {
+    return request('/api/notifications/read', {
+      method: 'POST',
+      body: JSON.stringify(all ? { all: true } : { ids }),
+    })
+  },
+
+  async getPendingWaClients() {
+    return request('/api/wa/pending')
+  },
+
+  async markWaClientImported(phone, clientId) {
+    return request('/api/wa/pending/' + encodeURIComponent(phone) + '/imported', {
+      method: 'POST',
+      body: JSON.stringify({ client_id: clientId }),
+    })
   },
 }
 

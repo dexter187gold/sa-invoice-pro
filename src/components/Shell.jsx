@@ -5,6 +5,7 @@ import { APP_VERSION } from '../config'
 import CommandPalette from './CommandPalette'
 import AppLogo from './AppLogo'
 import AppAssistant from './AppAssistant'
+import NotificationBell from './NotificationBell'
 
 const sections = [
   {
@@ -12,6 +13,7 @@ const sections = [
     links: [
       { to: '/', label: 'Home', end: true },
       { to: '/dashboard', label: 'Dashboard' },
+      { to: '/inbox', label: 'WhatsApp inbox' },
     ],
   },
   {
@@ -53,6 +55,7 @@ const sections = [
 const crumbMap = {
   '/': 'Home',
   '/dashboard': 'Dashboard',
+  '/inbox': 'WhatsApp inbox',
   '/invoices': 'Invoices',
   '/quotes': 'Quotes',
   '/clients': 'Clients',
@@ -113,7 +116,8 @@ export default function Shell({ children }) {
       <div className="mobile-bar">
         <button type="button" className="btn btn-outline btn-sm" onClick={() => setOpen(true)} aria-label="Open menu">Menu</button>
         <AppLogo size={28} />
-        <strong style={{ fontSize: 13, letterSpacing: '-0.02em' }}>{company?.name || 'SA Invoice Pro'}</strong>
+        <strong style={{ fontSize: 13, letterSpacing: '-0.02em', flex: 1 }}>{company?.name || 'SA Invoice Pro'}</strong>
+        <NotificationBell />
         <span className={`status-dot ${online ? 'on' : 'off'}`} title={online ? 'Online' : 'Offline'} />
       </div>
       <div className="shell">
@@ -165,7 +169,6 @@ export default function Shell({ children }) {
                 type="button"
                 className="btn btn-outline btn-sm"
                 onClick={() => setDensity(density === 'compact' ? 'comfortable' : 'compact')}
-                title="Toggle density"
               >
                 {density === 'compact' ? 'Compact' : 'Comfort'}
               </button>
@@ -173,34 +176,26 @@ export default function Shell({ children }) {
                 type="button"
                 className="btn btn-outline btn-sm"
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                title="Toggle theme"
               >
                 {theme === 'dark' ? 'Light' : 'Dark'}
               </button>
             </div>
-            <div className="muted" style={{
-              fontSize: 12,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              padding: '0.15rem 0',
-            }}>
-              {user?.username || user?.email}
-            </div>
-            <button
-              type="button"
-              className="btn btn-outline btn-sm"
-              onClick={() => { logout(); nav('/login') }}
-            >
+            <div className="muted" style={{ fontSize: 12 }}>{user?.username || user?.email}</div>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => { logout(); nav('/login') }}>
               Sign out
             </button>
           </div>
         </aside>
         <main className="main" id="main-content">
-          <div className="breadcrumb" aria-label="Breadcrumb">
-            <span className="muted">Workspace</span>
-            <span className="muted">/</span>
-            <strong>{crumb}</strong>
+          <div className="breadcrumb" aria-label="Breadcrumb" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+            <div>
+              <span className="muted">Workspace</span>
+              <span className="muted"> / </span>
+              <strong>{crumb}</strong>
+            </div>
+            <div className="desktop-only" style={{ display: 'flex' }}>
+              <NotificationBell />
+            </div>
           </div>
           {children}
         </main>

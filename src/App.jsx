@@ -23,6 +23,7 @@ import Reports from './pages/Reports'
 import Documents from './pages/Documents'
 import License from './pages/License'
 import Payments from './pages/Payments'
+import Inbox from './pages/Inbox'
 import { APP_VERSION } from './config'
 import { ErrorBoundary } from './components/ui'
 
@@ -67,6 +68,7 @@ function AppInner() {
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/inbox" element={<Inbox />} />
                 <Route path="/clients" element={<Clients />} />
                 <Route path="/invoices" element={<Invoices />} />
                 <Route path="/invoices/new" element={<InvoiceEdit />} />
