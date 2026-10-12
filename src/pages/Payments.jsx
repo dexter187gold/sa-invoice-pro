@@ -6,9 +6,9 @@ import { STORES } from '../lib/db'
 import { formatMoney } from '../lib/money'
 import { PayFast } from '../lib/payfast'
 import {
-  SearchInput, EmptyState, matchesQuery, formatDateZA, relativeTime, PageFade, StatCard, StatusBadge, downloadCsv,
+  SearchInput, EmptyState, matchesQuery, formatDateZA, relativeTime, PageFade, StatCard, StatusBadge, downloadCsv, ConfirmDialog, FilterChips, CopyButton,
 } from '../components/ui'
-import { openWhatsApp, openEmail, toWaNumber } from '../lib/share'
+import { openWhatsApp, openEmail, buildOverdueReminder } from '../lib/share'
 
 function buildReceipt(p, inv, client, company) {
   const co = company?.name || 'SA Invoice Pro'
@@ -35,12 +35,27 @@ export default function Payments() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const [reference, setReference] = useState('')
   const [q, setQ] = useState('')
+  const [methodFilter, setMethodFilter] = useState('all')
+  const [confirm, setConfirm] = useState(null)
 
   const totalPaid = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
   const openDue = open.reduce((s, i) => s + (Number(i.amountDue ?? i.total) || 0), 0)
+  const today = new Date().toISOString().slice(0, 10)
+  const paidToday = payments.filter((p) => String(p.date || '').slice(0, 10) === today)
+    .reduce((s, p) => s + (Number(p.amount) || 0), 0)
+
+  const methodCounts = useMemo(() => {
+    const c = { all: payments.length }
+    for (const p of payments) {
+      const m = p.method || 'Other'
+      c[m] = (c[m] || 0) + 1
+    }
+    return c
+  }, [payments])
 
   const filteredHistory = useMemo(() => {
-    const rows = [...payments].reverse()
+    let rows = [...payments].reverse()
+    if (methodFilter !== 'all') rows = rows.filter((p) => (p.method || 'Other') === methodFilter)
     if (!q.trim()) return rows
     return rows.filter((p) => {
       const inv = invoices.find((i) => String(i.id) === String(p.invoiceId))
@@ -51,7 +66,7 @@ export default function Payments() {
         ['method', 'reference', 'invNumber', 'clientName']
       )
     })
-  }, [payments, invoices, clients, q])
+  }, [payments, invoices, clients, q, methodFilter])
 
   const record = async (e) => {
     e.preventDefault()
@@ -113,6 +128,33 @@ export default function Payments() {
     }
   }
 
+  const remindOpen = (inv, channel) => {
+    const client = clients.find((c) => String(c.id) === String(inv.clientId))
+    const text = buildOverdueReminder(inv, client, company)
+    if (channel === 'wa') {
+      openWhatsApp(client?.phone, text)
+      toast('Opening reminder…', 'success')
+    } else {
+      openEmail(client?.email, `Payment reminder — ${inv.number}`, text.replace(/\*/g, ''))
+      toast('Opening email…', 'success')
+    }
+  }
+
+  const delPayment = (p) => {
+    setConfirm({
+      title: 'Delete payment?',
+      message: 'This removes the payment log only. Invoice balances are not auto-reversed — edit the invoice if needed.',
+      danger: true,
+      confirmLabel: 'Delete',
+      action: async () => {
+        await db.remove(STORES.payments, p.id)
+        await refresh()
+        toast('Payment deleted', 'success')
+        setConfirm(null)
+      },
+    })
+  }
+
   const payfastCheckout = async (inv) => {
     try {
       const cfg = await PayFast.getConfig()
@@ -141,21 +183,32 @@ export default function Payments() {
 
   const exportCsv = () => {
     downloadCsv(`payments-${new Date().toISOString().slice(0, 10)}.csv`,
-      ['Date', 'Amount', 'Method', 'Reference', 'Invoice id'],
-      payments.map((p) => [p.date || '', Number(p.amount) || 0, p.method || '', p.reference || '', p.invoiceId || ''])
+      ['Date', 'Amount', 'Method', 'Reference', 'Invoice', 'Client'],
+      filteredHistory.map((p) => {
+        const inv = invoices.find((i) => String(i.id) === String(p.invoiceId))
+        const client = clients.find((c) => String(c.id) === String(p.clientId || inv?.clientId))
+        return [p.date || '', Number(p.amount) || 0, p.method || '', p.reference || '', inv?.number || '', client?.name || '']
+      })
     )
     toast('CSV exported', 'success')
   }
+
+  const methodChips = [
+    { id: 'all', label: 'All', count: methodCounts.all },
+    ...['EFT', 'Cash', 'Card', 'PayFast', 'Other'].map((m) => ({
+      id: m, label: m, count: methodCounts[m] || 0,
+    })),
+  ]
 
   return (
     <PageFade>
       <div className="page-header">
         <div>
           <h1>Payments</h1>
-          <p className="subtitle">Record EFT / cash · receipts · PayFast when configured</p>
+          <p className="subtitle">Record · receipts · reminders · history actions</p>
         </div>
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
-          <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={!payments.length}>Export CSV</button>
+          <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={!filteredHistory.length}>Export CSV</button>
           <Link className="btn btn-secondary" to="/invoices">Invoices</Link>
           <Link className="btn btn-outline" to="/reports">Reports</Link>
           <Link className="btn btn-outline" to="/clients">Clients</Link>
@@ -164,6 +217,7 @@ export default function Payments() {
 
       <div className="grid-stats" style={{ marginBottom: '1rem' }}>
         <StatCard label="Total collected" value={formatMoney(totalPaid)} tone="good" />
+        <StatCard label="Paid today" value={formatMoney(paidToday)} tone="good" />
         <StatCard label="Still due" value={formatMoney(openDue)} tone={openDue > 0 ? 'warn' : 'good'} hint={`${open.length} open`} />
         <StatCard label="Payments logged" value={payments.length} />
       </div>
@@ -206,9 +260,9 @@ export default function Payments() {
         </div>
       </form>
 
-      <h3 style={{ marginTop: 0 }}>Open invoices</h3>
+      <h3 style={{ marginTop: 0 }}>Open invoices — collect / remind</h3>
       {!open.length && (
-        <EmptyState title="No open invoices" hint="All invoices are paid, or create a new one." action={<Link className="btn btn-primary btn-sm" to="/invoices/new">New invoice</Link>} />
+        <EmptyState title="No open invoices" hint="All clear." action={<Link className="btn btn-primary btn-sm" to="/invoices/new">New invoice</Link>} />
       )}
       {open.map((i) => {
         const c = clients.find((x) => String(x.id) === String(i.clientId))
@@ -223,6 +277,8 @@ export default function Payments() {
             <div className="list-card-actions">
               <button type="button" className="btn btn-outline btn-sm" onClick={() => fillFromInvoice(i.id)}>Fill form</button>
               <button type="button" className="btn btn-primary btn-sm" onClick={() => markFullyPaid(i)}>Mark paid</button>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => remindOpen(i, 'wa')}>Remind WA</button>
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => remindOpen(i, 'email')}>Remind email</button>
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => payfastCheckout(i)}>PayFast</button>
               <Link className="btn btn-outline btn-sm" to={`/invoices/${i.id}`}>Edit</Link>
             </div>
@@ -234,10 +290,14 @@ export default function Payments() {
         <h3 style={{ margin: 0 }}>Payment history</h3>
         <SearchInput value={q} onChange={setQ} placeholder="Search method, ref, client…" />
       </div>
+      <div style={{ marginBottom: 8 }}>
+        <FilterChips options={methodChips} value={methodFilter} onChange={setMethodFilter} />
+      </div>
+
       {!filteredHistory.length ? (
         <EmptyState
           title={payments.length ? 'No matches' : 'No payments yet'}
-          hint={payments.length ? 'Try another search.' : 'Record an EFT or use PayFast checkout above.'}
+          hint={payments.length ? 'Try another search or method filter.' : 'Record an EFT or use PayFast above.'}
         />
       ) : (
         filteredHistory.map((p) => {
@@ -245,7 +305,7 @@ export default function Payments() {
           const client = clients.find((c) => String(c.id) === String(p.clientId || inv?.clientId))
           return (
             <div key={p.id} className="list-card" style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <div>
+              <div style={{ minWidth: 0, flex: 1 }}>
                 <strong>{formatMoney(p.amount)}</strong>
                 <span className="muted" style={{ marginLeft: 8 }}>
                   {formatDateZA(p.date)} · {p.method}
@@ -253,17 +313,30 @@ export default function Payments() {
                 </span>
                 <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
                   {[inv?.number, client?.name].filter(Boolean).join(' · ') || '—'}
+                  {p.date ? ` · ${relativeTime(p.date)}` : ''}
                 </div>
               </div>
               <div className="list-card-actions">
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => sendReceipt(p, 'wa')}>Receipt WA</button>
                 <button type="button" className="btn btn-outline btn-sm" onClick={() => sendReceipt(p, 'email')}>Receipt email</button>
-                {p.date ? <span className="muted" style={{ fontSize: 12 }}>{relativeTime(p.date)}</span> : null}
+                {inv ? <Link className="btn btn-outline btn-sm" to={`/invoices/${inv.id}`}>Invoice</Link> : null}
+                {p.reference ? <CopyButton text={p.reference} label="Ref" /> : null}
+                <button type="button" className="btn btn-outline btn-sm" onClick={() => delPayment(p)}>Delete</button>
               </div>
             </div>
           )
         })
       )}
+
+      <ConfirmDialog
+        open={!!confirm}
+        title={confirm?.title}
+        message={confirm?.message}
+        confirmLabel={confirm?.confirmLabel}
+        danger={confirm?.danger}
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => confirm?.action?.()}
+      />
     </PageFade>
   )
 }
