@@ -1,9 +1,10 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
 import * as db from '../lib/db'
 import { STORES } from '../lib/db'
 import { getSession, setSession } from '../lib/storage'
 import { hashPassword, looksHashed } from '../lib/hash'
 import { VAT_RATE_DEFAULT } from '../config'
+import { Sync } from '../lib/sync'
 
 const AppCtx = createContext(null)
 
@@ -31,6 +32,7 @@ export function AppProvider({ children }) {
   const [vatEnabled, setVatEnabled] = useState(true)
   const [vatRate, setVatRate] = useState(VAT_RATE_DEFAULT)
   const [online, setOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
+  const skipAutoPush = useRef(true) // skip first load flood
 
   const dismissToast = useCallback((id) => {
     setToasts((t) => t.filter((x) => x.id !== id))
@@ -62,14 +64,41 @@ export function AppProvider({ children }) {
     ]
     const c = await db.getCompany()
     setCompany(c)
+    const snap = {
+      company: c,
+      clients: [],
+      invoices: [],
+      quotes: [],
+      tickets: [],
+      payments: [],
+      products: [],
+      services: [],
+      expenses: [],
+    }
     for (const [store, setter] of keys) {
       if (!setter) continue
-      setter((await db.getAll(store)) || [])
+      const rows = (await db.getAll(store)) || []
+      setter(rows)
+      if (store === STORES.clients) snap.clients = rows
+      if (store === STORES.invoices) snap.invoices = rows
+      if (store === STORES.quotes) snap.quotes = rows
+      if (store === STORES.tickets) snap.tickets = rows
+      if (store === STORES.payments) snap.payments = rows
+      if (store === STORES.products) snap.products = rows
+      if (store === STORES.services) snap.services = rows
+      if (store === STORES.expenses) snap.expenses = rows
     }
     const ve = await db.getSetting('vatEnabled', true)
     const vr = await db.getSetting('vatRate', VAT_RATE_DEFAULT)
     setVatEnabled(ve !== false)
     setVatRate(Number(vr) || VAT_RATE_DEFAULT)
+
+    // Auto-push to saip-sync when cloud session exists (debounced)
+    if (skipAutoPush.current) {
+      skipAutoPush.current = false
+    } else if (Sync.isLoggedIn()) {
+      Sync.scheduleAutoPush(snap, 2500)
+    }
   }, [])
 
   useEffect(() => {
@@ -90,6 +119,22 @@ export function AppProvider({ children }) {
         await refresh()
         let trial = await db.getSetting('trialStartedAt', null)
         if (!trial) await db.setSetting('trialStartedAt', new Date().toISOString())
+        // One initial cloud push after boot if logged in
+        if (Sync.isLoggedIn()) {
+          setTimeout(() => {
+            Sync.pushAll({
+              company,
+              clients,
+              invoices,
+              quotes,
+              tickets,
+              payments,
+              products,
+              services,
+              expenses,
+            }).catch(() => {})
+          }, 4000)
+        }
       } catch (e) {
         console.error(e)
         toast('Storage error: ' + (e.message || e), 'error')
@@ -120,7 +165,6 @@ export function AppProvider({ children }) {
     if (looksHashed(u.password)) {
       ok = u.password === hashedInput
     } else {
-      // Legacy plaintext: accept once, then re-hash and store
       ok = u.password === password
       if (ok) {
         await db.put(STORES.users, { ...u, password: hashedInput })
