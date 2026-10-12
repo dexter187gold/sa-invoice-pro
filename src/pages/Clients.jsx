@@ -5,12 +5,13 @@ import * as db from '../lib/db'
 import { STORES } from '../lib/db'
 import { formatMoney } from '../lib/money'
 import {
-  SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, CopyButton, downloadCsv, FilterChips,
+  SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, downloadCsv, FilterChips,
 } from '../components/ui'
 import { contactsPickerSupported, pickContactsFromPhone, normalizeSaPhone } from '../lib/contacts'
 import { CLIENT_CATEGORIES, categoryLabel, categoryOf } from '../lib/clientCategories'
 import { slaUsage } from '../lib/sla'
 import { openWhatsApp, openEmail, buildClientStatement } from '../lib/share'
+import { openInvoicesForClient, statementTotals, downloadStatementPdf, shareStatementPdf } from '../lib/statementPdf'
 
 export default function Clients() {
   const { clients, invoices, tickets, timeEntries, company, refresh, toast } = useApp()
@@ -22,6 +23,7 @@ export default function Clients() {
   const [catFilter, setCatFilter] = useState('all')
   const [confirm, setConfirm] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [preview, setPreview] = useState(null) // client object
   const canPick = contactsPickerSupported()
 
   const catCounts = useMemo(() => {
@@ -63,6 +65,10 @@ export default function Clients() {
 
   const totalAr = useMemo(() => Object.values(arByClient).reduce((s, v) => s + v, 0), [arByClient])
 
+  const previewRows = preview ? openInvoicesForClient(preview, invoices) : []
+  const previewTotal = statementTotals(previewRows)
+  const previewText = preview ? buildClientStatement(preview, invoices, company) : ''
+
   const sendStatementWa = (client) => {
     const text = buildClientStatement(client, invoices, company)
     const ok = openWhatsApp(client.phone, text)
@@ -70,20 +76,33 @@ export default function Clients() {
   }
   const sendStatementEmail = (client) => {
     const text = buildClientStatement(client, invoices, company).replace(/\*/g, '')
-    const ok = openEmail(
-      client.email,
-      `Account statement — ${company?.name || 'SA Invoice Pro'}`,
-      text
-    )
+    const ok = openEmail(client.email, `Account statement — ${company?.name || 'SA Invoice Pro'}`, text)
     toast(ok ? 'Opening email statement…' : 'No email on client', ok ? 'success' : 'info')
+  }
+
+  const doPdf = async (client, share) => {
+    try {
+      if (share) {
+        const r = await shareStatementPdf(client, invoices, company, {
+          channel: 'wa',
+          text: buildClientStatement(client, invoices, company),
+        })
+        if (r.method === 'download-fallback') {
+          toast('PDF downloaded — attach it in WhatsApp/email', 'info')
+          sendStatementWa(client)
+        } else if (r.shared) toast('Shared', 'success')
+      } else {
+        downloadStatementPdf(client, invoices, company)
+        toast('Statement PDF downloaded', 'success')
+      }
+    } catch (e) {
+      toast(e.message || 'PDF failed', 'error')
+    }
   }
 
   const save = async (e) => {
     e.preventDefault()
     if (!form.name.trim()) return toast('Name required', 'error')
-    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      return toast('Invalid email address', 'error')
-    }
     const cap = form.slaHoursCap === '' || form.slaHoursCap == null ? null : Number(form.slaHoursCap)
     await db.add(STORES.clients, {
       ...form,
@@ -119,67 +138,35 @@ export default function Clients() {
     setBusy(true)
     try {
       const list = await pickContactsFromPhone({ multiple: true })
-      if (!list.length) {
-        toast('No contacts selected', 'info')
-        return
-      }
+      if (!list.length) return toast('No contacts selected', 'info')
       let added = 0
       let skipped = 0
-      const existingPhones = new Set(
-        clients.map((c) => String(c.phone || '').replace(/\D/g, '')).filter(Boolean)
-      )
-      const existingNames = new Set(clients.map((c) => String(c.name || '').trim().toLowerCase()).filter(Boolean))
-
+      const existingPhones = new Set(clients.map((c) => String(c.phone || '').replace(/\D/g, '')).filter(Boolean))
       for (const c of list) {
         const name = (c.name || c.phone || 'Contact').trim()
         const phone = normalizeSaPhone(c.phone) || c.phone || ''
         const phoneKey = String(phone).replace(/\D/g, '')
-        if (phoneKey && existingPhones.has(phoneKey)) {
-          skipped++
-          continue
-        }
-        if (!phoneKey && existingNames.has(name.toLowerCase())) {
-          skipped++
-          continue
-        }
+        if (phoneKey && existingPhones.has(phoneKey)) { skipped++; continue }
         await db.add(STORES.clients, {
-          name,
-          phone,
-          email: c.email || '',
-          company: '',
-          vatNumber: '',
-          address: '',
-          category: 'walk_in',
-          createdAt: new Date().toISOString(),
-          source: 'phonebook',
+          name, phone, email: c.email || '', company: '', vatNumber: '', address: '',
+          category: 'walk_in', createdAt: new Date().toISOString(), source: 'phonebook',
         })
         if (phoneKey) existingPhones.add(phoneKey)
-        existingNames.add(name.toLowerCase())
         added++
       }
       await refresh()
-      toast(
-        added
-          ? `Imported ${added} as Walk-in${skipped ? ` (${skipped} skipped)` : ''}`
-          : skipped
-            ? 'All selected contacts already in your list'
-            : 'Nothing imported',
-        added ? 'success' : 'info'
-      )
+      toast(added ? `Imported ${added}` : 'Nothing new', added ? 'success' : 'info')
     } catch (e) {
-      toast(e.message || 'Could not open phone contacts', 'error')
+      toast(e.message || 'Could not open contacts', 'error')
     } finally {
       setBusy(false)
     }
   }
 
   const del = (id) => {
-    const linked = invoices.some((i) => String(i.clientId) === String(id))
     setConfirm({
       title: 'Delete client?',
-      message: linked
-        ? 'This client has invoices. The client record will be removed; invoices remain.'
-        : 'This cannot be undone.',
+      message: 'This cannot be undone.',
       danger: true,
       confirmLabel: 'Delete',
       action: async () => {
@@ -192,34 +179,16 @@ export default function Clients() {
   }
 
   const exportCsv = () => {
-    const headers = ['Name', 'Category', 'SLA hours cap', 'SLA used h', 'Company', 'Email', 'Phone', 'VAT', 'Address', 'Outstanding AR', 'Invoices']
-    const rows = filtered.map((c) => {
-      const u = slaUsage(c, tickets, timeEntries)
-      return [
-        c.name || '',
-        categoryLabel(categoryOf(c)),
-        u.capHours ?? '',
-        u.usedHours,
-        c.company || '',
-        c.email || '',
-        c.phone || '',
-        c.vatNumber || '',
-        c.address || '',
-        arByClient[String(c.id)] || 0,
-        invCountByClient[String(c.id)] || 0,
-      ]
-    })
-    downloadCsv(`clients-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows)
+    downloadCsv(`clients-${new Date().toISOString().slice(0, 10)}.csv`,
+      ['Name', 'Category', 'Email', 'Phone', 'Outstanding AR'],
+      filtered.map((c) => [c.name || '', categoryLabel(categoryOf(c)), c.email || '', c.phone || '', arByClient[String(c.id)] || 0])
+    )
     toast('CSV exported', 'success')
   }
 
   const chips = [
     { id: 'all', label: 'All', count: catCounts.all },
-    ...CLIENT_CATEGORIES.map((cat) => ({
-      id: cat.id,
-      label: cat.label,
-      count: catCounts[cat.id] || 0,
-    })),
+    ...CLIENT_CATEGORIES.map((cat) => ({ id: cat.id, label: cat.label, count: catCounts[cat.id] || 0 })),
   ]
 
   return (
@@ -230,7 +199,6 @@ export default function Clients() {
           <p className="subtitle">
             {filtered.length} shown · {clients.length} total
             {totalAr > 0 ? ` · AR ${formatMoney(totalAr)}` : ''}
-            {' · statements · SLA'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
@@ -247,10 +215,7 @@ export default function Clients() {
       </div>
 
       <div className="sticky-tools toolbar" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <SearchInput value={q} onChange={setQ} placeholder="Search name, email, phone, VAT…" />
-          <Link className="btn btn-outline btn-sm" to="/invoices/new">Invoice client</Link>
-        </div>
+        <SearchInput value={q} onChange={setQ} placeholder="Search name, email, phone…" />
         <FilterChips options={chips} value={catFilter} onChange={setCatFilter} />
       </div>
 
@@ -258,33 +223,15 @@ export default function Clients() {
         <form className="card form-grid cols-2" onSubmit={save} style={{ marginBottom: '1rem' }}>
           <div>
             <label className="label">Name *</label>
-            <input className="input focus-ring" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
+            <input className="input" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </div>
           <div>
             <label className="label">Category</label>
             <select className="select" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
               {CLIENT_CATEGORIES.map((cat) => (
-                <option key={cat.id} value={cat.id}>{cat.label} — {cat.description}</option>
+                <option key={cat.id} value={cat.id}>{cat.label}</option>
               ))}
             </select>
-          </div>
-          {(form.category === 'sla' || form.category === 'contract') && (
-            <div>
-              <label className="label">SLA hours included (cap)</label>
-              <input
-                className="input"
-                type="number"
-                min={0}
-                step={0.5}
-                placeholder="e.g. 10"
-                value={form.slaHoursCap}
-                onChange={(e) => setForm({ ...form, slaHoursCap: e.target.value })}
-              />
-            </div>
-          )}
-          <div>
-            <label className="label">Company</label>
-            <input className="input" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
           </div>
           <div>
             <label className="label">Email</label>
@@ -292,37 +239,18 @@ export default function Clients() {
           </div>
           <div>
             <label className="label">Phone</label>
-            <input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+27…" />
-          </div>
-          <div>
-            <label className="label">VAT number</label>
-            <input className="input" value={form.vatNumber} onChange={(e) => setForm({ ...form, vatNumber: e.target.value })} />
-          </div>
-          <div style={{ gridColumn: '1 / -1' }}>
-            <label className="label">Address</label>
-            <input className="input" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+            <input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           </div>
           <button type="submit" className="btn btn-primary">Save client</button>
         </form>
       )}
 
       {!filtered.length ? (
-        <EmptyState
-          title={clients.length ? 'No matches' : 'No clients yet'}
-          hint={clients.length ? 'Try another category or clear search.' : 'Add clients and tag them COD, SLA, Account, etc.'}
-          action={!clients.length ? (
-            <button type="button" className="btn btn-primary" onClick={() => setShow(true)}>Add client</button>
-          ) : null}
-        />
+        <EmptyState title={clients.length ? 'No matches' : 'No clients yet'} />
       ) : (
         filtered
           .slice()
-          .sort((a, b) => {
-            const arA = arByClient[String(a.id)] || 0
-            const arB = arByClient[String(b.id)] || 0
-            if (arB !== arA) return arB - arA
-            return String(a.name || '').localeCompare(String(b.name || ''))
-          })
+          .sort((a, b) => (arByClient[String(b.id)] || 0) - (arByClient[String(a.id)] || 0))
           .map((c) => {
             const ar = arByClient[String(c.id)] || 0
             const invN = invCountByClient[String(c.id)] || 0
@@ -332,68 +260,109 @@ export default function Clients() {
               <div key={c.id} className="list-card" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <strong>{c.name}</strong>{' '}
-                  <span className="muted-pill" style={{ marginLeft: 4 }}>{categoryLabel(cat)}</span>
+                  <span className="muted-pill">{categoryLabel(cat)}</span>
                   <div className="muted" style={{ fontSize: 13 }}>
-                    {[c.company, c.email, c.phone, c.vatNumber && `VAT ${c.vatNumber}`].filter(Boolean).join(' · ')}
+                    {[c.email, c.phone].filter(Boolean).join(' · ')}
                   </div>
                   <div style={{ fontSize: 13, marginTop: 4 }}>
-                    {invN} invoice{invN === 1 ? '' : 's'}
-                    {ar > 0 && (
-                      <> · Outstanding <strong style={{ color: 'var(--warn)' }}>{formatMoney(ar)}</strong></>
-                    )}
+                    {invN} inv{ar > 0 && <> · <strong style={{ color: 'var(--warn)' }}>{formatMoney(ar)}</strong></>}
                   </div>
-                  {(cat === 'sla' || cat === 'contract' || usage.hasCap || usage.usedHours > 0) && (
-                    <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 8, background: usage.over ? 'rgba(239,68,68,.1)' : 'var(--green-soft, rgba(0,122,77,.08))' }}>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>
-                        SLA: {usage.usedHours}h used{usage.hasCap ? ` / ${usage.capHours}h` : ''}
-                        {usage.over && <span className="text-danger"> · OVER CAP</span>}
-                      </div>
-                      {usage.hasCap && (
-                        <div className="progress-bar" style={{ marginTop: 6 }}>
-                          <span style={{ width: `${usage.pct}%`, background: usage.over ? '#ef4444' : undefined }} />
-                        </div>
-                      )}
+                  {(cat === 'sla' || usage.hasCap) && (
+                    <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                      SLA: {usage.usedHours}h{usage.hasCap ? ` / ${usage.capHours}h` : ''}
+                      {usage.over ? ' · OVER' : ''}
                     </div>
                   )}
-                  <div style={{ marginTop: 6, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <select
-                      className="select"
-                      style={{ maxWidth: 140, fontSize: 12, padding: '4px 8px' }}
-                      value={cat}
-                      onChange={(e) => setCategory(c, e.target.value)}
-                    >
-                      {CLIENT_CATEGORIES.map((x) => (
-                        <option key={x.id} value={x.id}>{x.label}</option>
-                      ))}
+                  <div style={{ marginTop: 6 }}>
+                    <select className="select" style={{ maxWidth: 140, fontSize: 12 }} value={cat} onChange={(e) => setCategory(c, e.target.value)}>
+                      {CLIENT_CATEGORIES.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
                     </select>
-                    {(cat === 'sla' || cat === 'contract') && (
-                      <input
-                        className="input"
-                        type="number"
-                        min={0}
-                        step={0.5}
-                        style={{ width: 80, fontSize: 12, padding: '4px 8px' }}
-                        defaultValue={c.slaHoursCap ?? ''}
-                        key={`${c.id}-${c.slaHoursCap}`}
-                        onBlur={(e) => setSlaCap(c, e.target.value)}
-                        placeholder="SLA h"
-                      />
-                    )}
                   </div>
                 </div>
                 <div className="list-card-actions">
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => sendStatementWa(c)} title="WhatsApp statement">
-                    Statement WA
-                  </button>
-                  <button type="button" className="btn btn-outline btn-sm" onClick={() => sendStatementEmail(c)} title="Email statement">
-                    Statement email
-                  </button>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => setPreview(c)}>Preview statement</button>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => sendStatementWa(c)}>WA</button>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => sendStatementEmail(c)}>Email</button>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => doPdf(c, false)}>PDF</button>
                   <Link className="btn btn-secondary btn-sm" to="/invoices/new">Invoice</Link>
-                  <button type="button" className="btn btn-outline btn-sm" onClick={() => del(c.id)}>Delete</button>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => del(c.id)}>Del</button>
                 </div>
               </div>
             )
           })
+      )}
+
+      {/* Live statement preview modal */}
+      {preview && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.45)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+          }}
+          onClick={() => setPreview(null)}
+        >
+          <div
+            className="card"
+            style={{ maxWidth: 520, width: '100%', maxHeight: '90vh', overflow: 'auto', margin: 0 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+              <h3 style={{ margin: 0 }}>Statement · {preview.name}</h3>
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => setPreview(null)}>Close</button>
+            </div>
+            <p className="muted" style={{ fontSize: 13 }}>
+              {company?.name || 'SA Invoice Pro'} · {new Date().toISOString().slice(0, 10)}
+            </p>
+            <div style={{ fontSize: 14, marginBottom: 8 }}>
+              {[preview.email, preview.phone, preview.address].filter(Boolean).join(' · ') || 'No contact details'}
+            </div>
+
+            {!previewRows.length ? (
+              <p><strong>No outstanding invoices.</strong></p>
+            ) : (
+              <table className="table" style={{ fontSize: 13 }}>
+                <thead>
+                  <tr>
+                    <th>Invoice</th>
+                    <th>Due</th>
+                    <th>Status</th>
+                    <th>Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {previewRows.map((inv) => (
+                    <tr key={inv.id}>
+                      <td>{inv.number}</td>
+                      <td>{String(inv.dueDate || inv.date || '').slice(0, 10)}</td>
+                      <td>{inv.status}</td>
+                      <td>{formatMoney(inv.amountDue ?? inv.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            <p style={{ fontWeight: 700, fontSize: 16 }}>
+              Outstanding total: {formatMoney(previewTotal)}
+            </p>
+
+            <details style={{ marginBottom: 12 }}>
+              <summary className="muted">Message preview (WhatsApp / email)</summary>
+              <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, background: 'var(--surface-2, #f1f5f9)', padding: 12, borderRadius: 8 }}>
+                {previewText}
+              </pre>
+            </details>
+
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => sendStatementWa(preview)}>Send WhatsApp</button>
+              <button type="button" className="btn btn-outline" onClick={() => sendStatementEmail(preview)}>Send email</button>
+              <button type="button" className="btn btn-primary" onClick={() => doPdf(preview, false)}>Download PDF</button>
+              <button type="button" className="btn btn-outline" onClick={() => doPdf(preview, true)}>Share PDF</button>
+            </div>
+          </div>
+        </div>
       )}
 
       <ConfirmDialog
