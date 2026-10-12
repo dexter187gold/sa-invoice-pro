@@ -9,11 +9,12 @@ import {
 } from '../components/ui'
 import { contactsPickerSupported, pickContactsFromPhone, normalizeSaPhone } from '../lib/contacts'
 import { CLIENT_CATEGORIES, categoryLabel, categoryOf } from '../lib/clientCategories'
+import { slaUsage } from '../lib/sla'
 
 export default function Clients() {
-  const { clients, invoices, refresh, toast } = useApp()
+  const { clients, invoices, tickets, timeEntries, refresh, toast } = useApp()
   const [form, setForm] = useState({
-    name: '', email: '', phone: '', company: '', vatNumber: '', address: '', category: 'cod',
+    name: '', email: '', phone: '', company: '', vatNumber: '', address: '', category: 'cod', slaHoursCap: '',
   })
   const [show, setShow] = useState(false)
   const [q, setQ] = useState('')
@@ -67,13 +68,15 @@ export default function Clients() {
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       return toast('Invalid email address', 'error')
     }
+    const cap = form.slaHoursCap === '' || form.slaHoursCap == null ? null : Number(form.slaHoursCap)
     await db.add(STORES.clients, {
       ...form,
       name: form.name.trim(),
       category: form.category || 'cod',
+      slaHoursCap: Number.isFinite(cap) && cap > 0 ? cap : null,
       createdAt: new Date().toISOString(),
     })
-    setForm({ name: '', email: '', phone: '', company: '', vatNumber: '', address: '', category: 'cod' })
+    setForm({ name: '', email: '', phone: '', company: '', vatNumber: '', address: '', category: 'cod', slaHoursCap: '' })
     setShow(false)
     await refresh()
     toast('Client saved', 'success')
@@ -83,6 +86,17 @@ export default function Clients() {
     await db.put(STORES.clients, { ...client, category, updatedAt: new Date().toISOString() })
     await refresh()
     toast(`Category → ${categoryLabel(category)}`, 'success')
+  }
+
+  const setSlaCap = async (client, value) => {
+    const cap = value === '' || value == null ? null : Number(value)
+    await db.put(STORES.clients, {
+      ...client,
+      slaHoursCap: Number.isFinite(cap) && cap > 0 ? cap : null,
+      updatedAt: new Date().toISOString(),
+    })
+    await refresh()
+    toast(cap > 0 ? `SLA cap ${cap}h` : 'SLA cap cleared', 'success')
   }
 
   const importFromPhone = async () => {
@@ -162,18 +176,23 @@ export default function Clients() {
   }
 
   const exportCsv = () => {
-    const headers = ['Name', 'Category', 'Company', 'Email', 'Phone', 'VAT', 'Address', 'Outstanding AR', 'Invoices']
-    const rows = filtered.map((c) => [
-      c.name || '',
-      categoryLabel(categoryOf(c)),
-      c.company || '',
-      c.email || '',
-      c.phone || '',
-      c.vatNumber || '',
-      c.address || '',
-      arByClient[String(c.id)] || 0,
-      invCountByClient[String(c.id)] || 0,
-    ])
+    const headers = ['Name', 'Category', 'SLA hours cap', 'SLA used h', 'Company', 'Email', 'Phone', 'VAT', 'Address', 'Outstanding AR', 'Invoices']
+    const rows = filtered.map((c) => {
+      const u = slaUsage(c, tickets, timeEntries)
+      return [
+        c.name || '',
+        categoryLabel(categoryOf(c)),
+        u.capHours ?? '',
+        u.usedHours,
+        c.company || '',
+        c.email || '',
+        c.phone || '',
+        c.vatNumber || '',
+        c.address || '',
+        arByClient[String(c.id)] || 0,
+        invCountByClient[String(c.id)] || 0,
+      ]
+    })
     downloadCsv(`clients-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows)
     toast('CSV exported', 'success')
   }
@@ -195,7 +214,7 @@ export default function Clients() {
           <p className="subtitle">
             {filtered.length} shown · {clients.length} total
             {totalAr > 0 ? ` · AR ${formatMoney(totalAr)}` : ''}
-            {' · COD · SLA · Account'}
+            {' · COD · SLA hours · Account'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
@@ -233,6 +252,23 @@ export default function Clients() {
               ))}
             </select>
           </div>
+          {(form.category === 'sla' || form.category === 'contract') && (
+            <div>
+              <label className="label">SLA hours included (cap)</label>
+              <input
+                className="input"
+                type="number"
+                min={0}
+                step={0.5}
+                placeholder="e.g. 10"
+                value={form.slaHoursCap}
+                onChange={(e) => setForm({ ...form, slaHoursCap: e.target.value })}
+              />
+              <p className="muted" style={{ fontSize: 11, margin: '4px 0 0' }}>
+                Used hours come from time logged on this client’s job cards.
+              </p>
+            </div>
+          )}
           <div>
             <label className="label">Company</label>
             <input className="input" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
@@ -278,6 +314,7 @@ export default function Clients() {
             const ar = arByClient[String(c.id)] || 0
             const invN = invCountByClient[String(c.id)] || 0
             const cat = categoryOf(c)
+            const usage = slaUsage(c, tickets, timeEntries)
             return (
               <div key={c.id} className="list-card" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
@@ -293,11 +330,34 @@ export default function Clients() {
                       <> · Outstanding <strong style={{ color: 'var(--warn)' }}>{formatMoney(ar)}</strong></>
                     )}
                   </div>
-                  <div style={{ marginTop: 6 }}>
-                    <label className="muted" style={{ fontSize: 11, marginRight: 6 }}>Category</label>
+                  {(cat === 'sla' || cat === 'contract' || usage.hasCap || usage.usedHours > 0) && (
+                    <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 8, background: usage.over ? 'rgba(239,68,68,.1)' : 'var(--green-soft, rgba(0,122,77,.08))' }}>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>
+                        SLA time:{' '}
+                        {usage.usedHours}h used
+                        {usage.hasCap ? ` / ${usage.capHours}h cap` : ' (no cap set)'}
+                        {usage.hasCap && (
+                          <span className="muted" style={{ fontWeight: 500 }}>
+                            {' '}· {usage.remaining}h left
+                          </span>
+                        )}
+                        {usage.over && <span className="text-danger"> · OVER CAP</span>}
+                      </div>
+                      {usage.hasCap && (
+                        <div className="progress-bar" style={{ marginTop: 6 }}>
+                          <span style={{ width: `${usage.pct}%`, background: usage.over ? '#ef4444' : undefined }} />
+                        </div>
+                      )}
+                      <p className="muted" style={{ fontSize: 11, margin: '4px 0 0' }}>
+                        Linked to total time on this client’s job cards (logged + active timers).
+                      </p>
+                    </div>
+                  )}
+                  <div style={{ marginTop: 6, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <label className="muted" style={{ fontSize: 11 }}>Category</label>
                     <select
                       className="select"
-                      style={{ maxWidth: 200, fontSize: 12, padding: '4px 8px' }}
+                      style={{ maxWidth: 140, fontSize: 12, padding: '4px 8px' }}
                       value={cat}
                       onChange={(e) => setCategory(c, e.target.value)}
                     >
@@ -305,6 +365,22 @@ export default function Clients() {
                         <option key={x.id} value={x.id}>{x.label}</option>
                       ))}
                     </select>
+                    {(cat === 'sla' || cat === 'contract') && (
+                      <>
+                        <label className="muted" style={{ fontSize: 11 }}>SLA h</label>
+                        <input
+                          className="input"
+                          type="number"
+                          min={0}
+                          step={0.5}
+                          style={{ width: 80, fontSize: 12, padding: '4px 8px' }}
+                          defaultValue={c.slaHoursCap ?? ''}
+                          key={`${c.id}-${c.slaHoursCap}`}
+                          onBlur={(e) => setSlaCap(c, e.target.value)}
+                          placeholder="Cap"
+                        />
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="list-card-actions">
