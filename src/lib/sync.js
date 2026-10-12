@@ -1,6 +1,6 @@
 /**
- * SA Invoice Pro – Cloud Sync client v1.3
- * Auto-push + notifications + WA pending clients
+ * SA Invoice Pro – Cloud Sync client v1.3.1
+ * Auto-push + notifications + WA pending + client portal links
  */
 const BASE = 'https://saip-sync.onrender.com'
 const TOKEN_KEY = 'saip_sync_token'
@@ -190,6 +190,24 @@ export const Sync = {
     return request('/api/wa/pending/' + encodeURIComponent(phone) + '/imported', {
       method: 'POST',
       body: JSON.stringify({ client_id: clientId }),
+    })
+  },
+
+  async createPortalLink(clientId, { days = 90 } = {}) {
+    return request('/api/portal/create', {
+      method: 'POST',
+      body: JSON.stringify({ client_id: clientId, days }),
+    })
+  },
+
+  async listPortalLinks() {
+    return request('/api/portal/list')
+  },
+
+  async revokePortalLink(token) {
+    return request('/api/portal/revoke', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
     })
   },
 }
