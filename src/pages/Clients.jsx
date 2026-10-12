@@ -10,9 +10,10 @@ import {
 import { contactsPickerSupported, pickContactsFromPhone, normalizeSaPhone } from '../lib/contacts'
 import { CLIENT_CATEGORIES, categoryLabel, categoryOf } from '../lib/clientCategories'
 import { slaUsage } from '../lib/sla'
+import { openWhatsApp, openEmail, buildClientStatement } from '../lib/share'
 
 export default function Clients() {
-  const { clients, invoices, tickets, timeEntries, refresh, toast } = useApp()
+  const { clients, invoices, tickets, timeEntries, company, refresh, toast } = useApp()
   const [form, setForm] = useState({
     name: '', email: '', phone: '', company: '', vatNumber: '', address: '', category: 'cod', slaHoursCap: '',
   })
@@ -61,6 +62,21 @@ export default function Clients() {
   }, [invoices])
 
   const totalAr = useMemo(() => Object.values(arByClient).reduce((s, v) => s + v, 0), [arByClient])
+
+  const sendStatementWa = (client) => {
+    const text = buildClientStatement(client, invoices, company)
+    const ok = openWhatsApp(client.phone, text)
+    toast(ok ? 'Opening WhatsApp statement…' : 'No phone — WhatsApp opened without number', ok ? 'success' : 'info')
+  }
+  const sendStatementEmail = (client) => {
+    const text = buildClientStatement(client, invoices, company).replace(/\*/g, '')
+    const ok = openEmail(
+      client.email,
+      `Account statement — ${company?.name || 'SA Invoice Pro'}`,
+      text
+    )
+    toast(ok ? 'Opening email statement…' : 'No email on client', ok ? 'success' : 'info')
+  }
 
   const save = async (e) => {
     e.preventDefault()
@@ -214,7 +230,7 @@ export default function Clients() {
           <p className="subtitle">
             {filtered.length} shown · {clients.length} total
             {totalAr > 0 ? ` · AR ${formatMoney(totalAr)}` : ''}
-            {' · COD · SLA hours · Account'}
+            {' · statements · SLA'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
@@ -264,9 +280,6 @@ export default function Clients() {
                 value={form.slaHoursCap}
                 onChange={(e) => setForm({ ...form, slaHoursCap: e.target.value })}
               />
-              <p className="muted" style={{ fontSize: 11, margin: '4px 0 0' }}>
-                Used hours come from time logged on this client’s job cards.
-              </p>
             </div>
           )}
           <div>
@@ -283,7 +296,7 @@ export default function Clients() {
           </div>
           <div>
             <label className="label">VAT number</label>
-            <input className="input" value={form.vatNumber} onChange={(e) => setForm({ ...form, vatNumber: e.target.value })} placeholder="4xxxxxxxxx" />
+            <input className="input" value={form.vatNumber} onChange={(e) => setForm({ ...form, vatNumber: e.target.value })} />
           </div>
           <div style={{ gridColumn: '1 / -1' }}>
             <label className="label">Address</label>
@@ -323,7 +336,6 @@ export default function Clients() {
                   <div className="muted" style={{ fontSize: 13 }}>
                     {[c.company, c.email, c.phone, c.vatNumber && `VAT ${c.vatNumber}`].filter(Boolean).join(' · ')}
                   </div>
-                  {c.address ? <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{c.address}</div> : null}
                   <div style={{ fontSize: 13, marginTop: 4 }}>
                     {invN} invoice{invN === 1 ? '' : 's'}
                     {ar > 0 && (
@@ -333,14 +345,7 @@ export default function Clients() {
                   {(cat === 'sla' || cat === 'contract' || usage.hasCap || usage.usedHours > 0) && (
                     <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 8, background: usage.over ? 'rgba(239,68,68,.1)' : 'var(--green-soft, rgba(0,122,77,.08))' }}>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>
-                        SLA time:{' '}
-                        {usage.usedHours}h used
-                        {usage.hasCap ? ` / ${usage.capHours}h cap` : ' (no cap set)'}
-                        {usage.hasCap && (
-                          <span className="muted" style={{ fontWeight: 500 }}>
-                            {' '}· {usage.remaining}h left
-                          </span>
-                        )}
+                        SLA: {usage.usedHours}h used{usage.hasCap ? ` / ${usage.capHours}h` : ''}
                         {usage.over && <span className="text-danger"> · OVER CAP</span>}
                       </div>
                       {usage.hasCap && (
@@ -348,13 +353,9 @@ export default function Clients() {
                           <span style={{ width: `${usage.pct}%`, background: usage.over ? '#ef4444' : undefined }} />
                         </div>
                       )}
-                      <p className="muted" style={{ fontSize: 11, margin: '4px 0 0' }}>
-                        Linked to total time on this client’s job cards (logged + active timers).
-                      </p>
                     </div>
                   )}
                   <div style={{ marginTop: 6, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <label className="muted" style={{ fontSize: 11 }}>Category</label>
                     <select
                       className="select"
                       style={{ maxWidth: 140, fontSize: 12, padding: '4px 8px' }}
@@ -366,26 +367,27 @@ export default function Clients() {
                       ))}
                     </select>
                     {(cat === 'sla' || cat === 'contract') && (
-                      <>
-                        <label className="muted" style={{ fontSize: 11 }}>SLA h</label>
-                        <input
-                          className="input"
-                          type="number"
-                          min={0}
-                          step={0.5}
-                          style={{ width: 80, fontSize: 12, padding: '4px 8px' }}
-                          defaultValue={c.slaHoursCap ?? ''}
-                          key={`${c.id}-${c.slaHoursCap}`}
-                          onBlur={(e) => setSlaCap(c, e.target.value)}
-                          placeholder="Cap"
-                        />
-                      </>
+                      <input
+                        className="input"
+                        type="number"
+                        min={0}
+                        step={0.5}
+                        style={{ width: 80, fontSize: 12, padding: '4px 8px' }}
+                        defaultValue={c.slaHoursCap ?? ''}
+                        key={`${c.id}-${c.slaHoursCap}`}
+                        onBlur={(e) => setSlaCap(c, e.target.value)}
+                        placeholder="SLA h"
+                      />
                     )}
                   </div>
                 </div>
                 <div className="list-card-actions">
-                  {c.email ? <CopyButton text={c.email} label="Email" /> : null}
-                  {c.phone ? <CopyButton text={c.phone} label="Phone" /> : null}
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => sendStatementWa(c)} title="WhatsApp statement">
+                    Statement WA
+                  </button>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => sendStatementEmail(c)} title="Email statement">
+                    Statement email
+                  </button>
                   <Link className="btn btn-secondary btn-sm" to="/invoices/new">Invoice</Link>
                   <button type="button" className="btn btn-outline btn-sm" onClick={() => del(c.id)}>Delete</button>
                 </div>
