@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf'
 import { formatMoney } from './money'
+import { openWhatsApp, openEmail, buildClientStatement } from './share'
 
 /** Build open-invoice rows for a client */
 export function openInvoicesForClient(client, invoices) {
@@ -104,21 +105,38 @@ export function downloadStatementPdf(client, invoices, company) {
   return blob
 }
 
-/** Try Web Share API with PDF file; falls back to download + open WhatsApp/email */
+/**
+ * Share PDF + caption together when the device supports it.
+ * Always pairs message template with the PDF (2 birds, 1 stone).
+ */
 export async function shareStatementPdf(client, invoices, company, { channel = 'wa', text = '' } = {}) {
+  const caption = text || buildClientStatement(client, invoices, company)
   const blob = buildStatementPdfBlob(client, invoices, company)
-  const file = new File([blob], `statement-${client?.name || 'client'}.pdf`, { type: 'application/pdf' })
+  const fileName = `statement-${(client?.name || 'client').replace(/\s+/g, '-').slice(0, 30)}.pdf`
+  const file = new File([blob], fileName, { type: 'application/pdf' })
 
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+  // Best: native share sheet with file + text caption
+  if (typeof navigator !== 'undefined' && navigator.canShare) {
     try {
-      await navigator.share({ files: [file], title: 'Account statement', text: text || 'Account statement' })
-      return { shared: true, method: 'web-share' }
+      if (navigator.canShare({ files: [file], text: caption })) {
+        await navigator.share({ files: [file], title: 'Account statement', text: caption })
+        return { shared: true, method: 'web-share-file-caption' }
+      }
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Account statement', text: caption })
+        return { shared: true, method: 'web-share-file' }
+      }
     } catch (e) {
       if (e?.name === 'AbortError') return { shared: false, method: 'cancelled' }
     }
   }
 
-  // Fallback: download PDF then open channel
+  // Fallback: download PDF, then open WA/email with same caption
   downloadStatementPdf(client, invoices, company)
-  return { shared: false, method: 'download-fallback', blob }
+  if (channel === 'email') {
+    openEmail(client?.email, `Account statement — ${company?.name || 'SA Invoice Pro'}`, caption.replace(/\*/g, ''))
+  } else {
+    openWhatsApp(client?.phone, caption + '\n\n_(Attach the downloaded PDF statement)_')
+  }
+  return { shared: false, method: 'download-plus-caption', blob, caption }
 }
