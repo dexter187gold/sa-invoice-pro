@@ -16,6 +16,7 @@ import {
   SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, StatusBadge,
   formatDateZA, FilterChips, downloadCsv, daysOverdue,
 } from '../components/ui'
+import ClientQuickAdd from '../components/ClientQuickAdd'
 
 export default function Quotes() {
   const { quotes, clients, invoices, company, vatRate, vatEnabled, refresh, toast } = useApp()
@@ -227,15 +228,14 @@ export default function Quotes() {
 
       <form className="card form-grid" onSubmit={save} style={{ marginBottom: '1rem' }}>
         <div className="form-grid cols-2">
-          <div>
-            <label className="label">Client</label>
-            <select className="select" value={clientId} onChange={(e) => setClientId(e.target.value)} required>
-              <option value="">Select…</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
+          <ClientQuickAdd
+            clients={clients}
+            value={clientId}
+            onChange={setClientId}
+            refresh={refresh}
+            toast={toast}
+            required
+          />
           <div>
             <label className="label">Template</label>
             <select className="select" value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
