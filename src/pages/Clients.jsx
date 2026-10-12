@@ -7,6 +7,7 @@ import { formatMoney } from '../lib/money'
 import {
   SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, CopyButton, downloadCsv,
 } from '../components/ui'
+import { contactsPickerSupported, pickContactsFromPhone, normalizeSaPhone } from '../lib/contacts'
 
 export default function Clients() {
   const { clients, invoices, refresh, toast } = useApp()
@@ -14,6 +15,8 @@ export default function Clients() {
   const [show, setShow] = useState(false)
   const [q, setQ] = useState('')
   const [confirm, setConfirm] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const canPick = contactsPickerSupported()
 
   const filtered = useMemo(
     () => clients.filter((c) => matchesQuery(c, q, ['name', 'email', 'phone', 'company', 'vatNumber', 'address'])),
@@ -52,6 +55,63 @@ export default function Clients() {
     setShow(false)
     await refresh()
     toast('Client saved', 'success')
+  }
+
+  const importFromPhone = async () => {
+    setBusy(true)
+    try {
+      const list = await pickContactsFromPhone({ multiple: true })
+      if (!list.length) {
+        toast('No contacts selected', 'info')
+        return
+      }
+      let added = 0
+      let skipped = 0
+      const existingPhones = new Set(
+        clients.map((c) => String(c.phone || '').replace(/\D/g, '')).filter(Boolean)
+      )
+      const existingNames = new Set(clients.map((c) => String(c.name || '').trim().toLowerCase()).filter(Boolean))
+
+      for (const c of list) {
+        const name = (c.name || c.phone || 'Contact').trim()
+        const phone = normalizeSaPhone(c.phone) || c.phone || ''
+        const phoneKey = String(phone).replace(/\D/g, '')
+        if (phoneKey && existingPhones.has(phoneKey)) {
+          skipped++
+          continue
+        }
+        if (!phoneKey && existingNames.has(name.toLowerCase())) {
+          skipped++
+          continue
+        }
+        await db.add(STORES.clients, {
+          name,
+          phone,
+          email: c.email || '',
+          company: '',
+          vatNumber: '',
+          address: '',
+          createdAt: new Date().toISOString(),
+          source: 'phonebook',
+        })
+        if (phoneKey) existingPhones.add(phoneKey)
+        existingNames.add(name.toLowerCase())
+        added++
+      }
+      await refresh()
+      toast(
+        added
+          ? `Imported ${added} contact${added === 1 ? '' : 's'}${skipped ? ` (${skipped} already existed)` : ''}`
+          : skipped
+            ? 'All selected contacts already in your list'
+            : 'Nothing imported',
+        added ? 'success' : 'info'
+      )
+    } catch (e) {
+      toast(e.message || 'Could not open phone contacts', 'error')
+    } finally {
+      setBusy(false)
+    }
   }
 
   const del = (id) => {
@@ -114,12 +174,23 @@ export default function Clients() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+          {canPick && (
+            <button type="button" className="btn btn-secondary" disabled={busy} onClick={importFromPhone}>
+              {busy ? 'Opening…' : '📱 From phone book'}
+            </button>
+          )}
           <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={!filtered.length}>Export CSV</button>
           <button type="button" className="btn btn-primary" onClick={() => setShow((s) => !s)}>
             {show ? 'Close' : 'Add client'}
           </button>
         </div>
       </div>
+
+      {!canPick && (
+        <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
+          Tip: On Android Chrome (HTTPS), you can import contacts with <strong>From phone book</strong>. Otherwise add clients manually or use + New client on invoices/quotes/job cards.
+        </p>
+      )}
 
       <div className="sticky-tools toolbar">
         <SearchInput value={q} onChange={setQ} placeholder="Search name, email, phone, VAT…" />
@@ -159,8 +230,15 @@ export default function Clients() {
       {!filtered.length ? (
         <EmptyState
           title={clients.length ? 'No matches' : 'No clients yet'}
-          hint={clients.length ? 'Clear search to see everyone.' : 'Add your first customer — required before invoices, quotes, and job cards.'}
-          action={!clients.length ? <button type="button" className="btn btn-primary" onClick={() => setShow(true)}>Add client</button> : null}
+          hint={clients.length ? 'Clear search to see everyone.' : 'Add your first customer — or import from your phone book on Android Chrome.'}
+          action={!clients.length ? (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <button type="button" className="btn btn-primary" onClick={() => setShow(true)}>Add client</button>
+              {canPick && (
+                <button type="button" className="btn btn-secondary" disabled={busy} onClick={importFromPhone}>📱 From phone book</button>
+              )}
+            </div>
+          ) : null}
         />
       ) : (
         filtered
