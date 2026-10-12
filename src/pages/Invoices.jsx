@@ -8,9 +8,10 @@ import {
   SearchInput, FilterChips, StatusBadge, EmptyState, formatDateZA, matchesQuery,
   SortableTh, useSort, ConfirmDialog, relativeTime, daysOverdue, downloadCsv, PageFade,
 } from '../components/ui'
+import { buildOverdueReminder, toWaNumber } from '../lib/sla'
 
 export default function Invoices() {
-  const { invoices, clients, refresh, toast } = useApp()
+  const { invoices, clients, company, refresh, toast } = useApp()
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('all')
   const [selected, setSelected] = useState({})
@@ -65,6 +66,43 @@ export default function Invoices() {
     }
   }
 
+  const clientOf = (inv) => clients.find((x) => String(x.id) === String(inv.clientId))
+
+  const remindWhatsApp = (inv) => {
+    const c = clientOf(inv)
+    const phone = c?.phone || ''
+    const wa = toWaNumber(phone)
+    const msg = buildOverdueReminder(inv, c, company)
+    const url = wa
+      ? `https://wa.me/${wa}?text=${encodeURIComponent(msg)}`
+      : `https://wa.me/?text=${encodeURIComponent(msg)}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+    toast(wa ? 'Opening WhatsApp reminder…' : 'No phone on client — WhatsApp opened without number', wa ? 'success' : 'info')
+  }
+
+  const remindEmail = (inv) => {
+    const c = clientOf(inv)
+    const to = c?.email || ''
+    const subject = `Payment reminder: invoice ${inv.number || ''} — ${company?.name || 'SA Invoice Pro'}`
+    const body = buildOverdueReminder(inv, c, company).replace(/\*/g, '')
+    window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    toast(to ? 'Opening email reminder…' : 'No email on client — mail app opened without recipient', to ? 'success' : 'info')
+  }
+
+  const remindSelected = (channel) => {
+    const open = selectedIds
+      .map((id) => invoices.find((i) => String(i.id) === String(id)))
+      .filter((inv) => inv && ['unpaid', 'partial', 'overdue'].includes(inv.status || 'unpaid'))
+    if (!open.length) return toast('Select unpaid / partial / overdue invoices', 'error')
+    // Open first; user can continue one-by-one (browsers block many popups)
+    const inv = open[0]
+    if (channel === 'wa') remindWhatsApp(inv)
+    else remindEmail(inv)
+    if (open.length > 1) {
+      toast(`${open.length} selected — opened first. Tap Remind on each row for the rest.`, 'info')
+    }
+  }
+
   const delOne = (id) => {
     setConfirm({
       title: 'Delete invoice?',
@@ -96,7 +134,6 @@ export default function Invoices() {
       },
     })
   }
-
 
   const duplicate = async (inv) => {
     const copy = {
@@ -196,6 +233,7 @@ export default function Invoices() {
           <h1>Invoices</h1>
           <p className="subtitle">
             {list.length} shown{q || status !== 'all' ? ` · filtered from ${invoices.length}` : ` · ${invoices.length} total`}
+            {counts.overdue ? ` · ${counts.overdue} overdue` : ''}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
@@ -218,6 +256,8 @@ export default function Invoices() {
         <div className="bulk-bar">
           <strong>{selectedIds.length} selected</strong>
           <button type="button" className="btn btn-primary btn-sm" onClick={markPaidBulk}>Mark paid</button>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => remindSelected('wa')}>Remind WA</button>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => remindSelected('email')}>Remind email</button>
           <button type="button" className="btn btn-danger btn-sm" onClick={delBulk}>Delete selected</button>
           <button type="button" className="btn btn-outline btn-sm" onClick={() => setSelected({})}>Clear</button>
         </div>
@@ -249,6 +289,7 @@ export default function Invoices() {
                 <SortableTh id="total" label="Total" sort={sort} onSort={onSort} />
                 <SortableTh id="due" label="Due" sort={sort} onSort={onSort} />
                 <th>Aging</th>
+                <th>Remind</th>
                 <th></th>
               </tr>
             </thead>
@@ -286,6 +327,20 @@ export default function Invoices() {
                         age === 0 ? 'Due today' :
                         `In ${-age}d`
                       ) : '—'}
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      {isOpen ? (
+                        <>
+                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => remindWhatsApp(inv)} title="WhatsApp reminder">
+                            WA
+                          </button>{' '}
+                          <button type="button" className="btn btn-outline btn-sm" onClick={() => remindEmail(inv)} title="Email reminder">
+                            Email
+                          </button>
+                        </>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       <Link className="btn btn-outline btn-sm" to={`/invoices/${inv.id}`}>
