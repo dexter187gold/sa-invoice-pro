@@ -1,16 +1,17 @@
 import React, { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
 import { STORES } from '../lib/db'
 import { formatMoney } from '../lib/money'
 import {
-  SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, formatDateZA, StatCard, downloadCsv,
+  SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, formatDateZA, StatCard, downloadCsv, FilterChips,
 } from '../components/ui'
 
 const CATEGORIES = ['General', 'Travel', 'Office', 'Software', 'Marketing', 'Utilities', 'Salaries', 'Other']
 
 export default function Expenses() {
-  const { expenses, refresh, toast } = useApp()
+  const { expenses, company, refresh, toast } = useApp()
   const [form, setForm] = useState({
     date: new Date().toISOString().slice(0, 10),
     description: '',
@@ -20,15 +21,30 @@ export default function Expenses() {
     vendor: '',
   })
   const [q, setQ] = useState('')
+  const [cat, setCat] = useState('all')
   const [confirm, setConfirm] = useState(null)
 
   const filtered = useMemo(
-    () => expenses.filter((e) => matchesQuery(e, q, ['description', 'category', 'vendor', 'accountCode'])),
-    [expenses, q]
+    () => expenses.filter((e) => {
+      if (cat !== 'all' && String(e.category || 'General') !== cat) return false
+      return matchesQuery(e, q, ['description', 'category', 'vendor', 'accountCode'])
+    }),
+    [expenses, q, cat]
   )
 
   const total = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0)
   const filteredTotal = filtered.reduce((s, e) => s + (Number(e.amount) || 0), 0)
+
+  const catCounts = useMemo(() => {
+    const c = { all: expenses.length }
+    for (const name of CATEGORIES) c[name] = 0
+    for (const e of expenses) {
+      const k = e.category || 'General'
+      if (c[k] != null) c[k]++
+      else c.Other = (c.Other || 0) + 1
+    }
+    return c
+  }, [expenses])
 
   const save = async (e) => {
     e.preventDefault()
@@ -43,6 +59,19 @@ export default function Expenses() {
     setForm({ ...form, description: '', amount: '', vendor: '' })
     await refresh()
     toast('Expense saved', 'success')
+  }
+
+  const duplicate = async (row) => {
+    await db.add(STORES.expenses, {
+      date: new Date().toISOString().slice(0, 10),
+      description: row.description || '',
+      amount: Number(row.amount) || 0,
+      category: row.category || 'General',
+      accountCode: row.accountCode || '6900',
+      vendor: row.vendor || '',
+    })
+    await refresh()
+    toast('Expense duplicated (today)', 'success')
   }
 
   const exportCsv = () => {
@@ -68,6 +97,11 @@ export default function Expenses() {
     })
   }
 
+  const chips = [
+    { id: 'all', label: 'All', count: catCounts.all },
+    ...CATEGORIES.map((name) => ({ id: name, label: name, count: catCounts[name] || 0 })),
+  ]
+
   return (
     <PageFade>
       <div className="page-header">
@@ -75,20 +109,26 @@ export default function Expenses() {
           <h1>Expenses</h1>
           <p className="subtitle">
             {filtered.length} shown · total {formatMoney(total)}
-            {q ? ` · filtered ${formatMoney(filteredTotal)}` : ''}
+            {q || cat !== 'all' ? ` · filtered ${formatMoney(filteredTotal)}` : ''}
           </p>
         </div>
-        <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={!filtered.length}>Export CSV</button>
+        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+          <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={!filtered.length}>Export CSV</button>
+          <Link className="btn btn-secondary" to="/reports">Reports</Link>
+          <Link className="btn btn-outline" to="/accounting">Accounting</Link>
+        </div>
       </div>
 
       <div className="grid-stats" style={{ marginBottom: '1rem' }}>
         <StatCard label="All expenses" value={formatMoney(total)} />
         <StatCard label="This view" value={formatMoney(filteredTotal)} hint={`${filtered.length} items`} />
         <StatCard label="Records" value={expenses.length} />
+        <StatCard label="Company" value={company?.name || '—'} />
       </div>
 
-      <div className="sticky-tools toolbar">
+      <div className="sticky-tools toolbar" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
         <SearchInput value={q} onChange={setQ} placeholder="Search description, vendor, category…" />
+        <FilterChips options={chips} value={cat} onChange={setCat} />
       </div>
 
       <form className="card form-grid cols-3" onSubmit={save} style={{ marginBottom: '1rem' }}>
@@ -124,7 +164,7 @@ export default function Expenses() {
       {!filtered.length ? (
         <EmptyState
           title={expenses.length ? 'No matches' : 'No expenses yet'}
-          hint={expenses.length ? 'Try another search.' : 'Log business costs for reporting and net profit.'}
+          hint={expenses.length ? 'Try another search or category.' : 'Log business costs for reporting and net profit.'}
         />
       ) : (
         filtered
@@ -140,8 +180,9 @@ export default function Expenses() {
                   {e.accountCode ? ` · #${e.accountCode}` : ''}
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div className="list-card-actions" style={{ alignItems: 'center' }}>
                 <strong>{formatMoney(e.amount)}</strong>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => duplicate(e)}>Dup</button>
                 <button type="button" className="btn btn-outline btn-sm" onClick={() => del(e.id)}>Delete</button>
               </div>
             </div>

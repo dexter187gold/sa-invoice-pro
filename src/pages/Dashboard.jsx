@@ -4,9 +4,10 @@ import { useApp } from '../context/AppContext'
 import { formatMoney } from '../lib/money'
 import { agedBuckets } from '../lib/accounting'
 import { StatCard, ProgressBar, formatDateZA, relativeTime, PageFade, EmptyState } from '../components/ui'
+import { openWhatsApp, buildReportSummaryShare } from '../lib/share'
 
 export default function Dashboard() {
-  const { invoices, quotes, tickets, clients, expenses, payments } = useApp()
+  const { invoices, quotes, tickets, clients, expenses, payments, company, toast } = useApp()
   const openInv = invoices.filter((i) => ['unpaid', 'partial', 'overdue'].includes(i.status))
   const paid = invoices.filter((i) => i.status === 'paid')
   const ar = openInv.reduce((s, i) => s + (Number(i.amountDue ?? i.total) || 0), 0)
@@ -19,7 +20,19 @@ export default function Dashboard() {
   const overdueCount = invoices.filter((i) => i.status === 'overdue').length
   const recentPayments = [...payments].slice(-10).reverse()
   const draftQuotes = quotes.filter((q) => String(q.status || 'draft').toLowerCase() === 'draft')
-  const openTickets = openT
+
+  const shareSnapshot = () => {
+    const text = buildReportSummaryShare({
+      rev: formatMoney(rev),
+      out: formatMoney(ar),
+      collectionRate,
+      exp: formatMoney(exp),
+      net: formatMoney(rev - exp),
+      openCount: openInv.length,
+    }, company)
+    openWhatsApp('', text)
+    toast?.('Opening WhatsApp with dashboard snapshot…', 'success')
+  }
 
   return (
     <PageFade>
@@ -32,7 +45,11 @@ export default function Dashboard() {
           <Link className="btn btn-primary" to="/invoices/new">New invoice</Link>
           <Link className="btn btn-secondary" to="/tickets">Job cards</Link>
           <Link className="btn btn-outline" to="/quotes">Quotes{draftQuotes.length ? ` (${draftQuotes.length})` : ''}</Link>
+          <Link className="btn btn-outline" to="/clients">Clients</Link>
+          <Link className="btn btn-outline" to="/payments">Payments</Link>
+          <Link className="btn btn-outline" to="/expenses">Expenses</Link>
           <Link className="btn btn-outline" to="/reports">Reports</Link>
+          <button type="button" className="btn btn-secondary" onClick={shareSnapshot}>Share snapshot WA</button>
         </div>
       </div>
 
@@ -50,8 +67,27 @@ export default function Dashboard() {
 
       <div className="card" style={{ marginBottom: '1rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <h3 style={{ marginTop: 0, marginBottom: 0 }}>Quick actions</h3>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+          <Link className="btn btn-primary btn-sm" to="/invoices/new">+ Invoice</Link>
+          <Link className="btn btn-secondary btn-sm" to="/quotes">+ Quote</Link>
+          <Link className="btn btn-secondary btn-sm" to="/tickets">+ Job card</Link>
+          <Link className="btn btn-outline btn-sm" to="/clients">+ Client</Link>
+          <Link className="btn btn-outline btn-sm" to="/payments">Record payment</Link>
+          <Link className="btn btn-outline btn-sm" to="/expenses">Log expense</Link>
+          <Link className="btn btn-outline btn-sm" to="/products">Catalog</Link>
+          <Link className="btn btn-outline btn-sm" to="/invoices">Flag / remind overdue</Link>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           <h3 style={{ marginTop: 0, marginBottom: 0 }}>Aged debtors</h3>
-          <Link className="btn btn-outline btn-sm" to="/invoices?status=overdue">View overdue</Link>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <Link className="btn btn-outline btn-sm" to="/invoices">All invoices</Link>
+            <Link className="btn btn-outline btn-sm" to="/reports">Aged report</Link>
+          </div>
         </div>
         <div className="grid-stats" style={{ marginTop: '0.85rem', marginBottom: 0 }}>
           {[

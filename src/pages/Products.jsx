@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
 import { STORES } from '../lib/db'
@@ -53,6 +54,25 @@ export default function Products() {
     })
   }
 
+  const duplicate = async (p) => {
+    await db.add(store, {
+      name: `${p.name || 'Item'} (copy)`,
+      price: Number(p.price) || 0,
+      description: p.description || '',
+      sku: p.sku ? `${p.sku}-COPY` : '',
+      stock: tab === 'products' ? (p.stock ?? null) : undefined,
+    })
+    await refresh()
+    toast('Duplicated', 'success')
+  }
+
+  const adjustStock = async (p, delta) => {
+    if (tab !== 'products') return
+    const next = Math.max(0, (Number(p.stock) || 0) + delta)
+    await db.put(store, { ...p, stock: next })
+    await refresh()
+    toast(`Stock → ${next}`, 'success')
+  }
 
   const exportCsv = () => {
     const headers = tab === 'products'
@@ -78,7 +98,11 @@ export default function Products() {
             {lowStock.length ? ` · ${lowStock.length} low stock` : ''}
           </p>
         </div>
-        <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={!filtered.length}>Export CSV</button>
+        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+          <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={!filtered.length}>Export CSV</button>
+          <Link className="btn btn-secondary" to="/invoices/new">Use on invoice</Link>
+          <Link className="btn btn-outline" to="/quotes">Use on quote</Link>
+        </div>
       </div>
 
       <div className="toolbar sticky-tools">
@@ -142,7 +166,16 @@ export default function Products() {
                   </div>
                   {p.description ? <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{p.description}</div> : null}
                 </div>
-                <button type="button" className="btn btn-outline btn-sm" onClick={() => del(p.id)}>Delete</button>
+                <div className="list-card-actions">
+                  {tab === 'products' && (
+                    <>
+                      <button type="button" className="btn btn-outline btn-sm" onClick={() => adjustStock(p, -1)} title="Stock −1">−1</button>
+                      <button type="button" className="btn btn-outline btn-sm" onClick={() => adjustStock(p, 1)} title="Stock +1">+1</button>
+                    </>
+                  )}
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => duplicate(p)}>Dup</button>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => del(p.id)}>Delete</button>
+                </div>
               </div>
             )
           })
