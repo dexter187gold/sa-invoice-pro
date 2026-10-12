@@ -12,6 +12,7 @@ import { CLIENT_CATEGORIES, categoryLabel, categoryOf } from '../lib/clientCateg
 import { slaUsage } from '../lib/sla'
 import { openWhatsApp, openEmail, buildClientStatement } from '../lib/share'
 import { openInvoicesForClient, statementTotals, downloadStatementPdf, shareStatementPdf } from '../lib/statementPdf'
+import { Sync } from '../lib/sync'
 
 export default function Clients() {
   const { clients, invoices, tickets, timeEntries, company, refresh, toast } = useApp()
@@ -23,7 +24,9 @@ export default function Clients() {
   const [catFilter, setCatFilter] = useState('all')
   const [confirm, setConfirm] = useState(null)
   const [busy, setBusy] = useState(false)
-  const [preview, setPreview] = useState(null) // client object
+  const [preview, setPreview] = useState(null)
+  const [portalBusyId, setPortalBusyId] = useState(null)
+  const [lastPortal, setLastPortal] = useState(null) // { clientId, url, expires }
   const canPick = contactsPickerSupported()
 
   const catCounts = useMemo(() => {
@@ -100,6 +103,53 @@ export default function Clients() {
     }
   }
 
+  const createPortal = async (client) => {
+    if (!Sync.isLoggedIn()) {
+      return toast('Log in to Cloud under Settings first', 'error')
+    }
+    setPortalBusyId(client.id)
+    try {
+      // Ensure latest data is on server before portal reads it
+      await Sync.pushAll({
+        company,
+        clients,
+        invoices,
+      })
+      const data = await Sync.createPortalLink(client.id, { days: 90 })
+      setLastPortal({ clientId: client.id, url: data.url, expires: data.expires, name: client.name })
+      try {
+        await navigator.clipboard.writeText(data.url)
+        toast('Portal link created & copied', 'success')
+      } catch {
+        toast('Portal link created', 'success')
+      }
+    } catch (e) {
+      toast(e.message || 'Portal failed — sync cloud data first', 'error')
+    } finally {
+      setPortalBusyId(null)
+    }
+  }
+
+  const sharePortalWa = (client) => {
+    const url = lastPortal?.clientId === client.id ? lastPortal.url : null
+    if (!url) {
+      toast('Create portal link first', 'info')
+      return createPortal(client)
+    }
+    const co = company?.name || 'SA Invoice Pro'
+    const text = [
+      `Hi ${client.name || 'there'},`,
+      '',
+      `Your private *${co}* account portal:`,
+      url,
+      '',
+      'View invoices, quotes, job cards and payments.',
+      'Please do not share this link.',
+    ].join('\n')
+    openWhatsApp(client.phone, text)
+    toast('Opening WhatsApp with portal link…', 'success')
+  }
+
   const save = async (e) => {
     e.preventDefault()
     if (!form.name.trim()) return toast('Name required', 'error')
@@ -123,30 +173,18 @@ export default function Clients() {
     toast(`Category → ${categoryLabel(category)}`, 'success')
   }
 
-  const setSlaCap = async (client, value) => {
-    const cap = value === '' || value == null ? null : Number(value)
-    await db.put(STORES.clients, {
-      ...client,
-      slaHoursCap: Number.isFinite(cap) && cap > 0 ? cap : null,
-      updatedAt: new Date().toISOString(),
-    })
-    await refresh()
-    toast(cap > 0 ? `SLA cap ${cap}h` : 'SLA cap cleared', 'success')
-  }
-
   const importFromPhone = async () => {
     setBusy(true)
     try {
       const list = await pickContactsFromPhone({ multiple: true })
       if (!list.length) return toast('No contacts selected', 'info')
       let added = 0
-      let skipped = 0
       const existingPhones = new Set(clients.map((c) => String(c.phone || '').replace(/\D/g, '')).filter(Boolean))
       for (const c of list) {
         const name = (c.name || c.phone || 'Contact').trim()
         const phone = normalizeSaPhone(c.phone) || c.phone || ''
         const phoneKey = String(phone).replace(/\D/g, '')
-        if (phoneKey && existingPhones.has(phoneKey)) { skipped++; continue }
+        if (phoneKey && existingPhones.has(phoneKey)) continue
         await db.add(STORES.clients, {
           name, phone, email: c.email || '', company: '', vatNumber: '', address: '',
           category: 'walk_in', createdAt: new Date().toISOString(), source: 'phonebook',
@@ -199,6 +237,7 @@ export default function Clients() {
           <p className="subtitle">
             {filtered.length} shown · {clients.length} total
             {totalAr > 0 ? ` · AR ${formatMoney(totalAr)}` : ''}
+            {' · portal · PDF'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
@@ -218,6 +257,18 @@ export default function Clients() {
         <SearchInput value={q} onChange={setQ} placeholder="Search name, email, phone…" />
         <FilterChips options={chips} value={catFilter} onChange={setCatFilter} />
       </div>
+
+      {lastPortal && (
+        <div className="card" style={{ marginBottom: '1rem', borderLeft: '4px solid var(--green, #007A4D)' }}>
+          <strong>Portal ready — {lastPortal.name}</strong>
+          <div style={{ fontSize: 13, wordBreak: 'break-all', marginTop: 6 }}>
+            <a href={lastPortal.url} target="_blank" rel="noreferrer">{lastPortal.url}</a>
+          </div>
+          <p className="muted" style={{ fontSize: 12, margin: '6px 0 0' }}>
+            Expires {String(lastPortal.expires || '').slice(0, 10)} · Copied to clipboard when created
+          </p>
+        </div>
+      )}
 
       {show && (
         <form className="card form-grid cols-2" onSubmit={save} style={{ marginBottom: '1rem' }}>
@@ -256,6 +307,7 @@ export default function Clients() {
             const invN = invCountByClient[String(c.id)] || 0
             const cat = categoryOf(c)
             const usage = slaUsage(c, tickets, timeEntries)
+            const portalActive = lastPortal?.clientId === c.id
             return (
               <div key={c.id} className="list-card" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
@@ -266,6 +318,7 @@ export default function Clients() {
                   </div>
                   <div style={{ fontSize: 13, marginTop: 4 }}>
                     {invN} inv{ar > 0 && <> · <strong style={{ color: 'var(--warn)' }}>{formatMoney(ar)}</strong></>}
+                    {portalActive && <span className="muted"> · portal ready</span>}
                   </div>
                   {(cat === 'sla' || usage.hasCap) && (
                     <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
@@ -280,10 +333,21 @@ export default function Clients() {
                   </div>
                 </div>
                 <div className="list-card-actions">
-                  <button type="button" className="btn btn-primary btn-sm" onClick={() => setPreview(c)}>Preview statement</button>
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => sendStatementWa(c)}>WA</button>
-                  <button type="button" className="btn btn-outline btn-sm" onClick={() => sendStatementEmail(c)}>Email</button>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    disabled={portalBusyId === c.id}
+                    onClick={() => createPortal(c)}
+                    title="Create secure client portal link"
+                  >
+                    {portalBusyId === c.id ? '…' : 'Portal'}
+                  </button>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => sharePortalWa(c)} title="WhatsApp portal link">
+                    Portal WA
+                  </button>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => setPreview(c)}>Statement</button>
                   <button type="button" className="btn btn-outline btn-sm" onClick={() => doPdf(c, false)}>PDF</button>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => sendStatementWa(c)}>WA</button>
                   <Link className="btn btn-secondary btn-sm" to="/invoices/new">Invoice</Link>
                   <button type="button" className="btn btn-outline btn-sm" onClick={() => del(c.id)}>Del</button>
                 </div>
@@ -292,7 +356,6 @@ export default function Clients() {
           })
       )}
 
-      {/* Live statement preview modal */}
       {preview && (
         <div
           role="dialog"
@@ -315,10 +378,6 @@ export default function Clients() {
             <p className="muted" style={{ fontSize: 13 }}>
               {company?.name || 'SA Invoice Pro'} · {new Date().toISOString().slice(0, 10)}
             </p>
-            <div style={{ fontSize: 14, marginBottom: 8 }}>
-              {[preview.email, preview.phone, preview.address].filter(Boolean).join(' · ') || 'No contact details'}
-            </div>
-
             {!previewRows.length ? (
               <p><strong>No outstanding invoices.</strong></p>
             ) : (
@@ -343,23 +402,12 @@ export default function Clients() {
                 </tbody>
               </table>
             )}
-
-            <p style={{ fontWeight: 700, fontSize: 16 }}>
-              Outstanding total: {formatMoney(previewTotal)}
-            </p>
-
-            <details style={{ marginBottom: 12 }}>
-              <summary className="muted">Message preview (WhatsApp / email)</summary>
-              <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, background: 'var(--surface-2, #f1f5f9)', padding: 12, borderRadius: 8 }}>
-                {previewText}
-              </pre>
-            </details>
-
+            <p style={{ fontWeight: 700, fontSize: 16 }}>Outstanding: {formatMoney(previewTotal)}</p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button type="button" className="btn btn-secondary" onClick={() => sendStatementWa(preview)}>Send WhatsApp</button>
-              <button type="button" className="btn btn-outline" onClick={() => sendStatementEmail(preview)}>Send email</button>
+              <button type="button" className="btn btn-secondary" onClick={() => sendStatementWa(preview)}>WhatsApp</button>
+              <button type="button" className="btn btn-outline" onClick={() => sendStatementEmail(preview)}>Email</button>
               <button type="button" className="btn btn-primary" onClick={() => doPdf(preview, false)}>Download PDF</button>
-              <button type="button" className="btn btn-outline" onClick={() => doPdf(preview, true)}>Share PDF</button>
+              <button type="button" className="btn btn-outline" onClick={() => createPortal(preview)}>Portal link</button>
             </div>
           </div>
         </div>
