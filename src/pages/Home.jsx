@@ -56,17 +56,6 @@ export default function Home() {
     }
   }
 
-  const quick = [
-    { to: '/invoices/new', label: 'New invoice', sub: 'Bill a client' },
-    { to: '/quotes', label: 'Quotes', sub: `${quotes.length} on file · ${draftQuotes.length} draft` },
-    { to: '/clients', label: 'Clients', sub: `${clients.length} customers` },
-    { to: '/tickets', label: 'Job cards', sub: `${openT.length} open` },
-    { to: '/payments', label: 'Payments', sub: `${formatMoney(paymentsTotal)} · ${payments.length} logged` },
-    { to: '/expenses', label: 'Expenses', sub: formatMoney(exp) },
-    { to: '/reports', label: 'Reports', sub: 'AR · CSV export' },
-    { to: '/dashboard', label: 'Dashboard', sub: `${collectionRate}% collected` },
-  ]
-
   const recentInv = [...invoices]
     .sort((a, b) => String(b.date || b.createdAt || '').localeCompare(String(a.date || a.createdAt || '')))
     .slice(0, 5)
@@ -138,18 +127,6 @@ export default function Home() {
           })}
         </div>
       )}
-
-      <div className="card" style={{ marginBottom: '1rem' }}>
-        <h3 style={{ marginTop: 0 }}>Quick actions</h3>
-        <div className="quick-grid">
-          {quick.map((q) => (
-            <Link key={q.to} className="quick-tile" to={q.to}>
-              <strong>{q.label}</strong>
-              <span>{q.sub}</span>
-            </Link>
-          ))}
-        </div>
-      </div>
 
       <div className="card" style={{ marginBottom: '1rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>

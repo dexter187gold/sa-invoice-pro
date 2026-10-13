@@ -40,34 +40,12 @@ html:not(.dark) .app-logo-text {
 }
 .btn:active { transform: scale(0.98); }
 
-/* Assistant FAB */
-.app-assist-fab {
-  position: fixed;
-  right: 1.15rem;
-  bottom: 1.15rem;
-  z-index: 90;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 122, 77, 0.3);
-  background: linear-gradient(145deg, #00915c, var(--green-dark));
-  color: #fff;
-  cursor: pointer;
-  box-shadow: 0 10px 28px rgba(0, 122, 77, 0.35);
-  display: grid;
-  place-items: center;
-  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
-}
-.app-assist-fab:hover {
-  transform: scale(1.07);
-  box-shadow: 0 14px 36px rgba(0, 122, 77, 0.42);
-}
-.app-assist-fab-icon { font-size: 1.25rem; line-height: 1; }
+/* Help & tips — top-right panel (opened from header next to notifications) */
 .app-assist-panel {
   position: fixed;
-  right: 1.15rem;
-  bottom: 4.6rem;
-  z-index: 91;
+  right: 1rem;
+  top: 3.25rem;
+  z-index: 95;
   width: min(370px, calc(100vw - 1.5rem));
   max-height: min(70vh, 540px);
   overflow: auto;
@@ -77,6 +55,12 @@ html:not(.dark) .app-logo-text {
   box-shadow: var(--shadow-lg);
   padding: 1rem 1.1rem 1.1rem;
   backdrop-filter: blur(16px);
+}
+@media (max-width: 860px) {
+  .app-assist-panel {
+    top: 3.75rem;
+    right: 0.5rem;
+  }
 }
 .app-assist-head {
   display: flex;

@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext'
 import { APP_VERSION } from '../config'
 import CommandPalette from './CommandPalette'
 import AppLogo from './AppLogo'
-import AppAssistant from './AppAssistant'
+import AppAssistant, { toggleHelp } from './AppAssistant'
 import NotificationBell from './NotificationBell'
 
 const sections = [
@@ -95,7 +95,7 @@ export default function Shell({ children }) {
       }
       if ((e.metaKey || e.ctrlKey) && e.key === '/') {
         e.preventDefault()
-        document.querySelector('.app-assist-fab')?.click()
+        toggleHelp()
       }
     }
     window.addEventListener('keydown', onKey)
@@ -117,6 +117,7 @@ export default function Shell({ children }) {
         <button type="button" className="btn btn-outline btn-sm" onClick={() => setOpen(true)} aria-label="Open menu">Menu</button>
         <AppLogo size={28} />
         <strong style={{ fontSize: 13, letterSpacing: '-0.02em', flex: 1 }}>{company?.name || 'SA Invoice Pro'}</strong>
+        <button type="button" className="btn btn-outline btn-sm" onClick={() => toggleHelp()} aria-label="Help and tips" title="Help & tips (Ctrl+/)">✦ Help</button>
         <NotificationBell />
         <span className={`status-dot ${online ? 'on' : 'off'}`} title={online ? 'Online' : 'Offline'} />
       </div>
@@ -193,7 +194,8 @@ export default function Shell({ children }) {
               <span className="muted"> / </span>
               <strong>{crumb}</strong>
             </div>
-            <div className="desktop-only" style={{ display: 'flex' }}>
+            <div className="desktop-only header-actions" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => toggleHelp()} aria-label="Help and tips" title="Help & tips (Ctrl+/)">✦ Help</button>
               <NotificationBell />
             </div>
           </div>
