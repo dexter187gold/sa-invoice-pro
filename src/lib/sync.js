@@ -1,6 +1,6 @@
 /**
- * SA Invoice Pro – Cloud Sync client v1.4.0
- * Auto-push + notifications + WA pending + ticket intake + portal links
+ * SA Invoice Pro – Cloud Sync client v1.4.1
+ * Auto-push + notifications + WA pending + ticket intake + job status + portal
  */
 const BASE = 'https://saip-sync.onrender.com'
 const TOKEN_KEY = 'saip_sync_token'
@@ -149,6 +149,30 @@ export const Sync = {
           body: JSON.stringify({ invoices: statusList }),
         })
       }
+      // Keep job statuses in sync for WhatsApp
+      if (tickets && tickets.length) {
+        const ticketPayload = tickets.map((t) => {
+          const client = (clients || []).find((c) => String(c.id) === String(t.clientId)) || {}
+          return {
+            id: t.id,
+            status: t.status || 'open',
+            priority: t.priority || 'normal',
+            title: t.title || t.subject || '',
+            description: t.description || '',
+            workDone: t.workDone || '',
+            notes: t.notes || '',
+            customer_phone: t.contactPhone || client.phone || '',
+            contactPhone: t.contactPhone || client.phone || '',
+            customer_name: t.contactName || client.name || '',
+            clientId: t.clientId || null,
+            intake_id: t.intakeId || null,
+          }
+        })
+        await request('/api/tickets/status', {
+          method: 'POST',
+          body: JSON.stringify({ tickets: ticketPayload }),
+        }).catch((e) => console.warn('[Sync] tickets status', e.message))
+      }
       _lastPushAt = Date.now()
       return { ok: true, invoices: statusList.length }
     } catch (e) {
@@ -186,7 +210,6 @@ export const Sync = {
     return request('/api/wa/pending')
   },
 
-  /** Best-effort: never throws — local import still succeeds if server mark 404s */
   async markWaClientImported(phone, clientId) {
     const p = encodeURIComponent(String(phone || '').replace(/\D/g, '') || phone)
     try {
@@ -204,7 +227,6 @@ export const Sync = {
     return request('/api/tickets/intake')
   },
 
-  /** Best-effort: never throws */
   async markTicketImported(intakeId, localTicketId) {
     try {
       return await request('/api/tickets/intake/' + encodeURIComponent(intakeId) + '/imported', {
@@ -213,6 +235,20 @@ export const Sync = {
       })
     } catch (e) {
       console.warn('[Sync] markTicketImported', e.message || e)
+      return { ok: false, error: e.message || String(e) }
+    }
+  },
+
+  /** Push one or more job-card statuses → server + WhatsApp outbox */
+  async pushTicketStatus(ticketOrList) {
+    const list = Array.isArray(ticketOrList) ? ticketOrList : [ticketOrList]
+    try {
+      return await request('/api/tickets/status', {
+        method: 'POST',
+        body: JSON.stringify({ tickets: list }),
+      })
+    } catch (e) {
+      console.warn('[Sync] pushTicketStatus', e.message || e)
       return { ok: false, error: e.message || String(e) }
     }
   },
