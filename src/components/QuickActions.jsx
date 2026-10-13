@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { formatMoney } from '../lib/money'
 
-/** Icon + dropdown of common shortcuts — lives in the top bar next to Help / notifications. */
+/** Floating quick-actions icon (bottom-right) with dropdown panel. */
 export default function QuickActions() {
   const { invoices, clients, tickets, quotes, expenses, payments } = useApp()
   const [open, setOpen] = useState(false)
@@ -47,18 +47,17 @@ export default function QuickActions() {
   }, [open])
 
   return (
-    <div className="quick-actions-wrap" ref={rootRef} style={{ position: 'relative' }}>
+    <div className="quick-actions-fab-wrap" ref={rootRef}>
       <button
         type="button"
-        className="btn btn-outline btn-sm quick-actions-btn"
+        className="quick-actions-fab"
         onClick={() => setOpen((v) => !v)}
         aria-label="Quick actions"
         aria-expanded={open}
         aria-haspopup="menu"
         title="Quick actions"
       >
-        <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>⚡</span>
-        <span className="quick-actions-btn-label">Actions</span>
+        <span className="quick-actions-fab-icon" aria-hidden>⚡</span>
       </button>
       {open && (
         <div className="quick-actions-panel" role="menu" aria-label="Quick actions">

@@ -113,12 +113,12 @@ export default function Shell({ children }) {
       <a className="skip-link" href="#main-content">Skip to content</a>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <AppAssistant />
+      <QuickActions />
       <div className={`sidebar-backdrop ${open ? 'show' : ''}`} onClick={() => setOpen(false)} />
       <div className="mobile-bar">
         <button type="button" className="btn btn-outline btn-sm" onClick={() => setOpen(true)} aria-label="Open menu">Menu</button>
         <AppLogo size={28} />
         <strong style={{ fontSize: 13, letterSpacing: '-0.02em', flex: 1 }}>{company?.name || 'SA Invoice Pro'}</strong>
-        <QuickActions />
         <button type="button" className="btn btn-outline btn-sm" onClick={() => toggleHelp()} aria-label="Help and tips" title="Help & tips (Ctrl+/)">✦</button>
         <NotificationBell />
         <span className={`status-dot ${online ? 'on' : 'off'}`} title={online ? 'Online' : 'Offline'} />
@@ -197,7 +197,6 @@ export default function Shell({ children }) {
               <strong>{crumb}</strong>
             </div>
             <div className="desktop-only header-actions" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <QuickActions />
               <button type="button" className="btn btn-outline btn-sm" onClick={() => toggleHelp()} aria-label="Help and tips" title="Help & tips (Ctrl+/)">✦ Help</button>
               <NotificationBell />
             </div>
