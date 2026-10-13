@@ -6,6 +6,7 @@ import CommandPalette from './CommandPalette'
 import AppLogo from './AppLogo'
 import AppAssistant, { toggleHelp } from './AppAssistant'
 import NotificationBell from './NotificationBell'
+import QuickActions from './QuickActions'
 
 const sections = [
   {
@@ -117,7 +118,8 @@ export default function Shell({ children }) {
         <button type="button" className="btn btn-outline btn-sm" onClick={() => setOpen(true)} aria-label="Open menu">Menu</button>
         <AppLogo size={28} />
         <strong style={{ fontSize: 13, letterSpacing: '-0.02em', flex: 1 }}>{company?.name || 'SA Invoice Pro'}</strong>
-        <button type="button" className="btn btn-outline btn-sm" onClick={() => toggleHelp()} aria-label="Help and tips" title="Help & tips (Ctrl+/)">✦ Help</button>
+        <QuickActions />
+        <button type="button" className="btn btn-outline btn-sm" onClick={() => toggleHelp()} aria-label="Help and tips" title="Help & tips (Ctrl+/)">✦</button>
         <NotificationBell />
         <span className={`status-dot ${online ? 'on' : 'off'}`} title={online ? 'Online' : 'Offline'} />
       </div>
@@ -195,6 +197,7 @@ export default function Shell({ children }) {
               <strong>{crumb}</strong>
             </div>
             <div className="desktop-only header-actions" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <QuickActions />
               <button type="button" className="btn btn-outline btn-sm" onClick={() => toggleHelp()} aria-label="Help and tips" title="Help & tips (Ctrl+/)">✦ Help</button>
               <NotificationBell />
             </div>
