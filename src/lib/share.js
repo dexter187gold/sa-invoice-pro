@@ -1,5 +1,6 @@
 /** WhatsApp / email share helpers for statements, reports, reminders */
 import { formatMoney } from './money'
+import { buildClientLedger } from './payments'
 
 export function toWaNumber(phone) {
   let d = String(phone || '').replace(/\D/g, '')
@@ -48,36 +49,40 @@ export function buildOverdueReminder(inv, client, company) {
   ].filter(Boolean).join('\n')
 }
 
-/** Client account statement summary (open invoices) */
-export function buildClientStatement(client, invoices, company) {
+/** Client account statement — invoices + payments with running balance */
+export function buildClientStatement(client, invoices, company, payments = []) {
   const co = company?.name || 'SA Invoice Pro'
   const name = client?.name || 'Client'
-  const open = (invoices || []).filter(
-    (i) => String(i.clientId) === String(client?.id) && ['unpaid', 'partial', 'overdue'].includes(i.status || 'unpaid')
-  )
-  const totalDue = open.reduce((s, i) => s + (Number(i.amountDue ?? i.total) || 0), 0)
-  const lines = [
+  const { lines, outstanding } = buildClientLedger(client, invoices, payments)
+  const linesOut = [
     `*Account statement — ${co}*`,
     '',
     `Client: *${name}*`,
     `Date: ${new Date().toISOString().slice(0, 10)}`,
     '',
   ]
-  if (!open.length) {
-    lines.push('No outstanding invoices. Thank you!')
+  if (!lines.length) {
+    linesOut.push('No activity on this account yet.')
   } else {
-    lines.push(`Outstanding balance: *R${totalDue.toFixed(2)}*`, '', '*Open invoices:*')
-    for (const inv of open.slice(0, 15)) {
-      const bal = Number(inv.amountDue ?? inv.total) || 0
-      lines.push(
-        `• ${inv.number || 'INV'} · ${String(inv.dueDate || inv.date || '').slice(0, 10)} · R${bal.toFixed(2)} · ${inv.status || 'unpaid'}`
-      )
+    linesOut.push('*Activity:*')
+    for (const row of lines.slice(-20)) {
+      if (row.type === 'payment') {
+        linesOut.push(
+          `• ${row.date} · ${row.description} · −R${(row.credit || 0).toFixed(2)} · bal R${(row.balance || 0).toFixed(2)}`
+        )
+      } else {
+        linesOut.push(
+          `• ${row.date} · ${row.ref} · R${(row.debit || 0).toFixed(2)} · ${row.status} · bal R${(row.balance || 0).toFixed(2)}`
+        )
+      }
     }
-    if (open.length > 15) lines.push(`…and ${open.length - 15} more`)
-    lines.push('', 'Please settle at your earliest convenience.')
+    if (lines.length > 20) linesOut.push(`…and ${lines.length - 20} earlier line(s)`)
+    linesOut.push('', `*Outstanding balance: R${outstanding.toFixed(2)}*`)
+    if (outstanding > 0) linesOut.push('', 'Please settle at your earliest convenience.')
+    else linesOut.push('', 'Account is settled. Thank you!')
   }
-  lines.push('', `— ${co}`)
-  return lines.join('\n')
+  linesOut.push('', `— ${co}`)
+  return linesOut.join('\n')
 }
 
 export function buildAgedRowReminder(row, client, company) {

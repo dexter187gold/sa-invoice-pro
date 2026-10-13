@@ -9,6 +9,7 @@ import {
   SearchInput, EmptyState, matchesQuery, formatDateZA, relativeTime, PageFade, StatCard, StatusBadge, downloadCsv, ConfirmDialog, FilterChips, CopyButton,
 } from '../components/ui'
 import { openWhatsApp, openEmail, buildOverdueReminder } from '../lib/share'
+import { recordPayment, deletePayment } from '../lib/payments'
 
 function buildReceipt(p, inv, client, company) {
   const co = company?.name || 'SA Invoice Pro'
@@ -74,45 +75,41 @@ export default function Payments() {
     if (!inv) return toast('Select invoice', 'error')
     const amt = Number(amount) || 0
     if (!(amt > 0)) return toast('Amount required', 'error')
-    await db.add(STORES.payments, {
-      invoiceId: inv.id,
-      clientId: inv.clientId,
-      amount: amt,
-      method,
-      date,
-      reference,
-    })
-    const paid = (Number(inv.amountPaid) || 0) + amt
-    const total = Number(inv.total) || 0
-    const amountDue = Math.max(0, total - paid)
-    const status = amountDue <= 0.009 ? 'paid' : 'partial'
-    await db.put(STORES.invoices, { ...inv, amountPaid: paid, amountDue, status })
-    setAmount('')
-    setReference('')
-    await refresh()
-    toast('Payment recorded', 'success')
+    try {
+      await recordPayment({
+        invoice: inv,
+        amount: amt,
+        method,
+        date,
+        reference,
+        existingPayments: payments,
+      })
+      setAmount('')
+      setReference('')
+      await refresh()
+      toast('Payment recorded · invoice & books updated', 'success')
+    } catch (err) {
+      toast(err.message || String(err), 'error')
+    }
   }
 
   const markFullyPaid = async (inv) => {
     const due = Number(inv.amountDue ?? inv.total) || 0
     if (due <= 0) return toast('Nothing due', 'info')
-    await db.add(STORES.payments, {
-      invoiceId: inv.id,
-      clientId: inv.clientId,
-      amount: due,
-      method: 'EFT',
-      date: new Date().toISOString().slice(0, 10),
-      reference: 'Full balance',
-    })
-    await db.put(STORES.invoices, {
-      ...inv,
-      amountPaid: Number(inv.total) || 0,
-      amountDue: 0,
-      status: 'paid',
-      paidAt: new Date().toISOString(),
-    })
-    await refresh()
-    toast(`Marked ${inv.number} paid`, 'success')
+    try {
+      await recordPayment({
+        invoice: inv,
+        amount: due,
+        method: 'EFT',
+        date: new Date().toISOString().slice(0, 10),
+        reference: 'Full balance',
+        existingPayments: payments,
+      })
+      await refresh()
+      toast(`Marked ${inv.number} paid · books updated`, 'success')
+    } catch (err) {
+      toast(err.message || String(err), 'error')
+    }
   }
 
   const sendReceipt = (p, channel) => {
@@ -143,13 +140,15 @@ export default function Payments() {
   const delPayment = (p) => {
     setConfirm({
       title: 'Delete payment?',
-      message: 'This removes the payment log only. Invoice balances are not auto-reversed — edit the invoice if needed.',
+      message: 'Removes the payment, reverses the invoice balance, and voids the matching journal entry.',
       danger: true,
       confirmLabel: 'Delete',
       action: async () => {
-        await db.remove(STORES.payments, p.id)
+        const inv = invoices.find((i) => String(i.id) === String(p.invoiceId))
+        const related = payments.filter((x) => String(x.invoiceId) === String(p.invoiceId))
+        await deletePayment(p, { invoice: inv, allPaymentsForInvoice: related })
         await refresh()
-        toast('Payment deleted', 'success')
+        toast('Payment deleted · invoice & books reversed', 'success')
         setConfirm(null)
       },
     })
@@ -205,12 +204,13 @@ export default function Payments() {
       <div className="page-header">
         <div>
           <h1>Payments</h1>
-          <p className="subtitle">Record · receipts · reminders · history actions</p>
+          <p className="subtitle">Record · receipts · reminders · history · books</p>
         </div>
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
           <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={!filteredHistory.length}>Export CSV</button>
           <Link className="btn btn-secondary" to="/invoices">Invoices</Link>
           <Link className="btn btn-outline" to="/reports">Reports</Link>
+          <Link className="btn btn-outline" to="/accounting">Accounting</Link>
           <Link className="btn btn-outline" to="/clients">Clients</Link>
         </div>
       </div>
