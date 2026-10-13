@@ -1,6 +1,6 @@
 /**
- * SA Invoice Pro – Cloud Sync client v1.3.1
- * Auto-push + notifications + WA pending + client portal links
+ * SA Invoice Pro – Cloud Sync client v1.4.0
+ * Auto-push + notifications + WA pending + ticket intake + portal links
  */
 const BASE = 'https://saip-sync.onrender.com'
 const TOKEN_KEY = 'saip_sync_token'
@@ -186,11 +186,35 @@ export const Sync = {
     return request('/api/wa/pending')
   },
 
+  /** Best-effort: never throws — local import still succeeds if server mark 404s */
   async markWaClientImported(phone, clientId) {
-    return request('/api/wa/pending/' + encodeURIComponent(phone) + '/imported', {
-      method: 'POST',
-      body: JSON.stringify({ client_id: clientId }),
-    })
+    const p = encodeURIComponent(String(phone || '').replace(/\D/g, '') || phone)
+    try {
+      return await request('/api/wa/pending/' + p + '/imported', {
+        method: 'POST',
+        body: JSON.stringify({ client_id: clientId }),
+      })
+    } catch (e) {
+      console.warn('[Sync] markWaClientImported', e.message || e)
+      return { ok: false, error: e.message || String(e) }
+    }
+  },
+
+  async getTicketIntake() {
+    return request('/api/tickets/intake')
+  },
+
+  /** Best-effort: never throws */
+  async markTicketImported(intakeId, localTicketId) {
+    try {
+      return await request('/api/tickets/intake/' + encodeURIComponent(intakeId) + '/imported', {
+        method: 'POST',
+        body: JSON.stringify({ ticket_id: localTicketId }),
+      })
+    } catch (e) {
+      console.warn('[Sync] markTicketImported', e.message || e)
+      return { ok: false, error: e.message || String(e) }
+    }
   },
 
   async createPortalLink(clientId, { days = 90 } = {}) {
