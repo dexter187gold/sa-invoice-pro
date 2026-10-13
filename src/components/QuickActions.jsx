@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { formatMoney } from '../lib/money'
 
-/** Floating quick-actions icon (bottom-right) with dropdown panel. */
+/** Floating quick-actions (bottom-right) with dropdown — invoice-style icon. */
 export default function QuickActions() {
   const { invoices, clients, tickets, quotes, expenses, payments } = useApp()
   const [open, setOpen] = useState(false)
@@ -57,7 +57,10 @@ export default function QuickActions() {
         aria-haspopup="menu"
         title="Quick actions"
       >
-        <span className="quick-actions-fab-icon" aria-hidden>⚡</span>
+        <svg className="quick-actions-fab-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" strokeWidth="1.75" />
+          <path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+        </svg>
       </button>
       {open && (
         <div className="quick-actions-panel" role="menu" aria-label="Quick actions">
