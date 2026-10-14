@@ -1,0 +1,171 @@
+/* SA Invoice Pro · Pinky & the Brain Lab Theme v4.3 */
+:root {
+  --brain-magenta: #e879f9;
+  --brain-magenta-deep: #c026d3;
+  --brain-cyan: #38bdf8;
+  --brain-lab: #0c0a14;
+  --brain-panel: #16122a;
+  --brain-line: #2a2448;
+  --brain-text: #f0e6ff;
+  --brain-muted: #a89bc8;
+}
+html.brain,
+[data-theme="brain"],
+html.dark.brain {
+  --green: #c026d3;
+  --green-dark: #86198f;
+  --green-light: #e879f9;
+  --green-soft: rgba(232, 121, 249, 0.12);
+  --green-soft-strong: rgba(232, 121, 249, 0.22);
+  --bg: #0c0a14;
+  --bg-elevated: #120e1f;
+  --card: #16122a;
+  --text: #f0e6ff;
+  --text-secondary: #d4c4f0;
+  --muted: #a89bc8;
+  --border: #2a2448;
+  --border-strong: #3d3560;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(232, 121, 249, 0.06);
+  --shadow-lg: 0 20px 56px rgba(0, 0, 0, 0.55);
+  --success: #34d399;
+  --success-soft: rgba(52, 211, 153, 0.12);
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.12);
+  --warn: #fbbf24;
+  --warn-soft: rgba(251, 191, 36, 0.12);
+}
+html.brain body,
+[data-theme="brain"] body {
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(192, 38, 211, 0.18), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(56, 189, 248, 0.12), transparent 45%),
+    var(--bg);
+}
+html.brain .app-logo-glass,
+[data-theme="brain"] .app-logo-glass {
+  background: linear-gradient(145deg, #e879f9 0%, #7c3aed 45%, #38bdf8 100%);
+  box-shadow: 0 8px 24px rgba(192, 38, 211, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+html.brain .btn-primary,
+[data-theme="brain"] .btn-primary {
+  background: linear-gradient(135deg, #e879f9 0%, #a855f7 50%, #7c3aed 100%);
+  color: #1a0a20;
+  box-shadow: 0 2px 8px rgba(192, 38, 211, 0.35);
+}
+html.brain .btn-primary:hover:not(:disabled),
+[data-theme="brain"] .btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #f0abfc 0%, #e879f9 40%, #a855f7 100%);
+  box-shadow: 0 6px 20px rgba(232, 121, 249, 0.4);
+}
+html.brain .nav-link.active,
+[data-theme="brain"] .nav-link.active {
+  background: linear-gradient(90deg, rgba(232, 121, 249, 0.2), rgba(56, 189, 248, 0.08));
+  color: #f0abfc;
+  border-left: 3px solid #e879f9;
+  padding-left: calc(0.75rem - 3px);
+}
+html.brain .nav-link:hover,
+[data-theme="brain"] .nav-link:hover {
+  background: rgba(232, 121, 249, 0.1);
+  color: #e879f9;
+}
+html.brain .sidebar,
+[data-theme="brain"] .sidebar {
+  background: linear-gradient(180deg, #16122a 0%, #0f0b1e 100%);
+  border-right-color: #2a2448;
+}
+html.brain .card,
+[data-theme="brain"] .card {
+  background: linear-gradient(165deg, #1a1530 0%, #16122a 100%);
+  border-color: #2a2448;
+}
+html.brain .card:hover,
+[data-theme="brain"] .card:hover {
+  border-color: rgba(232, 121, 249, 0.35);
+}
+html.brain .stat .value,
+[data-theme="brain"] .stat .value,
+html.brain .page-header h1,
+[data-theme="brain"] .page-header h1 {
+  background: linear-gradient(90deg, #e879f9, #38bdf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+html.brain .auth-page,
+[data-theme="brain"] .auth-page {
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(192, 38, 211, 0.35), transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(56, 189, 248, 0.2), transparent 45%),
+    linear-gradient(155deg, #0c0a14 0%, #1a0a2e 45%, #0c0a14 100%);
+}
+html.brain .boot,
+[data-theme="brain"] .boot {
+  background:
+    radial-gradient(circle at 30% 30%, rgba(232, 121, 249, 0.25), transparent 40%),
+    linear-gradient(155deg, #0c0a14 0%, #2e1065 55%, #0c0a14 120%);
+}
+html.brain .input:focus,
+html.brain .select:focus,
+html.brain .textarea:focus,
+[data-theme="brain"] .input:focus,
+[data-theme="brain"] .select:focus,
+[data-theme="brain"] .textarea:focus {
+  border-color: #e879f9;
+  box-shadow: 0 0 0 3px rgba(232, 121, 249, 0.2);
+}
+html.brain .toast.success,
+[data-theme="brain"] .toast.success {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.95), rgba(192, 38, 211, 0.95));
+}
+html.brain .list-card:hover,
+[data-theme="brain"] .list-card:hover {
+  border-color: rgba(232, 121, 249, 0.45);
+}
+html.brain .badge,
+[data-theme="brain"] .badge {
+  background: rgba(232, 121, 249, 0.15);
+  color: #f0abfc;
+}
+html.brain .status-dot.on,
+[data-theme="brain"] .status-dot.on {
+  background: #e879f9;
+  box-shadow: 0 0 0 3px rgba(232, 121, 249, 0.3);
+}
+.brain-ribbon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #a89bc8;
+  margin-top: 2px;
+}
+.brain-ribbon::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e879f9, #38bdf8);
+  box-shadow: 0 0 8px rgba(232, 121, 249, 0.6);
+}
+html.brain .qa-fab,
+[data-theme="brain"] .qa-fab {
+  background: linear-gradient(135deg, #e879f9, #7c3aed) !important;
+  box-shadow: 0 8px 28px rgba(192, 38, 211, 0.45) !important;
+}
+html.brain .table tbody tr:hover,
+[data-theme="brain"] .table tbody tr:hover {
+  background: rgba(232, 121, 249, 0.08);
+}
+html.brain .login-splash-title,
+[data-theme="brain"] .login-splash-title {
+  background: linear-gradient(90deg, #f0e6ff, #e879f9, #38bdf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
