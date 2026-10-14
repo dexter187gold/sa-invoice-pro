@@ -2,9 +2,10 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import * as db from '../lib/db'
 import { STORES } from '../lib/db'
 import { getSession, setSession } from '../lib/storage'
-import { hashPassword, looksHashed } from '../lib/hash'
+import { hashPassword, looksHashed, verifyPassword } from '../lib/hash'
 import { VAT_RATE_DEFAULT } from '../config'
 import { Sync } from '../lib/sync'
+import { canUseCloudSync } from '../lib/soloMode'
 
 const AppCtx = createContext(null)
 
@@ -32,7 +33,7 @@ export function AppProvider({ children }) {
   const [vatEnabled, setVatEnabled] = useState(true)
   const [vatRate, setVatRate] = useState(VAT_RATE_DEFAULT)
   const [online, setOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
-  const skipAutoPush = useRef(true) // skip first load flood
+  const skipAutoPush = useRef(true)
 
   const dismissToast = useCallback((id) => {
     setToasts((t) => t.filter((x) => x.id !== id))
@@ -93,10 +94,9 @@ export function AppProvider({ children }) {
     setVatEnabled(ve !== false)
     setVatRate(Number(vr) || VAT_RATE_DEFAULT)
 
-    // Auto-push to saip-sync when cloud session exists (debounced)
     if (skipAutoPush.current) {
       skipAutoPush.current = false
-    } else if (Sync.isLoggedIn()) {
+    } else if (canUseCloudSync() && Sync.isLoggedIn()) {
       Sync.scheduleAutoPush(snap, 2500)
     }
   }, [])
@@ -119,8 +119,7 @@ export function AppProvider({ children }) {
         await refresh()
         let trial = await db.getSetting('trialStartedAt', null)
         if (!trial) await db.setSetting('trialStartedAt', new Date().toISOString())
-        // One initial cloud push after boot if logged in
-        if (Sync.isLoggedIn()) {
+        if (canUseCloudSync() && Sync.isLoggedIn()) {
           setTimeout(() => {
             Sync.pushAll({
               company,
@@ -157,20 +156,29 @@ export function AppProvider({ children }) {
 
   const login = async (username, password) => {
     const users = (await db.getAll(STORES.users)) || []
-    const u = users.find((x) => x.username === username || x.email === username)
-    if (!u) throw new Error('Invalid username or password')
-
-    const hashedInput = await hashPassword(password)
-    let ok = false
-    if (looksHashed(u.password)) {
-      ok = u.password === hashedInput
-    } else {
-      ok = u.password === password
-      if (ok) {
-        await db.put(STORES.users, { ...u, password: hashedInput })
+    const needle = String(username || '').trim().toLowerCase()
+    if (!needle) throw new Error('Enter username or email')
+    const u = users.find((x) => {
+      const un = String(x.username || '').trim().toLowerCase()
+      const em = String(x.email || '').trim().toLowerCase()
+      return un === needle || em === needle
+    })
+    if (!u) {
+      if (!users.length) {
+        throw new Error('No local profiles yet. Create an account, or import a backup on this screen.')
       }
+      throw new Error('Invalid username or password')
     }
+
+    const ok = await verifyPassword(password, u.password)
     if (!ok) throw new Error('Invalid username or password')
+
+    try {
+      const preferred = await hashPassword(password)
+      if (preferred && preferred !== u.password) {
+        await db.put(STORES.users, { ...u, password: preferred })
+      }
+    } catch {}
 
     const session = { id: u.id, username: u.username, email: u.email, name: u.name }
     setSession(session)
