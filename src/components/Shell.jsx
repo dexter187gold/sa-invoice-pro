@@ -73,12 +73,38 @@ const crumbMap = {
   '/settings': 'Settings',
 }
 
+function cycleTheme(theme, setTheme) {
+  const next = theme === 'light' ? 'dark' : 'light'
+  setTheme(next)
+  try {
+    const root = document.documentElement
+    if (next === 'dark') {
+      root.classList.add('dark', 'brain')
+      localStorage.setItem('sa_theme', 'brain')
+    } else {
+      root.classList.remove('dark', 'brain')
+      localStorage.setItem('sa_theme', 'light')
+    }
+  } catch {}
+}
+
 export default function Shell({ children }) {
   const { company, user, logout, theme, setTheme, online, density, setDensity } = useApp()
   const [open, setOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const nav = useNavigate()
   const loc = useLocation()
+
+  useEffect(() => {
+    try {
+      const root = document.documentElement
+      if (theme === 'dark' || theme === 'brain') {
+        root.classList.add('dark', 'brain')
+      } else {
+        root.classList.remove('dark', 'brain')
+      }
+    } catch {}
+  }, [theme])
 
   useEffect(() => {
     const onKey = (e) => {
@@ -92,7 +118,7 @@ export default function Shell({ children }) {
       }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd') {
         e.preventDefault()
-        setTheme(theme === 'dark' ? 'light' : 'dark')
+        cycleTheme(theme, setTheme)
       }
       if ((e.metaKey || e.ctrlKey) && e.key === '/') {
         e.preventDefault()
@@ -131,8 +157,11 @@ export default function Shell({ children }) {
               <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {company?.name || 'SA Invoice Pro'}
               </div>
-              <div className="muted" style={{ fontWeight: 500, fontSize: 11.5, marginTop: 2 }}>
-                v{APP_VERSION} · {online ? 'Online' : 'Offline'}
+              <div className="brain-ribbon" style={{ fontWeight: 600, fontSize: 10, marginTop: 3 }}>
+                Lab v{APP_VERSION}
+              </div>
+              <div className="muted" style={{ fontWeight: 500, fontSize: 11, marginTop: 2 }}>
+                {online ? 'Online' : 'Offline'} · sync ready
               </div>
             </div>
           </div>
@@ -178,9 +207,10 @@ export default function Shell({ children }) {
               <button
                 type="button"
                 className="btn btn-outline btn-sm"
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                onClick={() => cycleTheme(theme, setTheme)}
+                title="Toggle light / lab dark"
               >
-                {theme === 'dark' ? 'Light' : 'Dark'}
+                {theme === 'dark' || theme === 'brain' ? 'Light' : 'Lab'}
               </button>
             </div>
             <div className="muted" style={{ fontSize: 12 }}>{user?.username || user?.email}</div>
