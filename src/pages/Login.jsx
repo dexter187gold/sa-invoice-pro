@@ -5,7 +5,7 @@ import { APP_VERSION } from '../config'
 import AppLogo from '../components/AppLogo'
 import * as db from '../lib/db'
 
-const SPLASH_MS = 5000
+const SPLASH_MS = 4200
 
 export default function Login() {
   const { login, register, toast, user, company, refresh } = useApp()
@@ -42,7 +42,7 @@ export default function Login() {
     try {
       if (mode === 'in') {
         await login(form.username || form.email, form.password)
-        toast('Welcome back', 'success')
+        toast('Welcome back to the lab', 'success')
         await refresh?.()
         const co = await db.getCompany()
         nav(co?.name ? '/' : '/setup', { replace: true })
@@ -67,11 +67,14 @@ export default function Login() {
           <div className="login-splash-inner">
             <AppLogo size={96} />
             <div className="login-splash-title">SA INVOICE PRO</div>
-            <p className="muted" style={{ color: 'rgba(236,253,245,0.75)', margin: '0.35rem 0 0' }}>
+            <p className="muted" style={{ color: 'rgba(240,230,255,0.85)', margin: '0.35rem 0 0' }}>
               Invoices · Job cards · Payroll · Accounting · SA
             </p>
-            <p className="muted" style={{ color: 'rgba(236,253,245,0.55)', margin: '0.2rem 0 0', fontSize: 12 }}>
-              Offline-first · Tax invoices · PayFast · POPIA templates
+            <p className="muted" style={{ color: 'rgba(232,121,249,0.75)', margin: '0.35rem 0 0', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              Pinky & the Brain · Lab Edition
+            </p>
+            <p className="muted" style={{ color: 'rgba(236,253,245,0.45)', margin: '0.35rem 0 0', fontSize: 12 }}>
+              Offline-first · Tax invoices · PayFast · POPIA
             </p>
             <div className="login-splash-bar" aria-hidden><span /></div>
           </div>
@@ -86,7 +89,7 @@ export default function Login() {
           SA INVOICE PRO
         </h1>
         <p className="muted" style={{ textAlign: 'center', marginTop: 0 }}>
-          Modern · offline-first · South Africa · v{APP_VERSION}
+          Lab · offline-first · South Africa · v{APP_VERSION}
         </p>
         <div className="tabs">
           <button type="button" className={`tab ${mode === 'in' ? 'active' : ''}`} onClick={() => setMode('in')}>Sign in</button>
@@ -114,7 +117,7 @@ export default function Login() {
             <input className="input" type="password" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} autoComplete={mode === 'in' ? 'current-password' : 'new-password'} />
           </div>
           <button className="btn btn-primary" type="submit" disabled={busy}>
-            {busy ? 'Please wait…' : mode === 'in' ? 'Sign in' : 'Create account'}
+            {busy ? 'Please wait…' : mode === 'in' ? 'Enter the lab' : 'Create account'}
           </button>
         </form>
       </div>
