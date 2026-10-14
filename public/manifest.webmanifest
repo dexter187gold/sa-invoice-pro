@@ -1,0 +1,27 @@
+{
+  "name": "SA Invoice Pro · Lab",
+  "short_name": "SAIP Lab",
+  "description": "Personal offline-first SA invoicing, job cards and accounting. Phone-only Lab edition.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0c0a14",
+  "theme_color": "#0c0a14",
+  "categories": ["business", "finance", "productivity"],
+  "lang": "en-ZA",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
