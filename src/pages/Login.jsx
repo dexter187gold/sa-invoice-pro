@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { APP_VERSION } from '../config'
 import AppLogo from '../components/AppLogo'
 import * as db from '../lib/db'
 
-const SPLASH_MS = 4200
+const SPLASH_MS = 3200
 
 export default function Login() {
   const { login, register, toast, user, company, refresh } = useApp()
   const nav = useNavigate()
+  const fileRef = useRef(null)
   const [mode, setMode] = useState('in')
   const [form, setForm] = useState({ username: '', email: '', password: '', name: '' })
   const [busy, setBusy] = useState(false)
@@ -21,10 +22,17 @@ export default function Login() {
     }
   })
   const [fade, setFade] = useState(false)
+  const [profileCount, setProfileCount] = useState(null)
 
   useEffect(() => {
     if (user) nav(company?.name ? '/' : '/setup', { replace: true })
   }, [user, company, nav])
+
+  useEffect(() => {
+    db.getAll(db.STORES.users)
+      .then((u) => setProfileCount((u || []).length))
+      .catch(() => setProfileCount(0))
+  }, [])
 
   useEffect(() => {
     if (!splash) return
@@ -60,6 +68,31 @@ export default function Login() {
     }
   }
 
+  const onImportBackup = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setBusy(true)
+    try {
+      const text = await file.text()
+      const data = JSON.parse(text)
+      const stats = await db.importAll(data, { wipe: false })
+      await refresh?.()
+      const users = await db.getAll(db.STORES.users)
+      setProfileCount((users || []).length)
+      toast(
+        `Backup imported: ${stats.rows} records` +
+          ((users || []).length ? `. Sign in with your existing username/password.` : '. Create an account next.'),
+        'success'
+      )
+      setMode('in')
+    } catch (err) {
+      toast(err.message || 'Import failed — check the JSON file', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="auth-page">
       {splash && (
@@ -72,9 +105,6 @@ export default function Login() {
             </p>
             <p className="muted" style={{ color: 'rgba(232,121,249,0.75)', margin: '0.35rem 0 0', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
               Pinky & the Brain · Lab Edition
-            </p>
-            <p className="muted" style={{ color: 'rgba(236,253,245,0.45)', margin: '0.35rem 0 0', fontSize: 12 }}>
-              Offline-first · Tax invoices · PayFast · POPIA
             </p>
             <div className="login-splash-bar" aria-hidden><span /></div>
           </div>
@@ -91,6 +121,11 @@ export default function Login() {
         <p className="muted" style={{ textAlign: 'center', marginTop: 0 }}>
           Lab · offline-first · South Africa · v{APP_VERSION}
         </p>
+        {profileCount === 0 && (
+          <p className="muted" style={{ textAlign: 'center', fontSize: 13, marginTop: 0 }}>
+            No local profiles on this device yet. Create an account or import a backup below.
+          </p>
+        )}
         <div className="tabs">
           <button type="button" className={`tab ${mode === 'in' ? 'active' : ''}`} onClick={() => setMode('in')}>Sign in</button>
           <button type="button" className={`tab ${mode === 'up' ? 'active' : ''}`} onClick={() => setMode('up')}>Create account</button>
@@ -120,6 +155,28 @@ export default function Login() {
             {busy ? 'Please wait…' : mode === 'in' ? 'Enter the lab' : 'Create account'}
           </button>
         </form>
+
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border, #2a2448)' }}>
+          <p className="muted" style={{ fontSize: 12, margin: '0 0 8px' }}>
+            Moving from another phone/browser? Import your JSON backup here (works before sign-in).
+          </p>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/json,.json"
+            style={{ display: 'none' }}
+            onChange={onImportBackup}
+          />
+          <button
+            type="button"
+            className="btn btn-outline"
+            disabled={busy}
+            style={{ width: '100%' }}
+            onClick={() => fileRef.current?.click()}
+          >
+            Import backup JSON
+          </button>
+        </div>
       </div>
     </div>
   )
