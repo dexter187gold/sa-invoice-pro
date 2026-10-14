@@ -108,24 +108,92 @@ export async function exportAll() {
   const out = {}
   for (const k of Object.keys(STORES)) out[k] = await getAll(STORES[k])
   out.exportedAt = new Date().toISOString()
-  out.version = '2.5.0'
+  out.version = '4.3.2'
+  out.app = 'SA Invoice Pro Lab'
   return out
 }
+
+function unwrapBackup(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  if (Array.isArray(raw.clients) || Array.isArray(raw.invoices) || Array.isArray(raw.users) || Array.isArray(raw.company)) {
+    return raw
+  }
+  for (const key of ['data', 'workspace', 'stores', 'backup', 'payload']) {
+    const inner = raw[key]
+    if (inner && typeof inner === 'object' && !Array.isArray(inner)) {
+      const u = unwrapBackup(inner)
+      if (u) return u
+    }
+  }
+  if (raw.company && !Array.isArray(raw.company) && typeof raw.company === 'object') {
+    return { ...raw, company: [raw.company] }
+  }
+  return raw
+}
+
+function normalizeRow(storeKey, row) {
+  if (!row || typeof row !== 'object') return null
+  const r = { ...row }
+  if (storeKey === 'settings') {
+    if (r.key == null && r.id != null) r.key = r.id
+    if (r.key == null) return null
+  } else if (storeKey === 'company') {
+    if (!r.id) r.id = 'main'
+  } else {
+    if (r.id == null && r._id != null) r.id = r._id
+  }
+  return r
+}
+
 export async function importAll(data, { wipe = false } = {}) {
-  if (!data || typeof data !== 'object') throw new Error('Invalid backup')
+  const src = unwrapBackup(data)
+  if (!src || typeof src !== 'object') throw new Error('Invalid backup file')
+
+  const stats = { stores: 0, rows: 0, errors: 0 }
+
   for (const k of Object.keys(STORES)) {
-    if (!Array.isArray(data[k])) continue
+    let list = src[k]
+    if (k === 'company' && list && !Array.isArray(list) && typeof list === 'object') {
+      list = [list]
+    }
+    if (!Array.isArray(list)) continue
+    stats.stores++
+
     if (wipe) {
       const existing = await getAll(STORES[k])
       for (const row of existing) {
         const id = k === 'settings' ? row.key : row.id
-        if (id != null) await remove(STORES[k], id)
+        if (id != null) {
+          try { await remove(STORES[k], id) } catch {}
+        }
       }
     }
-    for (const row of data[k]) {
-      try { await put(STORES[k], row) } catch (e) { console.warn(k, e) }
+
+    for (const row of list) {
+      const norm = normalizeRow(k, row)
+      if (!norm) continue
+      try {
+        await put(STORES[k], norm)
+        stats.rows++
+      } catch (e) {
+        stats.errors++
+        console.warn('import', k, e)
+        try {
+          const { createdAt, updatedAt, ...rest } = norm
+          await put(STORES[k], rest)
+          stats.rows++
+          stats.errors--
+        } catch (e2) {
+          console.warn('import retry failed', k, e2)
+        }
+      }
     }
   }
+
+  if (stats.rows === 0 && stats.stores === 0) {
+    throw new Error('No recognisable data in backup (expected clients, invoices, users, etc.)')
+  }
+  return stats
 }
 
 export async function listTicketComments(ticketId) {
