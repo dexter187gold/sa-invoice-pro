@@ -1,3 +1,4 @@
+import { downloadJsPdf, showInAppPdfViewer, revokeLater } from './pdfOpen'
 import { loadJsPdf } from './loadJsPdf'
 import { formatMoney } from './money'
 
@@ -64,23 +65,12 @@ export async function generatePayslipPdf(payslip, company = {}, opts = {}) {
 
   const blob = doc.output('blob')
   const filename = `payslip-${(payslip.employeeName || 'staff').replace(/\s+/g, '-')}-${period}.pdf`
-
+  const url = URL.createObjectURL(blob)
+  revokeLater(url)
   if (opts.download !== false) {
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    a.click()
-    setTimeout(() => URL.revokeObjectURL(url), 2000)
+    await downloadJsPdf(doc, filename)
+  } else if (opts.preview) {
+    showInAppPdfViewer(url, filename)
   }
-
-  if (opts.preview) {
-    const url = URL.createObjectURL(blob)
-    const w = window.open(url, '_blank')
-    if (!w) {
-      // popup blocked — already downloaded
-    }
-  }
-
   return { blob, filename }
 }
