@@ -1,4 +1,4 @@
-import { jsPDF } from 'jspdf'
+import { loadJsPdf } from './loadJsPdf'
 import { formatMoney } from './money'
 import { openWhatsApp, openEmail, buildClientStatement } from './share'
 import { buildClientLedger } from './payments'
@@ -16,8 +16,9 @@ export function statementTotals(rows) {
 }
 
 /** Generate full account statement PDF (invoices + payments) */
-export function buildStatementPdfBlob(client, invoices, company, payments = []) {
+export async function buildStatementPdfBlob(client, invoices, company, payments = []) {
   const { lines, outstanding } = buildClientLedger(client, invoices, payments)
+  const jsPDF = await loadJsPdf()
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const co = company?.name || 'SA Invoice Pro'
   let y = 18
@@ -101,14 +102,14 @@ export function buildStatementPdfBlob(client, invoices, company, payments = []) 
 }
 
 export async function downloadStatementPdf(client, invoices, company, payments = []) {
-  const blob = buildStatementPdfBlob(client, invoices, company, payments)
+  const blob = await buildStatementPdfBlob(client, invoices, company, payments)
   const name = `statement-${(client?.name || 'client').replace(/\s+/g, '-').slice(0, 40)}-${new Date().toISOString().slice(0, 10)}.pdf`
   await downloadPdfBlob(blob, name)
   return blob
 }
 
 export async function openStatementPdf(client, invoices, company, payments = []) {
-  const blob = buildStatementPdfBlob(client, invoices, company, payments)
+  const blob = await buildStatementPdfBlob(client, invoices, company, payments)
   const name = `statement-${(client?.name || 'client').replace(/\s+/g, '-').slice(0, 40)}-${new Date().toISOString().slice(0, 10)}.pdf`
   await openPdfBlob(blob, name)
   return blob
@@ -116,7 +117,7 @@ export async function openStatementPdf(client, invoices, company, payments = [])
 
 export async function shareStatementPdf(client, invoices, company, { channel = 'wa', text = '', payments = [] } = {}) {
   const caption = text || buildClientStatement(client, invoices, company, payments)
-  const blob = buildStatementPdfBlob(client, invoices, company, payments)
+  const blob = await buildStatementPdfBlob(client, invoices, company, payments)
   const fileName = `statement-${(client?.name || 'client').replace(/\s+/g, '-').slice(0, 30)}.pdf`
   const file = new File([blob], fileName, { type: 'application/pdf' })
 
@@ -135,7 +136,6 @@ export async function shareStatementPdf(client, invoices, company, { channel = '
     }
   }
 
-  // Android WebView: show in-app viewer + native share sheet
   try {
     const url = URL.createObjectURL(blob)
     revokeLater(url)
