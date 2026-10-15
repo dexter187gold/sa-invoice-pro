@@ -1,8 +1,8 @@
-
 import React, { useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { DOC_TYPES, APP_NAME, APP_VERSION } from '../config'
 import { loadJsPdf } from '../lib/loadJsPdf'
+import { openJsPdf, downloadJsPdf } from '../lib/pdfOpen'
 
 const GREEN = [0, 122, 77]
 const SLATE = [51, 65, 85]
@@ -225,17 +225,11 @@ export default function Documents() {
       const doc = await buildPdf()
       const name = `${(docRef || 'document').replace(/[^\w.-]+/g, '_')}.pdf`
       if (open) {
-        const url = URL.createObjectURL(doc.output('blob'))
-        const w = window.open(url, '_blank')
-        if (!w) {
-          doc.save(name)
-          toast('Popup blocked — PDF downloaded instead', 'info')
-        } else {
-          toast('Preview opened', 'success')
-        }
+        await openJsPdf(doc, name)
+        toast('PDF preview ready', 'success')
       } else {
-        doc.save(name)
-        toast('PDF downloaded', 'success')
+        await downloadJsPdf(doc, name)
+        toast('PDF ready — use Download or Share in the viewer', 'success')
       }
     } catch (err) {
       console.error(err)
