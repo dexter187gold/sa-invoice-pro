@@ -45,14 +45,11 @@ jobs:
             [ -d "$d" ] && echo "$d" >> "$GITHUB_PATH"
           done
           echo "$SDK/platform-tools" >> "$GITHUB_PATH"
-          echo "Using ANDROID_HOME=$SDK"
 
       - name: Install platform 34 + build-tools
         run: |
-          set -e
           SDK="${ANDROID_HOME}"
           SM=$(find "$SDK/cmdline-tools" -name sdkmanager -type f 2>/dev/null | head -1)
-          echo "sdkmanager=$SM"
           yes | "$SM" --licenses >/tmp/sdk-lic.log 2>&1 || true
           "$SM" "platform-tools" "platforms;android-34" "build-tools;34.0.0" || true
 
@@ -70,11 +67,8 @@ jobs:
       - name: Install Capacitor + plugins
         run: |
           npm install --no-audit --no-fund \
-            @capacitor/core@6 \
-            @capacitor/cli@6 \
-            @capacitor/android@6 \
-            @capacitor/share@6 \
-            @capacitor/filesystem@6
+            @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 \
+            @capacitor/share@6 @capacitor/filesystem@6
 
       - name: Init / sync Capacitor Android
         run: |
@@ -91,9 +85,7 @@ jobs:
           c.webDir = 'dist';
           fs.writeFileSync('capacitor.config.json', JSON.stringify(c, null, 2));
           NODE
-          if [ ! -d android ]; then
-            npx cap add android
-          fi
+          if [ ! -d android ]; then npx cap add android; fi
           npx cap sync android
 
       - name: Patch permissions + MainActivity + FileProvider
@@ -114,42 +106,34 @@ jobs:
           if "android.permission.INTERNET" not in t:
               t = t.replace(">", '>\n    <uses-permission android:name="android.permission.INTERNET" />\n', 1)
           for perm, maxsdk in perms:
-              if perm in t:
-                  continue
+              if perm in t: continue
               needle = 'android:name="android.permission.INTERNET"'
               idx = t.find(needle)
-              if idx < 0:
-                  continue
+              if idx < 0: continue
               end = t.find("/>", idx) + 2
-              extra = (
-                  f'\n    <uses-permission android:name="{perm}" android:maxSdkVersion="{maxsdk}" />'
-                  if maxsdk else f'\n    <uses-permission android:name="{perm}" />'
-              )
+              extra = (f'\n    <uses-permission android:name="{perm}" android:maxSdkVersion="{maxsdk}" />'
+                       if maxsdk else f'\n    <uses-permission android:name="{perm}" />')
               t = t[:end] + extra + t[end:]
           if "requestLegacyExternalStorage" not in t:
               t = t.replace("<application ", '<application android:requestLegacyExternalStorage="true" ', 1)
           p.write_text(t)
           print("manifest ok")
           PY
-
           if [ -f android/variables.gradle ]; then
             sed -i 's/compileSdkVersion = .*/compileSdkVersion = 34/' android/variables.gradle || true
             sed -i 's/targetSdkVersion = .*/targetSdkVersion = 34/' android/variables.gradle || true
             sed -i 's/minSdkVersion = .*/minSdkVersion = 24/' android/variables.gradle || true
           fi
-
           mkdir -p android/app/src/main/res/xml
           cat > android/app/src/main/res/xml/file_paths.xml << 'XML'
           <?xml version="1.0" encoding="utf-8"?>
           <paths>
-              <external-path name="external" path="." />
-              <external-files-path name="external_files" path="." />
-              <files-path name="files" path="." />
-              <cache-path name="cache" path="." />
+            <external-path name="external" path="." />
+            <external-files-path name="external_files" path="." />
+            <files-path name="files" path="." />
+            <cache-path name="cache" path="." />
           </paths>
           XML
-
-          # Always overwrite MainActivity with a complete valid file
           MA=$(find android/app/src/main/java -name 'MainActivity.java' 2>/dev/null | head -1)
           if [ -z "$MA" ]; then
             MA=android/app/src/main/java/pro/sainvoice/lab/MainActivity.java
@@ -180,8 +164,6 @@ jobs:
               }
           }
           JAVA
-          echo "MainActivity written: $MA"
-          cat "$MA"
 
       - name: Setup keystore (optional secrets)
         env:
@@ -190,18 +172,43 @@ jobs:
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$STORE_PASS" ] && [ -n "$KEY_ALIAS" ]; then
-            echo "$KEYSTORE_BASE64" | base64 -d > android/saip-lab.keystore
-            cat > android/keystore.properties << EOF
+          set +e
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$STORE_PASS" ] || [ -z "$KEY_ALIAS" ]; then
+            echo "::warning::Keystore secrets incomplete — building with debug signing"
+            exit 0
+          fi
+          # Strip ALL whitespace/newlines (common paste issue)
+          CLEAN=$(printf '%s' "$KEYSTORE_BASE64" | tr -d ' \n\r\t')
+          echo "Base64 length after clean: ${#CLEAN}"
+          if ! printf '%s' "$CLEAN" | base64 -d > android/saip-lab.keystore 2>/tmp/b64.err; then
+            echo "::warning::base64 decode failed: $(cat /tmp/b64.err)"
+            echo "::warning::Secret ANDROID_KEYSTORE_BASE64 is not valid base64 — using debug signing"
+            rm -f android/saip-lab.keystore
+            exit 0
+          fi
+          # Verify it looks like a keystore (PKCS12/JKS magic)
+          if [ ! -s android/saip-lab.keystore ]; then
+            echo "::warning::Decoded keystore empty — using debug signing"
+            rm -f android/saip-lab.keystore
+            exit 0
+          fi
+          # Optional: keytool list (non-fatal)
+          keytool -list -keystore android/saip-lab.keystore -storepass "$STORE_PASS" >/tmp/kt.out 2>&1
+          if [ $? -ne 0 ]; then
+            echo "::warning::keytool cannot open keystore (wrong password or corrupt file):"
+            cat /tmp/kt.out
+            echo "::warning::Continuing with debug signing"
+            rm -f android/saip-lab.keystore
+            exit 0
+          fi
+          cat > android/keystore.properties << EOF
           storeFile=saip-lab.keystore
           storePassword=${STORE_PASS}
           keyAlias=${KEY_ALIAS}
           keyPassword=${KEY_PASS:-$STORE_PASS}
           EOF
-            echo "Keystore configured"
-          else
-            echo "::warning::No keystore secrets — default debug signing"
-          fi
+          echo "Keystore configured and verified"
+          exit 0
 
       - name: Configure Gradle signing
         run: |
