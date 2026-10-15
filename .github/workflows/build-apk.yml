@@ -1,5 +1,4 @@
-# Full SA Invoice Pro Lab APK (Capacitor + Share + Filesystem + storage permissions)
-# Runs on GitHub-hosted runners (~7GB RAM) — not on your phone or the low-RAM agent.
+# Full SA Invoice Pro Lab APK — GitHub-hosted runner (enough RAM for Gradle)
 name: Build signed APK
 
 on:
@@ -19,7 +18,7 @@ jobs:
   android:
     name: Android release APK
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -29,7 +28,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: npm
 
       - name: Setup Java 21
         uses: actions/setup-java@v4
@@ -40,68 +38,102 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Accept Android licenses
+        run: yes | sdkmanager --licenses >/dev/null || true
+
       - name: Install npm dependencies
-        run: npm ci || npm install
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
 
       - name: Build web (Vite)
         run: npm run build
 
       - name: Install Capacitor + plugins
         run: |
-          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 \
-            @capacitor/share@6 @capacitor/filesystem@6
+          npm install --no-audit --no-fund \
+            @capacitor/core@6 \
+            @capacitor/cli@6 \
+            @capacitor/android@6 \
+            @capacitor/share@6 \
+            @capacitor/filesystem@6
 
-      - name: Init Capacitor Android (idempotent)
+      - name: Init / sync Capacitor Android
         run: |
+          set -e
           if [ ! -f capacitor.config.json ] && [ ! -f capacitor.config.ts ]; then
             npx cap init "SA Invoice Pro Lab" pro.sainvoice.lab --web-dir dist
           fi
-          node -e "
-            const fs=require('fs');
-            const p='capacitor.config.json';
-            let c={};
-            try{c=JSON.parse(fs.readFileSync(p,'utf8'))}catch{}
-            c.appId=c.appId||'pro.sainvoice.lab';
-            c.appName=c.appName||'SA Invoice Pro Lab';
-            c.webDir='dist';
-            fs.writeFileSync(p, JSON.stringify(c,null,2));
-          "
+          node << 'NODE'
+          const fs = require('fs');
+          const p = 'capacitor.config.json';
+          let c = {};
+          try { c = JSON.parse(fs.readFileSync(p, 'utf8')); } catch {}
+          c.appId = 'pro.sainvoice.lab';
+          c.appName = 'SA Invoice Pro Lab';
+          c.webDir = 'dist';
+          c.android = c.android || {};
+          c.android.allowMixedContent = false;
+          fs.writeFileSync(p, JSON.stringify(c, null, 2));
+          console.log('capacitor.config.json', c);
+          NODE
           if [ ! -d android ]; then
             npx cap add android
-          else
-            npx cap sync android
           fi
           npx cap sync android
 
-      - name: Patch AndroidManifest permissions + FileProvider paths
+      - name: Patch permissions, SDK 34, FileProvider, MainActivity
         run: |
+          set -e
           MAN=android/app/src/main/AndroidManifest.xml
           test -f "$MAN"
-          if ! grep -q WRITE_EXTERNAL_STORAGE "$MAN"; then
-            python3 << 'PY'
+
+          python3 << 'PY'
           from pathlib import Path
           p = Path("android/app/src/main/AndroidManifest.xml")
           t = p.read_text()
-          inject = '''
-              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-              <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
-              <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-              <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-              <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-          '''
-          if "INTERNET" in t and "WRITE_EXTERNAL_STORAGE" not in t:
+          perms = [
+            ("android.permission.ACCESS_NETWORK_STATE", None),
+            ("android.permission.READ_EXTERNAL_STORAGE", "32"),
+            ("android.permission.WRITE_EXTERNAL_STORAGE", "28"),
+            ("android.permission.READ_MEDIA_IMAGES", None),
+            ("android.permission.READ_MEDIA_VIDEO", None),
+            ("android.permission.POST_NOTIFICATIONS", None),
+          ]
+          if "android.permission.INTERNET" not in t:
               t = t.replace(
-                  'android:name="android.permission.INTERNET" />',
-                  'android:name="android.permission.INTERNET" />' + inject,
+                  ">",
+                  '>\n    <uses-permission android:name="android.permission.INTERNET" />\n',
                   1,
               )
+          for perm, maxsdk in perms:
+              if perm in t:
+                  continue
+              needle = 'android:name="android.permission.INTERNET"'
+              idx = t.find(needle)
+              if idx < 0:
+                  continue
+              end = t.find("/>", idx) + 2
+              if maxsdk:
+                  extra = f'\n    <uses-permission android:name="{perm}" android:maxSdkVersion="{maxsdk}" />'
+              else:
+                  extra = f'\n    <uses-permission android:name="{perm}" />'
+              t = t[:end] + extra + t[end:]
           if "requestLegacyExternalStorage" not in t:
               t = t.replace("<application ", '<application android:requestLegacyExternalStorage="true" ', 1)
           p.write_text(t)
-          print("manifest patched")
+          print("manifest ok")
           PY
+
+          if [ -f android/variables.gradle ]; then
+            sed -i 's/compileSdkVersion = .*/compileSdkVersion = 34/' android/variables.gradle || true
+            sed -i 's/targetSdkVersion = .*/targetSdkVersion = 34/' android/variables.gradle || true
+            sed -i 's/minSdkVersion = .*/minSdkVersion = 24/' android/variables.gradle || true
           fi
+
           mkdir -p android/app/src/main/res/xml
           cat > android/app/src/main/res/xml/file_paths.xml << 'XML'
           <?xml version="1.0" encoding="utf-8"?>
@@ -113,34 +145,69 @@ jobs:
           </paths>
           XML
 
-      - name: Decode keystore from secrets
-        env:
-          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        run: |
-          if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::warning::ANDROID_KEYSTORE_BASE64 secret not set — building without custom signing"
-            echo "HAS_KEYSTORE=false" >> $GITHUB_ENV
-          else
-            echo "$KEYSTORE_BASE64" | base64 -d > android/saip-lab.keystore
-            echo "HAS_KEYSTORE=true" >> $GITHUB_ENV
-            cat > android/keystore.properties << EOF
-          storeFile=saip-lab.keystore
-          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
-          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
-          EOF
+          MA=$(find android/app/src/main/java -name 'MainActivity.java' 2>/dev/null | head -1)
+          if [ -n "$MA" ]; then
+            python3 << PY
+          from pathlib import Path
+          p = Path("$MA")
+          t = p.read_text()
+          if "requestPermissions" in t:
+              print("MainActivity already patched")
+          else:
+              body = '''extends BridgeActivity {
+            @Override
+            public void onCreate(android.os.Bundle savedInstanceState) {
+              super.onCreate(savedInstanceState);
+              if (android.os.Build.VERSION.SDK_INT >= 23) {
+                try {
+                  requestPermissions(new String[] {
+                    android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                    "android.permission.READ_MEDIA_IMAGES",
+                    "android.permission.POST_NOTIFICATIONS"
+                  }, 1001);
+                } catch (Exception ignored) {}
+              }
+            }
+          '''
+              if "extends BridgeActivity {}" in t:
+                  t = t.replace("extends BridgeActivity {}", body)
+              elif "extends BridgeActivity {" in t:
+                  t = t.replace("extends BridgeActivity {", body, 1)
+              p.write_text(t)
+              print("MainActivity patched", p)
+          PY
           fi
 
-      - name: Configure Gradle signing (if keystore present)
-        if: env.HAS_KEYSTORE == 'true'
+      - name: Setup keystore (optional secrets)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$STORE_PASS" ] && [ -n "$KEY_ALIAS" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > android/saip-lab.keystore
+            echo "HAS_KEYSTORE=true" >> "$GITHUB_ENV"
+            cat > android/keystore.properties << EOF
+          storeFile=saip-lab.keystore
+          storePassword=${STORE_PASS}
+          keyAlias=${KEY_ALIAS}
+          keyPassword=${KEY_PASS:-$STORE_PASS}
+          EOF
+            echo "Keystore written for release signing"
+          else
+            echo "HAS_KEYSTORE=false" >> "$GITHUB_ENV"
+            echo "::warning::Keystore secrets missing — building with default debug signing (still installable)"
+          fi
+
+      - name: Configure Gradle signing
         run: |
           python3 << 'PY'
           from pathlib import Path
           p = Path("android/app/build.gradle")
           t = p.read_text()
-          if "signingConfigs" in t:
-              print("signing already configured")
-          else:
+          if "signingConfigs" not in t:
               block = '''
               signingConfigs {
                   release {
@@ -158,12 +225,14 @@ jobs:
           '''
               t = t.replace("android {", "android {" + block, 1)
               t = t.replace(
-                  "buildTypes {\n        release {",
-                  "buildTypes {\n        release {\n            signingConfig signingConfigs.release",
+                  "release {",
+                  "release {\n            if (rootProject.file(\"keystore.properties\").exists()) {\n                signingConfig signingConfigs.release\n            }",
                   1,
               )
               p.write_text(t)
-              print("signing injected")
+              print("signing config injected")
+          else:
+              print("signingConfigs already present")
           PY
 
       - name: Assemble release APK
@@ -172,15 +241,16 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon --stacktrace
 
-      - name: Locate APK
-        id: apk
+      - name: Package artifact
         run: |
+          set -e
           APK=$(find android/app/build/outputs/apk -name "*.apk" | head -n 1)
-          echo "Found: $APK"
+          echo "Found APK: $APK"
           ls -lh "$APK"
-          VER=$(node -p "require('./package.json').version" 2>/dev/null || echo "lab")
-          cp "$APK" "SA-Invoice-Pro-Lab-v${VER}.apk"
-          echo "artifact=SA-Invoice-Pro-Lab-v${VER}.apk" >> $GITHUB_OUTPUT
+          VER=$(node -p "require('./package.json').version")
+          OUT="SA-Invoice-Pro-Lab-v${VER}.apk"
+          cp "$APK" "$OUT"
+          ls -lh "$OUT"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
