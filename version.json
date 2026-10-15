@@ -1,1 +1,1 @@
-{"version":"4.3.5","message":"Fix jsPDF is not a constructor on APK PDF open/download"}
+{"version":"4.3.6","message":"PDF Download/Share/Print work without Capacitor plugins on Android WebView"}
