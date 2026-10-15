@@ -319,7 +319,7 @@ function drawFooter(doc, company, isQuote) {
 }
 
 export async function buildProfessionalPdf(docData, options = {}) {
-  const { jsPDF } = await loadJsPdf()
+  const jsPDF = await loadJsPdf()
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const isQuote = !!options.isQuote
   const company = docData.company || {}
