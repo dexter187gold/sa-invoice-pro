@@ -1,17 +1,24 @@
 /**
- * Reliable jsPDF dynamic import for Vite ESM builds.
- * Handles named export, default export, and nested default interop.
+ * Reliable jsPDF loader for Vite + Capacitor / Android WebView.
+ * Always returns the constructor function (never a module object).
  */
 export async function loadJsPdf() {
   const mod = await import('jspdf')
-  const jsPDF =
-    mod.jsPDF ||
-    (mod.default && mod.default.jsPDF) ||
-    mod.default ||
+  let jsPDF =
+    (typeof mod.jsPDF === 'function' && mod.jsPDF) ||
+    (typeof mod.default === 'function' && mod.default) ||
+    (mod.default && typeof mod.default.jsPDF === 'function' && mod.default.jsPDF) ||
     null
+
+  // Some bundlers attach the class on default.default
+  if (!jsPDF && mod.default && mod.default.default && typeof mod.default.default === 'function') {
+    jsPDF = mod.default.default
+  }
+
   if (typeof jsPDF !== 'function') {
+    console.error('jspdf module shape', mod, Object.keys(mod || {}))
     throw new Error(
-      'jsPDF failed to load. Rebuild the app (npm run build) or check that the jspdf package is installed.'
+      'jsPDF is not a constructor (module interop failed). Reinstall jspdf or rebuild the APK.'
     )
   }
   return jsPDF
