@@ -1,12 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
     <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#e879f9"/>
-      <stop offset="50%" stop-color="#7c3aed"/>
-      <stop offset="100%" stop-color="#38bdf8"/>
+      <stop offset="0%" stop-color="#e879f9"/><stop offset="45%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#38bdf8"/>
     </linearGradient>
+    <linearGradient id="ring" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8"/><stop offset="50%" stop-color="#e879f9"/><stop offset="100%" stop-color="#a78bfa"/>
+    </linearGradient>
+    <radialGradient id="core" cx="40%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#2a1848"/><stop offset="100%" stop-color="#0c0a14"/>
+    </radialGradient>
   </defs>
-  <rect width="512" height="512" rx="96" fill="#0c0a14"/>
-  <rect x="32" y="32" width="448" height="448" rx="80" fill="url(#g)" opacity="0.95"/>
-  <text x="256" y="300" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="160" fill="#0c0a14">SA</text>
+  <rect width="512" height="512" rx="112" fill="#0c0a14"/>
+  <circle cx="256" cy="256" r="230" fill="none" stroke="url(#ring)" stroke-width="16"/>
+  <circle cx="256" cy="256" r="198" fill="url(#core)" stroke="url(#g)" stroke-width="10"/>
+  <ellipse cx="190" cy="180" rx="70" ry="40" fill="rgba(232,121,249,0.2)"/>
+  <text x="256" y="290" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="150" fill="url(#g)">SA</text>
+  <rect x="176" y="340" width="160" height="44" rx="12" fill="rgba(232,121,249,0.18)" stroke="#38bdf8" stroke-width="3"/>
+  <text x="256" y="372" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="700" font-size="28" fill="#e879f9" letter-spacing="4">LAB</text>
 </svg>
