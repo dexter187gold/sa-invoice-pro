@@ -204,6 +204,26 @@ export function AppProvider({ children }) {
     return session
   }
 
+  const resetPassword = async ({ usernameOrEmail, emailConfirm, newPassword }) => {
+    const users = (await db.getAll(STORES.users)) || []
+    const needle = String(usernameOrEmail || '').trim().toLowerCase()
+    const emailNeedle = String(emailConfirm || '').trim().toLowerCase()
+    if (!needle) throw new Error('Enter your username or email')
+    if (!emailNeedle) throw new Error('Confirm the account email')
+    if (!newPassword || newPassword.length < 6) throw new Error('New password must be at least 6 characters')
+    const u = users.find((x) => {
+      const un = String(x.username || '').trim().toLowerCase()
+      const em = String(x.email || '').trim().toLowerCase()
+      return un === needle || em === needle
+    })
+    if (!u) throw new Error('No account found with that username or email')
+    const storedEmail = String(u.email || '').trim().toLowerCase()
+    if (!storedEmail || storedEmail !== emailNeedle) throw new Error('Email does not match this account')
+    const hashed = await hashPassword(newPassword)
+    await db.put(STORES.users, { ...u, password: hashed })
+    return true
+  }
+
   const logout = () => {
     setSession(null)
     setUser(null)
@@ -214,7 +234,7 @@ export function AppProvider({ children }) {
     expenses, payments, employees, payslips, bankTxns, journal, accounts, timeEntries,
     toasts, toast, dismissToast, theme, setTheme, density, setDensity,
     vatEnabled, vatRate, setVatEnabled, setVatRate,
-    online, refresh, login, register, logout, setCompany,
+    online, refresh, login, register, resetPassword, logout, setCompany,
   }
 
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>
