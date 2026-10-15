@@ -37,35 +37,24 @@ jobs:
       - name: Use runner Android SDK
         run: |
           set -e
-          # GitHub ubuntu-latest already ships an Android SDK
           SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
           if [ ! -d "$SDK" ]; then SDK=/usr/lib/android-sdk; fi
           echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
-          echo "$SDK/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
-          echo "$SDK/platform-tools" >> "$GITHUB_PATH"
-          # cmdline-tools path variants on runner images
           for d in "$SDK"/cmdline-tools/*/bin; do
             [ -d "$d" ] && echo "$d" >> "$GITHUB_PATH"
           done
+          echo "$SDK/platform-tools" >> "$GITHUB_PATH"
           echo "Using ANDROID_HOME=$SDK"
-          ls "$SDK" || true
 
       - name: Install platform 34 + build-tools
         run: |
           set -e
           SDK="${ANDROID_HOME}"
           SM=$(find "$SDK/cmdline-tools" -name sdkmanager -type f 2>/dev/null | head -1)
-          if [ -z "$SM" ]; then
-            echo "sdkmanager not found; trying apt packages path"
-            SM=$(which sdkmanager || true)
-          fi
           echo "sdkmanager=$SM"
           yes | "$SM" --licenses >/tmp/sdk-lic.log 2>&1 || true
-          "$SM" "platform-tools" "platforms;android-34" "build-tools;34.0.0" || \
-            "$SM" "platforms;android-34" "build-tools;34.0.0" || true
-          ls "$SDK/platforms" || true
-          ls "$SDK/build-tools" || true
+          "$SM" "platform-tools" "platforms;android-34" "build-tools;34.0.0" || true
 
       - name: Install npm dependencies
         run: |
@@ -95,20 +84,19 @@ jobs:
           fi
           node << 'NODE'
           const fs = require('fs');
-          const p = 'capacitor.config.json';
           let c = {};
-          try { c = JSON.parse(fs.readFileSync(p, 'utf8')); } catch {}
+          try { c = JSON.parse(fs.readFileSync('capacitor.config.json', 'utf8')); } catch {}
           c.appId = 'pro.sainvoice.lab';
           c.appName = 'SA Invoice Pro Lab';
           c.webDir = 'dist';
-          fs.writeFileSync(p, JSON.stringify(c, null, 2));
+          fs.writeFileSync('capacitor.config.json', JSON.stringify(c, null, 2));
           NODE
           if [ ! -d android ]; then
             npx cap add android
           fi
           npx cap sync android
 
-      - name: Patch permissions + SDK 34 + MainActivity
+      - name: Patch permissions + MainActivity + FileProvider
         run: |
           set -e
           python3 << 'PY'
@@ -133,45 +121,67 @@ jobs:
               if idx < 0:
                   continue
               end = t.find("/>", idx) + 2
-              extra = f'\n    <uses-permission android:name="{perm}" android:maxSdkVersion="{maxsdk}" />' if maxsdk else f'\n    <uses-permission android:name="{perm}" />'
+              extra = (
+                  f'\n    <uses-permission android:name="{perm}" android:maxSdkVersion="{maxsdk}" />'
+                  if maxsdk else f'\n    <uses-permission android:name="{perm}" />'
+              )
               t = t[:end] + extra + t[end:]
           if "requestLegacyExternalStorage" not in t:
               t = t.replace("<application ", '<application android:requestLegacyExternalStorage="true" ', 1)
           p.write_text(t)
-          print("manifest patched")
+          print("manifest ok")
           PY
+
           if [ -f android/variables.gradle ]; then
             sed -i 's/compileSdkVersion = .*/compileSdkVersion = 34/' android/variables.gradle || true
             sed -i 's/targetSdkVersion = .*/targetSdkVersion = 34/' android/variables.gradle || true
             sed -i 's/minSdkVersion = .*/minSdkVersion = 24/' android/variables.gradle || true
           fi
+
           mkdir -p android/app/src/main/res/xml
-          printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>' '<paths>' '  <external-path name="external" path="." />' '  <external-files-path name="external_files" path="." />' '  <files-path name="files" path="." />' '  <cache-path name="cache" path="." />' '</paths>' > android/app/src/main/res/xml/file_paths.xml
+          cat > android/app/src/main/res/xml/file_paths.xml << 'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <paths>
+              <external-path name="external" path="." />
+              <external-files-path name="external_files" path="." />
+              <files-path name="files" path="." />
+              <cache-path name="cache" path="." />
+          </paths>
+          XML
+
+          # Always overwrite MainActivity with a complete valid file
           MA=$(find android/app/src/main/java -name 'MainActivity.java' 2>/dev/null | head -1)
-          if [ -n "$MA" ] && ! grep -q requestPermissions "$MA"; then
-            python3 -c "
-          from pathlib import Path
-          p=Path('$MA'); t=p.read_text()
-          body='''extends BridgeActivity {
-            @Override
-            public void onCreate(android.os.Bundle savedInstanceState) {
-              super.onCreate(savedInstanceState);
-              if (android.os.Build.VERSION.SDK_INT >= 23) {
-                try {
-                  requestPermissions(new String[] {
-                    android.Manifest.permission.READ_EXTERNAL_STORAGE,
-                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                    \"android.permission.READ_MEDIA_IMAGES\",
-                    \"android.permission.POST_NOTIFICATIONS\"
-                  }, 1001);
-                } catch (Exception ignored) {}
-              }
-            }
-          '''
-          t=t.replace('extends BridgeActivity {}', body).replace('extends BridgeActivity {', body, 1) if 'requestPermissions' not in t else t
-          p.write_text(t); print('MainActivity ok')
-          "
+          if [ -z "$MA" ]; then
+            MA=android/app/src/main/java/pro/sainvoice/lab/MainActivity.java
+            mkdir -p "$(dirname "$MA")"
           fi
+          cat > "$MA" << 'JAVA'
+          package pro.sainvoice.lab;
+
+          import com.getcapacitor.BridgeActivity;
+          import android.os.Bundle;
+          import android.os.Build;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  if (Build.VERSION.SDK_INT >= 23) {
+                      try {
+                          requestPermissions(new String[] {
+                              android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                              android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                              "android.permission.READ_MEDIA_IMAGES",
+                              "android.permission.POST_NOTIFICATIONS"
+                          }, 1001);
+                      } catch (Exception ignored) {
+                      }
+                  }
+              }
+          }
+          JAVA
+          echo "MainActivity written: $MA"
+          cat "$MA"
 
       - name: Setup keystore (optional secrets)
         env:
@@ -190,7 +200,7 @@ jobs:
           EOF
             echo "Keystore configured"
           else
-            echo "::warning::No keystore secrets — debug/default signing"
+            echo "::warning::No keystore secrets — default debug signing"
           fi
 
       - name: Configure Gradle signing
