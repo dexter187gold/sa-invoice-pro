@@ -1,4 +1,1 @@
-{
-  "version": "4.2.0",
-  "message": "Duplicate invoice, flag overdue, client statement CSV"
-}
+{"version":"4.3.4","message":"Android PDF viewer/share + statements; workspace persistence notes"}
