@@ -1,4 +1,3 @@
-# Full SA Invoice Pro Lab APK — GitHub-hosted runner (enough RAM for Gradle)
 name: Build signed APK
 
 on:
@@ -35,11 +34,38 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Use runner Android SDK
+        run: |
+          set -e
+          # GitHub ubuntu-latest already ships an Android SDK
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          if [ ! -d "$SDK" ]; then SDK=/usr/lib/android-sdk; fi
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          echo "$SDK/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$SDK/platform-tools" >> "$GITHUB_PATH"
+          # cmdline-tools path variants on runner images
+          for d in "$SDK"/cmdline-tools/*/bin; do
+            [ -d "$d" ] && echo "$d" >> "$GITHUB_PATH"
+          done
+          echo "Using ANDROID_HOME=$SDK"
+          ls "$SDK" || true
 
-      - name: Accept Android licenses
-        run: yes | sdkmanager --licenses >/dev/null || true
+      - name: Install platform 34 + build-tools
+        run: |
+          set -e
+          SDK="${ANDROID_HOME}"
+          SM=$(find "$SDK/cmdline-tools" -name sdkmanager -type f 2>/dev/null | head -1)
+          if [ -z "$SM" ]; then
+            echo "sdkmanager not found; trying apt packages path"
+            SM=$(which sdkmanager || true)
+          fi
+          echo "sdkmanager=$SM"
+          yes | "$SM" --licenses >/tmp/sdk-lic.log 2>&1 || true
+          "$SM" "platform-tools" "platforms;android-34" "build-tools;34.0.0" || \
+            "$SM" "platforms;android-34" "build-tools;34.0.0" || true
+          ls "$SDK/platforms" || true
+          ls "$SDK/build-tools" || true
 
       - name: Install npm dependencies
         run: |
@@ -75,22 +101,16 @@ jobs:
           c.appId = 'pro.sainvoice.lab';
           c.appName = 'SA Invoice Pro Lab';
           c.webDir = 'dist';
-          c.android = c.android || {};
-          c.android.allowMixedContent = false;
           fs.writeFileSync(p, JSON.stringify(c, null, 2));
-          console.log('capacitor.config.json', c);
           NODE
           if [ ! -d android ]; then
             npx cap add android
           fi
           npx cap sync android
 
-      - name: Patch permissions, SDK 34, FileProvider, MainActivity
+      - name: Patch permissions + SDK 34 + MainActivity
         run: |
           set -e
-          MAN=android/app/src/main/AndroidManifest.xml
-          test -f "$MAN"
-
           python3 << 'PY'
           from pathlib import Path
           p = Path("android/app/src/main/AndroidManifest.xml")
@@ -104,11 +124,7 @@ jobs:
             ("android.permission.POST_NOTIFICATIONS", None),
           ]
           if "android.permission.INTERNET" not in t:
-              t = t.replace(
-                  ">",
-                  '>\n    <uses-permission android:name="android.permission.INTERNET" />\n',
-                  1,
-              )
+              t = t.replace(">", '>\n    <uses-permission android:name="android.permission.INTERNET" />\n', 1)
           for perm, maxsdk in perms:
               if perm in t:
                   continue
@@ -117,44 +133,26 @@ jobs:
               if idx < 0:
                   continue
               end = t.find("/>", idx) + 2
-              if maxsdk:
-                  extra = f'\n    <uses-permission android:name="{perm}" android:maxSdkVersion="{maxsdk}" />'
-              else:
-                  extra = f'\n    <uses-permission android:name="{perm}" />'
+              extra = f'\n    <uses-permission android:name="{perm}" android:maxSdkVersion="{maxsdk}" />' if maxsdk else f'\n    <uses-permission android:name="{perm}" />'
               t = t[:end] + extra + t[end:]
           if "requestLegacyExternalStorage" not in t:
               t = t.replace("<application ", '<application android:requestLegacyExternalStorage="true" ', 1)
           p.write_text(t)
-          print("manifest ok")
+          print("manifest patched")
           PY
-
           if [ -f android/variables.gradle ]; then
             sed -i 's/compileSdkVersion = .*/compileSdkVersion = 34/' android/variables.gradle || true
             sed -i 's/targetSdkVersion = .*/targetSdkVersion = 34/' android/variables.gradle || true
             sed -i 's/minSdkVersion = .*/minSdkVersion = 24/' android/variables.gradle || true
           fi
-
           mkdir -p android/app/src/main/res/xml
-          cat > android/app/src/main/res/xml/file_paths.xml << 'XML'
-          <?xml version="1.0" encoding="utf-8"?>
-          <paths>
-              <external-path name="external" path="." />
-              <external-files-path name="external_files" path="." />
-              <files-path name="files" path="." />
-              <cache-path name="cache" path="." />
-          </paths>
-          XML
-
+          printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>' '<paths>' '  <external-path name="external" path="." />' '  <external-files-path name="external_files" path="." />' '  <files-path name="files" path="." />' '  <cache-path name="cache" path="." />' '</paths>' > android/app/src/main/res/xml/file_paths.xml
           MA=$(find android/app/src/main/java -name 'MainActivity.java' 2>/dev/null | head -1)
-          if [ -n "$MA" ]; then
-            python3 << PY
+          if [ -n "$MA" ] && ! grep -q requestPermissions "$MA"; then
+            python3 -c "
           from pathlib import Path
-          p = Path("$MA")
-          t = p.read_text()
-          if "requestPermissions" in t:
-              print("MainActivity already patched")
-          else:
-              body = '''extends BridgeActivity {
+          p=Path('$MA'); t=p.read_text()
+          body='''extends BridgeActivity {
             @Override
             public void onCreate(android.os.Bundle savedInstanceState) {
               super.onCreate(savedInstanceState);
@@ -163,20 +161,16 @@ jobs:
                   requestPermissions(new String[] {
                     android.Manifest.permission.READ_EXTERNAL_STORAGE,
                     android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                    "android.permission.READ_MEDIA_IMAGES",
-                    "android.permission.POST_NOTIFICATIONS"
+                    \"android.permission.READ_MEDIA_IMAGES\",
+                    \"android.permission.POST_NOTIFICATIONS\"
                   }, 1001);
                 } catch (Exception ignored) {}
               }
             }
           '''
-              if "extends BridgeActivity {}" in t:
-                  t = t.replace("extends BridgeActivity {}", body)
-              elif "extends BridgeActivity {" in t:
-                  t = t.replace("extends BridgeActivity {", body, 1)
-              p.write_text(t)
-              print("MainActivity patched", p)
-          PY
+          t=t.replace('extends BridgeActivity {}', body).replace('extends BridgeActivity {', body, 1) if 'requestPermissions' not in t else t
+          p.write_text(t); print('MainActivity ok')
+          "
           fi
 
       - name: Setup keystore (optional secrets)
@@ -188,17 +182,15 @@ jobs:
         run: |
           if [ -n "$KEYSTORE_BASE64" ] && [ -n "$STORE_PASS" ] && [ -n "$KEY_ALIAS" ]; then
             echo "$KEYSTORE_BASE64" | base64 -d > android/saip-lab.keystore
-            echo "HAS_KEYSTORE=true" >> "$GITHUB_ENV"
             cat > android/keystore.properties << EOF
           storeFile=saip-lab.keystore
           storePassword=${STORE_PASS}
           keyAlias=${KEY_ALIAS}
           keyPassword=${KEY_PASS:-$STORE_PASS}
           EOF
-            echo "Keystore written for release signing"
+            echo "Keystore configured"
           else
-            echo "HAS_KEYSTORE=false" >> "$GITHUB_ENV"
-            echo "::warning::Keystore secrets missing — building with default debug signing (still installable)"
+            echo "::warning::No keystore secrets — debug/default signing"
           fi
 
       - name: Configure Gradle signing
@@ -226,14 +218,15 @@ jobs:
               t = t.replace("android {", "android {" + block, 1)
               t = t.replace(
                   "release {",
-                  "release {\n            if (rootProject.file(\"keystore.properties\").exists()) {\n                signingConfig signingConfigs.release\n            }",
+                  'release {\n            if (rootProject.file("keystore.properties").exists()) {\n                signingConfig signingConfigs.release\n            }',
                   1,
               )
               p.write_text(t)
-              print("signing config injected")
-          else:
-              print("signingConfigs already present")
+          print("gradle signing ready")
           PY
+
+      - name: Write local.properties
+        run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
       - name: Assemble release APK
         working-directory: android
@@ -245,12 +238,9 @@ jobs:
         run: |
           set -e
           APK=$(find android/app/build/outputs/apk -name "*.apk" | head -n 1)
-          echo "Found APK: $APK"
           ls -lh "$APK"
           VER=$(node -p "require('./package.json').version")
-          OUT="SA-Invoice-Pro-Lab-v${VER}.apk"
-          cp "$APK" "$OUT"
-          ls -lh "$OUT"
+          cp "$APK" "SA-Invoice-Pro-Lab-v${VER}.apk"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
