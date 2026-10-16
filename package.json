@@ -1,7 +1,7 @@
 {
   "name": "sa-invoice-pro",
   "private": true,
-  "version": "4.3.9",
+  "version": "5.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,7 +12,8 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.1.0",
-    "jspdf": "^2.5.2"
+    "jspdf": "^2.5.2",
+    "pdfjs-dist": "^4.10.38"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
