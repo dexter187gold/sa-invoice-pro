@@ -5,6 +5,7 @@ import { formatMoney } from '../lib/money'
 import { agedBuckets } from '../lib/accounting'
 import { StatCard, ProgressBar, formatDateZA, relativeTime, PageFade, EmptyState } from '../components/ui'
 import { openWhatsApp, buildReportSummaryShare, buildClientStatement } from '../lib/share'
+import ActionDock from '../components/ActionDock'
 
 export default function Dashboard() {
   const { invoices, quotes, tickets, clients, expenses, payments, company, toast } = useApp()
@@ -62,21 +63,33 @@ export default function Dashboard() {
     toast?.('Opening reminder…', 'success')
   }
 
+  const dockItems = [
+    { key: 'inv', label: '+ Invoice', to: '/invoices/new', tone: 'primary' },
+    { key: 'pay', label: 'Record payment', to: '/payments', tone: 'secondary' },
+    { key: 'quote', label: 'Quotes', to: '/quotes' },
+    { key: 'job', label: `Jobs (${openT.length})`, to: '/tickets' },
+    { key: 'inbox', label: 'WA inbox', to: '/inbox' },
+    { key: 'clients', label: 'Clients', to: '/clients' },
+    { key: 'reports', label: 'Reports', to: '/reports' },
+    { key: 'docs', label: 'Documents', to: '/documents' },
+    { key: 'share', label: 'Share snapshot WA', onClick: shareSnapshot, tone: 'secondary' },
+  ]
+
   return (
     <PageFade>
       <div className="page-header">
         <div>
           <h1>Dashboard</h1>
-          <p className="subtitle">Live snapshot · {formatDateZA(new Date().toISOString())}</p>
+          <p className="subtitle">Live snapshot · {formatDateZA(new Date().toISOString())} · {collectionRate}% collected</p>
         </div>
-        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+        <div className="page-header-actions">
           <Link className="btn btn-primary" to="/invoices/new">New invoice</Link>
           <Link className="btn btn-secondary" to="/payments">Payments</Link>
-          <Link className="btn btn-outline" to="/invoices">Invoices</Link>
-          <Link className="btn btn-outline" to="/reports">Reports</Link>
-          <button type="button" className="btn btn-secondary" onClick={shareSnapshot}>Share snapshot WA</button>
+          <button type="button" className="btn btn-outline" onClick={shareSnapshot}>Share WA</button>
         </div>
       </div>
+
+      <ActionDock title="Your controls" items={dockItems} />
 
       <div className="grid-stats">
         <StatCard label="Revenue (paid inv)" value={formatMoney(rev)} tone="good" />
@@ -88,6 +101,9 @@ export default function Dashboard() {
         <StatCard label="Collection rate" value={`${collectionRate}%`} tone={collectionRate >= 80 ? 'good' : collectionRate >= 50 ? 'warn' : undefined} />
         <StatCard label="Expenses" value={formatMoney(exp)} />
         <StatCard label="Net" value={formatMoney(rev - exp)} tone={rev - exp >= 0 ? 'good' : 'bad'} />
+        <StatCard label="Draft quotes" value={draftQuotes.length} />
+        <StatCard label="Open jobs" value={openT.length} tone={openT.length ? 'warn' : 'good'} />
+        <StatCard label="Clients" value={clients.length} />
       </div>
 
       {needsReminder.length > 0 && (
@@ -96,7 +112,7 @@ export default function Dashboard() {
             <h3 style={{ marginTop: 0, marginBottom: 0 }}>Clients needing reminder</h3>
             <Link className="btn btn-outline btn-sm" to="/payments">Collect / remind</Link>
           </div>
-          <p className="muted" style={{ fontSize: 13 }}>Overdue or partial balances</p>
+          <p className="muted" style={{ fontSize: 13 }}>Overdue or partial balances — one tap WA or email</p>
           {needsReminder.map((row) => {
             const c = clients.find((x) => String(x.id) === String(row.clientId))
             return (
@@ -112,22 +128,13 @@ export default function Dashboard() {
                 <div className="list-card-actions">
                   <button type="button" className="btn btn-secondary btn-sm" onClick={() => remindClient(row.clientId, 'wa')}>Remind WA</button>
                   <button type="button" className="btn btn-outline btn-sm" onClick={() => remindClient(row.clientId, 'email')}>Email</button>
+                  <Link className="btn btn-outline btn-sm" to={`/clients`}>Open</Link>
                 </div>
               </div>
             )
           })}
         </div>
       )}
-
-      <div className="card" style={{ marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Link className="btn btn-primary btn-sm" to="/invoices/new">+ Invoice</Link>
-          <Link className="btn btn-secondary btn-sm" to="/payments">Record payment</Link>
-          <Link className="btn btn-outline btn-sm" to="/invoices">Flag overdue</Link>
-          <Link className="btn btn-outline btn-sm" to="/tickets">Job cards</Link>
-          <Link className="btn btn-outline btn-sm" to="/clients">Clients</Link>
-        </div>
-      </div>
 
       <div className="card" style={{ marginBottom: '1rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
