@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { formatMoney } from '../lib/money'
 
-/** Floating quick-actions (bottom-right) with dropdown — invoice-style icon. */
+/** Floating quick-actions — expanded control surface Q1–Q5 */
 export default function QuickActions() {
-  const { invoices, clients, tickets, quotes, expenses, payments } = useApp()
+  const { invoices, clients, tickets, quotes, expenses, payments, online } = useApp()
   const [open, setOpen] = useState(false)
   const rootRef = useRef(null)
 
@@ -18,16 +18,36 @@ export default function QuickActions() {
   const ar = openInv.reduce((s, i) => s + (Number(i.amountDue ?? i.total) || 0), 0)
   const rev = paid.reduce((s, i) => s + (Number(i.total) || 0), 0)
   const collectionRate = rev + ar > 0 ? Math.round((rev / (rev + ar)) * 100) : 0
+  const overdue = invoices.filter((i) => i.status === 'overdue').length
 
-  const items = [
-    { to: '/invoices/new', icon: '＋', label: 'New invoice', sub: 'Bill a client' },
-    { to: '/quotes', icon: '📋', label: 'Quotes', sub: `${quotes.length} on file · ${draftQuotes.length} draft` },
-    { to: '/clients', icon: '👥', label: 'Clients', sub: `${clients.length} customers` },
-    { to: '/tickets', icon: '🔧', label: 'Job cards', sub: `${openT.length} open` },
-    { to: '/payments', icon: '💳', label: 'Payments', sub: `${formatMoney(paymentsTotal)} · ${payments.length} logged` },
-    { to: '/expenses', icon: '🧾', label: 'Expenses', sub: formatMoney(exp) },
-    { to: '/reports', icon: '📊', label: 'Reports', sub: 'AR · CSV export' },
-    { to: '/dashboard', icon: '📈', label: 'Dashboard', sub: `${collectionRate}% collected` },
+  const groups = [
+    {
+      title: 'Create',
+      items: [
+        { to: '/invoices/new', icon: '＋', label: 'New invoice', sub: 'Bill a client' },
+        { to: '/quotes', icon: '📋', label: 'Quotes', sub: `${quotes.length} · ${draftQuotes.length} draft` },
+        { to: '/clients', icon: '👥', label: 'Clients', sub: `${clients.length} on file` },
+        { to: '/tickets', icon: '🔧', label: 'Job card', sub: `${openT.length} open` },
+      ],
+    },
+    {
+      title: 'Collect & track',
+      items: [
+        { to: '/payments', icon: '💳', label: 'Payments', sub: `${formatMoney(paymentsTotal)} · ${payments.length}` },
+        { to: '/invoices', icon: '⚠️', label: 'Overdue', sub: `${overdue} flagged · AR ${formatMoney(ar)}` },
+        { to: '/expenses', icon: '🧾', label: 'Expenses', sub: formatMoney(exp) },
+        { to: '/reports', icon: '📊', label: 'Reports', sub: 'AR · aged · CSV' },
+      ],
+    },
+    {
+      title: 'Workspace',
+      items: [
+        { to: '/dashboard', icon: '📈', label: 'Dashboard', sub: `${collectionRate}% collected` },
+        { to: '/inbox', icon: '💬', label: 'WhatsApp inbox', sub: online ? 'Online' : 'Offline queue' },
+        { to: '/documents', icon: '📁', label: 'Documents', sub: '18+ templates' },
+        { to: '/settings', icon: '⚙️', label: 'Settings', sub: 'Company · sync · theme' },
+      ],
+    },
   ]
 
   useEffect(() => {
@@ -55,7 +75,7 @@ export default function QuickActions() {
         aria-label="Quick actions"
         aria-expanded={open}
         aria-haspopup="menu"
-        title="Quick actions"
+        title="Quick actions — more control"
       >
         <svg className="quick-actions-fab-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
           <rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" strokeWidth="1.75" />
@@ -65,26 +85,31 @@ export default function QuickActions() {
       {open && (
         <div className="quick-actions-panel" role="menu" aria-label="Quick actions">
           <div className="quick-actions-head">
-            <strong>Quick actions</strong>
+            <strong>Command centre</strong>
             <button type="button" className="btn btn-outline btn-sm" onClick={() => setOpen(false)}>Close</button>
           </div>
-          <div className="quick-actions-list">
-            {items.map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                role="menuitem"
-                className="quick-actions-item"
-                onClick={() => setOpen(false)}
-              >
-                <span className="quick-actions-icon" aria-hidden>{item.icon}</span>
-                <span className="quick-actions-text">
-                  <strong>{item.label}</strong>
-                  <span className="muted">{item.sub}</span>
-                </span>
-              </Link>
-            ))}
-          </div>
+          {groups.map((g) => (
+            <div key={g.title} className="quick-actions-group">
+              <div className="nav-section" style={{ padding: '6px 10px 2px' }}>{g.title}</div>
+              <div className="quick-actions-list">
+                {g.items.map((item) => (
+                  <Link
+                    key={item.to + item.label}
+                    to={item.to}
+                    role="menuitem"
+                    className="quick-actions-item"
+                    onClick={() => setOpen(false)}
+                  >
+                    <span className="quick-actions-icon" aria-hidden>{item.icon}</span>
+                    <span className="quick-actions-text">
+                      <strong>{item.label}</strong>
+                      <span className="muted">{item.sub}</span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
