@@ -8,6 +8,7 @@ import './styles.ux.css'
 import './styles.invoice.css'
 import './styles.modern.css'
 import './styles.brain.css'
+import './styles.q5.css'
 
 try {
   const saved = localStorage.getItem('sa_theme')

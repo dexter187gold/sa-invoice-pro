@@ -1,0 +1,59 @@
+/* Pro Studio Q5 — action dock, denser control surfaces */
+.action-dock {
+  margin-bottom: 0.85rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--border, #2a2448);
+  background: linear-gradient(165deg, rgba(232, 121, 249, 0.06), transparent 60%);
+}
+.action-dock-title {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.4rem;
+}
+.action-dock-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+.bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+  padding: 0.65rem 0.85rem;
+  margin-bottom: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--border, #2a2448);
+  background: rgba(56, 189, 248, 0.08);
+}
+.quick-actions-fab {
+  box-shadow: 0 8px 28px rgba(168, 85, 247, 0.45);
+}
+.control-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0.85rem;
+}
+.chip-active {
+  border-color: var(--accent, #e879f9) !important;
+  background: linear-gradient(135deg, #2e1065, #4a044e) !important;
+  color: #fff !important;
+}
+.page-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+.row-overdue {
+  background: rgba(248, 113, 113, 0.06);
+}
+.quick-actions-group {
+  border-bottom: 1px solid var(--border, #2a2448);
+}
+.quick-actions-group:last-child {
+  border-bottom: 0;
+}

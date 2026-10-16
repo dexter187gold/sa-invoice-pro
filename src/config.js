@@ -1,7 +1,7 @@
-export const APP_VERSION = '4.3.6'
+export const APP_VERSION = '5.2.1'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
-export const APP_CODENAME = 'Pinky & the Brain · World Domination Mega Pack'
+export const APP_CODENAME = 'Pro Studio · Pinky & the Brain · Q1–Q5'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
 export const HELIX_ROUTES = {
@@ -45,4 +45,7 @@ export const DOC_TYPES = [
   { id: 'job_card', label: 'Job card summary' },
   { id: 'nda', label: 'Non-disclosure agreement (lite)' },
   { id: 'terms', label: 'Standard terms of business' },
+  { id: 'proforma', label: 'Proforma invoice' },
+  { id: 'credit_note', label: 'Credit note' },
+  { id: 'receipt', label: 'Payment receipt' },
 ]
