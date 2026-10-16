@@ -1,1 +1,5 @@
-{"version":"5.2.0","codename":"Pro Studio Q2","message":"v5.2 — APK CI hardened, more document types, form polish, admin secrets UX, security hardening"}
+{
+  "version": "5.2.1",
+  "codename": "Pro Studio Q3–Q10",
+  "channel": "stable"
+}
