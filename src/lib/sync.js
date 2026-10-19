@@ -1,9 +1,10 @@
 /**
- * SA Invoice Pro – Cloud Sync client v1.4.1
- * Auto-push + notifications + WA pending + ticket intake + job status + portal
+ * SA Invoice Pro – Cloud Sync client v1.5.1
+ * Auth + per-user workspace + auto-push. Login any device → restore snapshot.
  */
 const BASE = 'https://saip-sync.onrender.com'
 const TOKEN_KEY = 'saip_sync_token'
+const META_KEY = 'saip_sync_meta'
 
 function getToken() {
   try { return localStorage.getItem(TOKEN_KEY) || null } catch { return null }
@@ -20,7 +21,12 @@ async function request(path, opts = {}) {
   const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) }
   const token = getToken()
   if (token) headers['Authorization'] = 'Bearer ' + token
-  const res = await fetch(BASE + path, { ...opts, headers })
+  let res
+  try {
+    res = await fetch(BASE + path, { ...opts, headers })
+  } catch (e) {
+    throw new Error('Network error — check connection to cloud sync')
+  }
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error || res.statusText || 'Request failed')
   return data
@@ -75,6 +81,71 @@ export const Sync = {
     })
   },
 
+  async workspaceHistory() {
+    return request('/api/workspace/history')
+  },
+
+  async restoreWorkspaceVersion(version) {
+    return request('/api/workspace/restore-version', {
+      method: 'POST',
+      body: JSON.stringify({ version }),
+    })
+  },
+
+  getMeta() {
+    try {
+      return JSON.parse(localStorage.getItem(META_KEY) || 'null') || {}
+    } catch {
+      return {}
+    }
+  },
+
+  setMeta(meta) {
+    try {
+      localStorage.setItem(META_KEY, JSON.stringify({ ...Sync.getMeta(), ...meta }))
+    } catch {}
+  },
+
+  workspaceToImportShape(row) {
+    if (!row || typeof row !== 'object') return null
+    const data = row.data && typeof row.data === 'object' ? row.data : row
+    const out = { ...data }
+    if (out.company && !Array.isArray(out.company) && typeof out.company === 'object') {
+      out.company = [{ id: 'main', ...out.company }]
+    }
+    return out
+  },
+
+  async restoreFromCloud() {
+    const row = await Sync.pull()
+    const shape = Sync.workspaceToImportShape(row)
+    if (!shape) return { ok: true, restored: false, reason: 'empty', rows: 0 }
+    const { importAll } = await import('./db.js')
+    const stats = await importAll(shape, { wipe: false })
+    Sync.setMeta({ version: row.version, updatedAt: row.updated_at, lastRestore: new Date().toISOString() })
+    return { ok: true, restored: true, rows: stats?.rows || 0, version: row.version }
+  },
+
+  async snapshotAndPush(snapshot = {}) {
+    if (!getToken()) return { ok: false, reason: 'not_logged_in' }
+    const data = {
+      company: snapshot.company || null,
+      clients: snapshot.clients || [],
+      invoices: snapshot.invoices || [],
+      quotes: snapshot.quotes || [],
+      tickets: snapshot.tickets || [],
+      payments: snapshot.payments || [],
+      products: snapshot.products || [],
+      services: snapshot.services || [],
+      expenses: snapshot.expenses || [],
+      settings: { pushedAt: new Date().toISOString() },
+    }
+    const r = await Sync.push(data)
+    Sync.setMeta({ version: r.version, updatedAt: r.updated_at, lastPush: new Date().toISOString() })
+    _lastPushAt = Date.now()
+    return { ok: true, ...r }
+  },
+
   async pushInvoiceStatus(invoices) {
     const list = Array.isArray(invoices) ? invoices : [invoices]
     return request('/api/status/push', {
@@ -91,7 +162,6 @@ export const Sync = {
     if (balance <= 0) status = 'paid'
     else if (paid > 0 && status !== 'overdue') status = 'partial'
     else if (inv.dueDate && new Date(inv.dueDate) < new Date() && status !== 'paid') status = 'overdue'
-
     return {
       invoice_number: inv.number || inv.invoiceNumber || inv.id,
       client_name: client.name || inv.clientName || null,
@@ -109,72 +179,23 @@ export const Sync = {
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       return { ok: false, reason: 'offline' }
     }
-    const {
-      company = null,
-      clients = [],
-      invoices = [],
-      quotes = [],
-      tickets = [],
-      payments = [],
-      products = [],
-      services = [],
-      expenses = [],
-    } = snapshot
-
-    const data = {
-      company,
-      clients,
-      invoices,
-      quotes,
-      tickets,
-      payments,
-      products,
-      services,
-      expenses,
-      settings: { pushedAt: new Date().toISOString() },
-    }
-
     try {
-      await request('/api/workspace', {
-        method: 'PUT',
-        body: JSON.stringify({ data }),
-      })
-      const statusList = (invoices || []).map((inv) => {
-        const client = (clients || []).find((c) => String(c.id) === String(inv.clientId)) || {}
-        return Sync.statusFromInvoice(inv, client)
-      }).filter((x) => x.invoice_number)
+      const r = await Sync.snapshotAndPush(snapshot)
+      const clients = snapshot.clients || []
+      const invoices = snapshot.invoices || []
+      const statusList = invoices
+        .map((inv) => {
+          const client = clients.find((c) => String(c.id) === String(inv.clientId)) || {}
+          return Sync.statusFromInvoice(inv, client)
+        })
+        .filter((x) => x.invoice_number)
       if (statusList.length) {
         await request('/api/status/push', {
           method: 'POST',
           body: JSON.stringify({ invoices: statusList }),
-        })
+        }).catch(() => {})
       }
-      // Keep job statuses in sync for WhatsApp
-      if (tickets && tickets.length) {
-        const ticketPayload = tickets.map((t) => {
-          const client = (clients || []).find((c) => String(c.id) === String(t.clientId)) || {}
-          return {
-            id: t.id,
-            status: t.status || 'open',
-            priority: t.priority || 'normal',
-            title: t.title || t.subject || '',
-            description: t.description || '',
-            workDone: t.workDone || '',
-            notes: t.notes || '',
-            customer_phone: t.contactPhone || client.phone || '',
-            contactPhone: t.contactPhone || client.phone || '',
-            customer_name: t.contactName || client.name || '',
-            clientId: t.clientId || null,
-            intake_id: t.intakeId || null,
-          }
-        })
-        await request('/api/tickets/status', {
-          method: 'POST',
-          body: JSON.stringify({ tickets: ticketPayload }),
-        }).catch((e) => console.warn('[Sync] tickets status', e.message))
-      }
-      _lastPushAt = Date.now()
-      return { ok: true, invoices: statusList.length }
+      return { ok: true, invoices: statusList.length, version: r.version }
     } catch (e) {
       console.warn('[Sync.autoPush]', e.message || e)
       return { ok: false, error: e.message || String(e) }
@@ -218,7 +239,6 @@ export const Sync = {
         body: JSON.stringify({ client_id: clientId }),
       })
     } catch (e) {
-      console.warn('[Sync] markWaClientImported', e.message || e)
       return { ok: false, error: e.message || String(e) }
     }
   },
@@ -234,12 +254,10 @@ export const Sync = {
         body: JSON.stringify({ ticket_id: localTicketId }),
       })
     } catch (e) {
-      console.warn('[Sync] markTicketImported', e.message || e)
       return { ok: false, error: e.message || String(e) }
     }
   },
 
-  /** Push one or more job-card statuses → server + WhatsApp outbox */
   async pushTicketStatus(ticketOrList) {
     const list = Array.isArray(ticketOrList) ? ticketOrList : [ticketOrList]
     try {
@@ -248,7 +266,6 @@ export const Sync = {
         body: JSON.stringify({ tickets: list }),
       })
     } catch (e) {
-      console.warn('[Sync] pushTicketStatus', e.message || e)
       return { ok: false, error: e.message || String(e) }
     }
   },
