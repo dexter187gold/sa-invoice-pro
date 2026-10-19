@@ -1,5 +1,5 @@
 {
-  "version": "5.3.0",
-  "codename": "Pro Studio Q6–Q10 PDF Lab Fixed",
-  "channel": "stable"
+  "version": "5.3.2",
+  "codename": "Guaranteed Sync",
+  "message": "ensureWorkspaceSynced — seed/merge/restore + durable push queue + server history"
 }
