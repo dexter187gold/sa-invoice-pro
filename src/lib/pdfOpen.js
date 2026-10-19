@@ -1,5 +1,5 @@
 /**
- * Capacitor / Android WebView-safe PDF open + download.
+ * Capacitor / Android WebView-safe PDF open + download + share.
  */
 function isNative() {
   try {
@@ -63,6 +63,11 @@ function triggerAnchorDownload(href, name) {
   }, 1500)
 }
 
+export async function blobFromUrl(url) {
+  const res = await fetch(url)
+  return res.blob()
+}
+
 export function showInAppPdfViewer(url, name = 'document.pdf') {
   const existing = document.getElementById('sa-pdf-viewer')
   if (existing) existing.remove()
@@ -75,14 +80,17 @@ export function showInAppPdfViewer(url, name = 'document.pdf') {
   bar.style.cssText =
     'display:flex;align-items:center;gap:8px;padding:12px 14px;background:#0c0a14;color:#f0e6ff;flex-shrink:0;border-bottom:1px solid rgba(232,121,249,.35);flex-wrap:wrap;'
   const title = document.createElement('strong')
-  title.style.cssText = 'flex:1;min-width:100px;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'
+  title.style.cssText =
+    'flex:1;min-width:100px;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'
   title.textContent = name
   bar.appendChild(title)
   const mkBtn = (label, colors, onClick) => {
     const b = document.createElement('button')
     b.type = 'button'
     b.textContent = label
-    b.style.cssText = 'border-radius:8px;padding:10px 14px;font-weight:700;font-size:13px;cursor:pointer;min-height:40px;' + colors
+    b.style.cssText =
+      'border-radius:8px;padding:10px 14px;font-weight:700;font-size:13px;cursor:pointer;min-height:40px;' +
+      colors
     b.onclick = (e) => {
       e.preventDefault()
       onClick()
@@ -92,12 +100,17 @@ export function showInAppPdfViewer(url, name = 'document.pdf') {
   bar.appendChild(
     mkBtn('Download', 'background:transparent;color:#e879f9;border:1px solid rgba(232,121,249,.55);', async () => {
       try {
-        const dataUrl = await blobToDataUrl(await (await fetch(url)).blob())
+        const dataUrl = await blobToDataUrl(await blobFromUrl(url))
         triggerAnchorDownload(dataUrl, name)
         toast('Download started')
       } catch {
         triggerAnchorDownload(url, name)
       }
+    })
+  )
+  bar.appendChild(
+    mkBtn('Share', 'background:transparent;color:#38bdf8;border:1px solid rgba(56,189,248,.55);', () => {
+      sharePdf(url, name)
     })
   )
   bar.appendChild(mkBtn('Close', 'background:#e879f9;color:#0c0a14;border:0;', () => wrap.remove()))
@@ -109,15 +122,87 @@ export function showInAppPdfViewer(url, name = 'document.pdf') {
   frame.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:0;'
   frameWrap.appendChild(frame)
   const note = document.createElement('div')
-  note.style.cssText = 'padding:10px 14px;background:#161222;color:rgba(240,230,255,.85);font-size:12px;'
+  note.style.cssText =
+    'padding:10px 14px;background:#161222;color:rgba(240,230,255,.85);font-size:12px;'
   note.textContent = isNative()
-    ? 'Android tip: if preview is blank, tap Download.'
-    : 'If preview is blank, use Download.'
+    ? 'Android tip: if preview is blank, tap Download or Share.'
+    : 'If preview is blank, use Download or Share.'
   wrap.appendChild(bar)
   wrap.appendChild(frameWrap)
   wrap.appendChild(note)
   document.body.appendChild(wrap)
   return wrap
+}
+
+export async function sharePdf(url, name = 'document.pdf') {
+  toast('Opening share…', 1200)
+  let blob
+  try {
+    blob = await blobFromUrl(url)
+  } catch {
+    blob = null
+  }
+
+  if (blob) {
+    try {
+      const file = new File([blob], name, { type: 'application/pdf' })
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: name, text: name })
+        toast('Shared')
+        return
+      }
+    } catch (e) {
+      if (e?.name === 'AbortError') {
+        toast('Share cancelled')
+        return
+      }
+      console.warn('file share failed', e)
+    }
+  }
+
+  try {
+    const Share = window.Capacitor?.Plugins?.Share
+    if (Share?.share && blob) {
+      const dataUrl = await blobToDataUrl(blob)
+      await Share.share({
+        title: name,
+        text: name,
+        url: String(dataUrl),
+        dialogTitle: 'Share PDF',
+      })
+      toast('Shared')
+      return
+    }
+  } catch (e) {
+    console.warn('Capacitor Share failed', e)
+  }
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: name, text: 'PDF: ' + name })
+      if (blob) {
+        const dataUrl = await blobToDataUrl(blob)
+        triggerAnchorDownload(dataUrl, name)
+      }
+      toast('Share sheet opened')
+      return
+    } catch (e) {
+      if (e?.name === 'AbortError') {
+        toast('Share cancelled')
+        return
+      }
+    }
+  }
+
+  if (blob) {
+    try {
+      const dataUrl = await blobToDataUrl(blob)
+      triggerAnchorDownload(dataUrl, name)
+    } catch {
+      triggerAnchorDownload(url, name)
+    }
+  }
+  toast('Share not available — file downloaded')
 }
 
 export async function openJsPdf(doc, name = 'document.pdf') {
