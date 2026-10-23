@@ -5,6 +5,17 @@ import { APP_VERSION } from '../config'
 
 const ENTRIES = [
   {
+    v: '5.7.0',
+    title: 'Editable tables · Action menus · Cleaner layout',
+    items: [
+      'Action menu (⋯) on invoice rows — remind, duplicate, credit note, mark paid, delete',
+      'Status dropdown on invoice table (change without opening the form)',
+      'Reusable EditableCell / SelectCell / DataTable components',
+      'Sidebar regrouped: Overview · Money in · Field work · Books · Tools · Account',
+    ],
+  },
+
+  {
     v: '5.6.0',
     title: 'Bank match · Recurring · Ticket bill · Sync health',
     items: [
@@ -17,6 +28,7 @@ const ENTRIES = [
       'Batch WA overdue — opens first reminders and copies full list',
     ],
   },
+
   {
     v: '5.5.0',
     title: 'Top clients · Credit notes · Roadmap 100',
@@ -50,6 +62,22 @@ const ENTRIES = [
       'Multiline descriptions on quotes and invoices',
     ],
   },
+  {
+    v: '5.3.2',
+    title: 'Guaranteed workspace sync',
+    items: [
+      'Seed / restore / merge so new devices never start empty',
+      'Never rely on a single lucky push',
+    ],
+  },
+  {
+    v: '5.3.1',
+    title: 'Rolling local auto-backups',
+    items: [
+      'Restore without uploading a JSON file',
+      'Local safety net between cloud pushes',
+    ],
+  },
 ]
 
 export default function Changelog() {
@@ -62,7 +90,6 @@ export default function Changelog() {
         </div>
         <div className="page-header-actions">
           <Link className="btn btn-outline" to="/">Home</Link>
-          <Link className="btn btn-outline" to="/sync">Sync health</Link>
           <a className="btn btn-outline" href="https://github.com/dexter187gold/sa-invoice-pro" target="_blank" rel="noreferrer">Repo</a>
         </div>
       </div>
