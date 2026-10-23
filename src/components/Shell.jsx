@@ -48,6 +48,8 @@ const sections = [
   {
     title: 'System',
     links: [
+      { to: '/sync', label: 'Sync health' },
+      { to: '/changelog', label: 'Changelog' },
       { to: '/license', label: 'License' },
       { to: '/settings', label: 'Settings' },
     ],
@@ -71,6 +73,8 @@ const crumbMap = {
   '/accounting': 'Accounting',
   '/reports': 'Reports',
   '/documents': 'Documents',
+  '/sync': 'Sync health',
+  '/changelog': 'Changelog',
   '/license': 'License',
   '/settings': 'Settings',
 }
