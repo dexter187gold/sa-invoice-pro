@@ -1,5 +1,5 @@
 {
-  "version": "5.6.0",
-  "codename": "Bank match · Recurring · Ticket bill · Sync health",
-  "message": "v5.6 bank CSV import/match, recurring invoices, ticket→invoice, sync health panel, undo delete, batch WA overdue"
+  "version": "5.7.0",
+  "codename": "Editable tables · Action menus · Layout",
+  "message": "ActionMenu, SelectCell, EditableCell, DataTable; reorganized nav; denser invoice table"
 }
