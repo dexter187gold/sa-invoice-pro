@@ -5,6 +5,19 @@ import { APP_VERSION } from '../config'
 
 const ENTRIES = [
   {
+    v: '5.6.0',
+    title: 'Bank match · Recurring · Ticket bill · Sync health',
+    items: [
+      'Bank CSV import on Payments — FNB/Standard/ABSA-style parse + score match to open invoices',
+      'Apply suggested bank matches as EFT payments in one tap',
+      'Recurring invoice templates (+ Retainer) and Generate recurring on Invoices',
+      'Ticket → invoice one click (Create invoice on job card + Bill selected)',
+      'Sync health panel at /sync — ping, queue, last sync, force push/pull',
+      'Undo delete (30s) for invoices + Undo delete button',
+      'Batch WA overdue — opens first reminders and copies full list',
+    ],
+  },
+  {
     v: '5.5.0',
     title: 'Top clients · Credit notes · Roadmap 100',
     items: [
@@ -37,22 +50,6 @@ const ENTRIES = [
       'Multiline descriptions on quotes and invoices',
     ],
   },
-  {
-    v: '5.3.2',
-    title: 'Guaranteed workspace sync',
-    items: [
-      'Seed / restore / merge so new devices never start empty',
-      'Never rely on a single lucky push',
-    ],
-  },
-  {
-    v: '5.3.1',
-    title: 'Rolling local auto-backups',
-    items: [
-      'Restore without uploading a JSON file',
-      'Local safety net between cloud pushes',
-    ],
-  },
 ]
 
 export default function Changelog() {
@@ -65,6 +62,7 @@ export default function Changelog() {
         </div>
         <div className="page-header-actions">
           <Link className="btn btn-outline" to="/">Home</Link>
+          <Link className="btn btn-outline" to="/sync">Sync health</Link>
           <a className="btn btn-outline" href="https://github.com/dexter187gold/sa-invoice-pro" target="_blank" rel="noreferrer">Repo</a>
         </div>
       </div>
@@ -87,7 +85,7 @@ export default function Changelog() {
         <h3 style={{ marginTop: 0 }}>Roadmap</h3>
         <p className="muted">
           Full ranked list of 100 ideas lives in the repo as <code>ROADMAP_100.md</code>.
-          Next focus: bank CSV import, recurring invoices, ticket→invoice, sync health panel.
+          Next focus: bank auto-match polish, PayFast webhooks, quote win-rate, multi-user seats.
         </p>
       </div>
     </PageFade>
