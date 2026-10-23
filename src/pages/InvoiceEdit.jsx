@@ -284,7 +284,14 @@ export default function InvoiceEdit() {
           </div>
           {lines.map((line, i) => (
             <div key={i} className="inv-line-row">
-              <input className="input" placeholder="Description" value={line.description} onChange={(e) => setLine(i, { description: e.target.value })} required />
+              <textarea
+                className="input"
+                rows={2}
+                placeholder="Description (Enter = new line)"
+                value={line.description}
+                onChange={(e) => setLine(i, { description: e.target.value })}
+                required
+              />
               <input className="input" type="number" step="0.01" value={line.qty} onChange={(e) => setLine(i, { qty: e.target.value })} />
               <input className="input" type="number" step="0.01" value={line.price} onChange={(e) => setLine(i, { price: e.target.value })} />
               {lines.length > 1 ? <button type="button" className="btn btn-outline btn-sm" onClick={() => removeLine(i)}>×</button> : null}
