@@ -37,6 +37,7 @@ export function AppProvider({ children }) {
   const [vatRate, setVatRate] = useState(VAT_RATE_DEFAULT)
   const [online, setOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
   const skipAutoPush = useRef(true)
+  const lastFailToast = useRef(0)
 
   const dismissToast = useCallback((id) => setToasts((t) => t.filter((x) => x.id !== id)), [])
   const toast = useCallback((message, type = 'info') => {
@@ -70,12 +71,24 @@ export function AppProvider({ children }) {
   }, [])
 
   useEffect(() => {
-    const on = () => { setOnline(true); if (canUseCloudSync() && Sync.isLoggedIn()) flushPushQueue().catch(() => {}) }
+    const on = () => {
+      setOnline(true)
+      if (canUseCloudSync() && Sync.isLoggedIn()) {
+        flushPushQueue()
+          .then(() => ensureWorkspaceSynced())
+          .then((r) => {
+            if (r?.ok && r.action && !['both_empty', 'none', 'queued'].includes(r.action)) {
+              toast(describeEnsureResult(r), 'success')
+            }
+          })
+          .catch(() => {})
+      }
+    }
     const off = () => setOnline(false)
     window.addEventListener('online', on)
     window.addEventListener('offline', off)
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off) }
-  }, [])
+  }, [toast])
 
   useEffect(() => {
     ;(async () => {
@@ -91,6 +104,8 @@ export function AppProvider({ children }) {
             skipAutoPush.current = false
             if (result?.ok && result.action && !['both_empty', 'none'].includes(result.action)) {
               toast(describeEnsureResult(result), 'success')
+            } else if (!result?.ok && result?.reason) {
+              console.warn('[boot-sync]', result.reason)
             }
           } catch (e) { console.warn('[boot]', e.message || e) }
           setTimeout(() => { flushPushQueue().catch(() => {}); ensureWorkspaceSynced().catch(() => {}) }, 8000)
@@ -103,7 +118,6 @@ export function AppProvider({ children }) {
     })()
   }, [refresh, toast])
 
-  /* App → server every 5 minutes so Git always has a recent snapshot */
   useEffect(() => {
     if (!ready) return
     const tick = () => {
@@ -113,13 +127,19 @@ export function AppProvider({ children }) {
         .then((r) => {
           if (r?.ok && r.action && !['both_empty', 'none', 'queued'].includes(r.action)) {
             console.log('[5min-sync]', r.action)
+          } else if (r && !r.ok) {
+            const now = Date.now()
+            if (now - lastFailToast.current > 30 * 60 * 1000) {
+              lastFailToast.current = now
+              toast('Cloud sync paused — will retry. Tap Sync Now if data is missing.', 'info')
+            }
           }
         })
         .catch((e) => console.warn('[5min-sync]', e.message || e))
     }
     const id = setInterval(tick, FIVE_MIN_MS)
     return () => clearInterval(id)
-  }, [ready])
+  }, [ready, toast])
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -137,11 +157,6 @@ export function AppProvider({ children }) {
 
   const register = (form) => cloudRegister(form, { online, toast, setSession, setUser, refresh })
 
-  /**
-   * Password reset:
-   * - With recoveryCode → cloud reset via sync server (any device).
-   * - Without code → local-only reset for profiles on this device.
-   */
   const resetPassword = async ({ usernameOrEmail, emailConfirm, newPassword, recoveryCode }) => {
     const emailNeedle = String(emailConfirm || usernameOrEmail || '').trim().toLowerCase()
     if (!newPassword || newPassword.length < 6) throw new Error('New password must be at least 6 characters')
