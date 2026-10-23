@@ -20,8 +20,12 @@ const STATIC_ACTIONS = [
   { id: 'nav-accounting', label: 'Go to Accounting', path: '/accounting', group: 'Navigate' },
   { id: 'nav-reports', label: 'Go to Reports', path: '/reports', group: 'Navigate' },
   { id: 'nav-docs', label: 'Go to Documents', path: '/documents', group: 'Navigate' },
+  { id: 'nav-excel', label: 'Open Excel viewer', path: '/excel', group: 'Navigate' },
+  { id: 'nav-inbox', label: 'WhatsApp inbox', path: '/inbox', group: 'Navigate' },
   { id: 'nav-settings', label: 'Go to Settings', path: '/settings', group: 'Navigate' },
   { id: 'nav-license', label: 'Go to License', path: '/license', group: 'Navigate' },
+  { id: 'act-collect', label: 'Collect payments / mark paid', path: '/payments', group: 'Actions' },
+  { id: 'act-reports', label: 'Open reports & aging', path: '/reports', group: 'Actions' },
 ]
 
 export default function CommandPalette({ open, onClose }) {
