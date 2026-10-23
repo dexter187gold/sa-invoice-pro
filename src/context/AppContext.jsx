@@ -10,6 +10,7 @@ import { ensureWorkspaceSynced, flushPushQueue, describeEnsureResult } from '../
 import { cloudLogin, cloudRegister } from '../lib/cloudAuth'
 
 const AppCtx = createContext(null)
+const FIVE_MIN_MS = 5 * 60 * 1000
 
 export function AppProvider({ children }) {
   const [ready, setReady] = useState(false)
@@ -101,6 +102,24 @@ export function AppProvider({ children }) {
       }
     })()
   }, [refresh, toast])
+
+  /* App → server every 5 minutes so Git always has a recent snapshot */
+  useEffect(() => {
+    if (!ready) return
+    const tick = () => {
+      if (!canUseCloudSync() || !Sync.isLoggedIn() || !navigator.onLine) return
+      flushPushQueue()
+        .then(() => ensureWorkspaceSynced())
+        .then((r) => {
+          if (r?.ok && r.action && !['both_empty', 'none', 'queued'].includes(r.action)) {
+            console.log('[5min-sync]', r.action)
+          }
+        })
+        .catch((e) => console.warn('[5min-sync]', e.message || e))
+    }
+    const id = setInterval(tick, FIVE_MIN_MS)
+    return () => clearInterval(id)
+  }, [ready])
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
