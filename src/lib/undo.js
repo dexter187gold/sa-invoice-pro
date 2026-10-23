@@ -24,6 +24,12 @@ function writeStack(arr) {
   } catch {}
 }
 
+/**
+ * Snapshot rows before delete. Call undoLast() within TTL to restore.
+ * @param {string} store STORES key
+ * @param {object[]} rows full row objects
+ * @param {string} [label]
+ */
 export function pushUndo(store, rows, label = 'Deleted') {
   if (!store || !rows?.length) return
   const stack = readStack()
@@ -60,6 +66,10 @@ export async function undoLast() {
   return { ok: n > 0, restored: n, label: last.label }
 }
 
+/**
+ * Helper: delete with undo snapshot, then show toast with Undo action if toast supports action.
+ * toastFn(message, type, { onAction, actionLabel })
+ */
 export async function deleteWithUndo({ store, rows, removeFn, toast, label }) {
   const list = Array.isArray(rows) ? rows : rows ? [rows] : []
   if (!list.length) return 0
