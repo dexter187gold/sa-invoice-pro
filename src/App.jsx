@@ -24,6 +24,7 @@ import Documents from './pages/Documents'
 import License from './pages/License'
 import Payments from './pages/Payments'
 import ExcelViewer from './pages/ExcelViewer'
+import Changelog from './pages/Changelog'
 import Inbox from './pages/Inbox'
 import { APP_VERSION } from './config'
 import { ErrorBoundary } from './components/ui'
@@ -82,6 +83,7 @@ function AppInner() {
                 <Route path="/payroll" element={<Payroll />} />
                 <Route path="/payments" element={<Payments />} />
                 <Route path="/excel" element={<ExcelViewer />} />
+                <Route path="/changelog" element={<Changelog />} />
                 <Route path="/accounting" element={<Accounting />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/documents" element={<Documents />} />
