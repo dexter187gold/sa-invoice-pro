@@ -29,6 +29,10 @@ export async function saveRecurring(list) {
   return list
 }
 
+/**
+ * Create or update a recurring template.
+ * cadence: monthly | weekly | quarterly
+ */
 export async function upsertRecurring(template) {
   const list = await listRecurring()
   const id = template.id || `rec-${Date.now().toString(36)}`
@@ -70,11 +74,16 @@ export function nextRunDate(cadence, dayOfMonth = 1, from = new Date()) {
     d.setDate(Math.min(dayOfMonth, 28))
     return d.toISOString().slice(0, 10)
   }
+  // monthly
   d.setMonth(d.getMonth() + 1)
   d.setDate(Math.min(dayOfMonth, 28))
   return d.toISOString().slice(0, 10)
 }
 
+/**
+ * Generate draft invoices for any template whose nextRun <= today.
+ * @returns {{ created: number, invoices: object[] }}
+ */
 export async function runDueRecurring({ invoices = [], vatRate = 0.15, vatEnabled = true } = {}) {
   const list = await listRecurring()
   const today = new Date().toISOString().slice(0, 10)
