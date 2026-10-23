@@ -118,22 +118,57 @@ export function AppProvider({ children }) {
 
   const register = (form) => cloudRegister(form, { online, toast, setSession, setUser, refresh })
 
-  const resetPassword = async ({ usernameOrEmail, emailConfirm, newPassword }) => {
+  /**
+   * Password reset:
+   * - With recoveryCode → cloud reset via sync server (any device).
+   * - Without code → local-only reset for profiles on this device.
+   */
+  const resetPassword = async ({ usernameOrEmail, emailConfirm, newPassword, recoveryCode }) => {
+    const emailNeedle = String(emailConfirm || usernameOrEmail || '').trim().toLowerCase()
+    if (!newPassword || newPassword.length < 6) throw new Error('New password must be at least 6 characters')
+
+    if (recoveryCode) {
+      if (!emailNeedle) throw new Error('Enter the account email')
+      if (!canUseCloudSync()) throw new Error('Cloud sync is off — turn Solo mode off in Settings')
+      const data = await Sync.resetPasswordWithCode(emailNeedle, recoveryCode, newPassword)
+      try {
+        const users = (await db.getAll(STORES.users)) || []
+        let u = users.find((x) => String(x.email || '').trim().toLowerCase() === emailNeedle)
+        const hashed = await hashPassword(newPassword)
+        if (u) {
+          await db.put(STORES.users, { ...u, password: hashed, email: emailNeedle })
+        } else {
+          await db.put(STORES.users, {
+            id: data.user?.id || crypto.randomUUID?.() || 'u_' + Date.now(),
+            username: emailNeedle.split('@')[0],
+            email: emailNeedle,
+            name: data.user?.name || emailNeedle.split('@')[0],
+            password: hashed,
+          })
+        }
+        if (data.token) {
+          setSession({ email: emailNeedle, name: data.user?.name })
+          setUser({ email: emailNeedle, name: data.user?.name })
+        }
+      } catch (e) {
+        console.warn('[resetPassword] local mirror', e.message || e)
+      }
+      return { cloud: true, token: !!data.token, user: data.user }
+    }
+
     const users = (await db.getAll(STORES.users)) || []
     const needle = String(usernameOrEmail || '').trim().toLowerCase()
-    const emailNeedle = String(emailConfirm || '').trim().toLowerCase()
     if (!needle) throw new Error('Enter your username or email')
     if (!emailNeedle) throw new Error('Confirm the account email')
-    if (!newPassword || newPassword.length < 8) throw new Error('New password must be at least 8 characters')
     const u = users.find((x) => {
       const un = String(x.username || '').trim().toLowerCase()
       const em = String(x.email || '').trim().toLowerCase()
       return un === needle || em === needle
     })
-    if (!u) throw new Error('No account found with that username or email')
+    if (!u) throw new Error('No account found with that username or email on this device. Use recovery code for cloud reset.')
     if (String(u.email || '').trim().toLowerCase() !== emailNeedle) throw new Error('Email does not match this account')
     await db.put(STORES.users, { ...u, password: await hashPassword(newPassword) })
-    return true
+    return { cloud: false }
   }
 
   const logout = () => { try { Sync.logout() } catch {}; setSession(null); setUser(null) }
