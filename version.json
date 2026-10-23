@@ -1,5 +1,1 @@
-{
-  "version": "5.3.2",
-  "codename": "Guaranteed Sync",
-  "message": "ensureWorkspaceSynced — seed/merge/restore + durable push queue + server history"
-}
+{"version":"5.3.3","codename":"Recovery · Excel · Payments","message":"Cloud recovery codes, in-app Excel viewer, bulk payment actions, multiline invoice/quote descriptions"}
