@@ -1,4 +1,4 @@
-export const APP_VERSION = '5.4.0'
+export const APP_VERSION = '5.5.0'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
 export const APP_CODENAME = 'Pinky & the Brain · World Domination Mega Pack'
