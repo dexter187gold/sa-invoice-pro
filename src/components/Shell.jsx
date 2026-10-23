@@ -10,48 +10,53 @@ import QuickActions from './QuickActions'
 
 const sections = [
   {
-    title: 'Workspace',
+    title: 'Overview',
     links: [
       { to: '/', label: 'Home', end: true },
       { to: '/dashboard', label: 'Dashboard' },
-      { to: '/inbox', label: 'WhatsApp inbox' },
+      { to: '/reports', label: 'Reports' },
     ],
   },
   {
-    title: 'Sales',
+    title: 'Money in',
     links: [
       { to: '/invoices', label: 'Invoices' },
       { to: '/quotes', label: 'Quotes' },
+      { to: '/payments', label: 'Payments' },
       { to: '/clients', label: 'Clients' },
+    ],
+  },
+  {
+    title: 'Field work',
+    links: [
+      { to: '/tickets', label: 'Job cards' },
+      { to: '/inbox', label: 'WhatsApp inbox' },
       { to: '/products', label: 'Products & services' },
     ],
   },
   {
-    title: 'Operations',
+    title: 'Money out & books',
     links: [
-      { to: '/tickets', label: 'Job cards' },
       { to: '/expenses', label: 'Expenses' },
-      { to: '/payments', label: 'Payments' },
-      { to: '/excel', label: 'Excel' },
+      { to: '/accounting', label: 'Accounting' },
       { to: '/employees', label: 'Employees' },
       { to: '/payroll', label: 'Payroll' },
     ],
   },
   {
-    title: 'Finance & docs',
+    title: 'Tools',
     links: [
-      { to: '/accounting', label: 'Accounting' },
-      { to: '/reports', label: 'Reports' },
       { to: '/documents', label: 'Documents' },
+      { to: '/excel', label: 'Excel viewer' },
+      { to: '/sync', label: 'Sync health' },
     ],
   },
   {
-    title: 'System',
+    title: 'Account',
     links: [
-      { to: '/sync', label: 'Sync health' },
+      { to: '/settings', label: 'Settings' },
       { to: '/changelog', label: 'Changelog' },
       { to: '/license', label: 'License' },
-      { to: '/settings', label: 'Settings' },
     ],
   },
 ]
@@ -68,13 +73,13 @@ const crumbMap = {
   '/expenses': 'Expenses',
   '/payments': 'Payments',
   '/excel': 'Excel',
+  '/changelog': 'Changelog',
+  '/sync': 'Sync health',
   '/employees': 'Employees',
   '/payroll': 'Payroll',
   '/accounting': 'Accounting',
   '/reports': 'Reports',
   '/documents': 'Documents',
-  '/sync': 'Sync health',
-  '/changelog': 'Changelog',
   '/license': 'License',
   '/settings': 'Settings',
 }
