@@ -114,3 +114,61 @@ export function ticketAgeHours(t) {
   if (!start) return 0
   return Math.max(0, (Date.now() - new Date(start).getTime()) / 3600000)
 }
+
+/**
+ * Build a draft invoice from a job card / ticket.
+ */
+export async function invoiceFromTicket(ticket, { invoices = [], vatRate = 0.15, vatEnabled = true, defaultRate = 450 } = {}) {
+  if (!ticket) throw new Error('Ticket required')
+  const { invoiceTotals } = await import('./money')
+  const year = new Date().getFullYear()
+  const n = (invoices || []).length + 1
+  const number = `INV-${year}-${String(n).padStart(4, '0')}`
+
+  const lines = []
+  if (ticket.workDone || ticket.description || ticket.title) {
+    const desc = [ticket.title, ticket.workDone, ticket.description, ticket.devices || ticket.serials].filter(Boolean).join('\n')
+    const price = Number(ticket.amount || ticket.quotedAmount || ticket.labourAmount) || defaultRate
+    lines.push({ description: desc || 'Service', qty: 1, price })
+  }
+  if (Array.isArray(ticket.parts) && ticket.parts.length) {
+    for (const p of ticket.parts) {
+      lines.push({ description: p.name || p.description || 'Part', qty: Number(p.qty) || 1, price: Number(p.price) || 0 })
+    }
+  }
+  if (!lines.length) {
+    lines.push({ description: ticket.title || 'Job card service', qty: 1, price: defaultRate })
+  }
+
+  const totals = invoiceTotals(lines, vatRate, vatEnabled)
+  const today = new Date().toISOString().slice(0, 10)
+  const payload = {
+    clientId: ticket.clientId || '',
+    number,
+    date: today,
+    dueDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+    status: 'unpaid',
+    lines,
+    notes: `From job card ${ticket.id}${ticket.contactName ? ` · ${ticket.contactName}` : ''}`,
+    amountPaid: 0,
+    amountDue: totals.total,
+    total: totals.total,
+    exclusive: totals.exclusive,
+    vatAmount: totals.vat,
+    fromTicketId: ticket.id,
+    technician: ticket.assignee || ticket.technician || '',
+    siteAddress: ticket.siteAddress || '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+  const inv = await db.add(STORES.invoices, payload)
+  try {
+    await db.put(STORES.tickets, {
+      ...ticket,
+      invoiceId: inv.id,
+      invoicedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+  } catch {}
+  return inv
+}
