@@ -48,12 +48,19 @@ export default function SyncHealth() {
     }
   }
 
+  const git = health?.git
+  const gitLabel = !git
+    ? '—'
+    : git.enabled
+      ? `On · ${git.lastCommit || 'no commit yet'}`
+      : 'Off (set GIT_DATA_* on Render)'
+
   return (
     <PageFade>
       <div className="page-header">
         <div>
           <h1>Sync health</h1>
-          <p className="subtitle">Cloud · queue · last push · v{APP_VERSION}</p>
+          <p className="subtitle">Cloud · queue · git store · v{APP_VERSION}</p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" className="btn btn-outline" onClick={refreshHealth} disabled={busy}>
@@ -86,9 +93,9 @@ export default function SyncHealth() {
           </div>
         </div>
         <div className="card">
-          <div className="label">Browser</div>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>
-            {typeof navigator !== 'undefined' && navigator.onLine ? 'Online' : 'Offline'}
+          <div className="label">Git store</div>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>
+            {gitLabel}
           </div>
         </div>
       </div>
@@ -101,9 +108,39 @@ export default function SyncHealth() {
         {health && (
           <ul style={{ marginBottom: 0 }}>
             <li>HTTP: {health.ok ? `OK (${health.status})` : `Fail · ${health.reason || health.status || 'error'}`}</li>
+            <li>Version: {health.version || '—'}</li>
             <li>Latency: {health.latencyMs != null ? `${health.latencyMs} ms` : '—'}</li>
+            <li>Cloud users on server: {health.users != null ? health.users : '—'}</li>
             <li>Checked: {formatDateZA(health.at)} {health.at ? relativeTime(health.at) : ''}</li>
           </ul>
+        )}
+      </div>
+
+      <div className="card" style={{ marginBottom: '1rem' }}>
+        <h3 style={{ marginTop: 0 }}>Git durability (survives Render disk wipe)</h3>
+        {!git ? (
+          <p className="muted">No git status from server yet — refresh after deploy.</p>
+        ) : (
+          <ul style={{ marginBottom: 0 }}>
+            <li>
+              Enabled:{' '}
+              <strong style={{ color: git.enabled ? 'var(--green, #16a34a)' : 'var(--danger, #dc2626)' }}>
+                {git.enabled ? 'Yes' : 'No'}
+              </strong>
+            </li>
+            <li>Last pull: {git.lastPullAt ? `${formatDateZA(git.lastPullAt)} · ${relativeTime(git.lastPullAt)}` : '—'}</li>
+            <li>Last push: {git.lastPushAt ? `${formatDateZA(git.lastPushAt)} · ${relativeTime(git.lastPushAt)}` : '—'}</li>
+            <li>Commit: {git.lastCommit || '—'}</li>
+            <li>Pulls / pushes: {git.pulls ?? 0} / {git.pushes ?? 0}</li>
+            {git.error ? <li className="text-danger">Error: {String(git.error).slice(0, 200)}</li> : null}
+          </ul>
+        )}
+        {!git?.enabled && (
+          <p className="muted" style={{ fontSize: 13, marginTop: 12 }}>
+            On Render → Environment, set <code>GIT_DATA_ENABLED=true</code>,{' '}
+            <code>GIT_DATA_REPO=https://github.com/dexter187gold/saip-sync-data.git</code>, and a fine-grained{' '}
+            <code>GIT_DATA_TOKEN</code> with Contents write on <code>saip-sync-data</code>, then redeploy.
+          </p>
         )}
       </div>
 
@@ -115,8 +152,8 @@ export default function SyncHealth() {
           <li>Token present: {meta?.hasToken || (typeof Sync.getToken === 'function' && Sync.getToken()) ? 'Yes' : 'No'}</li>
         </ul>
         <p className="muted" style={{ fontSize: 13, marginTop: 12 }}>
-          Tip: after login on a new device, open this page and tap <strong>Force push / pull</strong> once
-          so the workspace snapshot is restored.
+          Tip: on the device that still has your data, tap <strong>Force push / pull</strong> once so the
+          workspace is uploaded. Then any other device can log in and restore automatically (every 5 min + on boot).
         </p>
       </div>
     </PageFade>
