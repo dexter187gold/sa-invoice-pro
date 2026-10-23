@@ -10,6 +10,7 @@ import {
 } from '../components/ui'
 import { openWhatsApp, openEmail, buildOverdueReminder } from '../lib/share'
 import { recordPayment, deletePayment } from '../lib/payments'
+import { parseBankCsv, normalizeBankRows, matchBankToInvoices, applyBankMatch } from '../lib/bankImport'
 
 function buildReceipt(p, inv, client, company) {
   const co = company?.name || 'SA Invoice Pro'
@@ -38,6 +39,8 @@ export default function Payments() {
   const [q, setQ] = useState('')
   const [methodFilter, setMethodFilter] = useState('all')
   const [confirm, setConfirm] = useState(null)
+  const [bankMatches, setBankMatches] = useState(null)
+  const [bankBusy, setBankBusy] = useState(false)
 
   const totalPaid = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
   const openDue = open.reduce((s, i) => s + (Number(i.amountDue ?? i.total) || 0), 0)
@@ -213,6 +216,45 @@ export default function Payments() {
     toast('Form filled from payment — adjust and record if needed', 'info')
   }
 
+  const onBankFile = async (file) => {
+    if (!file) return
+    setBankBusy(true)
+    try {
+      const textCsv = await file.text()
+      const parsed = parseBankCsv(textCsv)
+      const txns = normalizeBankRows(parsed)
+      const matches = matchBankToInvoices(txns, invoices, clients)
+      setBankMatches(matches)
+      toast(`${txns.length} bank lines · ${matches.filter((m) => m.suggested).length} suggested matches`, 'info')
+    } catch (e) {
+      toast(e?.message || 'Could not parse CSV', 'error')
+    } finally {
+      setBankBusy(false)
+    }
+  }
+
+  const applySuggestedMatches = async () => {
+    if (!bankMatches?.length) return
+    setBankBusy(true)
+    let n = 0
+    try {
+      for (const m of bankMatches) {
+        if (!m.suggested || !m.invoice) continue
+        try {
+          await applyBankMatch({ txn: m.txn, invoice: m.invoice, existingPayments: payments })
+          n++
+        } catch (e) {
+          console.warn(e)
+        }
+      }
+      await refresh()
+      setBankMatches(null)
+      toast(`Applied ${n} bank match(es)`, 'success')
+    } finally {
+      setBankBusy(false)
+    }
+  }
+
   const markAllOpenPaid = () => {
     if (!open.length) return toast('No open invoices', 'info')
     setConfirm({
@@ -263,6 +305,10 @@ export default function Payments() {
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
           <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={!filteredHistory.length}>Export CSV</button>
           <button type="button" className="btn btn-outline" onClick={markAllOpenPaid} disabled={!open.length}>Mark all open paid</button>
+          <label className="btn btn-outline" style={{ cursor: 'pointer', margin: 0 }}>
+            {bankBusy ? 'Importing…' : 'Import bank CSV'}
+            <input type="file" accept=".csv,text/csv" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; onBankFile(f) }} />
+          </label>
           <Link className="btn btn-outline" to="/excel">Excel viewer</Link>
           <Link className="btn btn-secondary" to="/invoices">Invoices</Link>
           <Link className="btn btn-outline" to="/reports">Reports</Link>
@@ -270,6 +316,39 @@ export default function Payments() {
           <Link className="btn btn-outline" to="/clients">Clients</Link>
         </div>
       </div>
+
+      {bankMatches && (
+        <div className="card" style={{ marginBottom: '1rem', borderLeft: '4px solid var(--green, #16a34a)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+            <h3 style={{ marginTop: 0, marginBottom: 0 }}>Bank import matches</h3>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" className="btn btn-primary btn-sm" disabled={bankBusy || !bankMatches.some((m) => m.suggested)} onClick={applySuggestedMatches}>
+                Apply suggested
+              </button>
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => setBankMatches(null)}>Dismiss</button>
+            </div>
+          </div>
+          <p className="muted" style={{ fontSize: 13 }}>Credits matched by amount + invoice number / client name in description.</p>
+          <div style={{ maxHeight: 280, overflow: 'auto' }}>
+            <table className="table">
+              <thead>
+                <tr><th>Date</th><th>Amount</th><th>Description</th><th>Match</th><th>Score</th></tr>
+              </thead>
+              <tbody>
+                {bankMatches.filter((m) => m.txn.isCredit).slice(0, 40).map((m) => (
+                  <tr key={m.txn.id} className={m.suggested ? '' : 'muted'}>
+                    <td>{m.txn.date}</td>
+                    <td>{formatMoney(m.txn.amount)}</td>
+                    <td style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.txn.description}</td>
+                    <td>{m.invoice ? `${m.invoice.number} · ${m.client?.name || ''}` : '—'}</td>
+                    <td>{m.score}{m.suggested ? ' ✓' : ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="grid-stats" style={{ marginBottom: '1rem' }}>
         <StatCard label="Total collected" value={formatMoney(totalPaid)} tone="good" />
