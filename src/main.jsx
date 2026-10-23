@@ -5,10 +5,10 @@ import { AppProvider } from './context/AppContext'
 import App from './App'
 import './styles.css'
 import './styles.ux.css'
+import './styles.table.css'
 import './styles.invoice.css'
 import './styles.modern.css'
 import './styles.brain.css'
-import './styles.q5.css'
 
 try {
   const saved = localStorage.getItem('sa_theme')

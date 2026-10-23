@@ -1,0 +1,42 @@
+/* v5.7 — Action menus, editable cells, organized tables */
+.action-menu { position: relative; display: inline-block; }
+.action-menu-trigger { white-space: nowrap; }
+.action-menu-panel {
+  position: absolute; top: calc(100% + 4px); right: 0; min-width: 168px;
+  background: var(--card, #fff); border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px; box-shadow: 0 10px 28px rgba(0,0,0,0.12);
+  z-index: 40; padding: 0.3rem; display: flex; flex-direction: column; gap: 2px;
+}
+.action-menu.align-left .action-menu-panel { right: auto; left: 0; }
+.action-menu-item {
+  display: flex; align-items: center; gap: 0.45rem; width: 100%; text-align: left;
+  border: 0; background: transparent; padding: 0.45rem 0.6rem; border-radius: 7px;
+  font: inherit; font-size: 0.86rem; cursor: pointer; color: inherit;
+}
+.action-menu-item:hover:not(:disabled) { background: var(--green-soft, rgba(34, 197, 94, 0.12)); }
+.action-menu-item.danger { color: #dc2626; }
+.action-menu-item.primary { font-weight: 600; }
+.action-menu-item:disabled { opacity: 0.45; cursor: not-allowed; }
+.action-menu-icon { width: 1.1em; text-align: center; }
+
+.editable-cell {
+  display: inline-block; max-width: 100%; border: 1px dashed transparent;
+  background: transparent; font: inherit; color: inherit; text-align: left;
+  padding: 0.15rem 0.3rem; border-radius: 5px; cursor: text;
+}
+.editable-cell:hover { border-color: var(--border, #d1d5db); background: rgba(0,0,0,0.03); }
+.editable-cell.disabled { cursor: default; border-color: transparent; }
+.editable-cell-input { width: 100%; min-width: 4rem; max-width: 12rem; padding: 0.25rem 0.4rem !important; font-size: 0.88rem !important; }
+.select-cell { font-size: 0.82rem; padding: 0.25rem 0.4rem; min-width: 6.5rem; max-width: 9rem; }
+
+.data-table-wrap { overflow-x: auto; border-radius: 12px; }
+.data-table-wrap.sticky-head .data-table thead th {
+  position: sticky; top: 0; z-index: 2; background: var(--card, #fff);
+  box-shadow: 0 1px 0 var(--border, #e5e7eb);
+}
+.data-table td { vertical-align: middle; }
+.data-table .row-actions {
+  display: flex; gap: 0.35rem; align-items: center; justify-content: flex-end; flex-wrap: nowrap;
+}
+.toolbar-cluster { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; }
+.toolbar-cluster .spacer { flex: 1; min-width: 0.5rem; }
