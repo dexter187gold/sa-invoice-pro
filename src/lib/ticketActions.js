@@ -27,6 +27,7 @@ export async function setTicketStatus(ticketId, status, note) {
   const t = await db.get(store, ticketId)
   if (!t) throw new Error('Ticket not found')
   if (t.status && !canTransition(t.status, status) && t.status !== status) {
+    // Allow force for admin/bulk; log only
     console.warn(`Ticket ${ticketId}: ${t.status} → ${status} (non-standard)`)
   }
   const history = Array.isArray(t.statusHistory) ? t.statusHistory : []
@@ -127,13 +128,24 @@ export async function invoiceFromTicket(ticket, { invoices = [], vatRate = 0.15,
 
   const lines = []
   if (ticket.workDone || ticket.description || ticket.title) {
-    const desc = [ticket.title, ticket.workDone, ticket.description, ticket.devices || ticket.serials].filter(Boolean).join('\n')
+    const desc = [
+      ticket.title,
+      ticket.workDone,
+      ticket.description,
+      ticket.devices || ticket.serials,
+    ]
+      .filter(Boolean)
+      .join('\n')
     const price = Number(ticket.amount || ticket.quotedAmount || ticket.labourAmount) || defaultRate
     lines.push({ description: desc || 'Service', qty: 1, price })
   }
   if (Array.isArray(ticket.parts) && ticket.parts.length) {
     for (const p of ticket.parts) {
-      lines.push({ description: p.name || p.description || 'Part', qty: Number(p.qty) || 1, price: Number(p.price) || 0 })
+      lines.push({
+        description: p.name || p.description || 'Part',
+        qty: Number(p.qty) || 1,
+        price: Number(p.price) || 0,
+      })
     }
   }
   if (!lines.length) {
@@ -162,6 +174,7 @@ export async function invoiceFromTicket(ticket, { invoices = [], vatRate = 0.15,
     updatedAt: new Date().toISOString(),
   }
   const inv = await db.add(STORES.invoices, payload)
+  // link ticket
   try {
     await db.put(STORES.tickets, {
       ...ticket,
