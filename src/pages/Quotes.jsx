@@ -259,7 +259,13 @@ export default function Quotes() {
         </div>
         {!lines.length && (
           <div className="form-grid cols-2">
-            <input className="input" placeholder="Single-line description (or load demo rates)" value={description} onChange={(e) => setDescription(e.target.value)} />
+            <textarea
+              className="input"
+              rows={3}
+              placeholder="Description (Enter = new line). Or load demo rates."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
             <input className="input" type="number" step="0.01" placeholder="Amount excl." value={amount} onChange={(e) => setAmount(e.target.value)} />
           </div>
         )}
