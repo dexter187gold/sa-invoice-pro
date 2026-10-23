@@ -1,5 +1,5 @@
 {
-  "version": "5.7.0",
-  "codename": "Editable tables · Action menus · Layout",
-  "message": "ActionMenu, SelectCell, EditableCell, DataTable; reorganized nav; denser invoice table"
+  "version": "5.8.0",
+  "codename": "Git-durable sync · 5-min interval",
+  "message": "saip-sync pulls/pushes data repo; app syncs every 5 minutes"
 }
