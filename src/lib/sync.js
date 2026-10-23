@@ -1,6 +1,6 @@
 /**
- * SA Invoice Pro – Cloud Sync client v1.5.1
- * Auth + per-user workspace + auto-push. Login any device → restore snapshot.
+ * SA Invoice Pro – Cloud Sync client v1.6.0 (customer-ready)
+ * Auth + workspace + auto-push with cold-start retries.
  */
 const BASE = 'https://saip-sync.onrender.com'
 const TOKEN_KEY = 'saip_sync_token'
@@ -17,23 +17,52 @@ function setToken(token) {
   } catch {}
 }
 
-async function request(path, opts = {}) {
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms))
+}
+
+async function request(path, opts = {}, attempt = 1) {
   const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) }
   const token = getToken()
   if (token) headers['Authorization'] = 'Bearer ' + token
+  const maxAttempts = opts._maxAttempts || 3
   let res
   try {
-    res = await fetch(BASE + path, { ...opts, headers })
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null
+    const timer = setTimeout(() => { try { ctrl?.abort() } catch {} }, opts._timeout || 55000)
+    try {
+      res = await fetch(BASE + path, { ...opts, headers, signal: ctrl?.signal })
+    } finally {
+      clearTimeout(timer)
+    }
   } catch (e) {
-    throw new Error('Network error — check connection to cloud sync')
+    const msg = String(e?.message || e)
+    const isNet = /abort|Failed to fetch|NetworkError|network|timeout|interrupted/i.test(msg)
+    if (isNet && attempt < maxAttempts) {
+      await sleep(1800 * attempt)
+      return request(path, opts, attempt + 1)
+    }
+    throw new Error(
+      isNet
+        ? 'Cloud server waking up or offline — wait 20s and try Sync Now again'
+        : 'Network error — check connection to cloud sync'
+    )
   }
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error || res.statusText || 'Request failed')
+  if (!res.ok) {
+    const err = data.error || data.message || res.statusText || 'Request failed'
+    if ((res.status === 502 || res.status === 503) && attempt < maxAttempts) {
+      await sleep(2000 * attempt)
+      return request(path, opts, attempt + 1)
+    }
+    throw new Error(err)
+  }
   return data
 }
 
 let _autoTimer = null
 let _lastPushAt = 0
+let _lastError = null
 
 export const Sync = {
   base: BASE,
@@ -43,6 +72,21 @@ export const Sync = {
   },
 
   getToken,
+
+  lastError() {
+    return _lastError
+  },
+
+  async health() {
+    try {
+      const r = await request('/health', { _maxAttempts: 2, _timeout: 20000 })
+      _lastError = null
+      return r
+    } catch (e) {
+      _lastError = e.message || String(e)
+      throw e
+    }
+  },
 
   async register(email, password, name) {
     const data = await request('/api/auth/register', {
@@ -54,15 +98,16 @@ export const Sync = {
   },
 
   async login(email, password) {
+    try { await request('/health', { _maxAttempts: 2, _timeout: 25000 }) } catch {}
     const data = await request('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     })
     setToken(data.token)
+    _lastError = null
     return data
   },
 
-  /** Request 6-digit recovery code (shown in app; no SMTP). */
   async forgotPassword(email) {
     return request('/api/auth/forgot-password', {
       method: 'POST',
@@ -70,7 +115,6 @@ export const Sync = {
     })
   },
 
-  /** Reset cloud password with recovery code; stores JWT on success. */
   async resetPasswordWithCode(email, code, newPassword) {
     const data = await request('/api/auth/reset-password', {
       method: 'POST',
@@ -97,10 +141,13 @@ export const Sync = {
   },
 
   async push(workspaceData) {
-    return request('/api/workspace', {
+    const r = await request('/api/workspace', {
       method: 'PUT',
       body: JSON.stringify({ data: workspaceData }),
     })
+    _lastPushAt = Date.now()
+    _lastError = null
+    return r
   },
 
   async workspaceHistory() {
@@ -164,7 +211,6 @@ export const Sync = {
     }
     const r = await Sync.push(data)
     Sync.setMeta({ version: r.version, updatedAt: r.updated_at, lastPush: new Date().toISOString() })
-    _lastPushAt = Date.now()
     return { ok: true, ...r }
   },
 
@@ -219,8 +265,9 @@ export const Sync = {
       }
       return { ok: true, invoices: statusList.length, version: r.version }
     } catch (e) {
-      console.warn('[Sync.autoPush]', e.message || e)
-      return { ok: false, error: e.message || String(e) }
+      _lastError = e.message || String(e)
+      console.warn('[Sync.autoPush]', _lastError)
+      return { ok: false, error: _lastError }
     }
   },
 
@@ -295,7 +342,7 @@ export const Sync = {
   async createPortalLink(clientId, { days = 90 } = {}) {
     return request('/api/portal/create', {
       method: 'POST',
-      body: JSON.stringify({ client_id: clientId, days }),
+      body: JSON.stringify({ client_id: clientId }),
     })
   },
 
