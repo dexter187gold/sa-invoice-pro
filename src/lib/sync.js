@@ -62,6 +62,28 @@ export const Sync = {
     return data
   },
 
+  /** Request 6-digit recovery code (shown in app; no SMTP). */
+  async forgotPassword(email) {
+    return request('/api/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email: String(email || '').trim().toLowerCase() }),
+    })
+  },
+
+  /** Reset cloud password with recovery code; stores JWT on success. */
+  async resetPasswordWithCode(email, code, newPassword) {
+    const data = await request('/api/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: String(email || '').trim().toLowerCase(),
+        code: String(code || '').trim(),
+        password: newPassword,
+      }),
+    })
+    if (data.token) setToken(data.token)
+    return data
+  },
+
   logout() {
     setToken(null)
   },
