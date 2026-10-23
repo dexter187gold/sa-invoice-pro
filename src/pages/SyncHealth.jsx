@@ -69,7 +69,9 @@ export default function SyncHealth() {
       <div className="grid-stats" style={{ marginBottom: '1rem' }}>
         <div className="card">
           <div className="label">Status</div>
-          <div style={{ fontWeight: 700, fontSize: 18 }}>{health ? formatHealth(health) : '…'}</div>
+          <div style={{ fontWeight: 700, fontSize: 18 }}>
+            {health ? formatHealth(health) : '…'}
+          </div>
         </div>
         <div className="card">
           <div className="label">Offline queue</div>
@@ -78,7 +80,9 @@ export default function SyncHealth() {
         <div className="card">
           <div className="label">Last sync</div>
           <div style={{ fontWeight: 700, fontSize: 16 }}>
-            {health?.lastSync || lastSyncAt() ? relativeTime(health?.lastSync || lastSyncAt()) : 'Never'}
+            {health?.lastSync || lastSyncAt()
+              ? relativeTime(health?.lastSync || lastSyncAt())
+              : 'Never'}
           </div>
         </div>
         <div className="card">
@@ -98,7 +102,7 @@ export default function SyncHealth() {
           <ul style={{ marginBottom: 0 }}>
             <li>HTTP: {health.ok ? `OK (${health.status})` : `Fail · ${health.reason || health.status || 'error'}`}</li>
             <li>Latency: {health.latencyMs != null ? `${health.latencyMs} ms` : '—'}</li>
-            <li>Checked: {formatDateZA(health.at)}</li>
+            <li>Checked: {formatDateZA(health.at)} {health.at ? relativeTime(health.at) : ''}</li>
           </ul>
         )}
       </div>
@@ -108,6 +112,7 @@ export default function SyncHealth() {
         <ul style={{ marginBottom: 0 }}>
           <li>Logged in: {Sync.isLoggedIn?.() ? 'Yes' : 'No'}</li>
           <li>User: {meta?.email || meta?.userEmail || '—'}</li>
+          <li>Token present: {meta?.hasToken || (typeof Sync.getToken === 'function' && Sync.getToken()) ? 'Yes' : 'No'}</li>
         </ul>
         <p className="muted" style={{ fontSize: 13, marginTop: 12 }}>
           Tip: after login on a new device, open this page and tap <strong>Force push / pull</strong> once
