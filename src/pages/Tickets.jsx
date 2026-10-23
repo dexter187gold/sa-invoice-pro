@@ -5,6 +5,10 @@ import * as db from '../lib/db'
 import { STORES } from '../lib/db'
 import { formatMoney, invoiceTotals } from '../lib/money'
 import { Sync } from '../lib/sync'
+import ActionDock from '../components/ActionDock'
+import { bulkSetTicketStatus, bulkExportCsv, ticketCsvColumns } from '../lib/bulkOps'
+import { setTicketStatus as transitionTicket, sortTickets, invoiceFromTicket } from '../lib/ticketActions'
+import { ticketLabel } from '../lib/statusLabels'
 
 const STATUSES = [
   { id: 'open', label: 'Open' },
@@ -27,7 +31,7 @@ const EMPTY_FORM = {
 }
 
 export default function Tickets() {
-  const { toast, refresh } = useApp()
+  const { toast, refresh, invoices, vatRate, vatEnabled } = useApp()
   const nav = useNavigate()
   const [tickets, setTickets] = useState([])
   const [clients, setClients] = useState([])
@@ -36,6 +40,7 @@ export default function Tickets() {
   const [showClosed, setShowClosed] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState({ ...EMPTY_FORM })
+  const [selected, setSelected] = useState({})
 
   const load = useCallback(async () => {
     setTickets((await db.getAll(STORES.tickets)) || [])
@@ -46,6 +51,7 @@ export default function Tickets() {
   useEffect(() => { load() }, [load])
 
   const clientOf = (t) => clients.find((x) => String(x.id) === String(t?.clientId))
+  const selectedIds = Object.keys(selected).filter((id) => selected[id])
 
   const pushTicketCloud = async (ticket, client) => {
     if (!Sync.isLoggedIn()) return
@@ -146,11 +152,44 @@ export default function Tickets() {
   }
 
   const remove = async (id) => {
-    if (!confirm('Delete this job card?')) return
+    if (!window.confirm('Delete this job card?')) return
     await db.remove(STORES.tickets, id)
     toast('Job card deleted', 'success')
     setEditing(null)
     await load()
+  }
+
+  const billTicket = async (ticket) => {
+    try {
+      const inv = await invoiceFromTicket(ticket, {
+        invoices: invoices || [],
+        vatRate: vatRate ?? 0.15,
+        vatEnabled: vatEnabled !== false,
+      })
+      await refresh?.()
+      toast?.(`Invoice ${inv.number} created from job card`, 'success')
+      nav(`/invoices/${inv.id}`)
+    } catch (e) {
+      toast?.(e?.message || 'Could not create invoice', 'error')
+    }
+  }
+
+  const bulkTicketStatus = async (status) => {
+    if (!selectedIds.length) return
+    await bulkSetTicketStatus(selectedIds, status)
+    setSelected({})
+    await load()
+    toast(`Updated ${selectedIds.length} → ${status}`, 'success')
+  }
+
+  const exportTicketsCsv = async () => {
+    const rows = list
+    await bulkExportCsv(rows, ticketCsvColumns?.() || [
+      { key: 'title', label: 'Title' },
+      { key: 'status', label: 'Status' },
+      { key: 'priority', label: 'Priority' },
+    ], `tickets-${new Date().toISOString().slice(0, 10)}.csv`)
+    toast('CSV exported', 'success')
   }
 
   return (
@@ -209,8 +248,11 @@ export default function Tickets() {
             <textarea className="input" rows={2} value={form.workDone} onChange={(e) => setForm({ ...form, workDone: e.target.value })} />
             <label className="muted">Notes</label>
             <textarea className="input" rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
               <button type="submit" className="btn btn-primary">Save</button>
+              {editing && editing !== 'new' && (
+                <button type="button" className="btn btn-secondary" onClick={() => billTicket(editing)}>Create invoice</button>
+              )}
               <button type="button" className="btn btn-outline" onClick={() => setEditing(null)}>Cancel</button>
               {editing !== 'new' && editing?.id && (
                 <button type="button" className="btn btn-outline" style={{ color: '#dc2626' }} onClick={() => remove(editing.id)}>Delete</button>
@@ -225,13 +267,26 @@ export default function Tickets() {
         {list.map((t) => (
           <div key={t.id} className="list-card" style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
             <div style={{ flex: 1, minWidth: 180 }}>
-              <strong>{t.title || t.subject || 'Job'}</strong>
-              <div className="muted" style={{ fontSize: 13 }}>
-                {[t.status, t.priority, t.contactName || clientOf(t)?.name, t.contactPhone || clientOf(t)?.phone].filter(Boolean).join(' · ')}
-              </div>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <input
+                  type="checkbox"
+                  checked={!!selected[t.id]}
+                  onChange={(e) => setSelected({ ...selected, [t.id]: e.target.checked })}
+                />
+                <span>
+                  <strong>{t.title || t.subject || 'Job'}</strong>
+                  {t.invoiceId ? <span className="muted"> · billed</span> : null}
+                  <div className="muted" style={{ fontSize: 13 }}>
+                    {[t.status, t.priority, t.contactName || clientOf(t)?.name, t.contactPhone || clientOf(t)?.phone].filter(Boolean).join(' · ')}
+                  </div>
+                </span>
+              </label>
             </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <button type="button" className="btn btn-outline btn-sm" onClick={() => openEdit(t)}>Edit</button>
+              {!t.invoiceId && (
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => billTicket(t)}>Bill</button>
+              )}
               {t.status !== 'in_progress' && (
                 <button type="button" className="btn btn-outline btn-sm" onClick={() => setStatus(t, 'in_progress')}>Start</button>
               )}
@@ -245,6 +300,25 @@ export default function Tickets() {
           </div>
         ))}
       </div>
+
+      <ActionDock
+        selectedCount={selectedIds.length}
+        totalCount={list.length}
+        onClear={() => setSelected({})}
+        actions={[
+          { id: 'bill', label: 'Bill selected', onClick: async () => {
+            for (const id of selectedIds) {
+              const tk = tickets.find((x) => String(x.id) === String(id))
+              if (tk && !tk.invoiceId) await billTicket(tk)
+            }
+          }},
+          { id: 'progress', label: 'In progress', primary: true, onClick: () => bulkTicketStatus('in_progress') },
+          { id: 'waiting', label: 'Waiting', onClick: () => bulkTicketStatus('waiting') },
+          { id: 'resolved', label: 'Resolve', onClick: () => bulkTicketStatus('resolved') },
+          { id: 'closed', label: 'Close', onClick: () => bulkTicketStatus('closed') },
+          { id: 'csv', label: 'Export CSV', always: true, onClick: exportTicketsCsv },
+        ]}
+      />
     </div>
   )
 }
