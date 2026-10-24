@@ -1,5 +1,5 @@
-/* SA Invoice Pro · Lab offline service worker v4.3.1 */
-const CACHE = 'saip-lab-v4.3.1'
+/* SA Invoice Pro · Service worker v6.0.0 */
+const CACHE = 'saip-v6.0.0'
 const PRECACHE = [
   '/',
   '/index.html',
