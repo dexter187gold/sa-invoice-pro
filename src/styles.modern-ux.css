@@ -83,3 +83,43 @@ button, a.bnav, .nav-link {
 .modal-backdrop { z-index: 80; }
 .app-assist-fab { z-index: 35; }
 .mobile-bar { z-index: 30; }
+
+/* Portal + signature */
+.portal-card {
+  border: 1px solid var(--border, rgba(255,255,255,.12));
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--green,#22c55e) 10%, transparent), var(--card, rgba(255,255,255,.03)));
+  margin-top: 8px;
+}
+.portal-card.compact { padding: 12px; }
+.portal-kicker {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  opacity: .65;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.portal-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+.portal-card-body { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.portal-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.sig-pad { margin-top: 8px; }
+.sig-pad-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.sig-canvas {
+  width: 100%;
+  border: 1px dashed var(--border, rgba(255,255,255,.2));
+  border-radius: 12px;
+  touch-action: none;
+  background: color-mix(in srgb, var(--bg, #000) 40%, transparent);
+  cursor: crosshair;
+}
+.sig-hint { font-size: 11px; margin: 4px 0 0; }
+.it-pack-banner {
+  border-left: 4px solid var(--green, #22c55e);
+}
