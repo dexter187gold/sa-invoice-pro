@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { NavLink, useNavigate, useLocation, Link } from 'react-router-dom'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { APP_VERSION } from '../config'
 import CommandPalette from './CommandPalette'
@@ -25,13 +25,77 @@ function cycleTheme(theme, setTheme) {
   } catch {}
 }
 
-/** Primary bottom-nav destinations (admin-portal style) */
-const BOTTOM_PRIMARY = [
-  { to: '/', label: 'Home', icon: '⌂', end: true },
-  { to: '/invoices', label: 'Invoices', icon: '📄' },
-  { to: '/clients', label: 'Clients', icon: '👤' },
-  { to: '/tickets', label: 'Tickets', icon: '🎫' },
+const ROOT_NAV = [
+  { to: '/', label: 'Home', icon: '⌂', end: true, section: 'home' },
+  { to: '/invoices', label: 'Money', icon: '📄', section: 'money' },
+  { to: '/clients', label: 'Clients', icon: '👤', section: 'clients' },
+  { to: '/tickets', label: 'Jobs', icon: '🎫', section: 'jobs' },
+  { to: '__more__', label: 'More', icon: '☰', section: 'more', isMore: true },
 ]
+
+const SECTION_NAV = {
+  home: [
+    { to: '/', label: 'Home', icon: '⌂', end: true },
+    { to: '/dashboard', label: 'Dashboard', icon: '📊' },
+    { to: '/reports', label: 'Reports', icon: '📈' },
+    { to: '/inbox', label: 'Inbox', icon: '💬' },
+    { to: '__root__', label: 'Main', icon: '☰', isRoot: true },
+  ],
+  money: [
+    { to: '/invoices', label: 'Invoices', icon: '📄', end: true },
+    { to: '/invoices?status=overdue', label: 'Overdue', icon: '⚠️' },
+    { to: '/payments', label: 'Payments', icon: '💳' },
+    { to: '/quotes', label: 'Quotes', icon: '📝' },
+    { to: '/tickets', label: 'Jobs', icon: '🎫' },
+  ],
+  clients: [
+    { to: '/clients', label: 'Clients', icon: '👤', end: true },
+    { to: '/invoices', label: 'Invoices', icon: '📄' },
+    { to: '/tickets', label: 'Jobs', icon: '🎫' },
+    { to: '/inbox', label: 'WhatsApp', icon: '💬' },
+    { to: '__root__', label: 'Main', icon: '☰', isRoot: true },
+  ],
+  jobs: [
+    { to: '/tickets', label: 'Board', icon: '🎫', end: true },
+    { to: '/inbox', label: 'Inbox', icon: '💬' },
+    { to: '/products', label: 'Stock', icon: '📦' },
+    { to: '/invoices', label: 'Bill', icon: '📄' },
+    { to: '__root__', label: 'Main', icon: '☰', isRoot: true },
+  ],
+  books: [
+    { to: '/expenses', label: 'Expenses', icon: '💸', end: true },
+    { to: '/accounting', label: 'Books', icon: '📒' },
+    { to: '/employees', label: 'Staff', icon: '👷' },
+    { to: '/payroll', label: 'Payroll', icon: '💰' },
+    { to: '__root__', label: 'Main', icon: '☰', isRoot: true },
+  ],
+  tools: [
+    { to: '/documents', label: 'Docs', icon: '📎', end: true },
+    { to: '/excel', label: 'Excel', icon: '📊' },
+    { to: '/sync', label: 'Sync', icon: '☁️' },
+    { to: '/changelog', label: 'Notes', icon: '📋' },
+    { to: '__root__', label: 'Main', icon: '☰', isRoot: true },
+  ],
+  settings: [
+    { to: '/settings', label: 'Settings', icon: '⚙️', end: true },
+    { to: '/license', label: 'License', icon: '🔑' },
+    { to: '/sync', label: 'Cloud', icon: '☁️' },
+    { to: '/changelog', label: 'Updates', icon: '✨' },
+    { to: '__root__', label: 'Main', icon: '☰', isRoot: true },
+  ],
+}
+
+function sectionFromPath(pathname) {
+  const p = pathname || '/'
+  if (p === '/' || p === '/dashboard' || p === '/reports' || p === '/inbox') return 'home'
+  if (p.startsWith('/invoices') || p.startsWith('/quotes') || p.startsWith('/payments')) return 'money'
+  if (p.startsWith('/clients')) return 'clients'
+  if (p.startsWith('/tickets') || p.startsWith('/products')) return 'jobs'
+  if (p.startsWith('/expenses') || p.startsWith('/accounting') || p.startsWith('/employees') || p.startsWith('/payroll')) return 'books'
+  if (p.startsWith('/documents') || p.startsWith('/excel') || p.startsWith('/sync') || p.startsWith('/changelog')) return 'tools'
+  if (p.startsWith('/settings') || p.startsWith('/license')) return 'settings'
+  return 'home'
+}
 
 export default function Shell({ children }) {
   const { company, user, logout, theme, setTheme, online, density, setDensity, invoices, syncNow, toast } = useApp()
@@ -39,6 +103,7 @@ export default function Shell({ children }) {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
+  const [forceRoot, setForceRoot] = useState(false)
   const nav = useNavigate()
   const loc = useLocation()
   const [navPrefs, setNavPrefs] = useState(() => {
@@ -50,6 +115,14 @@ export default function Shell({ children }) {
       return { layout: 'bottom' }
     }
   })
+
+  const section = useMemo(() => sectionFromPath(loc.pathname), [loc.pathname])
+
+  useEffect(() => {
+    setForceRoot(false)
+    setMoreOpen(false)
+    setOpen(false)
+  }, [loc.pathname, loc.search])
 
   useEffect(() => {
     const apply = (prefs) => {
@@ -73,11 +146,6 @@ export default function Shell({ children }) {
     window.addEventListener('sa-nav-prefs', on)
     return () => window.removeEventListener('sa-nav-prefs', on)
   }, [navPrefs.layout, navPrefs.accent])
-
-  useEffect(() => {
-    setMoreOpen(false)
-    setOpen(false)
-  }, [loc.pathname, loc.search])
 
   const invCounts = useMemo(() => {
     const c = { all: 0, unpaid: 0, partial: 0, paid: 0, overdue: 0 }
@@ -149,21 +217,10 @@ export default function Shell({ children }) {
     [invCounts],
   )
 
-  const primaryPaths = useMemo(() => BOTTOM_PRIMARY.map((p) => p.to), [])
-
-  const moreSections = useMemo(() => {
-    const primarySet = new Set(primaryPaths)
-    return sections
-      .map((sec) => ({
-        ...sec,
-        links: sec.links.filter((l) => {
-          const path = l.to.split('?')[0]
-          if (l.to.includes('?')) return true
-          return !primarySet.has(path)
-        }),
-      }))
-      .filter((sec) => sec.links.length)
-  }, [sections, primaryPaths])
+  const bottomItems = useMemo(() => {
+    if (forceRoot) return ROOT_NAV
+    return SECTION_NAV[section] || ROOT_NAV
+  }, [section, forceRoot])
 
   const crumbMap = {
     '/': 'Home',
@@ -191,11 +248,8 @@ export default function Shell({ children }) {
   useEffect(() => {
     try {
       const root = document.documentElement
-      if (theme === 'dark' || theme === 'brain') {
-        root.classList.add('dark', 'brain')
-      } else {
-        root.classList.remove('dark', 'brain')
-      }
+      if (theme === 'dark' || theme === 'brain') root.classList.add('dark', 'brain')
+      else root.classList.remove('dark', 'brain')
     } catch {}
   }, [theme])
 
@@ -226,18 +280,13 @@ export default function Shell({ children }) {
     return want === have
   }
 
-  const isPrimaryActive = (item) => {
-    if (item.end) return loc.pathname === '/'
-    return loc.pathname === item.to || loc.pathname.startsWith(item.to + '/')
+  const isItemActive = (item) => {
+    if (item.isMore || item.isRoot) return false
+    if (item.to.includes('?')) return isInvLinkActive(item.to)
+    const path = item.to.split('?')[0]
+    if (item.end) return loc.pathname === path
+    return loc.pathname === path || loc.pathname.startsWith(path + '/')
   }
-
-  const moreIsActive = useMemo(() => {
-    const path = loc.pathname
-    if (path === '/' || path.startsWith('/invoices') || path.startsWith('/clients') || path.startsWith('/tickets')) {
-      return false
-    }
-    return true
-  }, [loc.pathname])
 
   const runSync = async () => {
     if (!canUseCloudSync()) {
@@ -260,14 +309,35 @@ export default function Shell({ children }) {
     .filter((k) => k !== '/' && loc.pathname.startsWith(k))
     .sort((a, b) => b.length - a.length)[0]
   const crumb = crumbMap[loc.pathname] || (pathKey ? crumbMap[pathKey] : loc.pathname)
-
   const useBottom = navPrefs.layout === 'bottom'
+
+  const onBottomClick = (item, e) => {
+    if (item.isMore) {
+      e.preventDefault()
+      setMoreOpen((v) => !v)
+      return
+    }
+    if (item.isRoot) {
+      e.preventDefault()
+      setForceRoot(true)
+      setMoreOpen(false)
+      return
+    }
+    setMoreOpen(false)
+  }
+
+  const sectionTitle = {
+    home: 'Overview',
+    money: 'Money in',
+    clients: 'Clients',
+    jobs: 'Field work',
+    books: 'Books',
+    tools: 'Tools',
+    settings: 'Account',
+  }[section] || 'Menu'
 
   return (
     <>
-      <a className="skip-link" href="#main-content">
-        Skip to content
-      </a>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <AppAssistant />
       <QuickActions />
@@ -285,13 +355,7 @@ export default function Shell({ children }) {
         <strong style={{ fontSize: 13, letterSpacing: '-0.02em', flex: 1 }}>
           {company?.name || 'SA Invoice Pro'}
         </strong>
-        <button
-          type="button"
-          className="btn btn-outline btn-sm"
-          onClick={() => toggleHelp()}
-          aria-label="Help and tips"
-          title="Help & tips (Ctrl+/)"
-        >
+        <button type="button" className="btn btn-outline btn-sm" onClick={() => toggleHelp()} aria-label="Help">
           ✦
         </button>
         <NotificationBell />
@@ -346,12 +410,7 @@ export default function Shell({ children }) {
               {user?.email || user?.name || 'Signed in'}
             </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className="btn btn-outline btn-sm"
-                onClick={() => cycleTheme(theme, setTheme)}
-                title="Toggle theme"
-              >
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => cycleTheme(theme, setTheme)}>
                 Theme
               </button>
               <button
@@ -390,18 +449,17 @@ export default function Shell({ children }) {
               <span className="muted">Workspace</span>
               <span className="muted"> / </span>
               <strong>{crumb}</strong>
+              {useBottom && !forceRoot && section !== 'home' ? (
+                <span className="muted" style={{ marginLeft: 8, fontSize: 11 }}>
+                  · {sectionTitle}
+                </span>
+              ) : null}
             </div>
             <div className="desktop-only header-actions" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <button type="button" className="btn btn-outline btn-sm" onClick={runSync} disabled={syncing}>
                 {syncing ? 'Syncing…' : 'Sync'}
               </button>
-              <button
-                type="button"
-                className="btn btn-outline btn-sm"
-                onClick={() => toggleHelp()}
-                aria-label="Help and tips"
-                title="Help & tips (Ctrl+/)"
-              >
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => toggleHelp()} title="Help">
                 ✦ Help
               </button>
               <NotificationBell />
@@ -413,32 +471,39 @@ export default function Shell({ children }) {
 
       {useBottom ? (
         <>
-          <nav className="bottom-nav" aria-label="Main">
-            {BOTTOM_PRIMARY.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={() => `bnav ${isPrimaryActive(item) ? 'on' : ''}`}
-              >
-                <span className="ico" aria-hidden>
-                  {item.icon}
-                </span>
-                {item.label}
-              </NavLink>
-            ))}
-            <button
-              type="button"
-              className={`bnav ${moreOpen || moreIsActive ? 'on' : ''}`}
-              onClick={() => setMoreOpen((v) => !v)}
-              aria-expanded={moreOpen}
-              aria-controls="more-drawer"
-            >
-              <span className="ico" aria-hidden>
-                ☰
-              </span>
-              More
-            </button>
+          <nav className="bottom-nav" aria-label="Contextual navigation">
+            {bottomItems.map((item) => {
+              if (item.isMore || item.isRoot) {
+                return (
+                  <button
+                    key={item.to + item.label}
+                    type="button"
+                    className={`bnav ${moreOpen && item.isMore ? 'on' : ''}`}
+                    onClick={(e) => onBottomClick(item, e)}
+                    aria-label={item.label}
+                  >
+                    <span className="ico" aria-hidden>
+                      {item.icon}
+                    </span>
+                    {item.label}
+                  </button>
+                )
+              }
+              return (
+                <NavLink
+                  key={item.to + item.label}
+                  to={item.to}
+                  end={item.end}
+                  className={() => `bnav ${isItemActive(item) ? 'on' : ''}`}
+                  onClick={(e) => onBottomClick(item, e)}
+                >
+                  <span className="ico" aria-hidden>
+                    {item.icon}
+                  </span>
+                  {item.label}
+                </NavLink>
+              )
+            })}
           </nav>
 
           <div
@@ -448,8 +513,8 @@ export default function Shell({ children }) {
           />
           <div className={`drawer ${moreOpen ? 'open' : ''}`} id="more-drawer" role="dialog" aria-label="More pages">
             <div className="drawer-handle" />
-            <h3>More</h3>
-            {moreSections.map((sec) => (
+            <h3>All sections</h3>
+            {sections.map((sec) => (
               <div key={sec.title} className="drawer-section">
                 <div className="drawer-section-title">{sec.title}</div>
                 {sec.links.map((l) => {
@@ -506,7 +571,7 @@ export default function Shell({ children }) {
               </button>
             </div>
             <p className="muted" style={{ fontSize: 11, margin: '8px 12px 0' }}>
-              v{APP_VERSION} · Change layout in Settings → Navigation
+              v{APP_VERSION} · Bottom bar follows the page you are on
             </p>
           </div>
         </>
