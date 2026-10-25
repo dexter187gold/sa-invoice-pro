@@ -199,7 +199,7 @@ export default function Invoices() {
     }
     const summary = overdueList.map((i) => {
       const c = clients.find((x) => String(x.id) === String(i.clientId))
-      return `${i.number} · ${c?.name || ''} · R${Number(i.amountDue ?? i.total || 0).toFixed(2)} · ${c?.phone || ''}`
+      return `${i.number} · ${c?.name || ''} · R${Number((i.amountDue ?? i.total) || 0).toFixed(2)} · ${c?.phone || ''}`
     }).join('\n')
     try { navigator.clipboard.writeText(summary) } catch {}
     toast(`Opened ${first.length} WhatsApp · ${overdueList.length} listed on clipboard`, 'success')
