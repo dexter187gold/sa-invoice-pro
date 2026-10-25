@@ -1,5 +1,5 @@
-/* SA Invoice Pro · Service worker v6.0.0 */
-const CACHE = 'saip-v6.0.0'
+/* SA Invoice Pro · Service worker v6.0.1 */
+const CACHE = 'saip-v6.0.1'
 const PRECACHE = [
   '/',
   '/index.html',
@@ -53,7 +53,7 @@ self.addEventListener('fetch', (event) => {
           return res
         })
         .catch(() => cached)
-      return cached || fetched
+      return fetched.catch(() => cached)
     })
   )
 })
