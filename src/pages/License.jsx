@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext'
 import * as licenseApi from '../lib/license'
 import * as db from '../lib/db'
 import { APP_VERSION, SA_CONFIG } from '../config'
+import { TIERS } from '../lib/licenseTiers'
 import { PageFade, StatCard, LoadingButton, CopyButton, EmptyState } from '../components/ui'
 
 export default function License() {
@@ -52,10 +53,26 @@ export default function License() {
         <div>
           <h1>License</h1>
           <p className="subtitle">
-            {online ? 'Online' : 'Offline'} · HWID handshake · server activate · v{APP_VERSION}
+            {online ? 'Online' : 'Offline'} · HWID handshake · tiers · v{APP_VERSION}
           </p>
         </div>
         <button type="button" className="btn btn-outline" onClick={reload} disabled={busy}>Refresh</button>
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <h3 style={{ marginTop: 0 }}>License tiers</h3>
+        <p className="muted" style={{ fontSize: 13 }}>Product packaging for IT workshops — pick the plan that matches your shop.</p>
+        <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fill,minmax(180px,1fr))' }}>
+          {TIERS.map((t) => (
+            <div key={t.id} style={{ border: t.recommended ? '2px solid var(--green,#22c55e)' : '1px solid var(--border,rgba(255,255,255,.12))', borderRadius: 12, padding: 12 }}>
+              <strong>{t.name}</strong>
+              <div className="muted" style={{ fontSize: 11, margin: '4px 0 8px' }}>{t.priceHint}</div>
+              <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12 }}>
+                {t.features.map((f) => <li key={f}>{f}</li>)}
+              </ul>
+            </div>
+          ))}
+        </div>
       </div>
 
       {!licensed && (
@@ -63,7 +80,6 @@ export default function License() {
           <strong>{trialLeft != null && trialLeft <= 0 ? 'Trial ended' : 'Trial / unlicensed workspace'}</strong>
           <p className="muted" style={{ margin: '0.35rem 0 0' }}>
             Copy your HWID below, send it to your vendor, then run <strong>Activate on server</strong> once they approve.
-            Default server: <code>{SA_CONFIG.defaultLicenseServerUrl}</code>
           </p>
         </div>
       )}
@@ -72,55 +88,24 @@ export default function License() {
         <div className="card" style={{ marginBottom: '1rem', borderLeft: '4px solid var(--green, #10b981)' }}>
           <strong>Licensed</strong>
           <p className="muted" style={{ margin: '0.35rem 0 0' }}>
-            This device is activated. Keep a backup from Settings → Backup in case you move machines.
+            This device is activated. Keep a backup from Settings.
           </p>
         </div>
       )}
 
       <div className="grid-stats" style={{ marginBottom: '1rem' }}>
-        <StatCard
-          label="Status"
-          value={licensed ? 'Licensed' : 'Trial'}
-          tone={licensed ? 'good' : 'warn'}
-        />
-        <StatCard
-          label="Trial days left"
-          value={trialLeft ?? '—'}
-          tone={trialLeft != null && trialLeft <= 7 ? 'bad' : undefined}
-        />
-        <StatCard
-          label="Handshake"
-          value={status?.handshakeOk ? 'OK' : 'Pending'}
-          tone={status?.handshakeOk ? 'good' : 'warn'}
-        />
+        <StatCard label="Status" value={licensed ? 'Licensed' : 'Trial'} tone={licensed ? 'good' : 'warn'} />
+        <StatCard label="Trial days left" value={trialLeft ?? '—'} tone={trialLeft != null && trialLeft <= 7 ? 'bad' : undefined} />
+        <StatCard label="Handshake" value={status?.handshakeOk ? 'OK' : 'Pending'} tone={status?.handshakeOk ? 'good' : 'warn'} />
         <StatCard label="Connectivity" value={online ? 'Online' : 'Offline'} tone={online ? 'good' : 'warn'} />
-      </div>
-
-      <div className="card" style={{ marginBottom: '1rem' }}>
-        <h3 style={{ marginTop: 0 }}>Activation steps</h3>
-        <ol style={{ margin: '0.25rem 0 0', paddingLeft: '1.2rem' }}>
-          <li>Confirm license server URL (or use the default).</li>
-          <li>Copy your <strong>Hardware ID</strong> and send it to the seller / admin.</li>
-          <li>When approved, click <strong>Activate on server</strong> (requires network).</li>
-          <li>Optional: <em>Handshake only</em> to test connectivity without activating.</li>
-        </ol>
       </div>
 
       <div className="card form-grid" style={{ marginBottom: '1rem' }}>
         <div>
           <label className="label">License server URL</label>
-          <input
-            className="input"
-            value={serverUrl}
-            onChange={(e) => setServerUrl(e.target.value)}
-            placeholder={SA_CONFIG.defaultLicenseServerUrl}
-          />
+          <input className="input" value={serverUrl} onChange={(e) => setServerUrl(e.target.value)} placeholder={SA_CONFIG.defaultLicenseServerUrl} />
         </div>
         <button type="button" className="btn btn-secondary" onClick={saveUrl}>Save URL</button>
-        <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-          Server must expose <code>/api/request-license</code> and <code>/api/activate</code>
-          (see <code>license_server.py</code> / <code>license_routes_v24.py</code>).
-        </p>
       </div>
 
       <div className="card" style={{ marginBottom: '1rem' }}>
@@ -131,11 +116,6 @@ export default function License() {
           </div>
           {status?.hwid ? <CopyButton text={status.hwid} label="Copy HWID" /> : null}
         </div>
-        {status?.meta && (
-          <pre style={{ fontSize: 12, overflow: 'auto', marginTop: 12, marginBottom: 0, background: 'var(--bg)', padding: 12, borderRadius: 8 }}>
-            {JSON.stringify(status.meta, null, 2)}
-          </pre>
-        )}
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
