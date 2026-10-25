@@ -1,0 +1,85 @@
+/* === Modern PWA / mobile-desktop layout pack === */
+html, body {
+  overscroll-behavior-y: contain;
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+#root, .shell, .main {
+  min-width: 0;
+  max-width: 100%;
+}
+.main, .page, .ticket-desk, .page-fade {
+  overflow-x: hidden;
+}
+.btn, .bnav, .nav-link, .chip, .tab, .drawer-link, input, select, textarea {
+  min-height: 44px;
+}
+.btn-sm, .chip { min-height: 36px; }
+html.nav-bottom .main,
+html.nav-bottom .page,
+html.nav-bottom .content {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+}
+html.nav-bottom .app-assist-fab {
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+}
+.sticky-tools {
+  top: env(safe-area-inset-top, 0px);
+  z-index: 8;
+}
+.card, .table, .data-table-wrap, .kanban, .ticket-split {
+  max-width: 100%;
+}
+.table { display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.inv-line-row-catalog {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 8px;
+  align-items: start;
+  margin-bottom: 10px;
+}
+.inv-line-catalog {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+@media (max-width: 640px) {
+  .inv-line-row-catalog {
+    grid-template-columns: 1fr 1fr;
+  }
+  .inv-line-catalog { grid-column: 1 / -1; }
+}
+.theme-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+.theme-swatch .swatch-bar {
+  background: linear-gradient(135deg, var(--t1, #111), var(--t2, #3b82f6));
+}
+.ticket-list-row, .m-card, .nav-link {
+  -webkit-user-select: none;
+  user-select: none;
+}
+.bnav:active, .btn:active, .ticket-card:active, .theme-swatch:active {
+  transform: scale(0.97);
+  opacity: 0.92;
+}
+button, a.bnav, .nav-link {
+  touch-action: manipulation;
+}
+:focus-visible {
+  outline: 2px solid var(--green, #3b82f6);
+  outline-offset: 2px;
+}
+@media (min-width: 1200px) {
+  .main > .page, .main > .page-fade, .main > .ticket-desk {
+    max-width: 1120px;
+  }
+}
+.bottom-nav { z-index: 40; }
+.drawer, .drawer-backdrop { z-index: 50; }
+.modal-backdrop { z-index: 80; }
+.app-assist-fab { z-index: 35; }
+.mobile-bar { z-index: 30; }
