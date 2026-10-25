@@ -1,0 +1,187 @@
+/* Pulse home — distinctive SA desk */
+.pulse-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 18px 18px 8px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--green, #22c55e) 12%, transparent), transparent);
+  border: 1px solid var(--border, rgba(255,255,255,.08));
+}
+.pulse-kicker {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  font-weight: 600;
+}
+.pulse-title {
+  margin: 4px 0;
+  font-size: clamp(1.4rem, 4vw, 1.85rem);
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+.pulse-sub {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.75;
+  max-width: 36ch;
+}
+.pulse-ring-wrap { flex-shrink: 0; }
+.pulse-ring {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 8px 28px rgba(0,0,0,.18);
+}
+.pulse-ring-inner {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: var(--card, var(--bg, #111));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  gap: 2px;
+}
+.pulse-ring-inner strong {
+  font-size: 18px;
+  letter-spacing: -0.03em;
+}
+.pulse-focus {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.pulse-chip {
+  border: 1px solid var(--border, rgba(255,255,255,.12));
+  background: transparent;
+  color: inherit;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  min-height: 40px;
+  cursor: pointer;
+}
+.pulse-chip.on {
+  background: var(--green, #22c55e);
+  color: #04120a;
+  border-color: transparent;
+  font-weight: 700;
+}
+.pulse-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+@media (min-width: 720px) {
+  .pulse-stats { grid-template-columns: repeat(4, 1fr); }
+}
+.pulse-stat {
+  text-align: left;
+  border: 1px solid var(--border, rgba(255,255,255,.1));
+  background: var(--card, rgba(255,255,255,.03));
+  border-radius: 16px;
+  padding: 12px 14px;
+  color: inherit;
+  cursor: pointer;
+  transition: transform .12s ease, border-color .12s ease;
+}
+.pulse-stat:active { transform: scale(0.98); }
+.pulse-stat-k {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.65;
+  margin-bottom: 4px;
+}
+.pulse-stat-v {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.pulse-stat-v.warn { color: #f59e0b; }
+.pulse-stat-v.good { color: var(--green, #22c55e); }
+.pulse-stat-h {
+  display: block;
+  font-size: 11px;
+  opacity: 0.6;
+  margin-top: 4px;
+}
+.pulse-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.pulse-action {
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid var(--border, rgba(255,255,255,.12));
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+}
+.pulse-action.primary {
+  background: var(--green, #22c55e);
+  color: #04120a;
+  border-color: transparent;
+}
+.pulse-section { margin-bottom: 22px; }
+.pulse-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.pulse-section-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+.pulse-chase, .pulse-jobs { display: flex; flex-direction: column; gap: 8px; }
+.pulse-chase-card, .pulse-job-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border, rgba(255,255,255,.1));
+  background: var(--card, rgba(255,255,255,.03));
+}
+.pulse-chase-btns { display: flex; gap: 6px; flex-shrink: 0; }
+.pulse-list { display: flex; flex-direction: column; gap: 4px; }
+.pulse-list-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 4px;
+  text-decoration: none;
+  color: inherit;
+  border-bottom: 1px solid var(--border, rgba(255,255,255,.06));
+}
+.pulse-list-right { display: flex; align-items: center; gap: 8px; }
+.pulse-foot {
+  font-size: 11px;
+  text-align: center;
+  margin: 24px 0 8px;
+}
+.pulse-empty { margin-bottom: 16px; }

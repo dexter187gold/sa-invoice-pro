@@ -1,5 +1,5 @@
-/* SA Invoice Pro · Service worker v6.1.2 */
-const CACHE = 'saip-v6.1.2'
+/* SA Invoice Pro · Service worker v6.2.0 */
+const CACHE = 'saip-v6.2.0'
 const PRECACHE = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg', '/icon.svg']
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()))
