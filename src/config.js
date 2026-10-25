@@ -1,7 +1,7 @@
-export const APP_VERSION = '6.0.2'
+export const APP_VERSION = '6.1.0'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
-export const APP_CODENAME = '6.0.2 · durable cloud auth · admin login fix'
+export const APP_CODENAME = '6.1.0 · global themes · interactive job desk'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
 export const HELIX_ROUTES = {
@@ -16,7 +16,6 @@ export const HELIX_ROUTES = {
   login: '/login',
 }
 
-/** Default SA VAT rate (15%). Used when settings have no override. */
 export const VAT_RATE_DEFAULT = 0.15
 
 export const SUPPORT_RATES_DEFAULT = {

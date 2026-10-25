@@ -1,12 +1,6 @@
-/* SA Invoice Pro · Service worker v6.0.2 */
-const CACHE = 'saip-v6.0.2'
-const PRECACHE = [
-  '/',
-  '/index.html',
-  '/manifest.webmanifest',
-  '/favicon.svg',
-  '/icon.svg',
-]
+/* SA Invoice Pro · Service worker v6.1.0 */
+const CACHE = 'saip-v6.1.0'
+const PRECACHE = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg', '/icon.svg']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -25,10 +19,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const req = event.request
   if (req.method !== 'GET') return
-
   const url = new URL(req.url)
   if (url.hostname.includes('saip-sync') || url.pathname.startsWith('/api/')) return
-
   if (req.mode === 'navigate') {
     event.respondWith(
       fetch(req)
@@ -41,7 +33,6 @@ self.addEventListener('fetch', (event) => {
     )
     return
   }
-
   event.respondWith(
     caches.match(req).then((cached) => {
       const fetched = fetch(req)
