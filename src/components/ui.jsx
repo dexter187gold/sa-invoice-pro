@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, Component } from 'react'
+import React, { useEffect, useState, useCallback, useRef, Component } from 'react'
 
 /** Status badge with consistent colour mapping */
 export function StatusBadge({ status, map }) {
@@ -354,4 +354,168 @@ export class ErrorBoundary extends Component {
     }
     return this.props.children
   }
+}
+
+/** Dropdown action menu for table rows */
+export function ActionMenu({ label = 'Actions', items = [], align = 'right' }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDoc = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    const onKey = (e) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onDoc)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDoc)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const visible = (items || []).filter((it) => it && !it.hidden)
+  if (!visible.length) return null
+
+  return (
+    <div className={`action-menu ${align === 'left' ? 'align-left' : ''}`} ref={ref}>
+      <button
+        type="button"
+        className="btn btn-outline btn-sm action-menu-trigger"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        {label}
+      </button>
+      {open ? (
+        <div className="action-menu-panel" role="menu">
+          {visible.map((it, idx) => (
+            <button
+              key={it.id || idx}
+              type="button"
+              role="menuitem"
+              className={`action-menu-item ${it.danger ? 'danger' : ''}`}
+              disabled={it.disabled}
+              onClick={() => {
+                setOpen(false)
+                try { it.onClick?.() } catch (e) { console.error(e) }
+              }}
+            >
+              {it.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+/** Inline editable text cell */
+export function EditableCell({
+  value,
+  onSave,
+  placeholder = '',
+  type = 'text',
+  disabled = false,
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value ?? '')
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    setDraft(value ?? '')
+  }, [value])
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select?.()
+    }
+  }, [editing])
+
+  if (disabled) {
+    return <span className="editable-cell muted">{value || placeholder || '—'}</span>
+  }
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        className="editable-cell"
+        onClick={() => setEditing(true)}
+        title="Click to edit"
+      >
+        {value || <span className="muted">{placeholder || '—'}</span>}
+      </button>
+    )
+  }
+
+  const commit = async () => {
+    setEditing(false)
+    const next = type === 'number' ? Number(draft) : String(draft ?? '')
+    if (String(next) === String(value ?? '')) return
+    try {
+      await onSave?.(next)
+    } catch (e) {
+      console.error(e)
+      setDraft(value ?? '')
+    }
+  }
+
+  return (
+    <input
+      ref={inputRef}
+      className="input editable-cell-input"
+      type={type}
+      value={draft ?? ''}
+      placeholder={placeholder}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          commit()
+        }
+        if (e.key === 'Escape') {
+          setDraft(value ?? '')
+          setEditing(false)
+        }
+      }}
+    />
+  )
+}
+
+/** Inline select cell */
+export function SelectCell({ value, options = [], onChange, disabled }) {
+  return (
+    <select
+      className="input select-cell"
+      value={value ?? ''}
+      disabled={disabled}
+      onChange={(e) => onChange?.(e.target.value)}
+    >
+      {options.map((o) => {
+        const id = typeof o === 'object' ? o.id : o
+        const label = typeof o === 'object' ? o.label : o
+        return (
+          <option key={id} value={id}>
+            {label}
+          </option>
+        )
+      })}
+    </select>
+  )
+}
+
+/** Wrapper for denser data tables with sticky header option */
+export function DataTable({ children, sticky = true, className = '' }) {
+  return (
+    <div className={`data-table-wrap ${sticky ? 'sticky-head' : ''} ${className}`}>
+      <table className="table data-table">{children}</table>
+    </div>
+  )
 }
