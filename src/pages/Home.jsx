@@ -6,6 +6,7 @@ import { StatusBadge, PageFade, EmptyState } from '../components/ui'
 import { openWhatsApp } from '../lib/share'
 import { monthCashSnapshot } from '../lib/documentActions'
 import { APP_VERSION } from '../config'
+import OnboardingChecklist from '../components/OnboardingChecklist'
 
 function greeting() {
   const h = new Date().getHours()
@@ -86,6 +87,8 @@ export default function Home() {
 
   return (
     <PageFade>
+      <OnboardingChecklist />
+
       <section className="pulse-hero">
         <div className="pulse-hero-text">
           <p className="pulse-kicker">{greeting()}</p>
@@ -190,9 +193,7 @@ export default function Home() {
                   >
                     WhatsApp
                   </button>
-                  <Link className="btn btn-outline btn-sm" to="/invoices?status=overdue">
-                    View
-                  </Link>
+                  <Link className="btn btn-outline btn-sm" to="/invoices?status=overdue">View</Link>
                 </div>
               </div>
             ))}
@@ -216,9 +217,7 @@ export default function Home() {
                       <strong>{t.title || t.number || 'Job'}</strong>
                       <div className="muted" style={{ fontSize: 12 }}>{c?.name || 'No client'} · {t.status}</div>
                     </div>
-                    <Link className="btn btn-primary btn-sm" to={`/invoices/new?ticket=${t.id}`}>
-                      Bill
-                    </Link>
+                    <Link className="btn btn-primary btn-sm" to={`/invoices/new?ticket=${t.id}`}>Bill</Link>
                   </div>
                 )
               })}
@@ -257,7 +256,7 @@ export default function Home() {
       )}
 
       <p className="pulse-foot muted">
-        Built for SA workshops & field techs — VAT, WhatsApp, offline, cloud restore. Not a generic overseas clone.
+        Built for SA workshops & field techs — VAT, WhatsApp, offline, cloud restore.
       </p>
     </PageFade>
   )
