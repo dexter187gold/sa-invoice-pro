@@ -13,6 +13,7 @@ import './styles.invoice.css'
 import './styles.modern.css'
 import './styles.brain.css'
 import './styles.modern-ux.css'
+import './styles.pulse.css'
 
 try {
   const saved = localStorage.getItem('sa_theme')

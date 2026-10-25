@@ -1,188 +1,264 @@
-import React, { useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useMemo, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { formatMoney } from '../lib/money'
-import { StatCard, StatusBadge, formatDateZA, relativeTime, PageFade, EmptyState } from '../components/ui'
-import { openWhatsApp, openEmail, buildClientStatement } from '../lib/share'
+import { StatusBadge, PageFade, EmptyState } from '../components/ui'
+import { openWhatsApp } from '../lib/share'
+import { monthCashSnapshot } from '../lib/documentActions'
+import { APP_VERSION } from '../config'
+
+function greeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  return 'Good evening'
+}
+
+function daysPastDue(inv) {
+  const d = inv.dueDate || inv.date
+  if (!d) return 0
+  const ms = Date.now() - new Date(d).getTime()
+  return Math.max(0, Math.floor(ms / 86400000))
+}
 
 export default function Home() {
-  const { company, invoices, clients, tickets, quotes, employees, expenses, payments, toast } = useApp()
+  const nav = useNavigate()
+  const { company, invoices, clients, tickets, quotes, payments, expenses, toast } = useApp()
+  const [focus, setFocus] = useState('all')
+
   const open = invoices.filter((i) => ['unpaid', 'partial', 'overdue'].includes(i.status))
   const paid = invoices.filter((i) => i.status === 'paid')
   const ar = open.reduce((s, i) => s + (Number(i.amountDue ?? i.total) || 0), 0)
   const rev = paid.reduce((s, i) => s + (Number(i.total) || 0), 0)
-  const exp = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0)
-  const paymentsTotal = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
   const today = new Date().toISOString().slice(0, 10)
-  const paidToday = payments.filter((p) => String(p.date || '').slice(0, 10) === today)
+  const paidToday = payments
+    .filter((p) => String(p.date || '').slice(0, 10) === today)
     .reduce((s, p) => s + (Number(p.amount) || 0), 0)
-  const openT = tickets.filter((t) => !['closed', 'resolved', 'cancelled'].includes(String(t.status || '').toLowerCase()))
-  const overdue = invoices.filter((i) => i.status === 'overdue')
-  const partial = invoices.filter((i) => i.status === 'partial')
+  const openJobs = tickets.filter((t) => !['closed', 'resolved', 'cancelled'].includes(String(t.status || '').toLowerCase()))
   const draftQuotes = quotes.filter((q) => String(q.status || '').toLowerCase() === 'draft')
-  const collectionRate = rev + ar > 0 ? Math.round((rev / (rev + ar)) * 100) : 0
+  const collectionRate = rev + ar > 0 ? Math.round((rev / (rev + ar)) * 100) : 100
+  const monthSnap = useMemo(() => monthCashSnapshot({ invoices, expenses, payments }), [invoices, expenses, payments])
   const isNew = !clients.length && !invoices.length
-  const recentPayments = [...payments].slice(-8).reverse()
 
-  /** Clients with overdue or partial invoices — need reminder */
-  const needsReminder = useMemo(() => {
+  const needsChase = useMemo(() => {
     const map = {}
     for (const inv of invoices) {
       if (!['overdue', 'partial', 'unpaid'].includes(inv.status || '')) continue
       const id = String(inv.clientId)
-      if (!map[id]) map[id] = { clientId: id, total: 0, overdue: 0, partial: 0, unpaid: 0, count: 0 }
+      if (!map[id]) map[id] = { clientId: id, total: 0, count: 0, worstDays: 0 }
       map[id].total += Number(inv.amountDue ?? inv.total) || 0
       map[id].count++
-      if (inv.status === 'overdue') map[id].overdue++
-      else if (inv.status === 'partial') map[id].partial++
-      else map[id].unpaid++
+      map[id].worstDays = Math.max(map[id].worstDays, daysPastDue(inv))
     }
     return Object.values(map)
-      .filter((r) => r.overdue > 0 || r.partial > 0)
+      .map((row) => ({ ...row, client: clients.find((c) => String(c.id) === row.clientId) }))
+      .filter((r) => r.client)
       .sort((a, b) => b.total - a.total)
-      .slice(0, 8)
-  }, [invoices])
+      .slice(0, 6)
+  }, [invoices, clients])
 
-  const remindClient = (clientId, channel) => {
-    const client = clients.find((c) => String(c.id) === String(clientId))
-    if (!client) return toast?.('Client not found', 'error')
-    const text = buildClientStatement(client, invoices, company)
-    if (channel === 'wa') {
-      openWhatsApp(client.phone, text)
-      toast?.('Opening client statement reminder…', 'success')
-    } else {
-      openEmail(client.email, `Account reminder — ${company?.name || 'SA Invoice Pro'}`, text.replace(/\*/g, ''))
-      toast?.('Opening email…', 'success')
+  const jobToBill = useMemo(() => {
+    return openJobs
+      .filter((t) => !t.invoiceId && (t.status === 'done' || t.status === 'resolved' || t.billable))
+      .slice(0, 5)
+  }, [openJobs])
+
+  const chaseWhatsApp = (client, total, count) => {
+    const phone = String(client?.phone || '').replace(/\D/g, '')
+    if (!phone) {
+      toast?.('No phone on client — add one first', 'error')
+      return
     }
+    const name = client.name?.split(' ')[0] || 'there'
+    const text =
+      `Hi ${name}, hope you are well. Friendly reminder from ${company?.name || 'us'}: ` +
+      `${count} open invoice${count > 1 ? 's' : ''} · balance ${formatMoney(total)}. ` +
+      `Please settle when you can — reply here if you need the PDF or banking details. Thank you!`
+    openWhatsApp(phone, text)
   }
 
-  const recentInv = [...invoices]
-    .sort((a, b) => String(b.date || b.createdAt || '').localeCompare(String(a.date || a.createdAt || '')))
-    .slice(0, 5)
+  const ringStyle = {
+    background: `conic-gradient(var(--green, #22c55e) ${collectionRate * 3.6}deg, var(--border, #333) 0)`,
+  }
+
+  const showMoney = focus === 'all' || focus === 'money'
+  const showJobs = focus === 'all' || focus === 'jobs'
 
   return (
     <PageFade>
-      <div className="page-header">
-        <div>
-          <h1>
-            Home <span className="muted-pill">{company?.name || 'Workspace'}</span>
-          </h1>
-          <p className="subtitle">Snapshot · {formatDateZA(new Date().toISOString())} · ZAR</p>
+      <section className="pulse-hero">
+        <div className="pulse-hero-text">
+          <p className="pulse-kicker">{greeting()}</p>
+          <h1 className="pulse-title">{company?.name || 'SA Invoice Pro'}</h1>
+          <p className="pulse-sub">
+            Your field desk · cash, jobs & clients in one pulse · v{APP_VERSION}
+          </p>
         </div>
-        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
-          <Link className="btn btn-primary" to="/invoices/new">New invoice</Link>
-          <Link className="btn btn-secondary" to="/payments">Payments</Link>
-          <Link className="btn btn-outline" to="/dashboard">Dashboard</Link>
+        <div className="pulse-ring-wrap" title="Collection rate">
+          <div className="pulse-ring" style={ringStyle}>
+            <div className="pulse-ring-inner">
+              <strong>{collectionRate}%</strong>
+              <span>collected</span>
+            </div>
+          </div>
         </div>
+      </section>
+
+      <div className="pulse-focus">
+        {[
+          { id: 'all', label: 'Everything' },
+          { id: 'money', label: 'Money' },
+          { id: 'jobs', label: 'Jobs' },
+        ].map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            className={`pulse-chip ${focus === f.id ? 'on' : ''}`}
+            onClick={() => setFocus(f.id)}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="pulse-stats">
+        <button type="button" className="pulse-stat" onClick={() => nav('/invoices?status=overdue')}>
+          <span className="pulse-stat-k">Open AR</span>
+          <span className="pulse-stat-v warn">{formatMoney(ar)}</span>
+          <span className="pulse-stat-h">{open.length} invoices</span>
+        </button>
+        <button type="button" className="pulse-stat" onClick={() => nav('/payments')}>
+          <span className="pulse-stat-k">Paid today</span>
+          <span className="pulse-stat-v good">{formatMoney(paidToday)}</span>
+          <span className="pulse-stat-h">Month {formatMoney(monthSnap?.in || 0)}</span>
+        </button>
+        <button type="button" className="pulse-stat" onClick={() => nav('/tickets')}>
+          <span className="pulse-stat-k">Open jobs</span>
+          <span className="pulse-stat-v">{openJobs.length}</span>
+          <span className="pulse-stat-h">{jobToBill.length} ready to bill</span>
+        </button>
+        <button type="button" className="pulse-stat" onClick={() => nav('/quotes')}>
+          <span className="pulse-stat-k">Draft quotes</span>
+          <span className="pulse-stat-v">{draftQuotes.length}</span>
+          <span className="pulse-stat-h">Convert when won</span>
+        </button>
+      </div>
+
+      <div className="pulse-actions">
+        <Link className="pulse-action primary" to="/invoices/new">＋ Invoice</Link>
+        <Link className="pulse-action" to="/tickets">＋ Job card</Link>
+        <Link className="pulse-action" to="/quotes">＋ Quote</Link>
+        <Link className="pulse-action" to="/clients">Clients</Link>
       </div>
 
       {isNew && (
-        <div className="card" style={{ marginBottom: '1rem', borderLeft: '4px solid var(--green)' }}>
-          <h3 style={{ marginTop: 0 }}>Welcome — get paid in three steps</h3>
-          <ol>
-            <li><Link to="/settings">Set company name, VAT & bank details</Link></li>
-            <li><Link to="/clients">Add your first client</Link></li>
-            <li><Link to="/invoices/new">Create a tax invoice</Link></li>
-          </ol>
+        <div className="pulse-empty card">
+          <EmptyState
+            title="Your desk is clear — in a good way"
+            description="Add a client, drop a job or raise the first tax invoice. Cloud sign-in keeps this phone and the next one in sync."
+            action={
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+                <Link className="btn btn-primary" to="/clients">Add client</Link>
+                <Link className="btn btn-outline" to="/invoices/new">First invoice</Link>
+              </div>
+            }
+          />
         </div>
       )}
 
-      <div className="grid-stats">
-        <StatCard label="Outstanding AR" value={formatMoney(ar)} tone={ar > 0 ? 'warn' : 'good'} hint={`${open.length} open`} />
-        <StatCard label="Payments collected" value={formatMoney(paymentsTotal)} tone="good" hint={`${payments.length} logged`} />
-        <StatCard label="Paid today" value={formatMoney(paidToday)} tone="good" />
-        <StatCard label="Paid revenue (invoices)" value={formatMoney(rev)} tone="good" />
-        <StatCard label="Collection rate" value={`${collectionRate}%`} />
-        <StatCard label="Overdue" value={overdue.length} tone={overdue.length ? 'bad' : 'good'} />
-        <StatCard label="Partial" value={partial.length} tone={partial.length ? 'warn' : undefined} />
-        <StatCard label="Open tickets" value={openT.length} tone={openT.length ? 'warn' : undefined} />
-      </div>
-
-      {needsReminder.length > 0 && (
-        <div className="card" style={{ marginBottom: '1rem', borderLeft: '4px solid var(--warn, #f59e0b)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-            <h3 style={{ marginTop: 0, marginBottom: 0 }}>Clients needing reminder</h3>
-            <Link className="btn btn-outline btn-sm" to="/invoices">All open invoices</Link>
+      {showMoney && needsChase.length > 0 && (
+        <section className="pulse-section">
+          <div className="pulse-section-head">
+            <h2>Chase list</h2>
+            <span className="muted">WhatsApp-first · SA friendly</span>
           </div>
-          <p className="muted" style={{ fontSize: 13 }}>Overdue or partially paid — send statement / reminder</p>
-          {needsReminder.map((row) => {
-            const c = clients.find((x) => String(x.id) === String(row.clientId))
-            return (
-              <div key={row.clientId} className="list-card" style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="pulse-chase">
+            {needsChase.map((row) => (
+              <div key={row.clientId} className="pulse-chase-card">
                 <div>
-                  <strong>{c?.name || 'Client'}</strong>
-                  <div className="muted" style={{ fontSize: 13 }}>
-                    {formatMoney(row.total)} due · {row.count} invoice(s)
-                    {row.overdue ? ` · ${row.overdue} overdue` : ''}
-                    {row.partial ? ` · ${row.partial} partial` : ''}
+                  <strong>{row.client.name}</strong>
+                  <div className="muted" style={{ fontSize: 12 }}>
+                    {row.count} open · {formatMoney(row.total)}
+                    {row.worstDays ? ` · ${row.worstDays}d` : ''}
                   </div>
                 </div>
-                <div className="list-card-actions">
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => remindClient(row.clientId, 'wa')}>Remind WA</button>
-                  <button type="button" className="btn btn-outline btn-sm" onClick={() => remindClient(row.clientId, 'email')}>Remind email</button>
-                  <Link className="btn btn-outline btn-sm" to="/clients">Clients</Link>
+                <div className="pulse-chase-btns">
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={() => chaseWhatsApp(row.client, row.total, row.count)}
+                  >
+                    WhatsApp
+                  </button>
+                  <Link className="btn btn-outline btn-sm" to="/invoices?status=overdue">
+                    View
+                  </Link>
                 </div>
               </div>
-            )
-          })}
-        </div>
+            ))}
+          </div>
+        </section>
       )}
 
-      <div className="card" style={{ marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-          <h3 style={{ marginTop: 0, marginBottom: 0 }}>Recent payments</h3>
-          <Link className="btn btn-outline btn-sm" to="/payments">All payments</Link>
-        </div>
-        {!recentPayments.length ? (
-          <EmptyState title="No payments yet" hint="Record EFT on the Payments page." action={<Link className="btn btn-primary btn-sm" to="/payments">Record payment</Link>} />
-        ) : (
-          recentPayments.map((p) => {
-            const inv = invoices.find((i) => String(i.id) === String(p.invoiceId))
-            const client = clients.find((c) => String(c.id) === String(p.clientId || inv?.clientId))
-            return (
-              <div key={p.id} className="list-card" style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-                <div>
-                  <strong>{formatMoney(p.amount)}</strong>
-                  <span className="muted"> · {formatDateZA(p.date)} · {p.method}</span>
-                  <div className="muted" style={{ fontSize: 12 }}>{[inv?.number, client?.name].filter(Boolean).join(' · ')}</div>
-                </div>
-                {p.date ? <span className="muted" style={{ fontSize: 12 }}>{relativeTime(p.date)}</span> : null}
-              </div>
-            )
-          })
-        )}
-      </div>
+      {showJobs && (jobToBill.length > 0 || openJobs.length > 0) && (
+        <section className="pulse-section">
+          <div className="pulse-section-head">
+            <h2>Jobs pulse</h2>
+            <Link to="/tickets" className="btn btn-outline btn-sm">Board</Link>
+          </div>
+          {jobToBill.length > 0 ? (
+            <div className="pulse-jobs">
+              {jobToBill.map((t) => {
+                const c = clients.find((x) => String(x.id) === String(t.clientId))
+                return (
+                  <div key={t.id} className="pulse-job-card">
+                    <div>
+                      <strong>{t.title || t.number || 'Job'}</strong>
+                      <div className="muted" style={{ fontSize: 12 }}>{c?.name || 'No client'} · {t.status}</div>
+                    </div>
+                    <Link className="btn btn-primary btn-sm" to={`/invoices/new?ticket=${t.id}`}>
+                      Bill
+                    </Link>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="muted" style={{ margin: 0 }}>{openJobs.length} open · mark done to bill fast</p>
+          )}
+        </section>
+      )}
 
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <h3 style={{ marginTop: 0, marginBottom: 0 }}>Recent invoices</h3>
-          <Link className="btn btn-outline btn-sm" to="/invoices">View all</Link>
-        </div>
-        {!recentInv.length && (
-          <EmptyState title="No invoices yet" action={<Link className="btn btn-primary" to="/invoices/new">New invoice</Link>} />
-        )}
-        {recentInv.map((inv) => {
-          const due = Number(inv.amountDue ?? inv.total) || 0
-          const client = clients.find((c) => String(c.id) === String(inv.clientId))
-          return (
-            <Link
-              key={inv.id}
-              to={`/invoices/${inv.id}`}
-              className="list-card"
-              style={{ display: 'flex', justifyContent: 'space-between', gap: 8, textDecoration: 'none', color: 'inherit', alignItems: 'center' }}
-            >
-              <div>
-                <strong>{inv.number || inv.id?.slice(0, 8)}</strong>
-                <span className="muted"> · {client?.name || 'No client'} · {formatDateZA(inv.date)}</span>
-              </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <StatusBadge status={inv.status || 'unpaid'} />
-                <strong>{formatMoney(due || inv.total)}</strong>
-              </div>
-            </Link>
-          )
-        })}
-      </div>
+      {showMoney && (
+        <section className="pulse-section">
+          <div className="pulse-section-head">
+            <h2>Recent money</h2>
+            <Link to="/invoices" className="btn btn-outline btn-sm">All invoices</Link>
+          </div>
+          <div className="pulse-list">
+            {[...invoices].slice(-6).reverse().map((inv) => {
+              const client = clients.find((c) => String(c.id) === String(inv.clientId))
+              return (
+                <Link key={inv.id} to={`/invoices/${inv.id}`} className="pulse-list-row">
+                  <div>
+                    <strong>{inv.number || 'Invoice'}</strong>
+                    <span className="muted"> · {client?.name || '—'}</span>
+                  </div>
+                  <div className="pulse-list-right">
+                    <StatusBadge status={inv.status || 'unpaid'} />
+                    <strong>{formatMoney(inv.amountDue ?? inv.total)}</strong>
+                  </div>
+                </Link>
+              )
+            })}
+            {!invoices.length && <p className="muted">No invoices yet</p>}
+          </div>
+        </section>
+      )}
+
+      <p className="pulse-foot muted">
+        Built for SA workshops & field techs — VAT, WhatsApp, offline, cloud restore. Not a generic overseas clone.
+      </p>
     </PageFade>
   )
 }
