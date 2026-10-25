@@ -1,0 +1,106 @@
+/* === TICKET DESK 6.1 — interactive helpdesk === */
+.ticket-desk { display: flex; flex-direction: column; gap: 12px; }
+.ticket-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ticket-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
+.ticket-stat {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px;
+}
+.ticket-stat .n { font-size: 1.25rem; font-weight: 800; line-height: 1.1; }
+.ticket-stat .l { font-size: 11px; color: var(--muted); font-weight: 600; margin-top: 2px; }
+.view-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.view-toggle button {
+  appearance: none; border: 0; background: transparent; color: var(--muted);
+  padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.view-toggle button.on { background: var(--green); color: #fff; }
+.kanban {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px; align-items: start;
+}
+.kanban-col {
+  background: color-mix(in srgb, var(--bg) 80%, var(--card));
+  border: 1px solid var(--border); border-radius: 14px; min-height: 120px;
+  display: flex; flex-direction: column;
+}
+.kanban-col-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px; border-bottom: 1px solid var(--border);
+  font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+}
+.kanban-col-head .count { background: var(--bg); border-radius: 99px; padding: 1px 8px; font-size: 11px; }
+.kanban-cards { padding: 8px; display: flex; flex-direction: column; gap: 8px; max-height: 62vh; overflow-y: auto; }
+.ticket-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 10px 12px; cursor: pointer; text-align: left; width: 100%;
+  transition: border-color .15s, transform .12s;
+}
+.ticket-card:hover { border-color: var(--green); transform: translateY(-1px); }
+.ticket-card.selected { outline: 2px solid var(--green); }
+.ticket-card .t-title { font-weight: 700; font-size: 13px; margin: 0 0 4px; }
+.ticket-card .t-meta { font-size: 11px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px; }
+.pri-dot { width: 8px; height: 8px; border-radius: 99px; display: inline-block; }
+.pri-urgent { background: #ef4444; }
+.pri-high { background: #f97316; }
+.pri-normal { background: #94a3b8; }
+.pri-low { background: #64748b; }
+.ticket-split {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); gap: 12px;
+}
+@media (max-width: 900px) {
+  .ticket-split { grid-template-columns: 1fr; }
+  .ticket-detail { order: -1; }
+}
+.ticket-list-row {
+  display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: center;
+  padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer;
+}
+.ticket-list-row:hover, .ticket-list-row.on {
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+}
+.ticket-detail {
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+  padding: 14px; position: sticky; top: 8px; max-height: calc(100vh - 120px); overflow-y: auto;
+}
+.ticket-detail h2 { margin: 0 0 4px; font-size: 1.1rem; }
+.status-pipeline { display: flex; flex-wrap: wrap; gap: 4px; margin: 10px 0; }
+.status-pipeline button {
+  appearance: none; border: 1px solid var(--border); background: var(--bg);
+  color: var(--muted); border-radius: 999px; padding: 5px 10px;
+  font-size: 11px; font-weight: 700; cursor: pointer;
+}
+.status-pipeline button.on { background: var(--green); color: #fff; border-color: transparent; }
+.timeline { display: flex; flex-direction: column; gap: 0; margin-top: 12px; }
+.timeline-item {
+  display: grid; grid-template-columns: 16px 1fr; gap: 8px; padding-bottom: 12px; position: relative;
+}
+.timeline-item::before {
+  content: ''; position: absolute; left: 7px; top: 14px; bottom: 0; width: 2px; background: var(--border);
+}
+.timeline-item:last-child::before { display: none; }
+.timeline-dot {
+  width: 14px; height: 14px; border-radius: 99px; background: var(--green);
+  margin-top: 2px; border: 2px solid var(--card);
+}
+.timeline-body { font-size: 12px; }
+.timeline-body .when { color: var(--muted); font-size: 11px; }
+.wa-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.sla-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 700; border-radius: 6px; padding: 2px 8px;
+}
+.sla-ok { background: rgba(34,197,94,.15); color: #22c55e; }
+.sla-warn { background: rgba(251,191,36,.15); color: #fbbf24; }
+.sla-bad { background: rgba(239,68,68,.15); color: #ef4444; }
+.theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.theme-swatch {
+  appearance: none; border: 2px solid var(--border); border-radius: 12px;
+  padding: 10px; cursor: pointer; text-align: left; background: var(--card);
+  color: var(--text); font: inherit;
+}
+.theme-swatch.on { border-color: var(--green); box-shadow: 0 0 0 2px color-mix(in srgb, var(--green) 30%, transparent); }
+.theme-swatch .swatch-bar {
+  height: 28px; border-radius: 8px; margin-bottom: 8px;
+  background: linear-gradient(90deg, var(--t1), var(--t2));
+}
+.theme-swatch .name { font-size: 12px; font-weight: 800; }
+.theme-swatch .desc { font-size: 10px; color: var(--muted); margin-top: 2px; }
