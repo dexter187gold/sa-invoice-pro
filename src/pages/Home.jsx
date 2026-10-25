@@ -7,6 +7,7 @@ import { openWhatsApp } from '../lib/share'
 import { monthCashSnapshot } from '../lib/documentActions'
 import { APP_VERSION } from '../config'
 import OnboardingChecklist from '../components/OnboardingChecklist'
+import PhaseBoard from '../components/PhaseBoard'
 
 function greeting() {
   const h = new Date().getHours()
@@ -88,14 +89,13 @@ export default function Home() {
   return (
     <PageFade>
       <OnboardingChecklist />
+      <PhaseBoard compact />
 
       <section className="pulse-hero">
         <div className="pulse-hero-text">
           <p className="pulse-kicker">{greeting()}</p>
           <h1 className="pulse-title">{company?.name || 'SA Invoice Pro'}</h1>
-          <p className="pulse-sub">
-            Your field desk · cash, jobs & clients in one pulse · v{APP_VERSION}
-          </p>
+          <p className="pulse-sub">Field desk · v{APP_VERSION}</p>
         </div>
         <div className="pulse-ring-wrap" title="Collection rate">
           <div className="pulse-ring" style={ringStyle}>
@@ -113,12 +113,7 @@ export default function Home() {
           { id: 'money', label: 'Money' },
           { id: 'jobs', label: 'Jobs' },
         ].map((f) => (
-          <button
-            key={f.id}
-            type="button"
-            className={`pulse-chip ${focus === f.id ? 'on' : ''}`}
-            onClick={() => setFocus(f.id)}
-          >
+          <button key={f.id} type="button" className={`pulse-chip ${focus === f.id ? 'on' : ''}`} onClick={() => setFocus(f.id)}>
             {f.label}
           </button>
         ))}
@@ -158,7 +153,7 @@ export default function Home() {
         <div className="pulse-empty card">
           <EmptyState
             title="Your desk is clear — in a good way"
-            description="Add a client, drop a job or raise the first tax invoice. Cloud sign-in keeps this phone and the next one in sync."
+            description="Add a client, drop a job or raise the first tax invoice."
             action={
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
                 <Link className="btn btn-primary" to="/clients">Add client</Link>
@@ -173,7 +168,7 @@ export default function Home() {
         <section className="pulse-section">
           <div className="pulse-section-head">
             <h2>Chase list</h2>
-            <span className="muted">WhatsApp-first · SA friendly</span>
+            <span className="muted">WhatsApp-first</span>
           </div>
           <div className="pulse-chase">
             {needsChase.map((row) => (
@@ -186,13 +181,7 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="pulse-chase-btns">
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-sm"
-                    onClick={() => chaseWhatsApp(row.client, row.total, row.count)}
-                  >
-                    WhatsApp
-                  </button>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => chaseWhatsApp(row.client, row.total, row.count)}>WhatsApp</button>
                   <Link className="btn btn-outline btn-sm" to="/invoices?status=overdue">View</Link>
                 </div>
               </div>
@@ -254,10 +243,6 @@ export default function Home() {
           </div>
         </section>
       )}
-
-      <p className="pulse-foot muted">
-        Built for SA workshops & field techs — VAT, WhatsApp, offline, cloud restore.
-      </p>
     </PageFade>
   )
 }
