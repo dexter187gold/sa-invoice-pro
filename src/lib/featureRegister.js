@@ -1,0 +1,103 @@
+/** Product feature register for license marketing & About. */
+export const FEATURE_PACKS = [
+  {
+    id: 'core',
+    title: 'Core desk',
+    items: [
+      'Offline-first IndexedDB workspace',
+      'Cloud login + multi-device restore',
+      'Tax invoices (ZAR + VAT)',
+      'Quotes and convert-to-invoice',
+      'Clients CRM lite',
+      'Payments ledger',
+      'Products & services catalog',
+      'PDF professional tax invoice',
+      'PWA install + service worker',
+      'Command palette',
+    ],
+  },
+  {
+    id: 'field',
+    title: 'Field & workshop',
+    items: [
+      'Job cards / tickets kanban',
+      'SLA timers',
+      'Job timeline',
+      'WhatsApp job updates',
+      'Job → invoice prefill',
+      'Billable + labour amount',
+      'Support modes: remote, on-site, workshop, collection',
+      'Devices / serials / site address on jobs',
+      'Client sign-off pad',
+      'IT service pack presets (PC, phone, FRP, retainer)',
+    ],
+  },
+  {
+    id: 'money',
+    title: 'Money & collection',
+    items: [
+      'Pulse home with collection ring',
+      'Chase list with one-tap WhatsApp',
+      'Account types COD / on-site / Net 7/30',
+      'Overdue filters',
+      'Recurring invoice templates',
+      'Credit note helper',
+      'Ageing buckets 30/60/90',
+      'Bulk invoice status',
+      'Client statements PDF',
+      'PayFast integration hooks',
+    ],
+  },
+  {
+    id: 'client-exp',
+    title: 'Client experience',
+    items: [
+      'Client portal links (90 day)',
+      'PortalCard share UI',
+      'Portal WhatsApp / email share',
+      'Invoice portal card',
+      'EN + AF WhatsApp templates',
+      'Signature on invoice record',
+      'Signature on PDF when present',
+      'Share invoice WhatsApp / email',
+      'Onboarding checklist for new shops',
+      'Ten global themes',
+    ],
+  },
+  {
+    id: 'nav-ux',
+    title: 'Navigation & UX',
+    items: [
+      'Contextual bottom navigation',
+      'Section bars (money, jobs, settings)',
+      'Safe-area mobile layout',
+      'Touch targets 44px',
+      'Theme picker',
+      'Density compact/comfort',
+      'Empty states',
+      'Status badges',
+      'Sortable tables',
+      'Undo delete helpers',
+    ],
+  },
+  {
+    id: 'ops',
+    title: 'Ops & admin',
+    items: [
+      'saip-sync cloud server',
+      'Admin portal',
+      'Workspace push/pull versioning',
+      'Local auto-backup',
+      'Sync health page',
+      'License server hooks',
+      'Changelog',
+      'Excel viewer',
+      'Documents pack (POPIA, SLA letters)',
+      'Reports snapshot',
+    ],
+  },
+]
+
+export function flatFeatureCount() {
+  return FEATURE_PACKS.reduce((n, p) => n + p.items.length, 0)
+}
