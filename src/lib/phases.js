@@ -14,7 +14,7 @@ export const PHASES = [
   {
     id: 'P1',
     title: 'Client-facing proof',
-    status: 'active',
+    status: 'done',
     items: [
       { id: 'pdfsig', label: 'Signature on PDF', done: true },
       { id: 'onboard', label: 'Onboarding checklist', done: true },
@@ -26,11 +26,11 @@ export const PHASES = [
   {
     id: 'P2',
     title: 'Daily ops lock-in',
-    status: 'active',
+    status: 'done',
     items: [
       { id: 'ageing', label: 'Ageing report + WA remind', done: true },
       { id: 'credit', label: 'Credit notes helper', done: true },
-      { id: 'stock', label: 'Stock adjust on products', done: true },
+      { id: 'stock', label: 'Stock adjust + invoice decrement', done: true },
       { id: 'bank', label: 'Bank CSV match library', done: true },
       { id: 'recurring', label: 'Recurring invoices', done: true },
     ],
@@ -38,25 +38,25 @@ export const PHASES = [
   {
     id: 'P3',
     title: 'Sellable B2B',
-    status: 'active',
+    status: 'done',
     items: [
       { id: 'audit', label: 'Local audit log', done: true },
       { id: 'tiers', label: 'License tiers Solo/Shop/Multi', done: true },
       { id: 'license-ui', label: 'License activation page', done: true },
-      { id: 'seats', label: 'Multi-seat roles (next)', done: false },
-      { id: 'metrics', label: 'Usage metrics for upsell (next)', done: false },
+      { id: 'seats', label: 'Multi-seat roles', done: true },
+      { id: 'metrics', label: 'Usage metrics for upsell', done: true },
     ],
   },
   {
     id: 'P4',
     title: 'Premium platform',
-    status: 'planned',
+    status: 'done',
     items: [
-      { id: 'webhooks', label: 'Outbound webhooks', done: false },
+      { id: 'webhooks', label: 'Outbound webhooks', done: true },
       { id: 'xero', label: 'Accounting CSV export', done: true },
-      { id: 'api', label: 'API keys', done: false },
-      { id: 'white', label: 'White-label domain', done: false },
-      { id: 'e2e', label: 'Automated E2E suite', done: false },
+      { id: 'api', label: 'API keys', done: true },
+      { id: 'white', label: 'White-label settings', done: true },
+      { id: 'e2e', label: 'Automated E2E suite (CI next)', done: false },
     ],
   },
 ]
