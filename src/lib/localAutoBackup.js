@@ -30,6 +30,7 @@ async function exportSnapshot(label, reason) {
   return {
     id: crypto.randomUUID(),
     at: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
     label: label || 'Auto',
     reason: reason || 'auto',
     counts: {
@@ -44,13 +45,11 @@ async function exportSnapshot(label, reason) {
 
 export async function saveAutoBackup({ reason = 'manual', label = 'Snapshot' } = {}) {
   const snap = await exportSnapshot(label, reason)
-  const store = 'auto_backups'
   try {
-    // Prefer dedicated store if present; fall back to settings blob
     if (db.STORES?.autoBackups) {
       await db.add(db.STORES.autoBackups, snap)
       const all = (await db.getAll(db.STORES.autoBackups)) || []
-      all.sort((a, b) => String(b.at).localeCompare(String(a.at)))
+      all.sort((a, b) => String(b.at || b.createdAt).localeCompare(String(a.at || a.createdAt)))
       for (const old of all.slice(MAX_SNAPS)) {
         try {
           await db.del(db.STORES.autoBackups, old.id)
@@ -81,17 +80,37 @@ export async function listAutoBackups() {
   try {
     if (db.STORES?.autoBackups) {
       const all = (await db.getAll(db.STORES.autoBackups)) || []
-      return all.sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, MAX_SNAPS)
+      return all.sort((a, b) => String(b.at || b.createdAt).localeCompare(String(a.at || a.createdAt))).slice(0, MAX_SNAPS)
     }
   } catch {}
   const list = (await db.getSetting('autoBackups', [])) || []
   return list.slice(0, MAX_SNAPS)
 }
 
+export async function getAutoBackup(id) {
+  const list = await listAutoBackups()
+  return list.find((s) => s.id === id) || null
+}
+
 export async function restoreAutoBackup(id) {
   const list = await listAutoBackups()
-  const snap = list.find((s) => s.id === id)
+  const snap = id ? list.find((s) => s.id === id) : list[0]
   if (!snap?.data) throw new Error('Snapshot not found')
   await db.importAll(snap.data, { wipe: false })
   return snap
+}
+
+/** Download a snapshot as a JSON file the user can keep offline / email. */
+export async function downloadAutoBackup(id) {
+  const list = await listAutoBackups()
+  const row = id ? list.find((s) => s.id === id) : list[0]
+  if (!row?.data) throw new Error('No auto-backup to download')
+  const blob = new Blob([JSON.stringify(row.data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `sa-invoice-autobackup-${(row.at || row.createdAt || '').slice(0, 10)}.json`
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 2000)
+  return row
 }
