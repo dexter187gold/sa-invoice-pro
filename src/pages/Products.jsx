@@ -7,6 +7,7 @@ import { formatMoney } from '../lib/money'
 import {
   SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, Segmented, downloadCsv,
 } from '../components/ui'
+import { IT_SERVICE_PRESETS, IT_PRODUCT_PRESETS, presetToServiceRow, presetToProductRow } from '../lib/itCatalog'
 
 export default function Products() {
   const { products, services, refresh, toast } = useApp()
@@ -22,6 +23,24 @@ export default function Products() {
     () => list.filter((p) => matchesQuery(p, q, ['name', 'sku', 'description'])),
     [list, q]
   )
+
+  const installItPack = async () => {
+    try {
+      let n = 0
+      for (const s of IT_SERVICE_PRESETS) {
+        await db.add(STORES.services, presetToServiceRow(s))
+        n++
+      }
+      for (const pr of IT_PRODUCT_PRESETS) {
+        await db.add(STORES.products, presetToProductRow(pr))
+        n++
+      }
+      await refresh?.()
+      toast?.(`Installed IT pack · ${n} items (edit prices anytime)`, 'success')
+    } catch (e) {
+      toast?.(e?.message || 'Install failed', 'error')
+    }
+  }
 
   const save = async (e) => {
     e.preventDefault()
@@ -90,6 +109,14 @@ export default function Products() {
 
   return (
     <PageFade>
+      <div className="card it-pack-banner" style={{ marginBottom: 12 }}>
+        <strong>IT & repair pack</strong>
+        <p className="muted" style={{ margin: '6px 0 10px', fontSize: 13 }}>
+          One-tap catalog for PC, smartphone, FRP/lock assist (legal owner only), on-site, remote, workshop, retainers — rates you can edit.
+        </p>
+        <button type="button" className="btn btn-primary btn-sm" onClick={installItPack}>Install IT service pack</button>
+      </div>
+
       <div className="page-header">
         <div>
           <h1>Products & services</h1>
@@ -146,7 +173,7 @@ export default function Products() {
       {!filtered.length ? (
         <EmptyState
           title={list.length ? 'No matches' : `No ${tab} yet`}
-          hint={list.length ? 'Try another search.' : `Add your first ${tab === 'products' ? 'product' : 'service'} for invoice lines.`}
+          hint={list.length ? 'Try another search.' : `Add your first ${tab === 'products' ? 'product' : 'service'} — or install the IT pack above.`}
         />
       ) : (
         filtered
