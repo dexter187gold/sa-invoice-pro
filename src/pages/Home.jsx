@@ -8,6 +8,8 @@ import { monthCashSnapshot } from '../lib/documentActions'
 import { APP_VERSION } from '../config'
 import OnboardingChecklist from '../components/OnboardingChecklist'
 import PhaseBoard from '../components/PhaseBoard'
+import DeskRulesCard from '../components/DeskRulesCard'
+import NpsCard from '../components/NpsCard'
 
 function greeting() {
   const h = new Date().getHours()
@@ -30,7 +32,7 @@ export default function Home() {
 
   const open = invoices.filter((i) => ['unpaid', 'partial', 'overdue'].includes(i.status))
   const paid = invoices.filter((i) => i.status === 'paid')
-  const ar = open.reduce((s, i) => s + (Number(i.amountDue ?? i.total) || 0), 0)
+  const ar = open.reduce((s, i) => s + (Number(i.amountDue != null ? i.amountDue : i.total) || 0), 0)
   const rev = paid.reduce((s, i) => s + (Number(i.total) || 0), 0)
   const today = new Date().toISOString().slice(0, 10)
   const paidToday = payments
@@ -48,7 +50,7 @@ export default function Home() {
       if (!['overdue', 'partial', 'unpaid'].includes(inv.status || '')) continue
       const id = String(inv.clientId)
       if (!map[id]) map[id] = { clientId: id, total: 0, count: 0, worstDays: 0 }
-      map[id].total += Number(inv.amountDue ?? inv.total) || 0
+      map[id].total += Number(inv.amountDue != null ? inv.amountDue : inv.total) || 0
       map[id].count++
       map[id].worstDays = Math.max(map[id].worstDays, daysPastDue(inv))
     }
@@ -90,6 +92,8 @@ export default function Home() {
     <PageFade>
       <OnboardingChecklist />
       <PhaseBoard compact />
+      <DeskRulesCard invoices={invoices} tickets={tickets} clients={clients} />
+      <NpsCard clients={clients} toast={toast} />
 
       <section className="pulse-hero">
         <div className="pulse-hero-text">
@@ -234,7 +238,7 @@ export default function Home() {
                   </div>
                   <div className="pulse-list-right">
                     <StatusBadge status={inv.status || 'unpaid'} />
-                    <strong>{formatMoney(inv.amountDue ?? inv.total)}</strong>
+                    <strong>{formatMoney(inv.amountDue != null ? inv.amountDue : inv.total)}</strong>
                   </div>
                 </Link>
               )
