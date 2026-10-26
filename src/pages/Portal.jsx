@@ -114,13 +114,33 @@ export default function Portal() {
     setBusyId(quote.id)
     setFlash('')
     try {
-      await submitPortalQuoteDecision(token, quote.id, action, noteById[quote.id] || '')
-      setFlash(
-        action === 'reject'
-          ? `Quote ${quote.number || ''} declined — the shop has been notified.`
-          : `Quote ${quote.number || ''} accepted — thank you! The shop will follow up.`,
-      )
-      await load()
+      const res = await submitPortalQuoteDecision(token, quote.id, action, noteById[quote.id] || '', {
+        quote,
+      })
+      if (res?.offline) {
+        setFlash(
+          action === 'reject'
+            ? `Quote ${quote.number || ''} declined offline — saved until the shop syncs.`
+            : `Quote ${quote.number || ''} accepted offline — saved until the shop syncs.`,
+        )
+        // Optimistic local status in view
+        setData((d) => {
+          if (!d) return d
+          const list = (d.quotes || d.workspace?.quotes || []).map((q) =>
+            String(q.id) === String(quote.id)
+              ? { ...q, status: action === 'reject' ? 'rejected' : 'accepted', portalDecision: action === 'reject' ? 'rejected' : 'accepted' }
+              : q,
+          )
+          return d.quotes ? { ...d, quotes: list } : { ...d, workspace: { ...d.workspace, quotes: list } }
+        })
+      } else {
+        setFlash(
+          action === 'reject'
+            ? `Quote ${quote.number || ''} declined — the shop has been notified.`
+            : `Quote ${quote.number || ''} accepted — thank you! The shop will follow up.`,
+        )
+        await load()
+      }
     } catch (e) {
       setFlash(e?.message || 'Decision failed — try again or WhatsApp the shop')
     } finally {
@@ -213,24 +233,14 @@ export default function Portal() {
               quotes.map((qt) => {
                 const open = canDecideQuote(qt)
                 return (
-                  <div
-                    key={qt.id || qt.number}
-                    className="card"
-                    style={{ padding: 16, marginBottom: 12 }}
-                  >
+                  <div key={qt.id || qt.number} className="card" style={{ padding: 16, marginBottom: 12 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                       <div>
-                        <strong>{qt.number || 'Quote'}</strong>{' '}
-                        <StatusPill status={qt.status} />
+                        <strong>{qt.number || 'Quote'}</strong> <StatusPill status={qt.status} />
                         <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>
                           {formatMoney(qt.total)} · dated {formatDate(qt.date)}
                           {qt.validUntil ? ` · valid until ${formatDate(qt.validUntil)}` : ''}
                         </div>
-                        {qt.devices || qt.serviceType ? (
-                          <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
-                            {[qt.serviceType, qt.devices].filter(Boolean).join(' · ')}
-                          </div>
-                        ) : null}
                       </div>
                     </div>
 
@@ -242,7 +252,6 @@ export default function Portal() {
                             <span style={{ opacity: 0.75 }}>{formatMoney(l.price)}</span>
                           </li>
                         ))}
-                        {qt.lines.length > 8 ? <li>… +{qt.lines.length - 8} more</li> : null}
                       </ul>
                     )}
 
@@ -306,8 +315,7 @@ export default function Portal() {
                     }}
                   >
                     <span>
-                      <strong>{inv.number}</strong> · {formatDate(inv.date)} ·{' '}
-                      <StatusPill status={inv.status} />
+                      <strong>{inv.number}</strong> · {formatDate(inv.date)} · <StatusPill status={inv.status} />
                     </span>
                     <strong>{formatMoney(inv.amountDue ?? inv.total)}</strong>
                   </div>
