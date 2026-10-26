@@ -1,21 +1,22 @@
-# Roadmap execution status
+# Roadmap progress (2026-10-26)
 
-## How many slices are left?
+## Overall completion (honest)
 
-Not zero — and not “push everything in one commit.”
+| Phase | Focus | ~Done |
+|-------|--------|------|
+| P1 Foundation | Auth, sync, team, restore | **90%** |
+| P2 Desk / jobs | Passport, FRP/QC, Kanban, slips | **62%** |
+| P3 Money | Chase, bank match, conversions | **58%** |
+| P4 Client portal | Quotes, pay, ITN | **55%** |
+| P5 Team / branch | Team link, roles baseline | **42%** |
+| P6 Comms | SMS proxy, WA templates | **28%** |
+| P7 Intelligence | Desk rules | **18%** |
+| P8 License / WL | Tiers baseline | **32%** |
+| P9 Platform | E2E light, vault | **30%** |
+| P10 Moat | Collection ring, load-shedding | **40%** |
 
-| Band | What | Left |
-|------|------|------|
-| **Shipped strong** | Auth/sync/team, tickets/QC, chase, bank match UX, portal quotes+pay, collection ring, load-shedding, vault, PayFast sign+ITN | — |
-| **Partial** | Multi-branch depth, WA Business API, AI desk, white-label billing | Several slices |
-| **Open** | Postgres, full seat enforcement server-side, languages, AR intake, reseller marketplace | Larger slices |
+**Weighted overall: ~50%** toward license-grade P1–P10.
 
-**Estimate:** ~**25–35** meaningful product slices remain to finish P5–P10 at “sell licenses” depth (see `SA-Invoice-Pro-Roadmap-P1-P10.md`).
+## Auth recovery (6.11.1)
 
-## Mega-pack 6.11.0
-
-- Quote → Job → Invoice helpers
-- Job print slip + deep link
-- Desk rules on Home
-- PayFast ITN auto-paid
-- Portal `notify_url`
+If login fails but Sign up says email exists → **Forgot password** → recovery code → new password → auto cloud restore. No JSON backup required.
