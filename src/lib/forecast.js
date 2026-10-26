@@ -23,8 +23,11 @@ export function cashForecast(invoices = [], now = Date.now()) {
     out.count++
     out.total += amt
     const dueStr = inv.dueDate || inv.date
-    const dueMs = dueStr ? new Date(String(dueStr).slice(0, 10) + 'T12:00:00').getTime() : NaN
-    if (!Number.isNaN(dueMs) && dueMs < now) {
+    const dueDayMs = dueStr ? new Date(String(dueStr).slice(0, 10) + 'T00:00:00').getTime() : NaN
+    const today = new Date(now)
+    today.setHours(0, 0, 0, 0)
+    // Compare calendar days, not the current time; an invoice due today is not overdue at noon.
+    if (!Number.isNaN(dueDayMs) && dueDayMs < today.getTime()) {
       out.overdue += amt
       out.d30 += amt // expect soonest collection pressure
       continue
