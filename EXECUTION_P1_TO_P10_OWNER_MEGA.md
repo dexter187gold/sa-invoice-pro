@@ -11,8 +11,8 @@
 
 - The existing roadmap reports **~78% overall feature completion**. This is the roadmap's own headline estimate, not a launch-readiness score.
 - The ten phase percentages listed in `ROADMAP_STATUS.md` average **66.7% unweighted**. That is a transparent diagnostic average only; it does not replace the roadmap's weighted estimate.
-- **Release readiness is not green.** The last recorded GitHub Actions run passed unit tests and the production build, but failed at Playwright E2E. The E2E import has now been corrected on this branch; a fresh passing run is still required.
-- The client portal is treated as a **P1 release blocker** until a real generated link is proven to load the correct customer data on mobile, including failure/expiry behaviour.
+- **Latest app CI is green** for the current execution commit: unit tests, production build, and all three Playwright smoke tests passed. This is a smoke gate, not proof of all customer workflows.
+- The client portal remains a **P1 acceptance gate** until a real generated link is proven to load the correct customer data on mobile, including failure/expiry behaviour. The backend fix is merged to saip-sync main and Render deployment is in progress.
 - The Render `saip-sync` service remains the existing backend. Do not overwrite its service or deploy unrelated app code into it.
 
 ## Owner's priority rules
@@ -46,7 +46,7 @@
 - Converted Playwright configuration to ESM and corrected the E2E spec import to ESM after the prior Playwright job failed.
 - Removed a hard-coded admin credential from the current app security audit file; **live credential rotation and Git-history cleanup are still outstanding**.
 - Added portal preflight sync validation in the client page and link refresh card so failed sync does not silently create a link against stale cloud data.
-- Began backend portal hardening on the separate `saip-sync` branch: bounded API wait, visible retry/error state, HTML escaping of customer-controlled values, and a regression test.
+- Merged backend portal hardening into `saip-sync` main after its new regression test passed: bounded API wait, visible retry/error state, HTML escaping of customer-controlled values, and a regression test. Render auto-deploy is still being verified.
 
 ## Mandatory acceptance gates before calling this done
 
