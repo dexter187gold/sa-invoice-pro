@@ -1,19 +1,13 @@
-export const APP_VERSION = '6.7.0'
+export const APP_VERSION = '6.8.0'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
-export const APP_CODENAME = '6.7.0 · time clock · bank CSV UI'
+export const APP_CODENAME = '6.8.0 · branches · SMS · loaners · FRP checklists'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
 export const HELIX_ROUTES = {
-  desk: '/desk',
-  tickets: '/desk/tickets',
-  inbox: '/desk/inbox',
-  clients: '/desk/clients',
-  channels: '/desk/channels',
-  knowledge: '/desk/knowledge',
-  reports: '/desk/reports',
-  portal: '/portal',
-  login: '/login',
+  desk: '/desk', tickets: '/desk/tickets', inbox: '/desk/inbox', clients: '/desk/clients',
+  channels: '/desk/channels', knowledge: '/desk/knowledge', reports: '/desk/reports',
+  portal: '/portal', login: '/login',
 }
 
 export const VAT_RATE_DEFAULT = 0.15
