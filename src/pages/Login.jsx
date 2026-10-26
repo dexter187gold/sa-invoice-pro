@@ -16,9 +16,35 @@ export default function Login() {
   const [form, setForm] = useState({ username: '', email: '', password: '', name: '', emailConfirm: '', newPassword: '', recoveryCode: '' })
   const [shownCode, setShownCode] = useState('')
   const [busy, setBusy] = useState(false)
+  const [googleEnabled, setGoogleEnabled] = useState(false)
   const [splash, setSplash] = useState(() => { try { return sessionStorage.getItem('sa_splash_done') !== '1' } catch { return true } })
   const [fade, setFade] = useState(false)
   const [profileCount, setProfileCount] = useState(null)
+
+  // Google OAuth return: store token and enter app
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search)
+      const gt = q.get('google_token')
+      const em = q.get('email')
+      if (gt) {
+        try {
+          localStorage.setItem('saip_sync_token', gt)
+          localStorage.setItem('sa_cloud_token', gt)
+          if (em) localStorage.setItem('sa_cloud_email', em)
+        } catch {}
+        window.history.replaceState({}, '', '/login')
+        window.location.href = '/'
+      }
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    fetch((Sync.base || 'https://saip-sync.onrender.com') + '/api/auth/google/status')
+      .then((r) => r.json())
+      .then((j) => setGoogleEnabled(!!j.enabled))
+      .catch(() => setGoogleEnabled(false))
+  }, [])
 
   useEffect(() => { if (user) nav(company?.name ? '/' : '/setup', { replace: true }) }, [user, company, nav])
   useEffect(() => { db.getAll(db.STORES.users).then((u) => setProfileCount((u || []).length)).catch(() => setProfileCount(0)) }, [])
@@ -179,6 +205,21 @@ export default function Login() {
               <label className="stack" style={{ gap: 4 }}><span className="muted" style={{ fontSize: 12 }}>Password</span>
                 <input className="input" type="password" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} autoComplete={mode === 'in' ? 'current-password' : 'new-password'} /></label>
               <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Please wait…' : mode === 'in' ? 'Enter the lab' : 'Create account'}</button>
+              {mode === 'in' && (
+                <>
+                  <p className="muted" style={{ textAlign: 'center', margin: '4px 0 0', fontSize: 12 }}>or</p>
+                  {googleEnabled ? (
+                    <a className="btn btn-outline" style={{ display: 'block', textAlign: 'center' }}
+                      href={(Sync.base || 'https://saip-sync.onrender.com').replace(/\/$/, '') + '/api/auth/google'}>
+                      Sign in with Google
+                    </a>
+                  ) : (
+                    <p className="muted" style={{ textAlign: 'center', fontSize: 12, margin: 0 }}>
+                      Google sign-in activates when GOOGLE_CLIENT_ID is set on the sync server
+                    </p>
+                  )}
+                </>
+              )}
             </>
           )}
         </form>
