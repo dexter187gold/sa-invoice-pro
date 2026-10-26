@@ -25,6 +25,8 @@ import License from './pages/License'
 import Team from './pages/Team'
 import Webhooks from './pages/Webhooks'
 import BankImport from './pages/BankImport'
+import Branches from './pages/Branches'
+import SmsGateway from './pages/SmsGateway'
 import Payments from './pages/Payments'
 import ExcelViewer from './pages/ExcelViewer'
 import Changelog from './pages/Changelog'
@@ -87,6 +89,8 @@ function AppInner() {
                 <Route path="/payroll" element={<Payroll />} />
                 <Route path="/payments" element={<Payments />} />
                 <Route path="/bank" element={<BankImport />} />
+                <Route path="/branches" element={<Branches />} />
+                <Route path="/sms" element={<SmsGateway />} />
                 <Route path="/excel" element={<ExcelViewer />} />
                 <Route path="/changelog" element={<Changelog />} />
                 <Route path="/sync" element={<SyncHealth />} />
