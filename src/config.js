@@ -1,7 +1,7 @@
-export const APP_VERSION = '6.10.3'
+export const APP_VERSION = '6.11.0'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
-export const APP_CODENAME = '6.10.3 · bank match UX · signed PayFast portal'
+export const APP_CODENAME = '6.11.0 · quote-job-invoice · desk rules · PayFast ITN · job slip'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
 export const HELIX_ROUTES = {
