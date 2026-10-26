@@ -16,7 +16,9 @@ export function buildChaseMessage(inv, client = {}, company = {}) {
   const name = client.name || inv.clientName || 'there'
   const co = company.name || 'us'
   const num = inv.number || inv.id || ''
-  const bal = Number(inv.amountDue ?? inv.balance ?? (Number(inv.total || 0) - Number(inv.amountPaid || 0)) || 0)
+  // Split so Rollup does not see ?? mixed with || in one expression
+  const rawBal = inv.amountDue ?? inv.balance ?? (Number(inv.total || 0) - Number(inv.amountPaid || 0))
+  const bal = Number(rawBal) || 0
   const age = daysPastDue(inv)
   const ageBit = age > 0 ? ` (${age} day${age === 1 ? '' : 's'} past due)` : ''
   return (
