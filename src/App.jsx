@@ -34,6 +34,7 @@ import SyncHealth from './pages/SyncHealth'
 import Inbox from './pages/Inbox'
 import { APP_VERSION } from './config'
 import { ErrorBoundary } from './components/ui'
+import RoleGate from './components/RoleGate'
 
 function Guard({ children, needCompany }) {
   const { ready, user, company } = useApp()
@@ -73,6 +74,7 @@ function AppInner() {
         <Route path="/*" element={
           <Guard needCompany>
             <Shell>
+              <RoleGate>
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/dashboard" element={<Dashboard />} />
@@ -103,6 +105,7 @@ function AppInner() {
                 <Route path="/settings" element={<Settings />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
+              </RoleGate>
             </Shell>
           </Guard>
         } />
