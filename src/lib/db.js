@@ -1,5 +1,5 @@
 
-const DB_NAME = 'SAInvoicePro_v2'
+import versionInfo from '../../version.json'\n\nconst DB_NAME = 'SAInvoicePro_v2'
 const DB_VERSION = 3
 
 export const STORES = {
@@ -108,7 +108,7 @@ export async function exportAll() {
   const out = {}
   for (const k of Object.keys(STORES)) out[k] = await getAll(STORES[k])
   out.exportedAt = new Date().toISOString()
-  out.version = '4.3.2'
+  out.version = versionInfo.version
   out.app = 'SA Invoice Pro Lab'
   return out
 }
