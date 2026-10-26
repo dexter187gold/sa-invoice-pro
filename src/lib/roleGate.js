@@ -34,6 +34,8 @@ export const ROUTE_PERMS = {
   '/sms': 'settings',
   '/accounting': 'reports',
   '/payroll': 'employees',
+  '/recurring': 'invoices',
+  '/wa-templates': 'settings',
 }
 
 export function permForPath(pathname) {

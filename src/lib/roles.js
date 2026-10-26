@@ -1,3 +1,5 @@
+/** Role definitions + permission checks for multi-seat desks. */
+
 export const ROLES = [
   {
     id: 'owner',
@@ -15,16 +17,37 @@ export const ROLES = [
     ],
   },
   {
+    id: 'manager',
+    label: 'Manager',
+    description: 'Desk + money + reports · no team/license settings',
+    permissions: [
+      'invoices', 'quotes', 'clients', 'tickets', 'products', 'payments',
+      'reports', 'documents', 'expenses',
+    ],
+  },
+  {
     id: 'front_desk',
     label: 'Front desk',
     description: 'Clients, jobs, quotes — limited money',
-    permissions: ['clients', 'tickets', 'quotes', 'invoices.create', 'payments.view'],
+    permissions: ['clients', 'tickets', 'quotes', 'invoices', 'payments'],
   },
   {
     id: 'tech',
     label: 'Technician',
     description: 'Jobs & job photos · bill own work',
-    permissions: ['tickets', 'invoices.create', 'products.view', 'clients.view'],
+    permissions: ['tickets', 'invoices', 'products', 'clients'],
+  },
+  {
+    id: 'accountant',
+    label: 'Accountant',
+    description: 'Payments, reports, expenses · read clients/invoices',
+    permissions: ['payments', 'reports', 'expenses', 'invoices', 'clients', 'accounting'],
+  },
+  {
+    id: 'viewer',
+    label: 'Viewer',
+    description: 'Read-only dashboard-style access',
+    permissions: ['clients', 'tickets', 'invoices', 'quotes', 'reports'],
   },
 ]
 
@@ -40,4 +63,9 @@ export function can(roleId, perm) {
   const base = String(perm).split('.')[0]
   if (role.permissions.includes(base)) return true
   return false
+}
+
+/** Human list for Team page / docs. */
+export function rolesForUi() {
+  return ROLES.map(({ id, label, description }) => ({ id, label, description }))
 }

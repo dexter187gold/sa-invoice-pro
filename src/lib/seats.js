@@ -1,16 +1,9 @@
 /** Local seats (roles) + tier limit helpers. */
 import * as db from './db'
 import { STORES } from './db'
+import { ROLES as ROLE_DEFS } from './roles'
 
-export const ROLES = [
-  { id: 'owner', label: 'Owner' },
-  { id: 'admin', label: 'Admin' },
-  { id: 'manager', label: 'Manager' },
-  { id: 'tech', label: 'Technician' },
-  { id: 'front_desk', label: 'Front desk' },
-  { id: 'accountant', label: 'Accountant' },
-  { id: 'viewer', label: 'Viewer' },
-]
+export const ROLES = ROLE_DEFS.map(({ id, label, description }) => ({ id, label, description }))
 
 const LS_SEATS = 'saip_seats_v1'
 const LS_ACTIVE = 'saip_active_seat_id'
@@ -90,6 +83,9 @@ export async function setActiveSeatId(id) {
     if (id) localStorage.setItem(LS_ACTIVE, String(id))
     else localStorage.removeItem(LS_ACTIVE)
   } catch {}
+  try {
+    window.dispatchEvent(new CustomEvent('sa-active-seat', { detail: { id: id || '' } }))
+  } catch {}
 }
 
 export async function getActiveSeat() {
@@ -99,13 +95,30 @@ export async function getActiveSeat() {
   return rows.find((r) => String(r.id) === String(id)) || null
 }
 
+/** Verify optional PIN when switching into a protected seat. */
+export function verifySeatPin(seat, pin) {
+  if (!seat) return false
+  const expected = String(seat.pin || '').trim()
+  if (!expected) return true
+  return String(pin || '').trim() === expected
+}
+
 export function seatLimits(settings = {}, license = {}) {
-  const tier = String(license.tier || settings.tier || 'solo').toLowerCase()
+  const raw = String(license.tier || settings.tier || 'solo').toLowerCase()
+  const tier =
+    raw === 'shop' || raw === 'team'
+      ? 'shop'
+      : raw === 'multi' || raw === 'multi_branch'
+        ? 'multi'
+        : raw === 'enterprise'
+          ? 'enterprise'
+          : 'solo'
   const defaults = {
     solo: { users: 1, branches: 1, devices: 2 },
+    shop: { users: 5, branches: 1, devices: 8 },
     team: { users: 5, branches: 1, devices: 8 },
-    multi: { users: 15, branches: 5, devices: 25 },
-    multi_branch: { users: 15, branches: 5, devices: 25 },
+    multi: { users: 25, branches: 5, devices: 25 },
+    multi_branch: { users: 25, branches: 5, devices: 25 },
     enterprise: { users: 50, branches: 20, devices: 100 },
   }
   const base = defaults[tier] || defaults.solo
@@ -125,17 +138,29 @@ export function seatUsage({ teamMembers = [], branches = [], devices = [] }, lim
   }
 }
 
-/** Throw if adding a seat would exceed tier user limit */
-export async function assertCanAddSeat(settings = {}, license = {}) {
+/** Throw if adding a new seat would exceed tier user limit (edits of existing id ok). */
+export async function assertCanAddSeat(settings = {}, license = {}, { seatId } = {}) {
   const limits = seatLimits(settings, license)
   const rows = await listSeats()
   const active = rows.filter((r) => r.active !== false).length
-  if (active >= limits.users) {
+  const isEdit = seatId && rows.some((r) => String(r.id) === String(seatId))
+  if (!isEdit && active >= limits.users) {
     const err = new Error(
       `Seat limit reached (${active}/${limits.users} on ${limits.tier}). Upgrade license tier or deactivate a seat.`,
     )
     err.code = 'seat_limit'
     throw err
   }
-  return { active, max: limits.users, tier: limits.tier }
+  return { active, max: limits.users, tier: limits.tier, isEdit: !!isEdit }
+}
+
+export function activeSeatSummary(seat) {
+  if (!seat) return { label: 'Owner (default)', role: 'owner' }
+  const role = ROLE_DEFS.find((r) => r.id === seat.role)
+  return {
+    label: seat.name || 'Seat',
+    role: seat.role || 'tech',
+    roleLabel: role?.label || seat.role,
+    email: seat.email || '',
+  }
 }
