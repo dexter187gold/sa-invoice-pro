@@ -9,6 +9,7 @@
     "dev": "vite",
     "preview": "vite preview",
     "test:e2e": "playwright test",
+    "test:unit": "node --test tests/*.test.js",
     "check:exports": "node scripts/check-exports.mjs",
     "check:version": "node scripts/check-version.mjs"
   },
