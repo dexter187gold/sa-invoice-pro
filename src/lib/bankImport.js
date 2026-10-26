@@ -127,34 +127,62 @@ export function normalizeBankRows({ headers, rows }) {
   return out
 }
 
-export function scoreMatch(txn, inv, client) {
-  if (!txn?.isCredit || !(txn.amount > 0)) return 0
+/** Explain why a score was awarded (for bank match UX tooltips). */
+export function explainMatchScore(txn, inv, client) {
+  const reasons = []
+  if (!txn?.isCredit || !(txn.amount > 0)) return { score: 0, reasons: ['Not a credit'] }
   const due = Number(inv.amountDue ?? inv.total) || 0
-  if (due <= 0) return 0
+  if (due <= 0) return { score: 0, reasons: ['Invoice has no balance'] }
+
   let score = 0
   const amtDiff = Math.abs(txn.amount - due)
-  if (amtDiff < 0.02) score += 50
-  else if (amtDiff < 1) score += 35
-  else if (amtDiff < due * 0.05) score += 20
-  else if (txn.amount > due * 1.05) return 0
+  if (amtDiff < 0.02) {
+    score += 50
+    reasons.push('Exact amount')
+  } else if (amtDiff < 1) {
+    score += 35
+    reasons.push('Amount within R1')
+  } else if (amtDiff < due * 0.05) {
+    score += 20
+    reasons.push('Amount within 5%')
+  } else if (txn.amount > due * 1.05) {
+    return { score: 0, reasons: ['Payment larger than balance'] }
+  }
 
   const hay = `${txn.description} ${txn.reference}`.toLowerCase()
   const num = String(inv.number || '').toLowerCase()
-  if (num && hay.includes(num)) score += 40
-  if (num) {
+  if (num && hay.includes(num)) {
+    score += 40
+    reasons.push('Invoice number in description')
+  } else if (num) {
     const tail = num.replace(/[^0-9]/g, '').slice(-4)
-    if (tail && hay.includes(tail)) score += 15
+    if (tail && hay.includes(tail)) {
+      score += 15
+      reasons.push('Invoice number tail')
+    }
   }
   const name = String(client?.name || '').toLowerCase()
   if (name && name.length > 2) {
     const parts = name.split(/\s+/).filter((p) => p.length > 2)
+    let hits = 0
     for (const p of parts) {
-      if (hay.includes(p)) score += 10
+      if (hay.includes(p)) {
+        score += 10
+        hits++
+      }
     }
+    if (hits) reasons.push(`Client name token${hits > 1 ? 's' : ''}`)
   }
   const phone = String(client?.phone || client?.whatsapp || '').replace(/\D/g, '')
-  if (phone.length >= 7 && hay.includes(phone.slice(-7))) score += 10
-  return score
+  if (phone.length >= 7 && hay.includes(phone.slice(-7))) {
+    score += 10
+    reasons.push('Phone match')
+  }
+  return { score, reasons: reasons.length ? reasons : ['Weak signals only'] }
+}
+
+export function scoreMatch(txn, inv, client) {
+  return explainMatchScore(txn, inv, client).score
 }
 
 export function matchBankToInvoices(txns, invoices, clients) {
@@ -168,13 +196,15 @@ export function matchBankToInvoices(txns, invoices, clients) {
   for (const txn of credits) {
     let best = null
     let bestScore = 0
+    let bestReasons = []
     for (const inv of open) {
       if (used.has(String(inv.id))) continue
       const client = (clients || []).find((c) => String(c.id) === String(inv.clientId))
-      const s = scoreMatch(txn, inv, client)
+      const { score: s, reasons } = explainMatchScore(txn, inv, client)
       if (s > bestScore) {
         bestScore = s
         best = { inv, client }
+        bestReasons = reasons
       }
     }
     const suggested = bestScore >= 40
@@ -184,6 +214,7 @@ export function matchBankToInvoices(txns, invoices, clients) {
       invoice: best?.inv || null,
       client: best?.client || null,
       score: bestScore,
+      reasons: bestReasons,
       suggested,
     })
   }
