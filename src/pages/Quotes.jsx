@@ -33,7 +33,7 @@ export default function Quotes() {
   const [confirm, setConfirm] = useState(null)
 
   const counts = useMemo(() => {
-    const c = { all: quotes.length, draft: 0, converted: 0, accepted: 0, expired: 0 }
+    const c = { all: quotes.length, draft: 0, converted: 0, accepted: 0, rejected: 0, expired: 0 }
     for (const qt of quotes) {
       const s = String(qt.status || 'draft').toLowerCase()
       if (c[s] != null) c[s]++
@@ -48,7 +48,7 @@ export default function Quotes() {
       return matchesQuery(
         { ...qt, clientName: c?.name || '' },
         q,
-        ['number', 'status', 'clientName', 'templateId', 'devices', 'serviceType']
+        ['number', 'status', 'clientName', 'templateId', 'devices', 'serviceType', 'portalNote']
       )
     })
   }, [quotes, clients, q, status])
@@ -137,6 +137,7 @@ export default function Quotes() {
       qt.notes || '',
       qt.serviceType ? `Service: ${qt.serviceType}` : '',
       qt.devices ? `Devices: ${qt.devices}` : '',
+      qt.portalNote ? `Client portal note: ${qt.portalNote}` : '',
       `Converted from quote ${qt.number || qt.id}`,
     ].filter(Boolean)
     const inv = {
@@ -185,7 +186,7 @@ export default function Quotes() {
   }
 
   const exportCsv = () => {
-    const headers = ['Number', 'Client', 'Date', 'Valid until', 'Status', 'Template', 'Total', 'Service', 'Devices']
+    const headers = ['Number', 'Client', 'Date', 'Valid until', 'Status', 'Template', 'Total', 'Service', 'Devices', 'Portal note']
     const rows = filtered.map((qt) => {
       const c = clients.find((x) => String(x.id) === String(qt.clientId))
       return [
@@ -198,6 +199,7 @@ export default function Quotes() {
         Number(qt.total) || 0,
         qt.serviceType || '',
         qt.devices || '',
+        qt.portalNote || '',
       ]
     })
     downloadCsv(`quotes-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows)
@@ -207,8 +209,9 @@ export default function Quotes() {
   const chips = [
     { id: 'all', label: 'All', count: counts.all },
     { id: 'draft', label: 'Draft', count: counts.draft },
-    { id: 'converted', label: 'Converted', count: counts.converted },
     { id: 'accepted', label: 'Accepted', count: counts.accepted },
+    { id: 'rejected', label: 'Declined', count: counts.rejected },
+    { id: 'converted', label: 'Converted', count: counts.converted },
   ]
 
   return (
@@ -217,7 +220,7 @@ export default function Quotes() {
         <div>
           <h1>Quotes</h1>
           <p className="subtitle">
-            COD · hourly · flat-rate · ad-hoc · {quotes.length} total · convert fills the invoice template
+            COD · hourly · flat-rate · ad-hoc · portal Accept/Decline · {quotes.length} total
           </p>
         </div>
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
@@ -293,7 +296,7 @@ export default function Quotes() {
       {!filtered.length ? (
         <EmptyState
           title={quotes.length ? 'No matches' : 'No quotes yet'}
-          hint={quotes.length ? 'Try another search or filter.' : 'Load a demo rate card or enter a single amount — convert later fills the invoice fully.'}
+          hint={quotes.length ? 'Try another search or filter.' : 'Load a demo rate card or enter a single amount — convert later fills the invoice fully. Share portal link so clients can Accept/Decline.'}
         />
       ) : (
         filtered
@@ -303,6 +306,7 @@ export default function Quotes() {
             const c = clients.find((x) => String(x.id) === String(qt.clientId))
             const age = daysOverdue(qt.validUntil)
             const expired = age != null && age > 0 && String(qt.status || 'draft').toLowerCase() === 'draft'
+            const st = String(qt.status || 'draft').toLowerCase()
             return (
               <div key={qt.id} className="list-card" style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                 <div>
@@ -313,17 +317,23 @@ export default function Quotes() {
                     {qt.validUntil ? ` · valid ${formatDateZA(qt.validUntil)}` : ''}
                     {expired ? <span className="text-danger"> · expired</span> : null}
                     {qt.devices ? ` · ${qt.devices}` : ''}
+                    {qt.portalDecision ? ` · portal: ${qt.portalDecision}` : ''}
                   </div>
+                  {qt.portalNote ? (
+                    <div style={{ fontSize: 12, marginTop: 4, opacity: 0.85 }}>
+                      Client note: {qt.portalNote}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="list-card-actions">
                   <button type="button" className="btn btn-secondary btn-sm" onClick={() => pdf(qt, true)}>Preview</button>
                   <button type="button" className="btn btn-outline btn-sm" onClick={() => pdf(qt, false)}>PDF</button>
-                  {String(qt.status || '').toLowerCase() !== 'converted' && (
+                  {st !== 'converted' && st !== 'rejected' && (
                     <button type="button" className="btn btn-primary btn-sm" onClick={() => convert(qt)}>
                       Convert to invoice
                     </button>
                   )}
-                  {String(qt.status || '').toLowerCase() === 'converted' && (
+                  {st === 'converted' && (
                     <Link className="btn btn-outline btn-sm" to="/invoices">View invoices</Link>
                   )}
                   <button type="button" className="btn btn-outline btn-sm" onClick={() => del(qt.id)}>Del</button>
