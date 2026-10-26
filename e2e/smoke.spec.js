@@ -22,4 +22,21 @@ test.describe('SA Invoice Pro smoke', () => {
     const res = await page.goto('/')
     expect(res).toBeTruthy()
   })
+
+  test('portal route loads without crash', async ({ page }) => {
+    const errors = []
+    page.on('pageerror', (e) => errors.push(String(e)))
+    await page.goto('/portal')
+    await page.waitForTimeout(800)
+    await expect(page.locator('body')).toBeVisible()
+    const body = await page.textContent('body')
+    expect(body && /portal|token|link|SA Invoice/i.test(body)).toBeTruthy()
+    const fatal = errors.filter((e) => /Cannot find module|is not defined|Unexpected token/i.test(e))
+    expect(fatal, fatal.join('\n')).toHaveLength(0)
+  })
+
+  test('portal token path loads', async ({ page }) => {
+    await page.goto('/portal/demo-token')
+    await expect(page.locator('body')).toBeVisible()
+  })
 })

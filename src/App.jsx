@@ -34,6 +34,7 @@ import ExcelViewer from './pages/ExcelViewer'
 import Changelog from './pages/Changelog'
 import SyncHealth from './pages/SyncHealth'
 import Inbox from './pages/Inbox'
+import Portal from './pages/Portal'
 import { APP_VERSION } from './config'
 import { ErrorBoundary } from './components/ui'
 import RoleGate from './components/RoleGate'
@@ -72,6 +73,8 @@ function AppInner() {
       <ToastHost />
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/portal" element={<Portal />} />
+        <Route path="/portal/:token" element={<Portal />} />
         <Route path="/setup" element={<Guard needCompany={false}><Setup /></Guard>} />
         <Route path="/*" element={
           <Guard needCompany>

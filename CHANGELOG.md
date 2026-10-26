@@ -1,5 +1,21 @@
 # Changelog
 
+## 6.18.0 — Portal quote decisions (2026-10-26)
+
+### Client portal (P4)
+- Public `/portal` and `/portal/:token` routes (no shop login required).
+- Clients can **Accept** or **Decline** open quotes with an optional note.
+- Portal summary strip: open balance + quote counts.
+- Helpers in `src/lib/portalQuote.js` (token extract, decision payload, summary).
+
+### Bank match (P3)
+- Match results now carry **reason chips** (exact amount, invoice number, name tokens, phone).
+- `explainMatchScore` exported for tests and UI tooltips.
+
+### Platform (P9)
+- Playwright: portal route smoke + bank page route smoke.
+- Unit tests for portal quote decision helpers.
+
 ## 6.17.0 — Bench moat (2026-10-26)
 
 ### Job desk (P2)
