@@ -5,14 +5,17 @@ import {
   listBranches, upsertBranch, removeBranch, getActiveBranchId, setActiveBranchId,
 } from '../lib/branches'
 import { listLoaners, upsertLoaner, checkOutLoaner, checkInLoaner } from '../lib/loaners'
+import { seatLimits } from '../lib/seats'
 
 export default function Branches() {
-  const { toast, clients } = useApp()
+  const { toast, clients, company } = useApp()
   const [branches, setBranches] = useState([])
   const [active, setActive] = useState('')
   const [form, setForm] = useState({ name: '', code: '', address: '', phone: '' })
   const [loaners, setLoaners] = useState([])
   const [loanForm, setLoanForm] = useState({ label: '', type: 'laptop', serial: '' })
+  const license = company?.license || {}
+  const limits = seatLimits({ tier: company?.tier }, license)
 
   const reload = async () => {
     setBranches(await listBranches())
@@ -24,10 +27,14 @@ export default function Branches() {
   const save = async (e) => {
     e.preventDefault()
     if (!form.name.trim()) return toast('Branch name required', 'error')
-    await upsertBranch(form)
-    setForm({ name: '', code: '', address: '', phone: '' })
-    await reload()
-    toast('Branch saved', 'success')
+    try {
+      await upsertBranch(form, { settings: { tier: company?.tier }, license })
+      setForm({ name: '', code: '', address: '', phone: '' })
+      await reload()
+      toast('Branch saved', 'success')
+    } catch (err) {
+      toast(err?.message || 'Could not save branch', 'error')
+    }
   }
 
   const switchBr = async (id) => {
@@ -41,7 +48,9 @@ export default function Branches() {
       <div className="page-header">
         <div>
           <h1>Branches & loaners</h1>
-          <p className="subtitle">Multi-branch workspaces · loaner pool · {branches.length} branches</p>
+          <p className="subtitle">
+            Multi-branch · loaner pool · {branches.length}/{limits.branches} on {limits.tier}
+          </p>
         </div>
         <button type="button" className="btn btn-outline" onClick={() => switchBr('')}>Show all</button>
       </div>
@@ -67,7 +76,7 @@ export default function Branches() {
       </form>
 
       {!branches.length ? (
-        <EmptyState title="Single-shop mode" hint="Add a second location when you grow — data tags by branch." />
+        <EmptyState title="Single-shop mode" hint="Add a second location when you grow — data tags by branch. Solo tier allows 1 branch slot." />
       ) : (
         <div className="card" style={{ marginBottom: 16 }}>
           {branches.map((b) => (

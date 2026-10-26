@@ -1,8 +1,49 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
+import { brandLogoDataUrl } from '../lib/whiteLabel'
 
-/** Pinky & the Brain lab logo — glass orb with SA mark, magenta/cyan energy ring. */
+/** Lab logo — or white-label logo data URL when set. */
 export default function AppLogo({ size = 'md', showWordmark = false, className = '' }) {
   const px = typeof size === 'number' ? size : size === 'sm' ? 36 : size === 'lg' ? 88 : 56
+  const [logo, setLogo] = useState(() => {
+    try {
+      return brandLogoDataUrl()
+    } catch {
+      return ''
+    }
+  })
+
+  useEffect(() => {
+    const refresh = () => {
+      try {
+        setLogo(brandLogoDataUrl())
+      } catch {
+        setLogo('')
+      }
+    }
+    refresh()
+    window.addEventListener('sa-white-label', refresh)
+    return () => window.removeEventListener('sa-white-label', refresh)
+  }, [])
+
+  if (logo) {
+    return (
+      <div className={`app-logo-wrap ${className}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+        <img
+          src={logo}
+          alt=""
+          width={px}
+          height={px}
+          style={{ display: 'block', borderRadius: 12, objectFit: 'cover', width: px, height: px }}
+        />
+        {showWordmark && (
+          <div className="app-logo-wordmark">
+            <div className="app-logo-title">BRAND</div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className={`app-logo-wrap ${className}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
       <svg width={px} height={px} viewBox="0 0 128 128" className="app-logo-svg" aria-hidden="true"
