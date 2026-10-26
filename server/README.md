@@ -1,15 +1,20 @@
-# Optional API layer (not used by Cloudflare Pages static deploy)
+# SA Invoice Pro — optional API + portal store
 
-SA Invoice Pro’s **primary** runtime is the React SPA + IndexedDB.
-This folder is a **future** Node/Express outline for `/api/v1/invoices`, `/api/v1/documents`, `/api/v1/tickets` if you later host an API.
+Express scaffold that can run on Render alongside (or as) **saip-sync**.
 
-Do **not** wire Cloudflare Pages to this folder unless you deploy a separate Worker/Node service.
+## Portal endpoints (SPA-compatible)
+
+| Method | Path | Purpose |
+|--------|------|--------|
+| GET | `/api/portal/view/:token` | Public client portal payload |
+| POST | `/api/portal/quote-decision` | Accept / reject quote |
+| POST | `/api/portal/register` | Shop creates / refreshes token + snapshot |
+| GET | `/api/portal/decisions` | Recent decisions for desk |
+
+Data file: `$DATA_DIR/portal-store.json` (default `./data`).
 
 ```bash
-cd server
-npm install
-npm start
-# health: http://localhost:8787/api/v1/health
+cd server && npm install && npm start
 ```
 
-Validation uses Zod on request bodies. Data is in-memory only in this scaffold.
+Env: `PORT`, `DATA_DIR`, `PORTAL_PUBLIC_URL` (SPA origin for full portal links).

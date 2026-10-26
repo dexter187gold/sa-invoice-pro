@@ -1,5 +1,5 @@
 {
-  "version": "6.22.0",
-  "codename": "Inter-branch stock transfers",
-  "message": "branchStock map, transfer UI on Products, unit tests"
+  "version": "6.23.0",
+  "codename": "Portal server write-back · auth Playwright",
+  "message": "File-backed portal decisions on Express API, Quotes queue apply, e2e session helpers"
 }

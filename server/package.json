@@ -1,9 +1,9 @@
 {
   "name": "sa-invoice-pro-api",
   "private": true,
-  "version": "5.1.0",
+  "version": "6.23.0",
   "type": "module",
-  "description": "Optional Express API scaffold — not required for static SPA deploy",
+  "description": "Optional Express API + portal token store for saip-sync style deploys",
   "scripts": {
     "start": "node src/index.js"
   },
