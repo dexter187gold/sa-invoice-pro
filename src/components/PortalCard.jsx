@@ -8,6 +8,7 @@ export default function PortalCard({
   invoices = [],
   toast,
   onCreated,
+  preparePortal,
   compact = false,
 }) {
   const [busy, setBusy] = useState(false)
@@ -26,7 +27,7 @@ export default function PortalCard({
     }
     setBusy(true)
     try {
-      const data = await Sync.createPortalLink(client.id, { days: 90 })
+      const data = preparePortal ? await preparePortal(client) : await Sync.createPortalLink(client.id, { days: 90 })
       setLink(data)
       onCreated?.(data)
       try {

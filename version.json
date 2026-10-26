@@ -1,5 +1,5 @@
 {
-  "version": "6.0.1",
-  "codename": "Durable cloud auth · admin login fix",
-  "message": "Immediate git flush on register; admin esc/bind fix; login cloud messaging"
+  "version": "6.15.0",
+  "codename": "Collections, cash forecast, client tags",
+  "message": "Promise-to-pay tracking, collection call log, 30/60/90 cash forecast, quote win-rate insight"
 }
