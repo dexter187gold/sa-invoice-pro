@@ -1,29 +1,26 @@
 # Changelog
 
+## 6.22.0 — Inter-branch stock (2026-10-27)
+
+### Team / branches (P5)
+- `src/lib/stockTransfer.js` — `branchStock` map, HQ pool, transfer history.
+- Products page: transfer form (from/to branch + qty + note), per-branch stock strip.
+
+### Portal (P4)
+- (Prior) Offline decision queue; desk can still convert accepted quotes when sync is back.
+
+### Platform
+- Unit tests for stock transfer pure helpers.
+- Version **6.22.0**.
+
 ## 6.21.0 — PDF brand & portal offline (2026-10-27)
 
 ### White-label / PDF (P8)
-- `src/lib/pdfBrand.js` — logo + accent for jsPDF.
-- Tax invoice + professional templates draw brand logo and accent green.
-- Footer respects hide-powered-by.
+- Logo + accent on tax invoice / professional PDFs.
 
 ### Client portal (P4)
-- Quote decisions **queue offline** when sync server is unreachable.
-- Local decision payload still returned for optimistic UI.
-
-### Platform (P9)
-- Unit tests for pdfBrand + portal helpers.
-- Playwright: branches, settings, bank route smoke.
+- Offline queue when quote-decision POST fails.
 
 ## 6.20.0 — Shell brand & branch limits (2026-10-27)
 
-### White-label (P8)
-- Boot-time apply, logo data-URL, Shell brand, ActiveSeatChip.
-
-### Team / branches (P5)
-- Branch tier limits, nav Team/Branches/Bank.
-
-## 6.19.0 — Seats & white-label pilot (2026-10-27)
-
-### Team / seats (P5)
-- PIN lock, tier seat limits, expanded roles.
+Shell white-label, ActiveSeatChip, branch tier limits, logo pilot.

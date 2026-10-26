@@ -1,5 +1,5 @@
 {
-  "version": "6.21.0",
-  "codename": "PDF brand logo · portal offline decision queue",
-  "message": "White-label logo on tax invoice PDFs, accent colour headers, offline portal quote decisions"
+  "version": "6.22.0",
+  "codename": "Inter-branch stock transfers",
+  "message": "branchStock map, transfer UI on Products, unit tests"
 }

@@ -1,7 +1,7 @@
-export const APP_VERSION = '6.21.0'
+export const APP_VERSION = '6.22.0'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
-export const APP_CODENAME = '6.21.0 · PDF brand logo · portal offline decisions'
+export const APP_CODENAME = '6.22.0 · Inter-branch stock · portal queue desk'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
 export const HELIX_ROUTES = {
