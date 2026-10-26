@@ -10,6 +10,7 @@ import {
   portalQuoteSummary,
 } from '../lib/portalQuote'
 import { APP_VERSION, APP_NAME } from '../config'
+import { displayAppName, portalTagline, loadWhiteLabel, applyWhiteLabel } from '../lib/whiteLabel'
 
 function formatDate(iso) {
   if (!iso) return '—'
@@ -66,6 +67,13 @@ export default function Portal() {
   const [busyId, setBusyId] = useState(null)
   const [noteById, setNoteById] = useState({})
   const [flash, setFlash] = useState('')
+  const wl = useMemo(() => loadWhiteLabel(), [])
+  const brand = displayAppName(APP_NAME)
+  const tagline = portalTagline('Client portal')
+
+  useEffect(() => {
+    applyWhiteLabel(wl)
+  }, [wl])
 
   const load = async () => {
     if (!token) {
@@ -124,7 +132,9 @@ export default function Portal() {
     <div className="portal-public" style={{ minHeight: '100vh', background: 'var(--bg, #0f172a)', color: 'var(--text, #e2e8f0)' }}>
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 16px 48px' }}>
         <header style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 12, opacity: 0.7, letterSpacing: 0.04 }}>{APP_NAME} · Client portal</div>
+          <div style={{ fontSize: 12, opacity: 0.7, letterSpacing: 0.04 }}>
+            {brand} · {tagline}
+          </div>
           <h1 style={{ margin: '6px 0 4px', fontSize: 22 }}>
             {company.name || 'Your service provider'}
           </h1>
@@ -307,7 +317,7 @@ export default function Portal() {
 
             <p style={{ marginTop: 28, fontSize: 12, opacity: 0.55 }}>
               POPIA: this link is personal — do not forward. Contact the shop if anything looks wrong.
-              Powered by {APP_NAME}.
+              {!wl.hidePoweredBy ? ` Powered by ${APP_NAME}.` : ''}
             </p>
           </>
         )}
