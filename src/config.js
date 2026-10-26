@@ -1,7 +1,7 @@
-export const APP_VERSION = '6.9.2'
+export const APP_VERSION = '6.9.5'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
-export const APP_CODENAME = '6.9.2 · device bind · Google status · branch WS · E2E'
+export const APP_CODENAME = '6.9.5 · team workspace · Google OAuth · cloud restore'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
 export const HELIX_ROUTES = {
