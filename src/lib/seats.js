@@ -124,3 +124,18 @@ export function seatUsage({ teamMembers = [], branches = [], devices = [] }, lim
     devices: { used: devices.length, max: limits.devices },
   }
 }
+
+/** Throw if adding a seat would exceed tier user limit */
+export async function assertCanAddSeat(settings = {}, license = {}) {
+  const limits = seatLimits(settings, license)
+  const rows = await listSeats()
+  const active = rows.filter((r) => r.active !== false).length
+  if (active >= limits.users) {
+    const err = new Error(
+      `Seat limit reached (${active}/${limits.users} on ${limits.tier}). Upgrade license tier or deactivate a seat.`,
+    )
+    err.code = 'seat_limit'
+    throw err
+  }
+  return { active, max: limits.users, tier: limits.tier }
+}
