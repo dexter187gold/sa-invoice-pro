@@ -1,4 +1,4 @@
-# SA Invoice Pro 4.1
+# SA Invoice Pro 6.15.0
 
 **Sell-ready offline-first invoicing for South African businesses.**
 
@@ -19,12 +19,12 @@ Tax invoices · job cards → invoice · quotes · payroll estimates · accounti
 | **License** | HWID handshake + vendor activation server |
 | **Offline** | IndexedDB workspace — works when the network does not |
 
-## What’s in 4.1
+## Earlier release notes — 4.1
 
 - **Load demo data** (Settings → Backup) for sales walkthroughs
 - **WhatsApp + Email** share from invoice editor
 
-## What’s in 4.0
+## Earlier release notes — 4.0
 
 Built on the 3.4–3.12 commercial train:
 
