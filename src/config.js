@@ -1,7 +1,7 @@
-export const APP_VERSION = '6.10.0'
+export const APP_VERSION = '6.10.1'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
-export const APP_CODENAME = '6.10.0 · roadmap exec · collection ring · load-shedding · device passport'
+export const APP_CODENAME = '6.10.1 · QC gate · FRP depth · portal quote decision · chase pack'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
 export const HELIX_ROUTES = {
