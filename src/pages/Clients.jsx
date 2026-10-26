@@ -12,19 +12,28 @@ import {
   SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, ActionMenu, DataTable,
 } from '../components/ui'
 import PortalCard from '../components/PortalCard'
+import {
+  CLIENT_TAG_PRESETS, normalizeTags, filterClientsByTag, toggleClientTag, clientHasTag,
+} from '../lib/clientTags'
 
 export default function Clients() {
   const { clients, invoices, payments, company, refresh, toast } = useApp()
   const [q, setQ] = useState('')
+  const [tagFilter, setTagFilter] = useState('all')
   const [confirm, setConfirm] = useState(null)
   const [portalBusyId, setPortalBusyId] = useState(null)
   const [lastPortal, setLastPortal] = useState(null)
-  const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', notes: '' })
+  const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', notes: '', tags: [] })
 
-  const filtered = useMemo(
-    () => clients.filter((c) => matchesQuery(c, q, ['name', 'email', 'phone', 'company', 'notes'])),
-    [clients, q],
-  )
+  const filtered = useMemo(() => {
+    let rows = filterClientsByTag(clients, tagFilter)
+    rows = rows.filter((c) => matchesQuery(
+      { ...c, tagsJoined: normalizeTags(c.tags).join(' ') },
+      q,
+      ['name', 'email', 'phone', 'company', 'notes', 'tagsJoined'],
+    ))
+    return rows
+  }, [clients, q, tagFilter])
 
   const save = async (e) => {
     e.preventDefault()
@@ -35,10 +44,18 @@ export default function Clients() {
       phone: form.phone || '',
       company: form.company || '',
       notes: form.notes || '',
+      tags: normalizeTags(form.tags),
     })
-    setForm({ name: '', email: '', phone: '', company: '', notes: '' })
+    setForm({ name: '', email: '', phone: '', company: '', notes: '', tags: [] })
     await refresh()
     toast('Client saved', 'success')
+  }
+
+  const cycleTag = async (client, tagId) => {
+    const nextTags = toggleClientTag(client.tags, tagId)
+    await db.put(STORES.clients, { ...client, tags: nextTags, updatedAt: new Date().toISOString() })
+    await refresh()
+    toast(nextTags.includes(tagId) ? `Tagged ${tagId}` : `Removed ${tagId}`, 'success')
   }
 
   const del = (id) => {
@@ -108,6 +125,11 @@ export default function Clients() {
         }
       },
     },
+    ...CLIENT_TAG_PRESETS.map((t) => ({
+      id: `tag-${t.id}`,
+      label: clientHasTag(c, t.id) ? `− ${t.label}` : `+ ${t.label}`,
+      onClick: () => cycleTag(c, t.id),
+    })),
     { id: 'del', label: 'Delete', onClick: () => del(c.id), danger: true },
   ]
 
@@ -116,13 +138,32 @@ export default function Clients() {
       .filter((i) => String(i.clientId) === String(clientId) && ['unpaid', 'partial', 'overdue'].includes(i.status))
       .reduce((s, i) => s + (Number(i.amountDue ?? i.total) || 0), 0)
 
+  const tagChip = (id) => {
+    const p = CLIENT_TAG_PRESETS.find((t) => t.id === id)
+    return (
+      <span
+        key={id}
+        style={{
+          fontSize: 10,
+          padding: '1px 6px',
+          borderRadius: 999,
+          background: (p?.color || '#64748b') + '33',
+          color: p?.color || '#94a3b8',
+          marginRight: 4,
+        }}
+      >
+        {p?.label || id}
+      </span>
+    )
+  }
+
   return (
     <PageFade>
       <div className="page-header">
         <div>
           <h1>Clients</h1>
           <p className="subtitle">
-            {clients.length} clients · portal · statement · WhatsApp
+            {clients.length} clients · tags · portal · statement · WhatsApp
           </p>
         </div>
       </div>
@@ -148,11 +189,35 @@ export default function Clients() {
           <label className="label">Notes</label>
           <input className="input" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
         </div>
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label className="label">Tags</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {CLIENT_TAG_PRESETS.map((t) => {
+              const on = form.tags.includes(t.id)
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={`btn btn-sm ${on ? 'btn-secondary' : 'btn-outline'}`}
+                  onClick={() => setForm({ ...form, tags: toggleClientTag(form.tags, t.id) })}
+                >
+                  {t.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
         <button className="btn btn-primary" type="submit">Add client</button>
       </form>
 
-      <div className="toolbar sticky-tools">
+      <div className="toolbar sticky-tools" style={{ flexWrap: 'wrap', gap: 8 }}>
         <SearchInput value={q} onChange={setQ} placeholder="Search clients…" />
+        <select className="input" style={{ width: 'auto' }} value={tagFilter} onChange={(e) => setTagFilter(e.target.value)}>
+          <option value="all">All tags</option>
+          {CLIENT_TAG_PRESETS.map((t) => (
+            <option key={t.id} value={t.id}>{t.label}</option>
+          ))}
+        </select>
       </div>
 
       {!filtered.length ? (
@@ -163,6 +228,7 @@ export default function Clients() {
             <thead>
               <tr>
                 <th>Name</th>
+                <th>Tags</th>
                 <th>Phone</th>
                 <th>Email</th>
                 <th>Open AR</th>
@@ -172,7 +238,11 @@ export default function Clients() {
             <tbody>
               {filtered.map((c) => (
                 <tr key={c.id}>
-                  <td><strong>{c.name}</strong>{c.company ? <div className="muted" style={{ fontSize: 12 }}>{c.company}</div> : null}</td>
+                  <td>
+                    <strong>{c.name}</strong>
+                    {c.company ? <div className="muted" style={{ fontSize: 12 }}>{c.company}</div> : null}
+                  </td>
+                  <td>{normalizeTags(c.tags).map(tagChip)}</td>
                   <td>{c.phone || '—'}</td>
                   <td>{c.email || '—'}</td>
                   <td>{formatMoney(arFor(c.id))}</td>

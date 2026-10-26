@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { formatMoney } from '../lib/money'
 import { agedBuckets } from '../lib/accounting'
+import { cashForecast } from '../lib/forecast'
+import { quoteWinRate } from '../lib/insights'
 import {
   StatCard, ProgressBar, EmptyState, PageFade, formatDateZA, SearchInput, matchesQuery,
   StatusBadge, downloadCsv,
@@ -22,6 +24,8 @@ export default function Reports() {
   const exp = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0)
   const vatOut = paid.reduce((s, i) => s + (Number(i.vatAmount) || 0), 0)
   const aged = agedBuckets(invoices)
+  const forecast = useMemo(() => cashForecast(invoices), [invoices])
+  const win = useMemo(() => quoteWinRate(quotes || []), [quotes])
   const totalAged = Object.values(aged.buckets || {}).reduce((s, v) => s + (Number(v) || 0), 0) || 1
   const collectionRate = rev + out > 0 ? Math.round((rev / (rev + out)) * 100) : 0
   const paymentsTotal = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
@@ -136,7 +140,12 @@ export default function Reports() {
         ['Open invoices', open.length],
         ['Paid invoices', paid.length],
         ['Quotes', quotes?.length || 0],
+        ['Quote win rate %', win.rate ?? ''],
         ['Clients', clients.length],
+        ['Forecast 30d', forecast.d30],
+        ['Forecast 60d', forecast.d60],
+        ['Forecast 90d', forecast.d90],
+        ['Forecast overdue pressure', forecast.overdue],
         ['AR current', aged.buckets?.current || 0],
         ['AR 1-30', aged.buckets?.d30 || 0],
         ['AR 31-60', aged.buckets?.d60 || 0],
@@ -168,7 +177,7 @@ export default function Reports() {
         <div>
           <h1>Reports</h1>
           <p className="subtitle">
-            {company?.name || 'Workspace'} · sales, VAT, aged debtors · {formatDateZA(new Date().toISOString())}
+            {company?.name || 'Workspace'} · sales, VAT, aged debtors, forecast · {formatDateZA(new Date().toISOString())}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
@@ -193,6 +202,39 @@ export default function Reports() {
         <StatCard label="VAT output (paid)" value={formatMoney(vatOut)} />
         <StatCard label="Payments logged" value={formatMoney(paymentsTotal)} />
         <StatCard label="Open invoices" value={open.length} tone={open.length ? 'warn' : undefined} />
+        <StatCard
+          label="Quote win rate"
+          value={win.rate != null ? `${win.rate}%` : '—'}
+          hint={win.decided ? `${win.won} won / ${win.decided} decided` : 'No decided quotes yet'}
+          tone={win.rate != null && win.rate >= 50 ? 'good' : undefined}
+        />
+        <StatCard label="Cash due ≤30d" value={formatMoney(forecast.d30)} tone={forecast.d30 ? 'warn' : undefined} />
+        <StatCard label="Cash due 31–60d" value={formatMoney(forecast.d60)} />
+        <StatCard label="Cash due 61–90d" value={formatMoney(forecast.d90)} />
+      </div>
+
+      <div className="card" style={{ marginBottom: '1rem' }}>
+        <h3 style={{ marginTop: 0 }}>Cash forecast (open invoices by due date)</h3>
+        <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
+          Overdue pressure: <strong>{formatMoney(forecast.overdue)}</strong> · {forecast.count} open lines · total AR {formatMoney(forecast.total)}
+        </p>
+        <div className="grid-stats">
+          <div className="card stat" style={{ boxShadow: 'none' }}>
+            <div className="label">≤ 30 days</div>
+            <div className="value" style={{ fontSize: '1.05rem' }}>{formatMoney(forecast.d30)}</div>
+            <ProgressBar value={forecast.d30} max={forecast.total || 1} tone="warn" />
+          </div>
+          <div className="card stat" style={{ boxShadow: 'none' }}>
+            <div className="label">31–60 days</div>
+            <div className="value" style={{ fontSize: '1.05rem' }}>{formatMoney(forecast.d60)}</div>
+            <ProgressBar value={forecast.d60} max={forecast.total || 1} />
+          </div>
+          <div className="card stat" style={{ boxShadow: 'none' }}>
+            <div className="label">61–90 days</div>
+            <div className="value" style={{ fontSize: '1.05rem' }}>{formatMoney(forecast.d90)}</div>
+            <ProgressBar value={forecast.d90} max={forecast.total || 1} />
+          </div>
+        </div>
       </div>
 
       <div className="card" style={{ marginBottom: '1rem' }}>
