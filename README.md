@@ -1,26 +1,23 @@
-# SA Invoice Pro 6.19.0
+# SA Invoice Pro 6.20.0
 
 **Sell-ready offline-first invoicing for South African IT / mobile repair / MSP benches.**
 
-Tax invoices · job cards → invoice · quotes · client portal approve · team seats · white-label pilot · payroll estimates · accounting · PayFast · POPIA — without a monthly SaaS lock-in.
+Tax invoices · job cards → invoice · quotes · client portal · team seats · white-label · branches · bank match · PayFast · POPIA — without a monthly SaaS lock-in.
 
 ## Why buyers choose it
 
 | Capability | What you get |
 |------------|----------------|
-| **Get paid** | VAT tax invoices, professional PDF, aging, bulk mark paid, CSV, chase pack |
+| **Get paid** | VAT tax invoices, professional PDF, aging, chase pack |
 | **Job cards** | Timer, device passport, FRP checklist, convert → invoice |
-| **Quotes** | One-click convert · client portal Accept / Decline |
-| **Team seats** | Roles, PIN switch, tier limits (solo/shop/multi) |
-| **White-label** | Brand name + accent CSS vars (pilot) |
-| **Bank match** | FNB/SBSA/ABSA/Nedbank CSV · confidence + reason chips |
-| **Reports** | CSV pack + cash forecast 30/60/90 + quote win-rate |
-| **Payroll** | 2026/27 PAYE · UIF · SDL · ETI estimates + payslip PDF (not e@syFile) |
-| **Books** | SA chart of accounts, journals, trial balance CSV |
-| **PayFast** | Sandbox + live, plus EFT logging |
-| **Documents** | SLA, POPIA, NDA lite, engagement letters |
-| **License** | HWID handshake + vendor activation server |
-| **Offline** | IndexedDB workspace + load-shedding outbound queue |
+| **Quotes** | Convert · client portal Accept / Decline |
+| **Team seats** | Roles, PIN switch, tier limits |
+| **White-label** | Brand name, accent, logo pilot, portal tagline |
+| **Branches** | Multi-location + loaners · tier branch limits |
+| **Bank match** | SA bank CSV · confidence + reason chips |
+| **Reports** | Cash forecast 30/60/90 + quote win-rate |
+| **Payroll** | 2026/27 PAYE · UIF · SDL · ETI estimates |
+| **Offline** | IndexedDB + load-shedding outbound queue |
 
 ## Stack
 
@@ -31,30 +28,10 @@ React 19 · Vite 6 · jsPDF · IndexedDB · optional Python license server
 ```bash
 npm install
 npm run dev
-```
-
-Production build:
-
-```bash
 npm run build
 ```
 
-Deploy `dist/` to Cloudflare Pages, Netlify, or any static host.  
-License server: `DEPLOY_LICENSE_SERVER.md` · `license_server.py`.
-
 Product contact: **sainvoicepro@gmail.com**
-
-## Keyboard
-
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+K` | Command palette |
-| `Ctrl+N` | New invoice |
-| `Ctrl+D` | Toggle theme |
-
-## Compliance
-
-Payroll figures are **client-side statutory estimates** for planning only. Use SARS e@syFile or a registered tax practitioner for filings. POPIA templates are starting points — review with counsel.
 
 ## License
 

@@ -1,26 +1,23 @@
-# Roadmap progress — 6.19.0
+# Roadmap progress — 6.20.0
 
-## Overall **~93%** product-desk completeness (aspirational 10k-unit map never literally 100%)
-
-Honest phase scores after seats polish + white-label pilot:
+## Overall **~94.5%** product-desk completeness
 
 | Phase | % | Notes |
 |-------|--:|-------|
-| **P1 Foundation** | **96%** | Auth, sync, restore, recovery codes, export-check CI |
-| **P2 Desk / jobs** | **88%** | Kanban, SLA, passport, FRP checklist, bill-from-ticket |
-| **P3 Money** | **92%** | Chase, PTP, bank import + reason chips, forecast, credit notes |
-| **P4 Client portal** | **90%** | Portal links, NPS, POPIA, quote Accept/Decline |
-| **P5 Team / branch** | **82%** | **PIN seats, tier limits, ActiveSeatChip**; inter-branch stock later |
-| **P6 Comms** | **78%** | WA templates, quiet hours, SMS gateway page, call log |
-| **P7 Intelligence** | **62%** | Desk rules, forecast, win-rate; full AI chat later |
-| **P8 License** | **76%** | Server hooks, tiers gate, **white-label CSS pilot** |
-| **P9 Platform** | **80%** | Playwright portal+team smoke, version-check, export-check |
-| **P10 Moat** | **80%** | Lab theme, collection ring, hologram, load-shedding |
+| **P1 Foundation** | **96%** | Auth, sync, restore, export-check CI |
+| **P2 Desk / jobs** | **88%** | Kanban, SLA, passport, FRP |
+| **P3 Money** | **92%** | Chase, bank match reasons |
+| **P4 Client portal** | **90%** | Quote Accept/Decline |
+| **P5 Team / branch** | **86%** | Seats PIN + **branch limits** + nav |
+| **P6 Comms** | **78%** | WA, quiet hours, SMS |
+| **P7 Intelligence** | **62%** | Desk rules, forecast |
+| **P8 License** | **80%** | **Shell brand + logo pilot** |
+| **P9 Platform** | **82%** | Playwright smoke expanded |
+| **P10 Moat** | **80%** | Lab, collection ring, load-shedding |
 
-### Weighted overall ≈ **93%** of *shipped desk value*
-Remaining to “feel 95%+”: deeper Playwright (login flows), logo upload / custom domain portal, inter-branch stock, sync-server portal decision persistence hardening.
+### Weighted ≈ **94.5%**
+Remaining to “feel 95%+”: PDF brand logo, deeper e2e auth flows, sync-server portal write-back.
 
-### This slice (6.19.0)
-- Seat PIN switch + assertCanAddSeat + expanded roles
-- White-label Settings tab + CSS var pilot
-- ActiveSeatChip component
+### This slice (6.20.0)
+- Shell white-label brand + ActiveSeatChip + Team/Branches/Bank nav
+- Branch tier limits · logo data URL helpers · boot apply

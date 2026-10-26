@@ -1,5 +1,5 @@
 {
-  "version": "6.19.0",
-  "codename": "Seats multi-user polish · white-label CSS pilot",
-  "message": "PIN seat switch, tier seat limits, expanded roles, white-label accent/brand, ActiveSeatChip"
+  "version": "6.20.0",
+  "codename": "Shell white-label · logo pilot · branch tier limits",
+  "message": "Boot-time white-label, Shell brand + ActiveSeatChip, nav Team/Branches/Bank, logo data URL, assertCanAddBranch"
 }
