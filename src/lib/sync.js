@@ -1,6 +1,6 @@
 /**
- * SA Invoice Pro – Cloud Sync client v1.7.0
- * Auth + workspace + device bind + branch WS + portal.
+ * SA Invoice Pro – Cloud Sync client v1.8.0
+ * Auth + workspace + device + branch + team + portal.
  */
 const BASE = 'https://saip-sync.onrender.com'
 const TOKEN_KEY = 'saip_sync_token'
@@ -66,16 +66,9 @@ let _lastError = null
 
 export const Sync = {
   base: BASE,
-
-  isLoggedIn() {
-    return !!getToken()
-  },
-
+  isLoggedIn() { return !!getToken() },
   getToken,
-
-  lastError() {
-    return _lastError
-  },
+  lastError() { return _lastError },
 
   async health() {
     try {
@@ -128,17 +121,9 @@ export const Sync = {
     return data
   },
 
-  logout() {
-    setToken(null)
-  },
-
-  async me() {
-    return request('/api/auth/me')
-  },
-
-  async pull() {
-    return request('/api/workspace')
-  },
+  logout() { setToken(null) },
+  async me() { return request('/api/auth/me') },
+  async pull() { return request('/api/workspace') },
 
   async push(workspaceData) {
     const r = await request('/api/workspace', {
@@ -150,29 +135,13 @@ export const Sync = {
     return r
   },
 
-  async workspaceHistory() {
-    return request('/api/workspace/history')
-  },
-
-  async restoreWorkspaceVersion(version) {
-    return request('/api/workspace/restore-version', {
-      method: 'POST',
-      body: JSON.stringify({ version }),
-    })
-  },
+  async workspaceHistory() { return request('/api/workspace/history') },
 
   getMeta() {
-    try {
-      return JSON.parse(localStorage.getItem(META_KEY) || 'null') || {}
-    } catch {
-      return {}
-    }
+    try { return JSON.parse(localStorage.getItem(META_KEY) || 'null') || {} } catch { return {} }
   },
-
   setMeta(meta) {
-    try {
-      localStorage.setItem(META_KEY, JSON.stringify({ ...Sync.getMeta(), ...meta }))
-    } catch {}
+    try { localStorage.setItem(META_KEY, JSON.stringify({ ...Sync.getMeta(), ...meta })) } catch {}
   },
 
   workspaceToImportShape(row) {
@@ -214,59 +183,14 @@ export const Sync = {
     return { ok: true, ...r }
   },
 
-  async pushInvoiceStatus(invoices) {
-    const list = Array.isArray(invoices) ? invoices : [invoices]
-    return request('/api/status/push', {
-      method: 'POST',
-      body: JSON.stringify({ invoices: list }),
-    })
-  },
-
-  statusFromInvoice(inv, client = {}) {
-    const total = Number(inv.total || inv.grandTotal || 0)
-    const paid = Number(inv.amountPaid || inv.paid || 0)
-    const balance = Math.max(0, total - paid)
-    let status = inv.status || 'unpaid'
-    if (balance <= 0) status = 'paid'
-    else if (paid > 0 && status !== 'overdue') status = 'partial'
-    else if (inv.dueDate && new Date(inv.dueDate) < new Date() && status !== 'paid') status = 'overdue'
-    return {
-      invoice_number: inv.number || inv.invoiceNumber || inv.id,
-      client_name: client.name || inv.clientName || null,
-      client_phone: client.phone || inv.clientPhone || null,
-      total,
-      balance_due: balance,
-      status,
-      due_date: inv.dueDate || null,
-      last_payment_at: inv.lastPaymentAt || null,
-    }
-  },
-
   async pushAll(snapshot = {}) {
     if (!getToken()) return { ok: false, reason: 'not_logged_in' }
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-      return { ok: false, reason: 'offline' }
-    }
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return { ok: false, reason: 'offline' }
     try {
       const r = await Sync.snapshotAndPush(snapshot)
-      const clients = snapshot.clients || []
-      const invoices = snapshot.invoices || []
-      const statusList = invoices
-        .map((inv) => {
-          const client = clients.find((c) => String(c.id) === String(inv.clientId)) || {}
-          return Sync.statusFromInvoice(inv, client)
-        })
-        .filter((x) => x.invoice_number)
-      if (statusList.length) {
-        await request('/api/status/push', {
-          method: 'POST',
-          body: JSON.stringify({ invoices: statusList }),
-        }).catch(() => {})
-      }
-      return { ok: true, invoices: statusList.length, version: r.version }
+      return { ok: true, version: r.version }
     } catch (e) {
       _lastError = e.message || String(e)
-      console.warn('[Sync.autoPush]', _lastError)
       return { ok: false, error: _lastError }
     }
   },
@@ -274,110 +198,49 @@ export const Sync = {
   scheduleAutoPush(snapshot, delayMs = 2000) {
     if (!getToken()) return
     if (_autoTimer) clearTimeout(_autoTimer)
-    _autoTimer = setTimeout(() => {
-      _autoTimer = null
-      Sync.pushAll(snapshot)
-    }, delayMs)
+    _autoTimer = setTimeout(() => { _autoTimer = null; Sync.pushAll(snapshot) }, delayMs)
   },
 
-  lastPushAt() {
-    return _lastPushAt
-  },
+  lastPushAt() { return _lastPushAt },
 
-  async getNotifications({ unreadOnly = false } = {}) {
-    const q = unreadOnly ? '?unread=1' : ''
-    return request('/api/notifications' + q)
+  async getTeam() { return request('/api/team') },
+  async createTeamInvite(role = 'tech') {
+    return request('/api/team/invite', { method: 'POST', body: JSON.stringify({ role }) })
   },
-
-  async markNotificationsRead(ids, all = false) {
-    return request('/api/notifications/read', {
-      method: 'POST',
-      body: JSON.stringify(all ? { all: true } : { ids }),
-    })
+  async joinTeam(code) {
+    return request('/api/team/join', { method: 'POST', body: JSON.stringify({ code: String(code || '').trim() }) })
   },
-
-  async getPendingWaClients() {
-    return request('/api/wa/pending')
+  async leaveTeam() {
+    return request('/api/team/leave', { method: 'POST', body: JSON.stringify({}) })
   },
-
-  async markWaClientImported(phone, clientId) {
-    const p = encodeURIComponent(String(phone || '').replace(/\D/g, '') || phone)
-    try {
-      return await request('/api/wa/pending/' + p + '/imported', {
-        method: 'POST',
-        body: JSON.stringify({ client_id: clientId }),
-      })
-    } catch (e) {
-      return { ok: false, error: e.message || String(e) }
-    }
-  },
-
-  async getTicketIntake() {
-    return request('/api/tickets/intake')
-  },
-
-  async markTicketImported(intakeId, localTicketId) {
-    try {
-      return await request('/api/tickets/intake/' + encodeURIComponent(intakeId) + '/imported', {
-        method: 'POST',
-        body: JSON.stringify({ ticket_id: localTicketId }),
-      })
-    } catch (e) {
-      return { ok: false, error: e.message || String(e) }
-    }
-  },
-
-  async pushTicketStatus(ticketOrList) {
-    const list = Array.isArray(ticketOrList) ? ticketOrList : [ticketOrList]
-    try {
-      return await request('/api/tickets/status', {
-        method: 'POST',
-        body: JSON.stringify({ tickets: list }),
-      })
-    } catch (e) {
-      return { ok: false, error: e.message || String(e) }
-    }
+  async removeTeamMember(userId) {
+    return request('/api/team/remove', { method: 'POST', body: JSON.stringify({ userId }) })
   },
 
   async getBranchWorkspace(branchId) {
     return request('/api/workspace/branch/' + encodeURIComponent(branchId))
   },
-
   async putBranchWorkspace(branchId, data) {
     return request('/api/workspace/branch/' + encodeURIComponent(branchId), {
-      method: 'PUT',
-      body: JSON.stringify({ data }),
+      method: 'PUT', body: JSON.stringify({ data }),
     })
   },
-
   async registerDevice(payload) {
     return request('/api/device/register', { method: 'POST', body: JSON.stringify(payload) })
   },
-
-  async listDevices() {
-    return request('/api/device/list')
-  },
-
+  async listDevices() { return request('/api/device/list') },
   async deviceHeartbeat(fingerprint) {
     return request('/api/device/heartbeat', { method: 'POST', body: JSON.stringify({ fingerprint }) })
   },
-
   async createPortalLink(clientId, { days = 90 } = {}) {
     return request('/api/portal/create', {
       method: 'POST',
       body: JSON.stringify({ clientId, client_id: clientId, days }),
     })
   },
-
-  async listPortalLinks() {
-    return request('/api/portal/list')
-  },
-
+  async listPortalLinks() { return request('/api/portal/list') },
   async revokePortalLink(token) {
-    return request('/api/portal/revoke', {
-      method: 'POST',
-      body: JSON.stringify({ token }),
-    })
+    return request('/api/portal/revoke', { method: 'POST', body: JSON.stringify({ token }) })
   },
 }
 
