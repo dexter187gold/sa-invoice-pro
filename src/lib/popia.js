@@ -1,3 +1,4 @@
+/** POPIA-oriented data export / erase helpers + consent log */
 export function exportClientPack(client, { invoices = [], tickets = [], payments = [] } = {}) {
   const id = String(client?.id)
   return {
@@ -18,4 +19,32 @@ export function downloadJson(filename, data) {
   a.download = filename
   a.click()
   setTimeout(() => URL.revokeObjectURL(url), 2000)
+}
+
+const CONSENT_KEY = 'saip_popia_consents'
+
+export function loadConsents() {
+  try {
+    return JSON.parse(localStorage.getItem(CONSENT_KEY) || '[]')
+  } catch {
+    return []
+  }
+}
+
+export function recordConsent({ clientId, type = 'processing', note = '' }) {
+  const row = {
+    id: `consent-${Date.now()}`,
+    clientId: clientId || null,
+    type,
+    note: String(note || '').slice(0, 200),
+    at: new Date().toISOString(),
+  }
+  const list = loadConsents()
+  list.unshift(row)
+  localStorage.setItem(CONSENT_KEY, JSON.stringify(list.slice(0, 500)))
+  return row
+}
+
+export function consentsForClient(clientId) {
+  return loadConsents().filter((c) => String(c.clientId) === String(clientId))
 }

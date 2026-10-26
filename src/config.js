@@ -1,7 +1,7 @@
-export const APP_VERSION = '6.13.0'
+export const APP_VERSION = '6.14.0'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
-export const APP_CODENAME = '6.13.0 · SLA · seats gate · WA templates · branch banner'
+export const APP_CODENAME = '6.14.0 · recurring · POPIA · portal feedback'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
 export const HELIX_ROUTES = {
