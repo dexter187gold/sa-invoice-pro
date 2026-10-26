@@ -47,6 +47,7 @@
 - Removed a hard-coded admin credential from the current app security audit file; **live credential rotation and Git-history cleanup are still outstanding**.
 - Added portal preflight sync validation in the client page and link refresh card so failed sync does not silently create a link against stale cloud data.
 - Merged backend portal hardening into `saip-sync` main after its new regression test passed: bounded API wait, visible retry/error state, HTML escaping of customer-controlled values, and a regression test. Render auto-deploy went live on 2026-10-26; real customer-link verification remains pending.
+- Render startup logs also report that optional modules `./wa-flow`, `./quarters`, and `./quarters-late` fail to mount because a `Route.get()` callback is undefined; verify whether these routes are used and repair or remove the broken mounts.
 
 ## Mandatory acceptance gates before calling this done
 
