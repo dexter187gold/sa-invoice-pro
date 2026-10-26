@@ -1,5 +1,5 @@
 /**
- * Business insights helpers (top clients, credit notes, overdue flag).
+ * Business insights helpers (top clients, credit notes, overdue flag, quote win-rate).
  */
 import * as db from './db'
 import { STORES } from './db'
@@ -38,6 +38,35 @@ export function topClientsByRevenue({ invoices = [], clients = [], payments = []
     })
     .sort((a, b) => b.paid - a.paid || b.invoiced - a.invoiced)
     .slice(0, limit)
+}
+
+/** Quote conversion: accepted|converted / (sent + accepted + converted + declined) */
+export function quoteWinRate(quotes = []) {
+  let sent = 0
+  let won = 0
+  let lost = 0
+  let draft = 0
+  for (const q of quotes || []) {
+    const s = String(q.status || 'draft').toLowerCase()
+    if (s === 'draft') {
+      draft++
+      continue
+    }
+    if (s === 'accepted' || s === 'converted' || s === 'invoiced') {
+      won++
+      sent++
+    } else if (s === 'declined' || s === 'rejected' || s === 'expired' || s === 'lost') {
+      lost++
+      sent++
+    } else if (s === 'sent' || s === 'open') {
+      sent++
+    } else {
+      sent++
+    }
+  }
+  const decided = won + lost
+  const rate = decided > 0 ? Math.round((won / decided) * 1000) / 10 : null
+  return { sent, won, lost, draft, decided, rate }
 }
 
 export async function createCreditNote(source, { invoices = [], reason = '' } = {}) {

@@ -1,7 +1,10 @@
 /**
  * SLA hours: client caps + per-ticket priority clocks.
+ * Also re-exports WhatsApp reminder helpers so older imports keep working.
  */
 import { categoryOf } from './clientCategories'
+
+export { buildOverdueReminder, toWaNumber, openWhatsApp } from './share'
 
 export function isSlaClient(client) {
   return categoryOf(client) === 'sla'

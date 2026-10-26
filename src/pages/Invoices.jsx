@@ -9,7 +9,7 @@ import {
   SearchInput, FilterChips, StatusBadge, EmptyState, formatDateZA, matchesQuery,
   SortableTh, useSort, ConfirmDialog, relativeTime, daysOverdue, downloadCsv, PageFade,
 } from '../components/ui'
-import { buildOverdueReminder, toWaNumber } from '../lib/sla'
+import { buildOverdueReminder, toWaNumber, openWhatsApp } from '../lib/share'
 import ActionDock from '../components/ActionDock'
 import { bulkSetInvoiceStatus, bulkExportCsv, invoiceCsvColumns } from '../lib/bulkOps'
 import { invoiceLabel } from '../lib/statusLabels'
@@ -17,7 +17,13 @@ import { duplicateInvoice } from '../lib/documentActions'
 import { createCreditNote } from '../lib/insights'
 import { runDueRecurring, listRecurring, upsertRecurring } from '../lib/recurring'
 import { buildChaseList } from '../lib/chasePack'
-import { openWhatsApp } from '../lib/share'
+import {
+  setPromiseToPay,
+  clearPromiseToPay,
+  logCollectionCall,
+  listCallLog,
+  invoicesDueForChase,
+} from '../lib/collections'
 
 export default function Invoices() {
   const { invoices, clients, company, refresh, toast } = useApp()
@@ -44,7 +50,7 @@ export default function Invoices() {
       return matchesQuery(
         { ...inv, clientName: c?.name || '' },
         q,
-        ['number', 'status', 'clientName', 'notes']
+        ['number', 'status', 'clientName', 'notes', 'promiseNote']
       )
     })
     return apply(rows, {
@@ -108,6 +114,45 @@ export default function Invoices() {
     else remindEmail(inv)
     if (open.length > 1) {
       toast(`${open.length} selected — opened first. Tap Remind on each row for the rest.`, 'info')
+    }
+  }
+
+  const promisePay = async (inv) => {
+    const note = window.prompt('Promise-to-pay note (what they said)?', inv.promiseNote || 'Will pay by EFT')
+    if (note == null) return
+    const days = window.prompt('Follow up in how many days?', '3')
+    if (days == null) return
+    try {
+      await setPromiseToPay(inv, { note, days: Number(days) || 3 })
+      await refresh()
+      toast('Promise-to-pay saved + next chase date set', 'success')
+    } catch (e) {
+      toast(e?.message || 'Failed', 'error')
+    }
+  }
+
+  const logCall = async (inv) => {
+    const outcome = window.prompt(
+      'Call outcome? (no_answer / promised / disputed / paid / callback)',
+      'promised',
+    )
+    if (outcome == null) return
+    const note = window.prompt('Short note?', '') || ''
+    try {
+      await logCollectionCall({
+        invoiceId: inv.id,
+        clientId: inv.clientId,
+        outcome: String(outcome).trim() || 'note',
+        note,
+        who: company?.name || 'desk',
+      })
+      if (String(outcome).toLowerCase().includes('promis')) {
+        await setPromiseToPay(inv, { note: note || 'Promised on call', days: 3 })
+      }
+      await refresh()
+      toast('Call logged', 'success')
+    } catch (e) {
+      toast(e?.message || 'Log failed', 'error')
     }
   }
 
@@ -194,24 +239,40 @@ export default function Invoices() {
 
   const batchOverdueWa = () => {
     const ranked = buildChaseList(invoices, clients, company).filter((r) => r.days > 0 || r.inv.status === 'overdue')
-    const list = ranked.length ? ranked : buildChaseList(invoices, clients, company)
-    if (!list.length) return toast('No open invoices to chase', 'info')
+    const listRows = ranked.length ? ranked : buildChaseList(invoices, clients, company)
+    if (!listRows.length) return toast('No open invoices to chase', 'info')
     let opened = 0
-    for (const row of list.slice(0, 5)) {
+    for (const row of listRows.slice(0, 5)) {
       if (row.phone) {
         try { openWhatsApp(row.phone, row.message); opened++ } catch {}
       }
     }
-    const summary = list.map((r) =>
+    const summary = listRows.map((r) =>
       `${r.inv.number || r.inv.id} · ${r.client.name || ''} · ${r.days}d · ${r.phone || 'no phone'}`
     ).join('\n')
     try { navigator.clipboard.writeText(summary) } catch {}
     toast(
       opened
-        ? `Chase pack: ${opened} WhatsApp · ${list.length} on clipboard (worst first)`
-        : `Chase list copied (${list.length}) — add phones on clients`,
+        ? `Chase pack: ${opened} WhatsApp · ${listRows.length} on clipboard (worst first)`
+        : `Chase list copied (${listRows.length}) — add phones on clients`,
       opened ? 'success' : 'info',
     )
+  }
+
+  const chaseDuePromises = async () => {
+    const due = invoicesDueForChase(invoices)
+    if (!due.length) return toast('No promise-to-pay chases due today', 'info')
+    let n = 0
+    for (const inv of due.slice(0, 5)) {
+      const c = clientOf(inv)
+      if (c?.phone) {
+        try {
+          openWhatsApp(c.phone, buildOverdueReminder(inv, c, company))
+          n++
+        } catch {}
+      }
+    }
+    toast(n ? `Opened ${n} promise-chase WhatsApp(s)` : `${due.length} due — add client phones`, n ? 'success' : 'info')
   }
 
   const flagOverdue = async () => {
@@ -259,7 +320,7 @@ export default function Invoices() {
   }
 
   const exportCsv = () => {
-    const headers = ['Number', 'Client', 'Date', 'Due date', 'Status', 'Total', 'Amount due', 'Notes']
+    const headers = ['Number', 'Client', 'Date', 'Due date', 'Status', 'Total', 'Amount due', 'Promise', 'Next chase', 'Notes']
     const rows = list.map((inv) => {
       const c = clients.find((x) => String(x.id) === String(inv.clientId))
       return [
@@ -270,6 +331,8 @@ export default function Invoices() {
         inv.status || 'unpaid',
         Number(inv.total) || 0,
         Number(inv.amountDue ?? inv.total) || 0,
+        inv.promiseNote || '',
+        inv.nextChaseDate || '',
         inv.notes || '',
       ]
     })
@@ -304,6 +367,9 @@ export default function Invoices() {
           </button>
           <button type="button" className="btn btn-secondary" onClick={batchOverdueWa} title="Ranked chase pack — worst first">
             Chase pack (ranked)
+          </button>
+          <button type="button" className="btn btn-outline" onClick={chaseDuePromises} title="WhatsApp invoices whose promise chase date is due">
+            Chase promises due
           </button>
           <button type="button" className="btn btn-outline" onClick={generateRecurring} title="Spawn draft invoices from due recurring templates">
             Generate recurring
@@ -359,6 +425,7 @@ export default function Invoices() {
                 <SortableTh id="total" label="Total" sort={sort} onSort={onSort} />
                 <SortableTh id="due" label="Due" sort={sort} onSort={onSort} />
                 <th>Aging</th>
+                <th>Promise</th>
                 <th>Remind</th>
                 <th></th>
               </tr>
@@ -386,11 +453,21 @@ export default function Invoices() {
                         age === 0 ? 'Due today' : `In ${-age}d`
                       ) : '—'}
                     </td>
+                    <td style={{ maxWidth: 120, fontSize: 12 }} className="muted">
+                      {inv.promiseNote ? (
+                        <span title={`Next chase: ${inv.nextChaseDate || '—'}`}>
+                          {String(inv.promiseNote).slice(0, 28)}
+                          {inv.nextChaseDate ? ` · ${String(inv.nextChaseDate).slice(5)}` : ''}
+                        </span>
+                      ) : '—'}
+                    </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       {isOpen ? (
                         <>
                           <button type="button" className="btn btn-secondary btn-sm" onClick={() => remindWhatsApp(inv)} title="WhatsApp reminder">WA</button>{' '}
-                          <button type="button" className="btn btn-outline btn-sm" onClick={() => remindEmail(inv)} title="Email reminder">Email</button>
+                          <button type="button" className="btn btn-outline btn-sm" onClick={() => remindEmail(inv)} title="Email reminder">Email</button>{' '}
+                          <button type="button" className="btn btn-outline btn-sm" onClick={() => promisePay(inv)} title="Promise to pay + next chase">PTP</button>{' '}
+                          <button type="button" className="btn btn-outline btn-sm" onClick={() => logCall(inv)} title="Log collection call">Call</button>
                         </>
                       ) : <span className="muted">—</span>}
                     </td>
