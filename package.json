@@ -9,7 +9,8 @@
     "dev": "vite",
     "preview": "vite preview",
     "test:e2e": "playwright test",
-    "check:exports": "node scripts/check-exports.mjs",\n    "check:version": "node scripts/check-version.mjs"
+    "check:exports": "node scripts/check-exports.mjs",
+    "check:version": "node scripts/check-version.mjs"
   },
   "dependencies": {
     "react": "^19.0.0",
