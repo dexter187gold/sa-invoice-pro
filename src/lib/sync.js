@@ -1,6 +1,6 @@
 /**
- * SA Invoice Pro – Cloud Sync client v1.8.0
- * Auth + workspace + device + branch + team + portal.
+ * SA Invoice Pro – Cloud Sync client v1.9.0
+ * Auth recovery + workspace + team + portal.
  */
 const BASE = 'https://saip-sync.onrender.com'
 const TOKEN_KEY = 'saip_sync_token'
@@ -108,11 +108,26 @@ export const Sync = {
     })
   },
 
+  /** One-step recovery: code + new password → JWT (workspace kept) */
+  async recoverAccount(email, code, newPassword) {
+    const data = await request('/api/auth/recover', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: String(email || '').trim().toLowerCase(),
+        recovery_code: String(code || '').trim(),
+        password: newPassword,
+      }),
+    })
+    if (data.token) setToken(data.token)
+    return data
+  },
+
   async resetPasswordWithCode(email, code, newPassword) {
     const data = await request('/api/auth/reset-password', {
       method: 'POST',
       body: JSON.stringify({
         email: String(email || '').trim().toLowerCase(),
+        recovery_code: String(code || '').trim(),
         code: String(code || '').trim(),
         password: newPassword,
       }),
