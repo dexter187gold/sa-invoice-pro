@@ -1,6 +1,6 @@
 /**
- * SA Invoice Pro – Cloud Sync client v1.6.0 (customer-ready)
- * Auth + workspace + auto-push with cold-start retries.
+ * SA Invoice Pro – Cloud Sync client v1.7.0
+ * Auth + workspace + device bind + branch WS + portal.
  */
 const BASE = 'https://saip-sync.onrender.com'
 const TOKEN_KEY = 'saip_sync_token'
@@ -339,10 +339,33 @@ export const Sync = {
     }
   },
 
+  async getBranchWorkspace(branchId) {
+    return request('/api/workspace/branch/' + encodeURIComponent(branchId))
+  },
+
+  async putBranchWorkspace(branchId, data) {
+    return request('/api/workspace/branch/' + encodeURIComponent(branchId), {
+      method: 'PUT',
+      body: JSON.stringify({ data }),
+    })
+  },
+
+  async registerDevice(payload) {
+    return request('/api/device/register', { method: 'POST', body: JSON.stringify(payload) })
+  },
+
+  async listDevices() {
+    return request('/api/device/list')
+  },
+
+  async deviceHeartbeat(fingerprint) {
+    return request('/api/device/heartbeat', { method: 'POST', body: JSON.stringify({ fingerprint }) })
+  },
+
   async createPortalLink(clientId, { days = 90 } = {}) {
     return request('/api/portal/create', {
       method: 'POST',
-      body: JSON.stringify({ client_id: clientId }),
+      body: JSON.stringify({ clientId, client_id: clientId, days }),
     })
   },
 
