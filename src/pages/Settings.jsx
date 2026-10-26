@@ -14,7 +14,7 @@ import {
   isLoadSheddingMode, setLoadSheddingMode, listOutboundQueue, clearSentFromQueue,
 } from '../lib/loadShedding'
 import { loadCommsPrefs, saveCommsPrefs, addOptOut } from '../lib/quietHours'
-import { loadWhiteLabel, saveWhiteLabel, applyWhiteLabel } from '../lib/whiteLabel'
+import { loadWhiteLabel, saveWhiteLabel, applyWhiteLabel, fileToLogoDataUrl } from '../lib/whiteLabel'
 
 export default function Settings() {
   const {
@@ -78,6 +78,18 @@ export default function Settings() {
     const next = saveWhiteLabel(wl)
     setWl(next)
     toast('White-label applied', 'success')
+  }
+
+  const onLogo = async (e) => {
+    const f = e.target.files?.[0]
+    if (!f) return
+    try {
+      const dataUrl = await fileToLogoDataUrl(f)
+      setWl((w) => ({ ...w, logoDataUrl: dataUrl }))
+      toast('Logo ready — click Apply white-label', 'success')
+    } catch (err) {
+      toast(err?.message || 'Logo failed', 'error')
+    }
   }
 
   const tabs = [
@@ -145,16 +157,25 @@ export default function Settings() {
         <form className="card form-grid" onSubmit={saveWl} style={{ marginTop: 12 }}>
           <h3 style={{ marginTop: 0 }}>White-label pilot</h3>
           <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
-            Multi-tier shops: set brand name + accent colour. Applies CSS variables on top of the theme pack.
-            Full logo upload / custom domain comes later with license multi.
+            Brand name, accent, logo (resized to ~128px), portal tagline. Logo appears in the shell mark.
           </p>
-          <label className="label">Brand name (replaces SA Invoice Pro in places)</label>
+          <label className="label">Brand name</label>
           <input
             className="input"
             value={wl.brandName}
             onChange={(e) => setWl({ ...wl, brandName: e.target.value })}
             placeholder="e.g. Cape Tech Desk"
           />
+          <label className="label">Logo (PNG/JPG)</label>
+          <input type="file" accept="image/*" className="input" onChange={onLogo} />
+          {wl.logoDataUrl ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <img src={wl.logoDataUrl} alt="" width={48} height={48} style={{ borderRadius: 8, objectFit: 'cover' }} />
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => setWl({ ...wl, logoDataUrl: '' })}>
+                Remove logo
+              </button>
+            </div>
+          ) : null}
           <label className="label">Accent colour (hex)</label>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <input
@@ -184,7 +205,7 @@ export default function Settings() {
               checked={!!wl.hidePoweredBy}
               onChange={(e) => setWl({ ...wl, hidePoweredBy: e.target.checked })}
             />
-            Hide “Powered by SA Invoice Pro” on client portal (multi tier)
+            Hide “Powered by SA Invoice Pro” on client portal
           </label>
           <button type="submit" className="btn btn-primary">Apply white-label</button>
           <button
@@ -197,9 +218,10 @@ export default function Settings() {
                 accentSoft: '',
                 hidePoweredBy: false,
                 portalTagline: '',
+                logoDataUrl: '',
               })
               setWl(cleared)
-              toast('White-label cleared — reload theme if colours look off', 'info')
+              toast('White-label cleared — re-pick theme if colours look off', 'info')
             }}
           >
             Reset white-label
