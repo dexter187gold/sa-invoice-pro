@@ -17,7 +17,7 @@ import {
 } from '../lib/clientTags'
 
 export default function Clients() {
-  const { clients, invoices, payments, company, refresh, toast } = useApp()
+  const { clients, invoices, payments, quotes, tickets, products, services, expenses, company, refresh, toast } = useApp()
   const [q, setQ] = useState('')
   const [tagFilter, setTagFilter] = useState('all')
   const [confirm, setConfirm] = useState(null)
@@ -73,12 +73,19 @@ export default function Clients() {
     })
   }
 
+  const preparePortal = async (client) => {
+    const syncResult = await Sync.pushAll({ company, clients, invoices, quotes, tickets, payments, products, services, expenses })
+    if (!syncResult?.ok) {
+      throw new Error(syncResult?.error || 'Cloud sync did not complete. No portal link was created; try Sync Now and retry.')
+    }
+    return Sync.createPortalLink(client.id, { days: 90 })
+  }
+
   const createPortal = async (client) => {
     if (!Sync.isLoggedIn()) return toast('Log in to Cloud under Settings first', 'error')
     setPortalBusyId(client.id)
     try {
-      await Sync.pushAll({ company, clients, invoices })
-      const data = await Sync.createPortalLink(client.id, { days: 90 })
+      const data = await preparePortal(client)
       setLastPortal({ clientId: client.id, url: data.url, expires: data.expires, name: client.name })
       try {
         await navigator.clipboard.writeText(data.url)
@@ -270,6 +277,7 @@ export default function Clients() {
             company={company}
             invoices={invoices}
             toast={toast}
+            preparePortal={preparePortal}
             onCreated={(data) => setLastPortal({ ...lastPortal, url: data.url, expires: data.expires })}
           />
           {lastPortal?.url ? (
