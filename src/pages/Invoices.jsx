@@ -16,6 +16,8 @@ import { invoiceLabel } from '../lib/statusLabels'
 import { duplicateInvoice } from '../lib/documentActions'
 import { createCreditNote } from '../lib/insights'
 import { runDueRecurring, listRecurring, upsertRecurring } from '../lib/recurring'
+import { buildChaseList } from '../lib/chasePack'
+import { openWhatsApp } from '../lib/share'
 
 export default function Invoices() {
   const { invoices, clients, company, refresh, toast } = useApp()
@@ -191,18 +193,25 @@ export default function Invoices() {
   }
 
   const batchOverdueWa = () => {
-    const overdueList = invoices.filter((i) => i.status === 'overdue' || (['unpaid', 'partial'].includes(i.status || '') && daysOverdue(i.dueDate || i.date) > 0))
-    if (!overdueList.length) return toast('No overdue invoices', 'info')
-    const first = overdueList.slice(0, 3)
-    for (const inv of first) {
-      try { remindWhatsApp(inv) } catch {}
+    const ranked = buildChaseList(invoices, clients, company).filter((r) => r.days > 0 || r.inv.status === 'overdue')
+    const list = ranked.length ? ranked : buildChaseList(invoices, clients, company)
+    if (!list.length) return toast('No open invoices to chase', 'info')
+    let opened = 0
+    for (const row of list.slice(0, 5)) {
+      if (row.phone) {
+        try { openWhatsApp(row.phone, row.message); opened++ } catch {}
+      }
     }
-    const summary = overdueList.map((i) => {
-      const c = clients.find((x) => String(x.id) === String(i.clientId))
-      return `${i.number} · ${c?.name || ''} · R${Number((i.amountDue ?? i.total) || 0).toFixed(2)} · ${c?.phone || ''}`
-    }).join('\n')
+    const summary = list.map((r) =>
+      `${r.inv.number || r.inv.id} · ${r.client.name || ''} · ${r.days}d · ${r.phone || 'no phone'}`
+    ).join('\n')
     try { navigator.clipboard.writeText(summary) } catch {}
-    toast(`Opened ${first.length} WhatsApp · ${overdueList.length} listed on clipboard`, 'success')
+    toast(
+      opened
+        ? `Chase pack: ${opened} WhatsApp · ${list.length} on clipboard (worst first)`
+        : `Chase list copied (${list.length}) — add phones on clients`,
+      opened ? 'success' : 'info',
+    )
   }
 
   const flagOverdue = async () => {
@@ -293,8 +302,8 @@ export default function Invoices() {
           <button type="button" className="btn btn-outline" onClick={flagOverdue} title="Set unpaid past due date to overdue">
             Flag overdue
           </button>
-          <button type="button" className="btn btn-secondary" onClick={batchOverdueWa} title="Open WhatsApp for overdue + copy list">
-            Batch WA overdue
+          <button type="button" className="btn btn-secondary" onClick={batchOverdueWa} title="Ranked chase pack — worst first">
+            Chase pack (ranked)
           </button>
           <button type="button" className="btn btn-outline" onClick={generateRecurring} title="Spawn draft invoices from due recurring templates">
             Generate recurring
