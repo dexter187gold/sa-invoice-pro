@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
@@ -17,6 +17,12 @@ import {
   formatDateZA, FilterChips, downloadCsv, daysOverdue,
 } from '../components/ui'
 import ClientQuickAdd from '../components/ClientQuickAdd'
+import {
+  listQueuedPortalDecisions,
+  clearQueuedPortalDecisions,
+  applyPortalDecisionLocally,
+} from '../lib/portalQuote'
+import { SA_CONFIG } from '../config'
 
 export default function Quotes() {
   const { quotes, clients, invoices, company, vatRate, vatEnabled, refresh, toast } = useApp()
@@ -31,6 +37,11 @@ export default function Quotes() {
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('all')
   const [confirm, setConfirm] = useState(null)
+  const [queue, setQueue] = useState([])
+
+  useEffect(() => {
+    setQueue(listQueuedPortalDecisions())
+  }, [quotes])
 
   const counts = useMemo(() => {
     const c = { all: quotes.length, draft: 0, converted: 0, accepted: 0, rejected: 0, expired: 0 }
@@ -48,10 +59,54 @@ export default function Quotes() {
       return matchesQuery(
         { ...qt, clientName: c?.name || '' },
         q,
-        ['number', 'status', 'clientName', 'templateId', 'devices', 'serviceType', 'portalNote']
+        ['number', 'status', 'clientName', 'templateId', 'devices', 'serviceType', 'portalNote'],
       )
     })
   }, [quotes, clients, q, status])
+
+  const applyQueue = async () => {
+    const items = listQueuedPortalDecisions()
+    if (!items.length) return toast('No offline portal decisions queued', 'info')
+    let applied = 0
+    for (const item of items) {
+      const qt = quotes.find((x) => String(x.id) === String(item.quoteId))
+      if (!qt) continue
+      const { updated } = applyPortalDecisionLocally([qt], item.quoteId, item.action, item.note)
+      if (updated) {
+        await db.put(STORES.quotes, updated)
+        applied++
+      }
+    }
+    clearQueuedPortalDecisions()
+    setQueue([])
+    await refresh()
+    toast(applied ? `Applied ${applied} portal decision(s) to local quotes` : 'Queue cleared (no matching local quotes)', 'success')
+  }
+
+  const pullCloudDecisions = async () => {
+    try {
+      const base = (SA_CONFIG.syncServerUrl || '').replace(/\/$/, '')
+      const res = await fetch(`${base}/api/portal/decisions?limit=30`, { headers: { Accept: 'application/json' } })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.message || data.error || 'Could not fetch decisions')
+      const rows = data.data || data.decisions || []
+      let applied = 0
+      for (const item of rows) {
+        const qt = quotes.find((x) => String(x.id) === String(item.quoteId))
+        if (!qt) continue
+        const action = item.action === 'rejected' || item.action === 'reject' ? 'reject' : 'approve'
+        const { updated } = applyPortalDecisionLocally([qt], item.quoteId, action, item.note)
+        if (updated && String(qt.status) !== String(updated.status)) {
+          await db.put(STORES.quotes, updated)
+          applied++
+        }
+      }
+      await refresh()
+      toast(applied ? `Synced ${applied} decision(s) from cloud` : `Cloud returned ${rows.length} decision(s); none needed local update`, 'success')
+    } catch (e) {
+      toast(e?.message || 'Cloud decisions unavailable — deploy portal routes on sync server', 'info')
+    }
+  }
 
   const loadDemoRates = () => {
     if (templateId === 'hourly') setLines(demoHourlyLines())
@@ -76,7 +131,7 @@ export default function Quotes() {
     const t = invoiceTotals(
       useLines.map((l) => ({ qty: l.qty, price: l.price })),
       vatRate,
-      vatEnabled
+      vatEnabled,
     )
     const exampleRows =
       templateId === 'adhoc'
@@ -87,9 +142,7 @@ export default function Quotes() {
             amount: 3 * (Number(l.price) || 0),
           }))
         : null
-    const exampleTotal = exampleRows
-      ? exampleRows.reduce((s, r) => s + r.amount, 0)
-      : null
+    const exampleTotal = exampleRows ? exampleRows.reduce((s, r) => s + r.amount, 0) : null
     await db.add(STORES.quotes, {
       clientId,
       number: `QT-${new Date().getFullYear()}-${String(quotes.length + 1).padStart(4, '0')}`,
@@ -158,7 +211,7 @@ export default function Quotes() {
       amountPaid: 0,
       amountDue: qt.total,
       fromQuoteId: qt.id,
-      templateId: ['adhoc', 'hourly', 'flatrate'].includes(qt.templateId) ? 'standard' : (qt.templateId || 'standard'),
+      templateId: ['adhoc', 'hourly', 'flatrate'].includes(qt.templateId) ? 'standard' : qt.templateId || 'standard',
       devices: qt.devices,
       serviceType: qt.serviceType,
       accountType: qt.accountType,
@@ -220,14 +273,46 @@ export default function Quotes() {
         <div>
           <h1>Quotes</h1>
           <p className="subtitle">
-            COD · hourly · flat-rate · ad-hoc · portal Accept/Decline · {quotes.length} total
+            COD · portal Accept/Decline · offline queue · {quotes.length} total
           </p>
         </div>
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
-          <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={!filtered.length}>Export CSV</button>
-          <button type="button" className="btn btn-outline" onClick={loadDemoRates}>Load demo rate card</button>
+          <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={!filtered.length}>
+            Export CSV
+          </button>
+          <button type="button" className="btn btn-outline" onClick={loadDemoRates}>
+            Load demo rate card
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={pullCloudDecisions}>
+            Pull cloud decisions
+          </button>
         </div>
       </div>
+
+      {queue.length > 0 && (
+        <div
+          className="card"
+          style={{
+            marginBottom: 12,
+            borderLeft: '4px solid #f59e0b',
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: 12,
+            flexWrap: 'wrap',
+            alignItems: 'center',
+          }}
+        >
+          <div>
+            <strong>{queue.length} offline portal decision(s)</strong>
+            <div className="muted" style={{ fontSize: 13 }}>
+              Client accepted/declined while sync was down — apply to local quotes.
+            </div>
+          </div>
+          <button type="button" className="btn btn-primary btn-sm" onClick={applyQueue}>
+            Apply queue
+          </button>
+        </div>
+      )}
 
       <form className="card form-grid" onSubmit={save} style={{ marginBottom: '1rem' }}>
         <div className="form-grid cols-2">
@@ -243,7 +328,9 @@ export default function Quotes() {
             <label className="label">Template</label>
             <select className="select" value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
               {TEMPLATE_PRESETS.map((p) => (
-                <option key={p.id} value={p.id}>{p.label}</option>
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
               ))}
             </select>
           </div>
@@ -269,12 +356,21 @@ export default function Quotes() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
-            <input className="input" type="number" step="0.01" placeholder="Amount excl." value={amount} onChange={(e) => setAmount(e.target.value)} />
+            <input
+              className="input"
+              type="number"
+              step="0.01"
+              placeholder="Amount excl."
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
           </div>
         )}
         {!!lines.length && (
           <div className="card" style={{ background: 'var(--bg)' }}>
-            <div className="muted" style={{ marginBottom: 8 }}>{lines.length} rate lines loaded</div>
+            <div className="muted" style={{ marginBottom: 8 }}>
+              {lines.length} rate lines loaded
+            </div>
             {lines.slice(0, 6).map((l, i) => (
               <div key={i} style={{ fontSize: 13, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                 <span>{l.description}</span>
@@ -282,10 +378,14 @@ export default function Quotes() {
               </div>
             ))}
             {lines.length > 6 && <div className="muted">+{lines.length - 6} more…</div>}
-            <button type="button" className="btn btn-outline btn-sm" style={{ marginTop: 8 }} onClick={() => setLines([])}>Clear lines</button>
+            <button type="button" className="btn btn-outline btn-sm" style={{ marginTop: 8 }} onClick={() => setLines([])}>
+              Clear lines
+            </button>
           </div>
         )}
-        <button className="btn btn-primary" type="submit">Save quote</button>
+        <button className="btn btn-primary" type="submit">
+          Save quote
+        </button>
       </form>
 
       <div className="toolbar sticky-tools">
@@ -296,7 +396,11 @@ export default function Quotes() {
       {!filtered.length ? (
         <EmptyState
           title={quotes.length ? 'No matches' : 'No quotes yet'}
-          hint={quotes.length ? 'Try another search or filter.' : 'Load a demo rate card or enter a single amount — convert later fills the invoice fully. Share portal link so clients can Accept/Decline.'}
+          hint={
+            quotes.length
+              ? 'Try another search or filter.'
+              : 'Load a demo rate card or enter a single amount — convert later fills the invoice fully. Share portal link so clients can Accept/Decline.'
+          }
         />
       ) : (
         filtered
@@ -320,23 +424,29 @@ export default function Quotes() {
                     {qt.portalDecision ? ` · portal: ${qt.portalDecision}` : ''}
                   </div>
                   {qt.portalNote ? (
-                    <div style={{ fontSize: 12, marginTop: 4, opacity: 0.85 }}>
-                      Client note: {qt.portalNote}
-                    </div>
+                    <div style={{ fontSize: 12, marginTop: 4, opacity: 0.85 }}>Client note: {qt.portalNote}</div>
                   ) : null}
                 </div>
                 <div className="list-card-actions">
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => pdf(qt, true)}>Preview</button>
-                  <button type="button" className="btn btn-outline btn-sm" onClick={() => pdf(qt, false)}>PDF</button>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => pdf(qt, true)}>
+                    Preview
+                  </button>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => pdf(qt, false)}>
+                    PDF
+                  </button>
                   {st !== 'converted' && st !== 'rejected' && (
                     <button type="button" className="btn btn-primary btn-sm" onClick={() => convert(qt)}>
                       Convert to invoice
                     </button>
                   )}
                   {st === 'converted' && (
-                    <Link className="btn btn-outline btn-sm" to="/invoices">View invoices</Link>
+                    <Link className="btn btn-outline btn-sm" to="/invoices">
+                      View invoices
+                    </Link>
                   )}
-                  <button type="button" className="btn btn-outline btn-sm" onClick={() => del(qt.id)}>Del</button>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => del(qt.id)}>
+                    Del
+                  </button>
                 </div>
               </div>
             )
