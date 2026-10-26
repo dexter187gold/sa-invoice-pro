@@ -39,4 +39,13 @@ test.describe('SA Invoice Pro smoke', () => {
     await page.goto('/portal/demo-token')
     await expect(page.locator('body')).toBeVisible()
   })
+
+  test('team route redirects or loads without module crash', async ({ page }) => {
+    const errors = []
+    page.on('pageerror', (e) => errors.push(String(e)))
+    await page.goto('/team')
+    await page.waitForTimeout(800)
+    const fatal = errors.filter((e) => /Cannot find module|is not defined|Unexpected token/i.test(e))
+    expect(fatal, fatal.join('\n')).toHaveLength(0)
+  })
 })

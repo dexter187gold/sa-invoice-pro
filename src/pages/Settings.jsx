@@ -14,6 +14,7 @@ import {
   isLoadSheddingMode, setLoadSheddingMode, listOutboundQueue, clearSentFromQueue,
 } from '../lib/loadShedding'
 import { loadCommsPrefs, saveCommsPrefs, addOptOut } from '../lib/quietHours'
+import { loadWhiteLabel, saveWhiteLabel, applyWhiteLabel } from '../lib/whiteLabel'
 
 export default function Settings() {
   const {
@@ -31,6 +32,7 @@ export default function Settings() {
   const [shedding, setShedding] = useState(() => isLoadSheddingMode())
   const [comms, setComms] = useState(() => loadCommsPrefs())
   const [optPhone, setOptPhone] = useState('')
+  const [wl, setWl] = useState(() => loadWhiteLabel())
   const [navPrefs, setNavPrefs] = useState(() => {
     try { return JSON.parse(localStorage.getItem('sa_nav_prefs') || '{}') } catch { return { layout: 'bottom' } }
   })
@@ -43,6 +45,10 @@ export default function Settings() {
       bankName: company?.bankName || '', accountNumber: company?.accountNumber || '', branchCode: company?.branchCode || '',
     })
   }, [company])
+
+  useEffect(() => {
+    applyWhiteLabel(loadWhiteLabel())
+  }, [])
 
   const applyNavPrefs = (next) => {
     setNavPrefs(next)
@@ -67,9 +73,17 @@ export default function Settings() {
     }
   }
 
+  const saveWl = (e) => {
+    e?.preventDefault?.()
+    const next = saveWhiteLabel(wl)
+    setWl(next)
+    toast('White-label applied', 'success')
+  }
+
   const tabs = [
     { id: 'company', label: 'Company' },
     { id: 'look', label: 'Look & themes' },
+    { id: 'brand', label: 'White-label' },
     { id: 'nav', label: 'Navigation' },
     { id: 'cloud', label: 'Cloud' },
     { id: 'data', label: 'Data' },
@@ -125,6 +139,72 @@ export default function Settings() {
           <label className="label">VAT rate</label>
           <input className="input" type="number" step="0.01" value={vatRate} onChange={(e) => setVatRate?.(Number(e.target.value))} />
         </div>
+      )}
+
+      {tab === 'brand' && (
+        <form className="card form-grid" onSubmit={saveWl} style={{ marginTop: 12 }}>
+          <h3 style={{ marginTop: 0 }}>White-label pilot</h3>
+          <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
+            Multi-tier shops: set brand name + accent colour. Applies CSS variables on top of the theme pack.
+            Full logo upload / custom domain comes later with license multi.
+          </p>
+          <label className="label">Brand name (replaces SA Invoice Pro in places)</label>
+          <input
+            className="input"
+            value={wl.brandName}
+            onChange={(e) => setWl({ ...wl, brandName: e.target.value })}
+            placeholder="e.g. Cape Tech Desk"
+          />
+          <label className="label">Accent colour (hex)</label>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              className="input"
+              value={wl.accent}
+              onChange={(e) => setWl({ ...wl, accent: e.target.value })}
+              placeholder="#0ea5e9"
+              style={{ flex: 1 }}
+            />
+            <input
+              type="color"
+              value={/^#?[0-9a-fA-F]{6}$/.test(String(wl.accent || '').replace('#', '')) ? (wl.accent.startsWith('#') ? wl.accent : `#${wl.accent}`) : '#10b981'}
+              onChange={(e) => setWl({ ...wl, accent: e.target.value })}
+              title="Pick accent"
+            />
+          </div>
+          <label className="label">Portal tagline</label>
+          <input
+            className="input"
+            value={wl.portalTagline}
+            onChange={(e) => setWl({ ...wl, portalTagline: e.target.value })}
+            placeholder="Secure invoices & quotes"
+          />
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              type="checkbox"
+              checked={!!wl.hidePoweredBy}
+              onChange={(e) => setWl({ ...wl, hidePoweredBy: e.target.checked })}
+            />
+            Hide “Powered by SA Invoice Pro” on client portal (multi tier)
+          </label>
+          <button type="submit" className="btn btn-primary">Apply white-label</button>
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={() => {
+              const cleared = saveWhiteLabel({
+                brandName: '',
+                accent: '',
+                accentSoft: '',
+                hidePoweredBy: false,
+                portalTagline: '',
+              })
+              setWl(cleared)
+              toast('White-label cleared — reload theme if colours look off', 'info')
+            }}
+          >
+            Reset white-label
+          </button>
+        </form>
       )}
 
       {tab === 'nav' && (

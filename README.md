@@ -1,8 +1,8 @@
-# SA Invoice Pro 6.18.0
+# SA Invoice Pro 6.19.0
 
 **Sell-ready offline-first invoicing for South African IT / mobile repair / MSP benches.**
 
-Tax invoices · job cards → invoice · quotes · client portal approve · payroll estimates · accounting · PayFast · POPIA documents — without a monthly SaaS lock-in.
+Tax invoices · job cards → invoice · quotes · client portal approve · team seats · white-label pilot · payroll estimates · accounting · PayFast · POPIA — without a monthly SaaS lock-in.
 
 ## Why buyers choose it
 
@@ -10,7 +10,9 @@ Tax invoices · job cards → invoice · quotes · client portal approve · payr
 |------------|----------------|
 | **Get paid** | VAT tax invoices, professional PDF, aging, bulk mark paid, CSV, chase pack |
 | **Job cards** | Timer, device passport, FRP checklist, convert → invoice |
-| **Quotes** | One-click convert · **client portal Accept / Decline** |
+| **Quotes** | One-click convert · client portal Accept / Decline |
+| **Team seats** | Roles, PIN switch, tier limits (solo/shop/multi) |
+| **White-label** | Brand name + accent CSS vars (pilot) |
 | **Bank match** | FNB/SBSA/ABSA/Nedbank CSV · confidence + reason chips |
 | **Reports** | CSV pack + cash forecast 30/60/90 + quote win-rate |
 | **Payroll** | 2026/27 PAYE · UIF · SDL · ETI estimates + payslip PDF (not e@syFile) |

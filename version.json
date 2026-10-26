@@ -1,5 +1,5 @@
 {
-  "version": "6.18.0",
-  "codename": "Portal quote decisions · bank match reasons · e2e expansion",
-  "message": "Client portal Accept/Decline quotes, bank CSV match reason chips, Playwright portal + bank smoke"
+  "version": "6.19.0",
+  "codename": "Seats multi-user polish · white-label CSS pilot",
+  "message": "PIN seat switch, tier seat limits, expanded roles, white-label accent/brand, ActiveSeatChip"
 }
