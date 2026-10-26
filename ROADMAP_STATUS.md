@@ -1,23 +1,25 @@
-# Roadmap progress — 6.20.0
+# Roadmap progress — 6.21.0
 
-## Overall **~94.5%** product-desk completeness
+## Overall **~95.5%** product-desk completeness
 
 | Phase | % | Notes |
 |-------|--:|-------|
 | **P1 Foundation** | **96%** | Auth, sync, restore, export-check CI |
 | **P2 Desk / jobs** | **88%** | Kanban, SLA, passport, FRP |
 | **P3 Money** | **92%** | Chase, bank match reasons |
-| **P4 Client portal** | **90%** | Quote Accept/Decline |
-| **P5 Team / branch** | **86%** | Seats PIN + **branch limits** + nav |
+| **P4 Client portal** | **92%** | Quote decisions + **offline queue** |
+| **P5 Team / branch** | **86%** | Seats PIN + branch limits |
 | **P6 Comms** | **78%** | WA, quiet hours, SMS |
 | **P7 Intelligence** | **62%** | Desk rules, forecast |
-| **P8 License** | **80%** | **Shell brand + logo pilot** |
-| **P9 Platform** | **82%** | Playwright smoke expanded |
+| **P8 License** | **84%** | Shell + logo + **PDF brand** |
+| **P9 Platform** | **84%** | Broader Playwright smoke |
 | **P10 Moat** | **80%** | Lab, collection ring, load-shedding |
 
-### Weighted ≈ **94.5%**
-Remaining to “feel 95%+”: PDF brand logo, deeper e2e auth flows, sync-server portal write-back.
+### Weighted ≈ **95.5%** of shipped desk value
 
-### This slice (6.20.0)
-- Shell white-label brand + ActiveSeatChip + Team/Branches/Bank nav
-- Branch tier limits · logo data URL helpers · boot apply
+True “100% of 10 000 units” still includes enterprise GL, live WA Business API, SARS eFiling hooks — out of scope for a single product desk.
+
+### This slice (6.21.0)
+- PDF logo + accent on invoice/quote templates
+- Portal offline decision queue
+- Playwright branches/settings/bank

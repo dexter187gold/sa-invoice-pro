@@ -3,19 +3,23 @@ import { openJsPdf, downloadJsPdf } from './pdfOpen'
 import { formatMoney } from './money.js'
 import { APP_NAME, APP_COPYRIGHT, APP_VERSION } from '../config.js'
 import { loadJsPdf } from './loadJsPdf.js'
+import { drawPdfLogo, pdfBrandMeta, pdfFooterLine } from './pdfBrand.js'
 
 export async function buildInvoicePdf(invoice, { company, client, payments = [] } = {}) {
   const jsPDF = await loadJsPdf()
   const doc = new jsPDF()
   const co = company || {}
   const cl = client || {}
+  const brand = pdfBrandMeta()
   const paid = (payments || []).reduce((s, p) => s + (Number(p.amount) || 0), 0) || Number(invoice.amountPaid) || 0
   const total = Number(invoice.total) || 0
   const due = Math.max(0, total - paid)
   let y = 16
+  y = drawPdfLogo(doc, { x: 14, y: 8, maxH: 14, maxW: 24 })
+  if (y < 16) y = 16
   doc.setFontSize(16)
-  doc.setTextColor(0, 122, 77)
-  doc.text(co.name || APP_NAME, 14, y)
+  doc.setTextColor(...brand.accentRgb)
+  doc.text(co.name || brand.brandName || APP_NAME, 14, y)
   y += 7
   doc.setFontSize(9)
   doc.setTextColor(80)
@@ -93,7 +97,7 @@ export async function buildInvoicePdf(invoice, { company, client, payments = [] 
   }
   doc.setFontSize(8)
   doc.setTextColor(120)
-  doc.text(APP_NAME + ' · ' + APP_COPYRIGHT + ' · v' + APP_VERSION, 14, 285)
+  doc.text(pdfFooterLine(brand) + ' · v' + APP_VERSION, 14, 285)
   return doc
 }
 

@@ -5,8 +5,8 @@ import { formatMoney } from './money.js'
 import { APP_NAME, APP_COPYRIGHT, APP_VERSION } from '../config.js'
 import { loadJsPdf } from './loadJsPdf.js'
 import { openJsPdf, downloadJsPdf } from './pdfOpen.js'
+import { drawPdfLogo, pdfBrandMeta, pdfFooterLine } from './pdfBrand.js'
 
-const GREEN = [0, 122, 77]
 const MUTED = [100, 116, 139]
 const SLATE = [51, 65, 85]
 
@@ -37,6 +37,8 @@ function fmtDate(d) {
 export async function buildProfessionalPdf(docData, options = {}) {
   const jsPDF = await loadJsPdf()
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const brand = pdfBrandMeta()
+  const GREEN = brand.accentRgb
   const isQuote = !!(options.isQuote || docData.isQuote)
   const company = {
     ...(typeof docData.company === 'object' && docData.company ? docData.company : {}),
@@ -47,7 +49,7 @@ export async function buildProfessionalPdf(docData, options = {}) {
     ...(typeof options.client === 'object' && options.client ? options.client : {}),
   }
   const co = {
-    name: company.name || APP_NAME,
+    name: company.name || brand.brandName || APP_NAME,
     email: company.email || '',
     phone: company.phone || '',
     address: company.address || '',
@@ -66,7 +68,8 @@ export async function buildProfessionalPdf(docData, options = {}) {
   const number = docData.number || (isQuote ? 'QT-' : 'INV-') + Date.now().toString().slice(-6)
   const lines = Array.isArray(docData.lines) ? docData.lines : []
 
-  let y = 16
+  let y = drawPdfLogo(doc, { x: 14, y: 8, maxH: 14, maxW: 24 })
+  if (y < 16) y = 16
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(14)
   doc.setTextColor(...GREEN)
@@ -193,7 +196,7 @@ export async function buildProfessionalPdf(docData, options = {}) {
     doc.setPage(i)
     doc.setFontSize(7)
     doc.setTextColor(...MUTED)
-    doc.text(`${APP_NAME} · ${APP_COPYRIGHT} · v${APP_VERSION}`, 105, 290, { align: 'center' })
+    doc.text(`${pdfFooterLine(brand)} · v${APP_VERSION}`, 105, 290, { align: 'center' })
   }
   return doc
 }

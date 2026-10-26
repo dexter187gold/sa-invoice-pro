@@ -48,4 +48,31 @@ test.describe('SA Invoice Pro smoke', () => {
     const fatal = errors.filter((e) => /Cannot find module|is not defined|Unexpected token/i.test(e))
     expect(fatal, fatal.join('\n')).toHaveLength(0)
   })
+
+  test('branches route no module crash', async ({ page }) => {
+    const errors = []
+    page.on('pageerror', (e) => errors.push(String(e)))
+    await page.goto('/branches')
+    await page.waitForTimeout(800)
+    const fatal = errors.filter((e) => /Cannot find module|is not defined|Unexpected token/i.test(e))
+    expect(fatal, fatal.join('\n')).toHaveLength(0)
+  })
+
+  test('settings route no module crash', async ({ page }) => {
+    const errors = []
+    page.on('pageerror', (e) => errors.push(String(e)))
+    await page.goto('/settings')
+    await page.waitForTimeout(800)
+    const fatal = errors.filter((e) => /Cannot find module|is not defined|Unexpected token/i.test(e))
+    expect(fatal, fatal.join('\n')).toHaveLength(0)
+  })
+
+  test('bank route no module crash', async ({ page }) => {
+    const errors = []
+    page.on('pageerror', (e) => errors.push(String(e)))
+    await page.goto('/bank')
+    await page.waitForTimeout(800)
+    const fatal = errors.filter((e) => /Cannot find module|is not defined|Unexpected token/i.test(e))
+    expect(fatal, fatal.join('\n')).toHaveLength(0)
+  })
 })
