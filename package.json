@@ -4,12 +4,12 @@
   "version": "6.15.0",
   "type": "module",
   "scripts": {
-    "prebuild": "node scripts/check-exports.mjs",
+    "prebuild": "node scripts/check-exports.mjs && node scripts/check-version.mjs",
     "build": "vite build",
     "dev": "vite",
     "preview": "vite preview",
     "test:e2e": "playwright test",
-    "check:exports": "node scripts/check-exports.mjs"
+    "check:exports": "node scripts/check-exports.mjs",\n    "check:version": "node scripts/check-version.mjs"
   },
   "dependencies": {
     "react": "^19.0.0",
