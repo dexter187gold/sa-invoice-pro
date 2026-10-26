@@ -124,7 +124,7 @@ export default function BankImport() {
   }
 
   const visible = useMemo(() => {
-    const base = (matches.length ? matches : txns.map((t) => ({ txn: t, invoice: null, score: 0 })))
+    const base = (matches.length ? matches : txns.map((t) => ({ txn: t, invoice: null, score: 0, reasons: [] })))
       .map((row, idx) => ({ row, idx }))
       .filter(({ row, idx }) => !skipped[row.txn?.id || idx])
     return base.filter(({ row, idx }) => {
@@ -143,7 +143,7 @@ export default function BankImport() {
         <div>
           <h1>Bank CSV import</h1>
           <p className="subtitle">
-            FNB · Standard Bank · ABSA · Nedbank CSV · smart match · {openInvoices.length} open invoices
+            FNB · Standard Bank · ABSA · Nedbank CSV · smart match · reason chips · {openInvoices.length} open invoices
             {applied ? ` · ${applied} applied this session` : ''}
           </p>
         </div>
@@ -205,7 +205,7 @@ export default function BankImport() {
         </div>
         <p className="muted" style={{ fontSize: 12, margin: 0 }}>
           Matching uses amount, invoice number in description, client name tokens, and phone tail.
-          Unmatched rows: pick an invoice manually, then Apply. Skip rows you will handle later.
+          Confidence shows <strong>why</strong> (exact amount, inv #, name…). Unmatched: pick invoice, Apply, or Skip.
         </p>
       </div>
 
@@ -231,6 +231,7 @@ export default function BankImport() {
                 const client = inv ? clients.find((c) => String(c.id) === String(inv.clientId)) : null
                 const conf = confidenceMeta(row.score)
                 const key = t.id || String(idx)
+                const reasons = Array.isArray(row.reasons) ? row.reasons : []
                 return (
                   <tr key={key}>
                     <td>{t.date ? formatDateZA(t.date) : '—'}</td>
@@ -266,7 +267,7 @@ export default function BankImport() {
                         })}
                       </select>
                     </td>
-                    <td>
+                    <td style={{ minWidth: 120 }}>
                       <span
                         style={{
                           display: 'inline-block',
@@ -281,6 +282,25 @@ export default function BankImport() {
                         {conf.label}
                         {row.score ? ` ${Math.min(100, Math.round(row.score))}` : ''}
                       </span>
+                      {reasons.length > 0 && (
+                        <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                          {reasons.slice(0, 4).map((r) => (
+                            <span
+                              key={r}
+                              style={{
+                                fontSize: 10,
+                                padding: '1px 6px',
+                                borderRadius: 6,
+                                background: 'rgba(148,163,184,.12)',
+                                color: '#94a3b8',
+                              }}
+                              title={r}
+                            >
+                              {r}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       <button
