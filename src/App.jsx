@@ -28,6 +28,7 @@ import BankImport from './pages/BankImport'
 import Branches from './pages/Branches'
 import SmsGateway from './pages/SmsGateway'
 import WaTemplates from './pages/WaTemplates'
+import Recurring from './pages/Recurring'
 import Payments from './pages/Payments'
 import ExcelViewer from './pages/ExcelViewer'
 import Changelog from './pages/Changelog'
@@ -93,6 +94,7 @@ function AppInner() {
                 <Route path="/payments" element={<Payments />} />
                 <Route path="/bank" element={<BankImport />} />
                 <Route path="/branches" element={<Branches />} />
+                <Route path="/recurring" element={<Recurring />} />
                 <Route path="/wa-templates" element={<WaTemplates />} />
                 <Route path="/sms" element={<SmsGateway />} />
                 <Route path="/excel" element={<ExcelViewer />} />
