@@ -1,5 +1,5 @@
 /**
- * SLA hours: cap on client vs total billable/job time on their tickets.
+ * SLA hours: client caps + per-ticket priority clocks.
  */
 import { categoryOf } from './clientCategories'
 
@@ -7,19 +7,17 @@ export function isSlaClient(client) {
   return categoryOf(client) === 'sla'
 }
 
-/** Sum minutes for tickets belonging to clientId */
 export function clientTicketMinutes(clientId, tickets = [], timeEntries = []) {
   const ticketIds = new Set(
     (tickets || [])
       .filter((t) => String(t.clientId) === String(clientId))
-      .map((t) => String(t.id))
+      .map((t) => String(t.id)),
   )
   let mins = 0
   for (const e of timeEntries || []) {
     if (!ticketIds.has(String(e.ticketId))) continue
     mins += Number(e.minutes) || 0
   }
-  // Also count running timers on those tickets
   for (const t of tickets || []) {
     if (!ticketIds.has(String(t.id))) continue
     if (t.timerStatus === 'running' && t.timerStartedAt) {
@@ -52,35 +50,28 @@ export function slaUsage(client, tickets, timeEntries) {
   }
 }
 
-export function toWaNumber(phone) {
-  let d = String(phone || '').replace(/\D/g, '')
-  if (!d) return ''
-  if (d.startsWith('0') && d.length >= 9) d = '27' + d.slice(1)
-  if (d.length < 10) return ''
-  return d
+/** Per-ticket SLA clock from createdAt + priority hours */
+export function slaDeadlineHours(ticket) {
+  const p = String(ticket?.priority || 'normal').toLowerCase()
+  if (p === 'urgent' || p === 'critical') return 4
+  if (p === 'high') return 8
+  if (p === 'low') return 72
+  return 24
 }
 
-export function buildOverdueReminder(inv, client, company) {
-  const co = company?.name || 'SA Invoice Pro'
-  const num = inv.number || inv.id
-  const due = inv.dueDate || inv.date || ''
-  const bal = Number(inv.amountDue ?? inv.total) || 0
-  const total = Number(inv.total) || 0
-  const name = client?.name || 'Client'
-  const lines = [
-    `Hi ${name},`,
-    '',
-    `Friendly reminder from *${co}*:`,
-    '',
-    `Invoice *${num}* is overdue.`,
-    `Total: R${total.toFixed(2)}`,
-    `Balance due: R${bal.toFixed(2)}`,
-    due ? `Original due date: ${String(due).slice(0, 10)}` : '',
-    '',
-    'Please arrange payment at your earliest convenience.',
-    'Reply to this message if you have already paid or need a copy of the invoice.',
-    '',
-    `Thank you — ${co}`,
-  ].filter(Boolean)
-  return lines.join('\n')
+export function slaStatusForTicket(ticket, now = Date.now()) {
+  const start = ticket?.createdAt || ticket?.date
+  if (!start) return { state: 'unknown', hoursLeft: null, deadline: null, capHours: null }
+  const hrs = slaDeadlineHours(ticket)
+  const deadline = new Date(start).getTime() + hrs * 3600000
+  const left = (deadline - now) / 3600000
+  let state = 'ok'
+  if (left < 0) state = 'breached'
+  else if (left < hrs * 0.25) state = 'risk'
+  return {
+    state,
+    hoursLeft: Math.round(left * 10) / 10,
+    deadline: new Date(deadline).toISOString(),
+    capHours: hrs,
+  }
 }
