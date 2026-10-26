@@ -9,6 +9,8 @@ import NotificationBell from './NotificationBell'
 import QuickActions from './QuickActions'
 import { Sync } from '../lib/sync'
 import { canUseCloudSync } from '../lib/soloMode'
+import ActiveSeatChip from './ActiveSeatChip'
+import { displayAppName } from '../lib/whiteLabel'
 
 function cycleTheme(theme, setTheme) {
   const next = theme === 'light' ? 'dark' : 'light'
@@ -71,16 +73,16 @@ const SECTION_NAV = {
   ],
   tools: [
     { to: '/documents', label: 'Docs', icon: '📎', end: true },
+    { to: '/bank', label: 'Bank', icon: '🏦' },
     { to: '/excel', label: 'Excel', icon: '📊' },
     { to: '/sync', label: 'Sync', icon: '☁️' },
-    { to: '/changelog', label: 'Notes', icon: '📋' },
     { to: '__root__', label: 'Main', icon: '☰', isRoot: true },
   ],
   settings: [
     { to: '/settings', label: 'Settings', icon: '⚙️', end: true },
+    { to: '/team', label: 'Team', icon: '👥' },
+    { to: '/branches', label: 'Branches', icon: '🏬' },
     { to: '/license', label: 'License', icon: '🔑' },
-    { to: '/sync', label: 'Cloud', icon: '☁️' },
-    { to: '/changelog', label: 'Updates', icon: '✨' },
     { to: '__root__', label: 'Main', icon: '☰', isRoot: true },
   ],
 }
@@ -88,12 +90,12 @@ const SECTION_NAV = {
 function sectionFromPath(pathname) {
   const p = pathname || '/'
   if (p === '/' || p === '/dashboard' || p === '/reports' || p === '/inbox') return 'home'
-  if (p.startsWith('/invoices') || p.startsWith('/quotes') || p.startsWith('/payments')) return 'money'
+  if (p.startsWith('/invoices') || p.startsWith('/quotes') || p.startsWith('/payments') || p.startsWith('/bank')) return 'money'
   if (p.startsWith('/clients')) return 'clients'
   if (p.startsWith('/tickets') || p.startsWith('/products')) return 'jobs'
   if (p.startsWith('/expenses') || p.startsWith('/accounting') || p.startsWith('/employees') || p.startsWith('/payroll')) return 'books'
   if (p.startsWith('/documents') || p.startsWith('/excel') || p.startsWith('/sync') || p.startsWith('/changelog')) return 'tools'
-  if (p.startsWith('/settings') || p.startsWith('/license')) return 'settings'
+  if (p.startsWith('/settings') || p.startsWith('/license') || p.startsWith('/team') || p.startsWith('/branches')) return 'settings'
   return 'home'
 }
 
@@ -106,6 +108,7 @@ export default function Shell({ children }) {
   const [forceRoot, setForceRoot] = useState(false)
   const nav = useNavigate()
   const loc = useLocation()
+  const brandLabel = company?.name || displayAppName('SA Invoice Pro')
   const [navPrefs, setNavPrefs] = useState(() => {
     try {
       const p = JSON.parse(localStorage.getItem('sa_nav_prefs') || '{}')
@@ -177,6 +180,7 @@ export default function Shell({ children }) {
           { to: '/invoices?status=paid', label: 'Paid', count: invCounts.paid },
           { to: '/quotes', label: 'Quotes' },
           { to: '/payments', label: 'Payments' },
+          { to: '/bank', label: 'Bank import' },
           { to: '/clients', label: 'Clients' },
         ],
       },
@@ -209,6 +213,8 @@ export default function Shell({ children }) {
         title: 'Account',
         links: [
           { to: '/settings', label: 'Settings' },
+          { to: '/team', label: 'Team & seats' },
+          { to: '/branches', label: 'Branches' },
           { to: '/changelog', label: 'Changelog' },
           { to: '/license', label: 'License' },
         ],
@@ -233,6 +239,7 @@ export default function Shell({ children }) {
     '/tickets': 'Job cards',
     '/expenses': 'Expenses',
     '/payments': 'Payments',
+    '/bank': 'Bank import',
     '/excel': 'Excel',
     '/changelog': 'Changelog',
     '/sync': 'Sync health',
@@ -243,6 +250,8 @@ export default function Shell({ children }) {
     '/documents': 'Documents',
     '/license': 'License',
     '/settings': 'Settings',
+    '/team': 'Team & seats',
+    '/branches': 'Branches',
   }
 
   useEffect(() => {
@@ -353,7 +362,7 @@ export default function Shell({ children }) {
         </button>
         <AppLogo size={28} />
         <strong style={{ fontSize: 13, letterSpacing: '-0.02em', flex: 1 }}>
-          {company?.name || 'SA Invoice Pro'}
+          {brandLabel}
         </strong>
         <button type="button" className="btn btn-outline btn-sm" onClick={() => toggleHelp()} aria-label="Help">
           ✦
@@ -368,7 +377,7 @@ export default function Shell({ children }) {
             <AppLogo size={40} />
             <div style={{ minWidth: 0 }}>
               <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {company?.name || 'SA Invoice Pro'}
+                {brandLabel}
               </div>
               <div className="brain-ribbon" style={{ fontWeight: 600, fontSize: 10, marginTop: 3 }}>
                 v{APP_VERSION}
@@ -456,6 +465,7 @@ export default function Shell({ children }) {
               ) : null}
             </div>
             <div className="desktop-only header-actions" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <ActiveSeatChip compact />
               <button type="button" className="btn btn-outline btn-sm" onClick={runSync} disabled={syncing}>
                 {syncing ? 'Syncing…' : 'Sync'}
               </button>
@@ -525,54 +535,17 @@ export default function Shell({ children }) {
                       to={l.to}
                       end={l.end}
                       className={({ isActive }) =>
-                        `drawer-link ${(invStatus ? isInvLinkActive(l.to) : isActive) ? 'on' : ''}`
+                        `drawer-link ${(invStatus ? isInvLinkActive(l.to) : isActive) ? 'active' : ''}`
                       }
                       onClick={() => setMoreOpen(false)}
                     >
-                      <span>{l.label}</span>
+                      {l.label}
                       {l.count != null ? <span className="nav-count">{l.count}</span> : null}
                     </NavLink>
                   )
                 })}
               </div>
             ))}
-            <div className="drawer-section">
-              <div className="drawer-section-title">Session</div>
-              <button
-                type="button"
-                className="drawer-link"
-                onClick={() => {
-                  setMoreOpen(false)
-                  cycleTheme(theme, setTheme)
-                }}
-              >
-                Toggle theme
-              </button>
-              <button
-                type="button"
-                className="drawer-link"
-                onClick={() => {
-                  setMoreOpen(false)
-                  runSync()
-                }}
-              >
-                {syncing ? 'Syncing…' : 'Sync now'}
-              </button>
-              <button
-                type="button"
-                className="drawer-link danger"
-                onClick={() => {
-                  setMoreOpen(false)
-                  logout()
-                  nav('/login')
-                }}
-              >
-                Sign out
-              </button>
-            </div>
-            <p className="muted" style={{ fontSize: 11, margin: '8px 12px 0' }}>
-              v{APP_VERSION} · Bottom bar follows the page you are on
-            </p>
           </div>
         </>
       ) : null}
