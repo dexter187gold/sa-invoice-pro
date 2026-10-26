@@ -1,5 +1,7 @@
 
-import versionInfo from '../../version.json'\n\nconst DB_NAME = 'SAInvoicePro_v2'
+import versionInfo from '../../version.json'
+
+const DB_NAME = 'SAInvoicePro_v2'
 const DB_VERSION = 3
 
 export const STORES = {
