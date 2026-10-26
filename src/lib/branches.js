@@ -1,5 +1,6 @@
 import * as db from './db'
 import { audit } from './auditLog'
+import { seatLimits } from './seats'
 
 const KEY = 'branches'
 const ACTIVE = 'active_branch_id'
@@ -13,7 +14,27 @@ export async function saveBranches(rows) {
   await db.setSetting(KEY, rows)
 }
 
-export async function upsertBranch(b) {
+export async function assertCanAddBranch(settings = {}, license = {}, { branchId } = {}) {
+  const limits = seatLimits(settings, license)
+  const rows = await listBranches()
+  const active = rows.filter((r) => r.active !== false).length
+  const isEdit = branchId && rows.some((r) => String(r.id) === String(branchId))
+  if (!isEdit && active >= limits.branches) {
+    const err = new Error(
+      `Branch limit reached (${active}/${limits.branches} on ${limits.tier}). Upgrade tier for more locations.`,
+    )
+    err.code = 'branch_limit'
+    throw err
+  }
+  return { active, max: limits.branches, tier: limits.tier }
+}
+
+export async function upsertBranch(b, { settings, license } = {}) {
+  if (!b?.id) {
+    await assertCanAddBranch(settings || {}, license || {})
+  } else {
+    await assertCanAddBranch(settings || {}, license || {}, { branchId: b.id })
+  }
   const rows = await listBranches()
   const id = b.id || 'br_' + Date.now().toString(36)
   const next = {

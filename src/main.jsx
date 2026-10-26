@@ -1,5 +1,7 @@
 import { loadSavedTheme } from './lib/themes'
+import { applyWhiteLabel, loadWhiteLabel } from './lib/whiteLabel'
 try { loadSavedTheme() } catch {}
+try { applyWhiteLabel(loadWhiteLabel()) } catch {}
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'

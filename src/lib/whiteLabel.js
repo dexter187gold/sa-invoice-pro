@@ -1,6 +1,6 @@
 /**
- * White-label CSS pilot — brand accent, app title, portal header.
- * Stores prefs in localStorage + optional company fields; applies CSS vars on :root.
+ * White-label CSS pilot — brand accent, app title, logo, portal header.
+ * Stores prefs in localStorage; applies CSS vars on :root at boot.
  */
 
 const LS_KEY = 'saip_white_label_v1'
@@ -11,6 +11,7 @@ export const WHITE_LABEL_DEFAULTS = {
   accentSoft: '',
   hidePoweredBy: false,
   portalTagline: '',
+  logoDataUrl: '',
 }
 
 export function loadWhiteLabel() {
@@ -24,6 +25,9 @@ export function loadWhiteLabel() {
 
 export function saveWhiteLabel(partial) {
   const next = { ...loadWhiteLabel(), ...partial }
+  if (next.logoDataUrl && String(next.logoDataUrl).length > 400000) {
+    next.logoDataUrl = String(next.logoDataUrl).slice(0, 400000)
+  }
   try {
     localStorage.setItem(LS_KEY, JSON.stringify(next))
   } catch {}
@@ -61,6 +65,9 @@ export function applyWhiteLabel(prefs = loadWhiteLabel()) {
   else root.removeAttribute('data-brand-name')
   if (prefs.hidePoweredBy) root.setAttribute('data-hide-powered', '1')
   else root.removeAttribute('data-hide-powered')
+  const logo = String(prefs.logoDataUrl || '').trim()
+  if (logo.startsWith('data:image')) root.setAttribute('data-brand-logo', '1')
+  else root.removeAttribute('data-brand-logo')
   return prefs
 }
 
@@ -72,4 +79,29 @@ export function displayAppName(fallback = 'SA Invoice Pro') {
 export function portalTagline(fallback = 'Client portal') {
   const p = loadWhiteLabel()
   return String(p.portalTagline || '').trim() || fallback
+}
+
+export function brandLogoDataUrl() {
+  const p = loadWhiteLabel()
+  const u = String(p.logoDataUrl || '').trim()
+  return u.startsWith('data:image') ? u : ''
+}
+
+/** Read a File into a compressed data URL (JPEG if canvas works). */
+export async function fileToLogoDataUrl(file, { maxPx = 128, quality = 0.85 } = {}) {
+  if (!file || !file.type?.startsWith('image/')) throw new Error('Pick an image file')
+  const bitmap = await createImageBitmap(file)
+  const scale = Math.min(1, maxPx / Math.max(bitmap.width, bitmap.height))
+  const w = Math.max(1, Math.round(bitmap.width * scale))
+  const h = Math.max(1, Math.round(bitmap.height * scale))
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')
+  ctx.drawImage(bitmap, 0, 0, w, h)
+  try {
+    return canvas.toDataURL('image/jpeg', quality)
+  } catch {
+    return canvas.toDataURL('image/png')
+  }
 }
