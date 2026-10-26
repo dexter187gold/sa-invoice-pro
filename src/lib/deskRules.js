@@ -1,5 +1,6 @@
-/** Lightweight desk rules — suggestions (not silent auto-spam). */
+/** Desk rules — suggestions + auto-chase hints (P7.9). */
 import { daysPastDue, isOpenInvoice } from './chasePack'
+import { invoicesDueForChase } from './collections'
 
 export function evaluateDeskRules({ invoices = [], tickets = [], clients = [] } = {}) {
   const tips = []
@@ -11,6 +12,16 @@ export function evaluateDeskRules({ invoices = [], tickets = [], clients = [] } 
       severity: 'warn',
       title: `${hot.length} invoice(s) ≥7 days overdue`,
       action: 'Open Invoices → Chase pack (ranked)',
+      href: '/invoices',
+    })
+  }
+  const ptp = invoicesDueForChase(invoices)
+  if (ptp.length) {
+    tips.push({
+      id: 'ptp_due',
+      severity: 'warn',
+      title: `${ptp.length} promise-to-pay chase(s) due`,
+      action: 'Invoices → Chase promises due',
       href: '/invoices',
     })
   }
@@ -29,6 +40,19 @@ export function evaluateDeskRules({ invoices = [], tickets = [], clients = [] } 
       title: `${stuck.length} open job(s) older than 48h`,
       action: 'Review Tickets Kanban',
       href: '/tickets',
+    })
+  }
+  const ready = (tickets || []).filter((t) => {
+    const st = String(t.status || '').toLowerCase()
+    return st.includes('ready') || st === 'resolved'
+  })
+  if (ready.length) {
+    tips.push({
+      id: 'collection_ring',
+      severity: 'info',
+      title: `${ready.length} device(s) ready for collection`,
+      action: 'Home → Collection ring',
+      href: '/',
     })
   }
   const noPhone = open.filter((i) => {

@@ -1,5 +1,26 @@
 # Changelog
 
+## 6.17.0 — Bench moat (2026-10-26)
+
+### Job desk (P2)
+- Device passport fields (brand, model, IMEI, serial) on job create/edit.
+- FRP / iCloud / MDM QC checklist helpers.
+- Job hologram WhatsApp status card share.
+
+### SA uniqueness (P10)
+- Load-shedding mode: queue outbound WA/SMS when offline or flagged.
+- Collection ring on Pulse Home for devices ready for pickup.
+
+### Comms (P6)
+- Quiet hours + phone opt-out prefs for outbound messages.
+
+### Intelligence (P7)
+- Desk rules: promise-to-pay due, collection-ready jobs, ≥7d overdue.
+
+### Ops
+- Product contact email `sainvoicepro@gmail.com` in config.
+- `INSTRUCTIONS.md` for Grok workspace handoff.
+
 ## 6.15.0 — Collections & cash visibility (2026-10-26)
 
 ### Collections

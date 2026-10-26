@@ -1,7 +1,7 @@
-export const APP_VERSION = '6.15.0'
+export const APP_VERSION = '6.17.0'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
-export const APP_CODENAME = '6.15.0 · collections · PTP · tags · forecast'
+export const APP_CODENAME = '6.17.0 · FRP · load-shedding · collection ring · hologram'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
 export const HELIX_ROUTES = {
@@ -24,6 +24,7 @@ export const SA_CONFIG = {
   oliveRepo: OLIVE_REPO,
   helixRoutes: HELIX_ROUTES,
   vatRateDefault: VAT_RATE_DEFAULT,
+  productEmail: 'sainvoicepro@gmail.com',
 }
 
 export const DOC_TYPES = [

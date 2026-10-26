@@ -1,6 +1,6 @@
-# SA Invoice Pro 6.15.0
+# SA Invoice Pro 6.17.0
 
-**Sell-ready offline-first invoicing for South African businesses.**
+**Sell-ready offline-first invoicing for South African IT / mobile repair / MSP benches.**
 
 Tax invoices · job cards → invoice · quotes · payroll estimates · accounting · PayFast · POPIA documents — without a monthly SaaS lock-in.
 
@@ -8,32 +8,16 @@ Tax invoices · job cards → invoice · quotes · payroll estimates · accounti
 
 | Capability | What you get |
 |------------|----------------|
-| **Get paid** | VAT tax invoices, professional PDF, aging, bulk mark paid, CSV |
-| **Job cards** | Timer, convert fills client / site / tech / notes / lines |
+| **Get paid** | VAT tax invoices, professional PDF, aging, bulk mark paid, CSV, chase pack |
+| **Job cards** | Timer, device passport, FRP checklist, convert → invoice |
 | **Quotes** | One-click convert into a complete invoice template |
-| **Reports** | 5-file CSV pack (summary, invoices, aged AR, expenses, payments) |
+| **Reports** | CSV pack + cash forecast 30/60/90 + quote win-rate |
 | **Payroll** | 2026/27 PAYE · UIF · SDL · ETI estimates + payslip PDF (not e@syFile) |
 | **Books** | SA chart of accounts, journals, trial balance CSV |
 | **PayFast** | Sandbox + live, plus EFT logging |
 | **Documents** | SLA, POPIA, NDA lite, engagement letters |
 | **License** | HWID handshake + vendor activation server |
-| **Offline** | IndexedDB workspace — works when the network does not |
-
-## Earlier release notes — 4.1
-
-- **Load demo data** (Settings → Backup) for sales walkthroughs
-- **WhatsApp + Email** share from invoice editor
-
-## Earlier release notes — 4.0
-
-Built on the 3.4–3.12 commercial train:
-
-- Design system, dark mode, density, command palette (`Ctrl+K`)
-- Error boundary, onboarding, mobile + print styles, accessibility focus rings
-- Job-card and quote → invoice template fill with clear banners
-- CSV exports across sales, ops, payroll, and accounting
-- License activation steps, backup last-download time
-- Version alignment across app, `version.json`, and runtime config
+| **Offline** | IndexedDB workspace + load-shedding outbound queue |
 
 ## Stack
 
@@ -54,6 +38,8 @@ npm run build
 
 Deploy `dist/` to Cloudflare Pages, Netlify, or any static host.  
 License server: `DEPLOY_LICENSE_SERVER.md` · `license_server.py`.
+
+Product contact: **sainvoicepro@gmail.com**
 
 ## Keyboard
 
