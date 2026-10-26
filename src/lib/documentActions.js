@@ -1,5 +1,5 @@
 /**
- * Document clone helpers — duplicate invoices / quotes without retyping.
+ * Document clone helpers + quote/job/invoice chain.
  */
 import * as db from './db'
 import { STORES } from './db'
@@ -10,9 +10,6 @@ function nextNumber(prefix, existingList) {
   return `${prefix}-${year}-${String(n).padStart(4, '0')}`
 }
 
-/**
- * Clone an invoice as a new unpaid draft (today's date, new number).
- */
 export async function duplicateInvoice(source, { invoices = [] } = {}) {
   if (!source || typeof source !== 'object') throw new Error('No invoice to duplicate')
   const { id, number, createdAt, updatedAt, amountPaid, amountDue, status, date, dueDate, ...rest } = source
@@ -40,9 +37,6 @@ export async function duplicateInvoice(source, { invoices = [] } = {}) {
   return db.add(STORES.invoices, payload)
 }
 
-/**
- * Clone a quote as a new draft.
- */
 export async function duplicateQuote(source, { quotes = [] } = {}) {
   if (!source || typeof source !== 'object') throw new Error('No quote to duplicate')
   const { id, number, createdAt, updatedAt, status, date, validUntil, convertedAt, ...rest } = source
@@ -65,9 +59,6 @@ export async function duplicateQuote(source, { quotes = [] } = {}) {
   return db.add(STORES.quotes, payload)
 }
 
-/**
- * Aging buckets for AR (days past due).
- */
 export function invoiceAgingDays(inv, today = new Date()) {
   const due = inv.dueDate || inv.date
   if (!due) return 0
@@ -86,17 +77,8 @@ export function agingBucketLabel(days) {
   return '90+ days'
 }
 
-/**
- * Sum open invoice balances into aging buckets.
- */
 export function buildAgingReport(invoices) {
-  const buckets = {
-    current: 0,
-    d30: 0,
-    d60: 0,
-    d90: 0,
-    d90plus: 0,
-  }
+  const buckets = { current: 0, d30: 0, d60: 0, d90: 0, d90plus: 0 }
   const open = (invoices || []).filter((i) =>
     !i.isCredit && ['unpaid', 'partial', 'overdue'].includes(i.status || 'unpaid')
   )
@@ -114,9 +96,6 @@ export function buildAgingReport(invoices) {
   return { buckets, total, openCount: open.length }
 }
 
-/**
- * Calendar-month revenue (paid invoices) and expenses.
- */
 export function monthCashSnapshot({ invoices = [], expenses = [], payments = [] }, ref = new Date()) {
   const y = ref.getFullYear()
   const m = ref.getMonth()
@@ -125,15 +104,9 @@ export function monthCashSnapshot({ invoices = [], expenses = [], payments = [] 
     const d = new Date(String(iso).slice(0, 10) + 'T12:00:00')
     return d.getFullYear() === y && d.getMonth() === m
   }
-  const revenue = (payments || [])
-    .filter((p) => inMonth(p.date))
-    .reduce((s, p) => s + (Number(p.amount) || 0), 0)
-  const expenseTotal = (expenses || [])
-    .filter((e) => inMonth(e.date))
-    .reduce((s, e) => s + (Number(e.amount) || 0), 0)
-  const invoiced = (invoices || [])
-    .filter((i) => inMonth(i.date) && !i.isCredit)
-    .reduce((s, i) => s + (Number(i.total) || 0), 0)
+  const revenue = (payments || []).filter((p) => inMonth(p.date)).reduce((s, p) => s + (Number(p.amount) || 0), 0)
+  const expenseTotal = (expenses || []).filter((e) => inMonth(e.date)).reduce((s, e) => s + (Number(e.amount) || 0), 0)
+  const invoiced = (invoices || []).filter((i) => inMonth(i.date) && !i.isCredit).reduce((s, i) => s + (Number(i.total) || 0), 0)
   return {
     revenue,
     expenseTotal,
@@ -141,4 +114,75 @@ export function monthCashSnapshot({ invoices = [], expenses = [], payments = [] 
     net: revenue - expenseTotal,
     label: ref.toLocaleString('en-ZA', { month: 'long', year: 'numeric' }),
   }
+}
+
+/** Quote → Job card */
+export async function quoteToJob(quote) {
+  if (!quote) throw new Error('No quote')
+  const payload = {
+    title: `Job from ${quote.number || 'quote'}`,
+    clientId: quote.clientId,
+    status: 'open',
+    priority: 'normal',
+    notes: [quote.notes || '', quote.devices ? `Devices: ${quote.devices}` : '', `Source quote: ${quote.number || quote.id}`].filter(Boolean).join('\n'),
+    description: (quote.lines || []).map((l) => `${l.qty || 1}× ${l.description || l.name || 'Item'} @ ${l.price || 0}`).join('\n'),
+    devices: quote.devices || '',
+    jobType: quote.serviceType === 'on_site' || quote.serviceType === 'onsite' ? 'on_site' : 'walk_in',
+    supportType: quote.serviceType || 'remote',
+    fromQuoteId: quote.id,
+    billable: true,
+    labourAmount: Number(quote.total) || 0,
+    checklistType: 'intake',
+    checklist: {},
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+  const job = await db.add(STORES.tickets, payload)
+  await db.put(STORES.quotes, {
+    ...quote,
+    status: quote.status === 'converted' ? quote.status : 'accepted',
+    jobId: job.id || job,
+    updatedAt: new Date().toISOString(),
+  })
+  return job
+}
+
+/** Job → Invoice prefill */
+export async function jobToInvoice(ticket, { invoices = [] } = {}) {
+  if (!ticket) throw new Error('No job')
+  const lines = []
+  if (ticket.billable && Number(ticket.labourAmount) > 0) {
+    lines.push({ description: ticket.title || 'Labour', qty: 1, price: Number(ticket.labourAmount) || 0 })
+  }
+  if (!lines.length && ticket.description) {
+    lines.push({ description: String(ticket.description).slice(0, 120), qty: 1, price: 0 })
+  }
+  if (!lines.length) lines.push({ description: ticket.title || 'Service', qty: 1, price: 0 })
+  const total = lines.reduce((s, l) => s + (Number(l.qty) || 0) * (Number(l.price) || 0), 0)
+  const payload = {
+    clientId: ticket.clientId,
+    number: nextNumber('INV', invoices),
+    date: new Date().toISOString().slice(0, 10),
+    dueDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+    status: 'unpaid',
+    lines,
+    total,
+    exclusive: total,
+    vatAmount: 0,
+    amountPaid: 0,
+    amountDue: total,
+    fromTicketId: ticket.id,
+    devices: ticket.devices || ticket.passport?.model || '',
+    notes: `From job ${ticket.title || ticket.id}`,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+  const inv = await db.add(STORES.invoices, payload)
+  await db.put(STORES.tickets, {
+    ...ticket,
+    status: ticket.status === 'open' ? 'resolved' : ticket.status,
+    invoiceId: inv.id || inv,
+    updatedAt: new Date().toISOString(),
+  })
+  return inv
 }
