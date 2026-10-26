@@ -1,13 +1,15 @@
 {
   "name": "sa-invoice-pro",
   "private": true,
-  "version": "6.11.3",
+  "version": "6.12.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "prebuild": "node scripts/check-exports.mjs",
     "build": "vite build",
+    "dev": "vite",
     "preview": "vite preview",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "check:exports": "node scripts/check-exports.mjs"
   },
   "dependencies": {
     "react": "^19.0.0",

@@ -1,66 +1,126 @@
+/** Local seats (roles) + tier limit helpers. */
 import * as db from './db'
-import { ROLES } from './roles'
-import { audit } from './auditLog'
+import { STORES } from './db'
 
-const KEY = 'team_seats'
-const ACTIVE = 'active_seat_id'
+export const ROLES = [
+  { id: 'owner', label: 'Owner' },
+  { id: 'admin', label: 'Admin' },
+  { id: 'manager', label: 'Manager' },
+  { id: 'tech', label: 'Technician' },
+  { id: 'front_desk', label: 'Front desk' },
+  { id: 'accountant', label: 'Accountant' },
+  { id: 'viewer', label: 'Viewer' },
+]
+
+const LS_SEATS = 'saip_seats_v1'
+const LS_ACTIVE = 'saip_active_seat_id'
+
+async function readAll() {
+  try {
+    if (STORES?.seats) {
+      const rows = await db.getAll(STORES.seats)
+      if (Array.isArray(rows) && rows.length) return rows
+    }
+  } catch {}
+  try {
+    return JSON.parse(localStorage.getItem(LS_SEATS) || '[]')
+  } catch {
+    return []
+  }
+}
+
+async function writeAll(rows) {
+  try {
+    localStorage.setItem(LS_SEATS, JSON.stringify(rows))
+  } catch {}
+  try {
+    if (STORES?.seats) {
+      for (const r of rows) await db.put(STORES.seats, r)
+    }
+  } catch {}
+}
 
 export async function listSeats() {
-  const rows = (await db.getSetting(KEY)) || []
-  return Array.isArray(rows) ? rows : []
+  return readAll()
 }
 
-export async function saveSeats(rows) {
-  await db.setSetting(KEY, rows)
-}
-
-export async function upsertSeat(seat) {
-  const rows = await listSeats()
-  const id = seat.id || 'seat_' + Date.now().toString(36)
+export async function upsertSeat(input) {
+  const rows = await readAll()
+  const id = input.id || `seat-${Date.now()}`
   const next = {
     id,
-    name: String(seat.name || 'Team member').trim(),
-    email: String(seat.email || '').trim().toLowerCase(),
-    role: seat.role || 'tech',
-    active: seat.active !== false,
-    pin: seat.pin ? String(seat.pin).slice(0, 8) : '',
+    name: String(input.name || '').trim(),
+    email: String(input.email || '').trim(),
+    role: input.role || 'tech',
+    pin: input.pin || '',
+    active: input.active !== false,
     updatedAt: new Date().toISOString(),
+    createdAt: input.createdAt || new Date().toISOString(),
   }
-  const idx = rows.findIndex((r) => r.id === id)
+  const idx = rows.findIndex((r) => String(r.id) === String(id))
   if (idx >= 0) rows[idx] = { ...rows[idx], ...next }
-  else rows.push({ ...next, createdAt: new Date().toISOString() })
-  await saveSeats(rows)
-  await audit('seat.upsert', { seatId: id, role: next.role, name: next.name })
+  else rows.push(next)
+  await writeAll(rows)
+  try {
+    if (STORES?.seats) await db.put(STORES.seats, next)
+  } catch {}
   return next
 }
 
 export async function removeSeat(id) {
-  const rows = (await listSeats()).filter((r) => r.id !== id)
-  await saveSeats(rows)
+  const rows = (await readAll()).filter((r) => String(r.id) !== String(id))
+  await writeAll(rows)
+  try {
+    if (STORES?.seats) await db.remove(STORES.seats, id)
+  } catch {}
   const active = await getActiveSeatId()
-  if (active === id) await setActiveSeatId('')
-  await audit('seat.remove', { seatId: id })
+  if (String(active) === String(id)) await setActiveSeatId('')
 }
 
 export async function getActiveSeatId() {
-  return (await db.getSetting(ACTIVE)) || ''
+  try {
+    return localStorage.getItem(LS_ACTIVE) || ''
+  } catch {
+    return ''
+  }
 }
 
 export async function setActiveSeatId(id) {
-  await db.setSetting(ACTIVE, id || '')
+  try {
+    if (id) localStorage.setItem(LS_ACTIVE, String(id))
+    else localStorage.removeItem(LS_ACTIVE)
+  } catch {}
 }
 
 export async function getActiveSeat() {
   const id = await getActiveSeatId()
   if (!id) return null
-  return (await listSeats()).find((s) => s.id === id) || null
+  const rows = await readAll()
+  return rows.find((r) => String(r.id) === String(id)) || null
 }
 
-export function seatLimitForTier(tierId) {
-  if (tierId === 'solo') return 1
-  if (tierId === 'shop') return 5
-  if (tierId === 'multi') return 25
-  return 5
+export function seatLimits(settings = {}, license = {}) {
+  const tier = String(license.tier || settings.tier || 'solo').toLowerCase()
+  const defaults = {
+    solo: { users: 1, branches: 1, devices: 2 },
+    team: { users: 5, branches: 1, devices: 8 },
+    multi: { users: 15, branches: 5, devices: 25 },
+    multi_branch: { users: 15, branches: 5, devices: 25 },
+    enterprise: { users: 50, branches: 20, devices: 100 },
+  }
+  const base = defaults[tier] || defaults.solo
+  return {
+    tier,
+    users: Number(settings.maxUsers || license.maxUsers || base.users),
+    branches: Number(settings.maxBranches || license.maxBranches || base.branches),
+    devices: Number(settings.maxDevices || license.maxDevices || base.devices),
+  }
 }
 
-export { ROLES }
+export function seatUsage({ teamMembers = [], branches = [], devices = [] }, limits) {
+  return {
+    users: { used: teamMembers.length || 1, max: limits.users },
+    branches: { used: Math.max(1, branches.length || 1), max: limits.branches },
+    devices: { used: devices.length, max: limits.devices },
+  }
+}
