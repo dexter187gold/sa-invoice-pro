@@ -6,6 +6,10 @@ import { StatusBadge, PageFade, EmptyState } from '../components/ui'
 import { openWhatsApp } from '../lib/share'
 import { monthCashSnapshot } from '../lib/documentActions'
 import { APP_VERSION } from '../config'
+import { buildCollectionRing } from '../lib/collectionRing'
+import { cashForecast } from '../lib/forecast'
+import { isLoadSheddingMode } from '../lib/loadShedding'
+import { shareJobHologram } from '../lib/jobHologram'
 import OnboardingChecklist from '../components/OnboardingChecklist'
 import PhaseBoard from '../components/PhaseBoard'
 import DeskRulesCard from '../components/DeskRulesCard'
@@ -29,6 +33,7 @@ export default function Home() {
   const nav = useNavigate()
   const { company, invoices, clients, tickets, quotes, payments, expenses, toast } = useApp()
   const [focus, setFocus] = useState('all')
+  const shedding = isLoadSheddingMode()
 
   const open = invoices.filter((i) => ['unpaid', 'partial', 'overdue'].includes(i.status))
   const paid = invoices.filter((i) => i.status === 'paid')
@@ -42,6 +47,8 @@ export default function Home() {
   const draftQuotes = quotes.filter((q) => String(q.status || '').toLowerCase() === 'draft')
   const collectionRate = rev + ar > 0 ? Math.round((rev / (rev + ar)) * 100) : 100
   const monthSnap = useMemo(() => monthCashSnapshot({ invoices, expenses, payments }), [invoices, expenses, payments])
+  const forecast = useMemo(() => cashForecast(invoices), [invoices])
+  const ring = useMemo(() => buildCollectionRing(tickets, clients), [tickets, clients])
   const isNew = !clients.length && !invoices.length
 
   const needsChase = useMemo(() => {
@@ -81,6 +88,17 @@ export default function Home() {
     openWhatsApp(phone, text)
   }
 
+  const notifyCollection = async (row) => {
+    const t = tickets.find((x) => String(x.id) === String(row.id))
+    if (!t) return
+    try {
+      await shareJobHologram(t, company, row.phone)
+      toast?.(row.phone ? 'Opening collection WhatsApp…' : 'Status card copied', 'success')
+    } catch (e) {
+      toast?.(e?.message || 'Share failed', 'error')
+    }
+  }
+
   const ringStyle = {
     background: `conic-gradient(var(--green, #22c55e) ${collectionRate * 3.6}deg, var(--border, #333) 0)`,
   }
@@ -94,6 +112,13 @@ export default function Home() {
       <PhaseBoard compact />
       <DeskRulesCard invoices={invoices} tickets={tickets} clients={clients} />
       <NpsCard clients={clients} toast={toast} />
+
+      {shedding ? (
+        <div className="card" style={{ marginBottom: 12, borderLeft: '4px solid #fbbf24' }}>
+          <strong>Load-shedding mode on</strong>
+          <span className="muted" style={{ marginLeft: 8, fontSize: 13 }}>Outbound messages can be queued — Settings → Data</span>
+        </div>
+      ) : null}
 
       <section className="pulse-hero">
         <div className="pulse-hero-text">
@@ -139,10 +164,10 @@ export default function Home() {
           <span className="pulse-stat-v">{openJobs.length}</span>
           <span className="pulse-stat-h">{jobToBill.length} ready to bill</span>
         </button>
-        <button type="button" className="pulse-stat" onClick={() => nav('/quotes')}>
-          <span className="pulse-stat-k">Draft quotes</span>
-          <span className="pulse-stat-v">{draftQuotes.length}</span>
-          <span className="pulse-stat-h">Convert when won</span>
+        <button type="button" className="pulse-stat" onClick={() => nav('/reports')}>
+          <span className="pulse-stat-k">Due ≤30d</span>
+          <span className="pulse-stat-v">{formatMoney(forecast.d30)}</span>
+          <span className="pulse-stat-h">Cash forecast</span>
         </button>
       </div>
 
@@ -166,6 +191,31 @@ export default function Home() {
             }
           />
         </div>
+      )}
+
+      {showJobs && ring.length > 0 && (
+        <section className="pulse-section">
+          <div className="pulse-section-head">
+            <h2>Collection ring</h2>
+            <span className="muted">Waiting in-store / ready</span>
+          </div>
+          <div className="pulse-chase">
+            {ring.map((row) => (
+              <div key={row.id} className="pulse-chase-card">
+                <div>
+                  <strong>{row.title}</strong>
+                  <div className="muted" style={{ fontSize: 12 }}>
+                    {row.clientName} · {row.waitHrs}h · {row.urgency}
+                  </div>
+                </div>
+                <div className="pulse-chase-btns">
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => notifyCollection(row)}>Notify WA</button>
+                  <Link className="btn btn-outline btn-sm" to="/tickets">Desk</Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {showMoney && needsChase.length > 0 && (

@@ -3,23 +3,22 @@ import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
 import { APP_VERSION, SA_CONFIG } from '../config'
-import { PayFast } from '../lib/payfast'
-import { exportAll, importAll } from '../lib/db'
-import { DEFAULT_LAYOUT, loadInvoiceLayout, saveInvoiceLayout, mergeLayout } from '../lib/invoiceLayout'
-import { TEMPLATE_PRESETS } from '../lib/pdfTemplate'
+import { exportAll } from '../lib/db'
 import { Segmented, PageFade, ConfirmDialog, LoadingButton } from '../components/ui'
-import { loadDemoWorkspace } from '../lib/demoData'
 import CloudSettings from '../components/CloudSettings'
 import ThemePicker from '../components/ThemePicker'
 import {
   listAutoBackups, restoreAutoBackup, downloadAutoBackup, saveAutoBackup,
-  getAutoBackupMeta,
 } from '../lib/localAutoBackup'
+import {
+  isLoadSheddingMode, setLoadSheddingMode, listOutboundQueue, clearSentFromQueue,
+} from '../lib/loadShedding'
+import { loadCommsPrefs, saveCommsPrefs, addOptOut } from '../lib/quietHours'
 
 export default function Settings() {
   const {
     company, setCompany, toast, refresh,
-    vatEnabled, vatRate, setVatEnabled, setVatRate, theme, setTheme, density, setDensity,
+    vatEnabled, vatRate, setVatEnabled, setVatRate, theme, setTheme,
   } = useApp()
   const [tab, setTab] = useState('company')
   const [form, setForm] = useState({
@@ -29,9 +28,13 @@ export default function Settings() {
   })
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState(null)
+  const [shedding, setShedding] = useState(() => isLoadSheddingMode())
+  const [comms, setComms] = useState(() => loadCommsPrefs())
+  const [optPhone, setOptPhone] = useState('')
   const [navPrefs, setNavPrefs] = useState(() => {
     try { return JSON.parse(localStorage.getItem('sa_nav_prefs') || '{}') } catch { return { layout: 'bottom' } }
   })
+  const queueLen = listOutboundQueue().filter((e) => !e.sent).length
 
   useEffect(() => {
     setForm({
@@ -70,6 +73,7 @@ export default function Settings() {
     { id: 'nav', label: 'Navigation' },
     { id: 'cloud', label: 'Cloud' },
     { id: 'data', label: 'Data' },
+    { id: 'comms', label: 'Comms' },
   ]
 
   return (
@@ -77,7 +81,7 @@ export default function Settings() {
       <div className="page-header">
         <div>
           <h1>Settings</h1>
-          <p className="subtitle">Workspace · v{APP_VERSION}</p>
+          <p className="subtitle">Workspace · v{APP_VERSION} · {SA_CONFIG.productEmail || 'sainvoicepro@gmail.com'}</p>
         </div>
       </div>
 
@@ -150,6 +154,24 @@ export default function Settings() {
       {tab === 'data' && (
         <div className="card form-grid" style={{ marginTop: 12 }}>
           <h3 style={{ marginTop: 0 }}>Data & backup</h3>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              type="checkbox"
+              checked={shedding}
+              onChange={(e) => {
+                const on = e.target.checked
+                setLoadSheddingMode(on)
+                setShedding(on)
+                toast(on ? 'Load-shedding mode ON — queue outbound' : 'Load-shedding mode off', 'info')
+              }}
+            />
+            Load-shedding mode (queue WA/SMS when offline / grid down)
+          </label>
+          <p className="muted" style={{ fontSize: 12 }}>Queued outbound: {queueLen}</p>
+          <button type="button" className="btn btn-outline" onClick={() => {
+            clearSentFromQueue()
+            toast('Cleared sent queue items', 'success')
+          }}>Clear sent from queue</button>
           <button type="button" className="btn btn-outline" onClick={async () => {
             const data = await exportAll()
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
@@ -173,6 +195,57 @@ export default function Settings() {
           }}>Download last auto-backup</button>
           <p className="muted" style={{ fontSize: 12 }}>Cloud profiles restore on sign-in when sync is configured.</p>
           <p className="muted" style={{ fontSize: 11 }}>Sync: {SA_CONFIG.syncServerUrl}</p>
+        </div>
+      )}
+
+      {tab === 'comms' && (
+        <div className="card form-grid" style={{ marginTop: 12 }}>
+          <h3 style={{ marginTop: 0 }}>Quiet hours & opt-out</h3>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              type="checkbox"
+              checked={comms.respectQuiet !== false}
+              onChange={(e) => setComms(saveCommsPrefs({ ...comms, respectQuiet: e.target.checked }))}
+            />
+            Respect quiet hours for outbound WhatsApp
+          </label>
+          <label className="label">Quiet start hour (0–23)</label>
+          <input
+            className="input"
+            type="number"
+            min={0}
+            max={23}
+            value={comms.quietStart}
+            onChange={(e) => setComms(saveCommsPrefs({ ...comms, quietStart: Number(e.target.value) }))}
+          />
+          <label className="label">Quiet end hour (0–23)</label>
+          <input
+            className="input"
+            type="number"
+            min={0}
+            max={23}
+            value={comms.quietEnd}
+            onChange={(e) => setComms(saveCommsPrefs({ ...comms, quietEnd: Number(e.target.value) }))}
+          />
+          <label className="label">Add opt-out phone</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input className="input" value={optPhone} onChange={(e) => setOptPhone(e.target.value)} placeholder="082…" />
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => {
+                setComms(addOptOut(optPhone))
+                setOptPhone('')
+                toast('Opt-out saved', 'success')
+              }}
+            >
+              Add
+            </button>
+          </div>
+          <p className="muted" style={{ fontSize: 12 }}>
+            Opted out: {(comms.optOutPhones || []).length ? comms.optOutPhones.join(', ') : 'none'}
+          </p>
+          <Link className="btn btn-outline" to="/wa-templates">WhatsApp templates</Link>
         </div>
       )}
 
