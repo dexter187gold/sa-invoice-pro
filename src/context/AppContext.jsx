@@ -11,6 +11,7 @@ import { cloudLogin, cloudRegister } from '../lib/cloudAuth'
 
 const AppCtx = createContext(null)
 const FIVE_MIN_MS = 5 * 60 * 1000
+const syncActivity = (state) => { try { window.dispatchEvent(new CustomEvent('saip-sync-state', { detail: state })) } catch {} }
 
 export function AppProvider({ children }) {
   const [ready, setReady] = useState(false)
@@ -74,14 +75,11 @@ export function AppProvider({ children }) {
     const on = () => {
       setOnline(true)
       if (canUseCloudSync() && Sync.isLoggedIn()) {
+        syncActivity('syncing')
         flushPushQueue()
-          .then(() => ensureWorkspaceSynced())
-          .then((r) => {
-            if (r?.ok && r.action && !['both_empty', 'none', 'queued'].includes(r.action)) {
-              toast(describeEnsureResult(r), 'success')
-            }
-          })
-          .catch(() => {})
+          .then(() => { syncActivity('busy'); return ensureWorkspaceSynced() })
+          .then((r) => syncActivity(r?.ok ? 'synced' : 'error'))
+          .catch(() => syncActivity('error'))
       }
     }
     const off = () => setOnline(false)
@@ -98,16 +96,15 @@ export function AppProvider({ children }) {
         if (!(await db.getSetting('trialStartedAt', null))) await db.setSetting('trialStartedAt', new Date().toISOString())
         if (canUseCloudSync() && Sync.isLoggedIn()) {
           try {
+            syncActivity('syncing')
             const result = await ensureWorkspaceSynced()
+            syncActivity('busy')
             skipAutoPush.current = true
             await refresh()
             skipAutoPush.current = false
-            if (result?.ok && result.action && !['both_empty', 'none'].includes(result.action)) {
-              toast(describeEnsureResult(result), 'success')
-            } else if (!result?.ok && result?.reason) {
-              console.warn('[boot-sync]', result.reason)
-            }
-          } catch (e) { console.warn('[boot]', e.message || e) }
+            syncActivity(result?.ok ? 'synced' : 'error')
+            if (!result?.ok && result?.reason) console.warn('[boot-sync]', result.reason)
+          } catch (e) { syncActivity('error'); console.warn('[boot]', e.message || e) }
           setTimeout(() => { flushPushQueue().catch(() => {}); ensureWorkspaceSynced().catch(() => {}) }, 8000)
         }
       } catch (e) {
@@ -122,9 +119,11 @@ export function AppProvider({ children }) {
     if (!ready) return
     const tick = () => {
       if (!canUseCloudSync() || !Sync.isLoggedIn() || !navigator.onLine) return
+      syncActivity('syncing')
       flushPushQueue()
-        .then(() => ensureWorkspaceSynced())
+        .then(() => { syncActivity('busy'); return ensureWorkspaceSynced() })
         .then((r) => {
+          syncActivity(r?.ok ? 'synced' : 'error')
           if (r?.ok && r.action && !['both_empty', 'none', 'queued'].includes(r.action)) {
             console.log('[5min-sync]', r.action)
           } else if (r && !r.ok) {
@@ -135,7 +134,7 @@ export function AppProvider({ children }) {
             }
           }
         })
-        .catch((e) => console.warn('[5min-sync]', e.message || e))
+        .catch((e) => { syncActivity('error'); console.warn('[5min-sync]', e.message || e) })
     }
     const id = setInterval(tick, FIVE_MIN_MS)
     return () => clearInterval(id)
