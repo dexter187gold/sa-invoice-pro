@@ -1,5 +1,19 @@
 # Changelog
 
+## 6.29.0 — Portal payments · shared convert (2026-10-27)
+
+### Quotes
+- **Shared `convertQuoteToInvoice`** on Quotes page (same path as Home one-tap)
+- After convert → navigate to new invoice
+- Convert button respects `canConvertQuote` (accepted / portal accepted / draft / sent)
+
+### Client portal
+- **5th page: Payments** — paid history + paid-to-date total
+- Overview quick link to payment history
+
+### Tests
+- Playwright `e2e/quotes.spec.js` — quotes route + portal payments section
+
 ## 6.28.0 — Mega bank + portal e2e (2026-10-27)
 
 ### Bank CSV match v2
