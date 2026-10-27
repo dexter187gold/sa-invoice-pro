@@ -100,6 +100,7 @@ export default function AppAssistant() {
     const history = [...msgs, userMessage].slice(-8)
     setMsgs((m) => [...m, userMessage])
     setPending(true)
+    window.dispatchEvent(new CustomEvent('saip-ai-activity', { detail: true }))
     try {
       if (Sync.isLoggedIn()) {
         const result = await Sync.askAssistant(history.map((m) => ({ role: m.role, content: m.text })))
@@ -112,6 +113,7 @@ export default function AppAssistant() {
       setMsgs((m) => [...m, { role: 'assistant', text: `Cloud AI is unavailable right now, so here is local help instead:\\n\\n${fallback}\\n\\nNo invoice or client records were sent with this request. ${error?.message || ''}` }])
     } finally {
       setPending(false)
+      window.dispatchEvent(new CustomEvent('saip-ai-activity', { detail: false }))
     }
   }
 
