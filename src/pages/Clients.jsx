@@ -22,6 +22,7 @@ export default function Clients() {
   const [tagFilter, setTagFilter] = useState('all')
   const [confirm, setConfirm] = useState(null)
   const [portalBusyId, setPortalBusyId] = useState(null)
+  const [portalCreds, setPortalCreds] = useState(null)
   const [lastPortal, setLastPortal] = useState(null)
   const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', notes: '', tags: [] })
 
@@ -82,12 +83,7 @@ export default function Clients() {
     }
     return Sync.createPortalLink(client.id, {
       days: 90,
-      snapshot: {
-        company,
-        client,
-        quotes,
-        invoices,
-      },
+      snapshot: { company, client, quotes, invoices },
     })
   }
 
@@ -110,10 +106,47 @@ export default function Clients() {
     }
   }
 
+  const issuePortalLogin = async (client) => {
+    if (!client?.email) return toast('Client needs an email for portal login', 'error')
+    if (!Sync.isLoggedIn()) return toast('Log in to Cloud under Settings first', 'error')
+    setPortalBusyId(client.id)
+    try {
+      await Sync.pushAll({
+        company, clients, invoices, quotes, tickets, payments, products, services, expenses,
+      })
+      const data = await Sync.issueClientPortalLogin({
+        clientId: client.id,
+        email: client.email,
+        name: client.name,
+        company,
+        client,
+      })
+      setPortalCreds({
+        name: client.name,
+        email: data.email,
+        pin: data.pin,
+        portalUrl: data.portalUrl,
+        loginHint: data.loginHint,
+      })
+      const msg = `Portal login\n${data.email}\nPIN: ${data.pin}\n${data.portalUrl || ''}`
+      try {
+        await navigator.clipboard.writeText(msg)
+        toast('Portal login created & copied', 'success')
+      } catch {
+        toast('Portal login created — save the PIN shown', 'success')
+      }
+    } catch (e) {
+      toast(e.message || 'Could not issue portal login', 'error')
+    } finally {
+      setPortalBusyId(null)
+    }
+  }
+
   const statementText = (client) => buildClientStatement(client, invoices, company, payments)
 
   const rowActions = (c) => [
-    { id: 'portal', label: portalBusyId === c.id ? 'Portal…' : 'Client portal', onClick: () => createPortal(c) },
+    { id: 'portal', label: portalBusyId === c.id ? 'Portal…' : 'Magic link', onClick: () => createPortal(c) },
+    { id: 'portal-login', label: portalBusyId === c.id ? 'Login…' : 'Portal login', onClick: () => issuePortalLogin(c) },
     {
       id: 'wa-st',
       label: 'WA statement',
@@ -131,48 +164,19 @@ export default function Clients() {
       },
     },
     {
-      id: 'pdf',
-      label: 'Statement PDF',
-      onClick: () => {
+      id: 'pdf-st',
+      label: 'PDF statement',
+      onClick: async () => {
         try {
-          downloadStatementPdf(c, invoices, company, payments)
-          toast('PDF downloaded', 'success')
+          await downloadStatementPdf(c, invoices, company, payments)
+          toast('Statement PDF ready', 'success')
         } catch (e) {
           toast(e.message || 'PDF failed', 'error')
         }
       },
     },
-    ...CLIENT_TAG_PRESETS.map((t) => ({
-      id: `tag-${t.id}`,
-      label: clientHasTag(c, t.id) ? `− ${t.label}` : `+ ${t.label}`,
-      onClick: () => cycleTag(c, t.id),
-    })),
-    { id: 'del', label: 'Delete', onClick: () => del(c.id), danger: true },
+    { id: 'del', label: 'Delete', danger: true, onClick: () => del(c.id) },
   ]
-
-  const arFor = (clientId) =>
-    invoices
-      .filter((i) => String(i.clientId) === String(clientId) && ['unpaid', 'partial', 'overdue'].includes(i.status))
-      .reduce((s, i) => s + (Number(i.amountDue ?? i.total) || 0), 0)
-
-  const tagChip = (id) => {
-    const p = CLIENT_TAG_PRESETS.find((t) => t.id === id)
-    return (
-      <span
-        key={id}
-        style={{
-          fontSize: 10,
-          padding: '1px 6px',
-          borderRadius: 999,
-          background: (p?.color || '#64748b') + '33',
-          color: p?.color || '#94a3b8',
-          marginRight: 4,
-        }}
-      >
-        {p?.label || id}
-      </span>
-    )
-  }
 
   return (
     <PageFade>
@@ -180,23 +184,45 @@ export default function Clients() {
         <div>
           <h1>Clients</h1>
           <p className="subtitle">
-            {clients.length} clients · tags · portal · statement · WhatsApp
+            {clients.length} clients · tags · portal login · statement · WhatsApp
           </p>
         </div>
       </div>
 
-      <form className="card form-grid cols-2" onSubmit={save} style={{ marginBottom: '1rem' }}>
-        <div>
-          <label className="label">Name *</label>
-          <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+      {portalCreds && (
+        <div className="card" style={{ marginBottom: 12, borderLeft: '4px solid var(--green, #22c55e)' }}>
+          <strong>Portal login for {portalCreds.name}</strong>
+          <p className="muted" style={{ margin: '6px 0' }}>
+            Share with the customer (PIN shown once):
+          </p>
+          <div style={{ fontFamily: 'monospace', fontSize: 14, lineHeight: 1.6 }}>
+            <div>URL: {portalCreds.portalUrl}</div>
+            <div>Email: {portalCreds.email}</div>
+            <div>PIN: <strong>{portalCreds.pin}</strong></div>
+          </div>
+          <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => {
+              const msg = `Portal login\n${portalCreds.email}\nPIN: ${portalCreds.pin}\n${portalCreds.portalUrl || ''}`
+              navigator.clipboard?.writeText(msg)
+              toast('Copied', 'success')
+            }}>Copy again</button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => setPortalCreds(null)}>Dismiss</button>
+          </div>
         </div>
+      )}
+
+      <form className="card form-grid" onSubmit={save} style={{ marginBottom: 16 }}>
         <div>
-          <label className="label">Phone (WhatsApp)</label>
-          <input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <label className="label">Name</label>
+          <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
         </div>
         <div>
           <label className="label">Email</label>
           <input className="input" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+        </div>
+        <div>
+          <label className="label">Phone</label>
+          <input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
         </div>
         <div>
           <label className="label">Company</label>
@@ -206,30 +232,12 @@ export default function Clients() {
           <label className="label">Notes</label>
           <input className="input" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
         </div>
-        <div style={{ gridColumn: '1 / -1' }}>
-          <label className="label">Tags</label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {CLIENT_TAG_PRESETS.map((t) => {
-              const on = form.tags.includes(t.id)
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  className={`btn btn-sm ${on ? 'btn-secondary' : 'btn-outline'}`}
-                  onClick={() => setForm({ ...form, tags: toggleClientTag(form.tags, t.id) })}
-                >
-                  {t.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-        <button className="btn btn-primary" type="submit">Add client</button>
+        <button type="submit" className="btn btn-primary">Add client</button>
       </form>
 
-      <div className="toolbar sticky-tools" style={{ flexWrap: 'wrap', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
         <SearchInput value={q} onChange={setQ} placeholder="Search clients…" />
-        <select className="input" style={{ width: 'auto' }} value={tagFilter} onChange={(e) => setTagFilter(e.target.value)}>
+        <select className="input" style={{ maxWidth: 160 }} value={tagFilter} onChange={(e) => setTagFilter(e.target.value)}>
           <option value="all">All tags</option>
           {CLIENT_TAG_PRESETS.map((t) => (
             <option key={t.id} value={t.id}>{t.label}</option>
@@ -240,44 +248,49 @@ export default function Clients() {
       {!filtered.length ? (
         <EmptyState title={clients.length ? 'No matches' : 'No clients yet'} hint="Add a client to invoice and open a portal." />
       ) : (
-        <div className="card" style={{ overflowX: 'auto' }}>
-          <DataTable>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Tags</th>
-                <th>Phone</th>
-                <th>Email</th>
-                <th>Open AR</th>
-                <th></th>
+        <DataTable>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Tags</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((c) => (
+              <tr key={c.id}>
+                <td><strong>{c.name}</strong>{c.company ? <div className="muted" style={{ fontSize: 12 }}>{c.company}</div> : null}</td>
+                <td>{c.email || '—'}</td>
+                <td>{c.phone || '—'}</td>
+                <td>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {CLIENT_TAG_PRESETS.slice(0, 4).map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        style={{ opacity: clientHasTag(c.tags, t.id) ? 1 : 0.45, fontSize: 11 }}
+                        onClick={() => cycleTag(c, t.id)}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </td>
+                <td><ActionMenu items={rowActions(c)} /></td>
               </tr>
-            </thead>
-            <tbody>
-              {filtered.map((c) => (
-                <tr key={c.id}>
-                  <td>
-                    <strong>{c.name}</strong>
-                    {c.company ? <div className="muted" style={{ fontSize: 12 }}>{c.company}</div> : null}
-                  </td>
-                  <td>{normalizeTags(c.tags).map(tagChip)}</td>
-                  <td>{c.phone || '—'}</td>
-                  <td>{c.email || '—'}</td>
-                  <td>{formatMoney(arFor(c.id))}</td>
-                  <td style={{ whiteSpace: 'nowrap' }}>
-                    <ActionMenu label="⋯" items={rowActions(c)} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </DataTable>
-        </div>
+            ))}
+          </tbody>
+        </DataTable>
       )}
 
       {lastPortal?.clientId || lastPortal?.url ? (
-        <div style={{ marginTop: '1rem' }}>
+        <div style={{ marginTop: 16 }}>
           <PortalCard
             client={
-              clients.find((c) => String(c.id) === String(lastPortal.clientId)) || {
+              clients.find((x) => String(x.id) === String(lastPortal.clientId)) || {
                 id: lastPortal.clientId,
                 name: lastPortal.name,
                 phone: '',
