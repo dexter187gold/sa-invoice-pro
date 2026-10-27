@@ -6,6 +6,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      HAS_CLOUDFLARE_DEPLOY_CREDENTIALS: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -13,7 +15,10 @@ jobs:
           node-version: '20'
       - run: npm ci || npm install
       - run: npm run build
-      - name: Deploy to Cloudflare Workers
+      # Cloudflare's connected Git repository performs the production auto-deploy.
+      # Use Wrangler as a fallback only when both GitHub deployment secrets are configured.
+      - name: Deploy to Cloudflare Workers (optional Wrangler fallback)
+        if: ${{ env.HAS_CLOUDFLARE_DEPLOY_CREDENTIALS == 'true' }}
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
