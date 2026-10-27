@@ -97,13 +97,12 @@ export default function AppAssistant() {
     if (!q || pending) return
     setInput('')
     const userMessage = { role: 'user', text: q }
-    const history = [...msgs, userMessage].slice(-8)
     setMsgs((m) => [...m, userMessage])
     setPending(true)
     window.dispatchEvent(new CustomEvent('saip-ai-activity', { detail: true }))
     try {
       if (Sync.isLoggedIn()) {
-        const result = await Sync.askAssistant(history.map((m) => ({ role: m.role, content: m.text })))
+        const result = await Sync.askAssistant([{ role: 'user', content: q }])
         setMsgs((m) => [...m, { role: 'assistant', text: result.answer || 'I could not produce an answer. Please try again.' }])
       } else {
         setMsgs((m) => [...m, { role: 'assistant', text: buildReply(q, ctx) + '\\n\\nSign in to your cloud account to enable Cloudflare AI. This answer was generated locally.' }])
