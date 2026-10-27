@@ -1,7 +1,7 @@
 /** Local seats (roles) + tier limit helpers. */
-import * as db from './db'
-import { STORES } from './db'
-import { ROLES as ROLE_DEFS } from './roles'
+import * as db from './db.js'
+import { STORES } from './db.js'
+import { ROLES as ROLE_DEFS } from './roles.js'
 
 export const ROLES = ROLE_DEFS.map(({ id, label, description }) => ({ id, label, description }))
 
