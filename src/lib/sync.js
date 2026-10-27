@@ -337,6 +337,18 @@ export const Sync = {
     })
   },
 
+  async askAssistant(messages) {
+    return request('/api/assistant', {
+      method: 'POST',
+      body: JSON.stringify({ messages: (Array.isArray(messages) ? messages : []).slice(-8).map((m) => ({
+        role: m.role === 'assistant' ? 'assistant' : 'user',
+        content: String(m.content || '').slice(0, 1500),
+      })) }),
+      _maxAttempts: 1,
+      _timeout: 25000,
+    })
+  },
+
   async createSupportTicket(payload) {
     return request('/api/support/tickets', { method: 'POST', body: JSON.stringify(payload || {}) })
   },
