@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
+import { APP_VERSION } from '../config'
 
 const ARTICLES = [
   { title: 'Create and send an invoice', category: 'Invoices', body: 'Open Invoices → New invoice, choose a client, add items and quantities, confirm VAT and totals, then save. Preview or export the PDF and verify company, client, bank and tax details before sending.' },
@@ -28,7 +29,7 @@ export default function Support() {
     `Workspace: ${company?.name || 'Not set'}`,
     `Account: ${user?.email || user?.username || 'Signed-in user'}`,
     `App online: ${online ? 'Yes' : 'No'}`,
-    `App version: ${typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'See Settings'}`,
+    `App version: ${APP_VERSION}`,
     `Local counts: clients=${clients?.length || 0}, invoices=${invoices?.length || 0}, jobs=${tickets?.length || 0}`,
     `Issue: ${issue || 'Not specified'}`,
     '',
