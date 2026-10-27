@@ -1,5 +1,5 @@
 {
-  "version": "6.28.0",
-  "codename": "Mega bank match v2 · portal e2e · desk polish",
-  "message": "Bank CSV match with date proximity + more SA banks; Playwright portal & bank; version bump"
+  "version": "6.29.0",
+  "codename": "Portal payments · shared convert · e2e",
+  "message": "Quotes use shared convertQuoteToInvoice + navigate; portal Payments page; Playwright quotes smoke"
 }
