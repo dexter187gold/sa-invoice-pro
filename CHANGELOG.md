@@ -1,20 +1,16 @@
 # Changelog
 
-## 6.25.0 — Desk pulse & portal convert (2026-10-27)
+## 6.26.0 — Multi-page client portal (2026-10-27)
 
-### Owner desk
-- **Do next** chips: accepted quotes, SLA past-promise, AR, declined
-- **Client accepted — convert** queue with WA thank-you
-- Declined follow-up WA text
-- Stat: portal accepts to convert
+### Client portal (public)
+Four sections with sticky nav:
+1. **Overview** — balance, quote/job counts, quick links
+2. **Quotes** — accept / decline + notes (existing flow)
+3. **Invoices** — list, open balance, PayFast pay when configured
+4. **Service** — job cards, WhatsApp/email shop, NPS feedback
 
-### Lib
-- `deskPulse.js` pure helpers + unit tests
-- `buildQuoteAcceptedFollowUp` / `buildQuoteDeclinedFollowUp` in share.js
+Routes: `/portal/:token`, `/portal/:token/quotes|invoices|service`
 
-### Ops note
-saip-sync portal SPA aliases confirmed live; free-tier + git data stays for alpha.
+## 6.25.0 — Desk pulse & portal convert
 
 ## 6.24.0 — Portal snapshot fallback & go-live
-
-## 6.23.0 — Portal server write-back & auth e2e

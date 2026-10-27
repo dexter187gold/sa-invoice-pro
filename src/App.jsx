@@ -75,6 +75,7 @@ function AppInner() {
         <Route path="/login" element={<Login />} />
         <Route path="/portal" element={<Portal />} />
         <Route path="/portal/:token" element={<Portal />} />
+        <Route path="/portal/:token/:section" element={<Portal />} />
         <Route path="/setup" element={<Guard needCompany={false}><Setup /></Guard>} />
         <Route path="/*" element={
           <Guard needCompany>
