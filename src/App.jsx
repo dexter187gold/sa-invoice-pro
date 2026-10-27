@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useApp } from './context/AppContext'
 import Shell from './components/Shell'
 import ToastHost from './components/ToastHost'
+import LegalConsent from './components/LegalConsent'
 import AppLogo from './components/AppLogo'
 import Login from './pages/Login'
 import Setup from './pages/Setup'
@@ -73,6 +74,7 @@ function AppInner() {
   return (
     <>
       <ToastHost />
+      <LegalConsent />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/portal" element={<Portal />} />
