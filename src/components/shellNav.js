@@ -1,9 +1,17 @@
 const ROOT_NAV = [
   { to: '/', label: 'Home', icon: '⌂', end: true, section: 'home' },
-  { to: '/invoices', label: 'Money', icon: '📄', section: 'money' },
+  { to: '/dashboard', label: 'Dashboard', icon: '📊', section: 'home' },
+  { to: '/invoices', label: 'Invoices', icon: '📄', section: 'money' },
   { to: '/clients', label: 'Clients', icon: '👤', section: 'clients' },
   { to: '/tickets', label: 'Jobs', icon: '🎫', section: 'jobs' },
-  { to: '__more__', label: 'More', icon: '☰', section: 'more', isMore: true },
+  { to: '/quotes', label: 'Quotes', icon: '📝', section: 'money' },
+  { to: '/payments', label: 'Payments', icon: '💳', section: 'money' },
+  { to: '/expenses', label: 'Expenses', icon: '💸', section: 'books' },
+  { to: '/reports', label: 'Reports', icon: '📈', section: 'home' },
+  { to: '/products', label: 'Products', icon: '📦', section: 'jobs' },
+  { to: '/inbox', label: 'Inbox', icon: '💬', section: 'home' },
+  { to: '/accounting', label: 'Books', icon: '📒', section: 'books' },
+  { to: '/settings', label: 'Settings', icon: '⚙️', section: 'settings' },
 ]
 
 const SECTION_NAV = {
