@@ -1,5 +1,5 @@
 {
-  "version": "6.31.0",
-  "codename": "Self-serve PayFast · account seats",
-  "message": "PayFast checkout + ITN auto-issue; claim by email; no IP/MAC binding"
+  "version": "6.32.0",
+  "codename": "Clean chrome · FAB stack",
+  "message": "Quick Actions + AI stacked above bottom nav; remove duplicate Help/Notification under banner"
 }
