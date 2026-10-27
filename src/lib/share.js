@@ -140,3 +140,33 @@ export function openTicketWhatsApp(phone, ticket, company) {
   const text = `Hi ${name}, update from *${co}* on job *${ticket?.title || ticket?.number || ''}*.\nOpen job card: ${link}`
   return openWhatsApp(phone, text)
 }
+
+/** After portal Accept — thank client and set next step (COD / deposit / booking). */
+export function buildQuoteAcceptedFollowUp(quote, client, company) {
+  const co = company?.name || 'SA Invoice Pro'
+  const name = (client?.name || 'there').split(' ')[0]
+  const num = quote?.number || 'your quote'
+  const total = Number(quote?.total) || 0
+  return [
+    `Hi ${name}, thank you for accepting *${num}* with *${co}*.`,
+    total ? `Amount: *R${total.toFixed(2)}* (incl. where shown).` : '',
+    '',
+    'We will convert this to a tax invoice and confirm the next step (booking / parts / COD).',
+    quote?.portalNote ? `We noted: _${String(quote.portalNote).slice(0, 200)}_` : '',
+    '',
+    `Reply here anytime — ${co}`,
+  ].filter(Boolean).join('\n')
+}
+
+export function buildQuoteDeclinedFollowUp(quote, client, company) {
+  const co = company?.name || 'SA Invoice Pro'
+  const name = (client?.name || 'there').split(' ')[0]
+  const num = quote?.number || 'the quote'
+  return [
+    `Hi ${name}, thanks for letting us know about *${num}*.`,
+    '',
+    'If budget or scope was the issue we can revise — just reply with what would work better.',
+    '',
+    `— ${co}`,
+  ].join('\n')
+}

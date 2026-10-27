@@ -1,11 +1,11 @@
-# SA Invoice Pro 6.24.0
+# SA Invoice Pro 6.25.0
 
-Offline-first SA repair / MSP desk: invoices, jobs, quotes, portal, stock, seats, white-label.
+Offline-first SA repair / MSP desk. Portal Accept → convert on Home · WhatsApp-first chase.
 
 ```bash
 npm install && npm run dev
 npm run build && npm run test:unit
 ```
 
-**Go-live (owner):** [docs/OWNER_GO_LIVE.md](docs/OWNER_GO_LIVE.md)  
-**Product email:** sainvoicepro@gmail.com
+**Go-live:** [docs/OWNER_GO_LIVE.md](docs/OWNER_GO_LIVE.md)  
+**Product:** sainvoicepro@gmail.com
