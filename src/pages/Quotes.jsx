@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
 import { STORES } from '../lib/db'
@@ -22,9 +22,11 @@ import {
   clearQueuedPortalDecisions,
   applyPortalDecisionLocally,
 } from '../lib/portalQuote'
+import { convertQuoteToInvoice, canConvertQuote } from '../lib/quoteConvert'
 import { SA_CONFIG } from '../config'
 
 export default function Quotes() {
+  const nav = useNavigate()
   const { quotes, clients, invoices, company, vatRate, vatEnabled, refresh, toast } = useApp()
   const [clientId, setClientId] = useState('')
   const [templateId, setTemplateId] = useState('adhoc')
@@ -38,6 +40,7 @@ export default function Quotes() {
   const [status, setStatus] = useState('all')
   const [confirm, setConfirm] = useState(null)
   const [queue, setQueue] = useState([])
+  const [convertingId, setConvertingId] = useState(null)
 
   useEffect(() => {
     setQueue(listQueuedPortalDecisions())
@@ -183,44 +186,22 @@ export default function Quotes() {
   }
 
   const convert = async (qt) => {
-    if (String(qt.status || '').toLowerCase() === 'converted') {
-      return toast('Already converted', 'error')
+    if (!canConvertQuote(qt)) return toast('Cannot convert this quote', 'error')
+    setConvertingId(qt.id)
+    try {
+      const { invoice } = await convertQuoteToInvoice(qt, {
+        invoices,
+        vatRate: vatRate ?? 0.15,
+        vatEnabled: vatEnabled !== false,
+      })
+      await refresh()
+      toast(`Invoice ${invoice.number} created`, 'success')
+      nav(`/invoices/${invoice.id}`)
+    } catch (e) {
+      toast(e?.message || 'Convert failed', 'error')
+    } finally {
+      setConvertingId(null)
     }
-    const notesParts = [
-      qt.notes || '',
-      qt.serviceType ? `Service: ${qt.serviceType}` : '',
-      qt.devices ? `Devices: ${qt.devices}` : '',
-      qt.portalNote ? `Client portal note: ${qt.portalNote}` : '',
-      `Converted from quote ${qt.number || qt.id}`,
-    ].filter(Boolean)
-    const inv = {
-      clientId: qt.clientId,
-      number: `INV-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(4, '0')}`,
-      date: new Date().toISOString().slice(0, 10),
-      dueDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
-      status: 'unpaid',
-      lines: (qt.lines || []).map((l) => ({
-        description: l.description || l.name || 'Line',
-        qty: l.qty != null ? l.qty : 1,
-        price: Number(l.price) || 0,
-        unit: l.unit,
-      })),
-      exclusive: qt.exclusive,
-      vatAmount: qt.vatAmount,
-      total: qt.total,
-      amountPaid: 0,
-      amountDue: qt.total,
-      fromQuoteId: qt.id,
-      templateId: ['adhoc', 'hourly', 'flatrate'].includes(qt.templateId) ? 'standard' : qt.templateId || 'standard',
-      devices: qt.devices,
-      serviceType: qt.serviceType,
-      accountType: qt.accountType,
-      notes: notesParts.join('\n'),
-    }
-    await db.add(STORES.invoices, inv)
-    await db.put(STORES.quotes, { ...qt, status: 'converted', convertedAt: new Date().toISOString() })
-    await refresh()
-    toast('Converted to invoice — open Invoices to edit & send', 'success')
   }
 
   const del = (id) => {
@@ -273,7 +254,7 @@ export default function Quotes() {
         <div>
           <h1>Quotes</h1>
           <p className="subtitle">
-            COD · portal Accept/Decline · offline queue · {quotes.length} total
+            COD · portal Accept/Decline · offline queue · one-tap convert · {quotes.length} total
           </p>
         </div>
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
@@ -411,6 +392,7 @@ export default function Quotes() {
             const age = daysOverdue(qt.validUntil)
             const expired = age != null && age > 0 && String(qt.status || 'draft').toLowerCase() === 'draft'
             const st = String(qt.status || 'draft').toLowerCase()
+            const canConv = canConvertQuote(qt)
             return (
               <div key={qt.id} className="list-card" style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                 <div>
@@ -434,14 +416,19 @@ export default function Quotes() {
                   <button type="button" className="btn btn-outline btn-sm" onClick={() => pdf(qt, false)}>
                     PDF
                   </button>
-                  {st !== 'converted' && st !== 'rejected' && (
-                    <button type="button" className="btn btn-primary btn-sm" onClick={() => convert(qt)}>
-                      Convert to invoice
+                  {canConv && (
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      disabled={convertingId === qt.id}
+                      onClick={() => convert(qt)}
+                    >
+                      {convertingId === qt.id ? '…' : 'Convert to invoice'}
                     </button>
                   )}
                   {st === 'converted' && (
-                    <Link className="btn btn-outline btn-sm" to="/invoices">
-                      View invoices
+                    <Link className="btn btn-outline btn-sm" to={qt.invoiceId ? `/invoices/${qt.invoiceId}` : '/invoices'}>
+                      View invoice
                     </Link>
                   )}
                   <button type="button" className="btn btn-outline btn-sm" onClick={() => del(qt.id)}>
