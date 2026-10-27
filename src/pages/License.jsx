@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import * as licenseApi from '../lib/license'
 import * as db from '../lib/db'
-import { APP_VERSION, SA_CONFIG } from '../config'
+import { APP_VERSION, SA_CONFIG, APP_LINKS } from '../config'
 import { TIERS } from '../lib/licenseTiers'
 import { PageFade, StatCard, LoadingButton, CopyButton, EmptyState } from '../components/ui'
 
@@ -13,6 +13,7 @@ export default function License() {
   const [serverUrl, setServerUrl] = useState('')
   const [busy, setBusy] = useState(false)
   const [log, setLog] = useState(null)
+  const [ping, setPing] = useState(null)
 
   const reload = async () => {
     const s = await licenseApi.getLicenseStatus()
@@ -44,6 +45,17 @@ export default function License() {
     }
   }
 
+  const doPing = async () => {
+    setBusy(true)
+    try {
+      const r = await licenseApi.pingLicenseServer()
+      setPing(r)
+      toast(r.ok ? 'License server reachable' : (r.error || 'Server not reachable'), r.ok ? 'success' : 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const licensed = !!status?.licensed
   const trialLeft = status?.trialDaysLeft
 
@@ -53,10 +65,20 @@ export default function License() {
         <div>
           <h1>License</h1>
           <p className="subtitle">
-            {online ? 'Online' : 'Offline'} · HWID handshake · tiers · v{APP_VERSION}
+            {online ? 'Online' : 'Offline'} · HWID handshake · 30-day soft alpha · v{APP_VERSION}
           </p>
         </div>
         <button type="button" className="btn btn-outline" onClick={reload} disabled={busy}>Refresh</button>
+      </div>
+
+      <div className="card" style={{ marginBottom: 12, borderLeft: '4px solid #38bdf8' }}>
+        <strong>Alpha soft mode</strong>
+        <p className="muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+          Desk stays fully usable for the free-tier window. Handshake → Request → approve on the{' '}
+          <a href={APP_LINKS.licenseDashboard} target="_blank" rel="noreferrer">license dashboard</a>
+          {' '}→ Activate. Admin config: {' '}
+          <a href={APP_LINKS.licenseAdmin} target="_blank" rel="noreferrer">/admin</a>.
+        </p>
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
@@ -77,9 +99,9 @@ export default function License() {
 
       {!licensed && (
         <div className="card" style={{ marginBottom: '1rem', borderLeft: '4px solid var(--warn, #f59e0b)' }}>
-          <strong>{trialLeft != null && trialLeft <= 0 ? 'Trial ended' : 'Trial / unlicensed workspace'}</strong>
+          <strong>{trialLeft != null && trialLeft <= 0 ? 'Trial ended (soft)' : 'Trial / unlicensed workspace'}</strong>
           <p className="muted" style={{ margin: '0.35rem 0 0' }}>
-            Copy your HWID below, send it to your vendor, then run <strong>Activate on server</strong> once they approve.
+            Copy your HWID below, or use <strong>Activate on server</strong> after the vendor issues a key on the dashboard.
           </p>
         </div>
       )}
@@ -94,7 +116,7 @@ export default function License() {
       )}
 
       <div className="grid-stats" style={{ marginBottom: '1rem' }}>
-        <StatCard label="Status" value={licensed ? 'Licensed' : 'Trial'} tone={licensed ? 'good' : 'warn'} />
+        <StatCard label="Status" value={licensed ? 'Licensed' : 'Soft trial'} tone={licensed ? 'good' : 'warn'} />
         <StatCard label="Trial days left" value={trialLeft ?? '—'} tone={trialLeft != null && trialLeft <= 7 ? 'bad' : undefined} />
         <StatCard label="Handshake" value={status?.handshakeOk ? 'OK' : 'Pending'} tone={status?.handshakeOk ? 'good' : 'warn'} />
         <StatCard label="Connectivity" value={online ? 'Online' : 'Offline'} tone={online ? 'good' : 'warn'} />
@@ -106,7 +128,15 @@ export default function License() {
           <input className="input" value={serverUrl} onChange={(e) => setServerUrl(e.target.value)} placeholder={SA_CONFIG.defaultLicenseServerUrl} />
         </div>
         <button type="button" className="btn btn-secondary" onClick={saveUrl}>Save URL</button>
+        <button type="button" className="btn btn-outline" onClick={doPing} disabled={busy}>Ping server</button>
       </div>
+
+      {ping && (
+        <div className="card" style={{ marginBottom: 12, fontSize: 13 }}>
+          <strong>Ping:</strong>{' '}
+          {ping.ok ? `OK · ${ping.base}` : `${ping.error || 'failed'} · ${ping.base || ''}`}
+        </div>
+      )}
 
       <div className="card" style={{ marginBottom: '1rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap' }}>
