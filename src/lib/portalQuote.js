@@ -1,6 +1,6 @@
 /**
  * Client portal quote decisions — approve / reject / status helpers.
- * Network via sync server; offline queue when POST fails.
+ * Tries SPA paths first, then saip-sync native paths.
  */
 
 const PORTAL_BASE = 'https://saip-sync.onrender.com'
@@ -61,7 +61,6 @@ function writeDecisionQueue(rows) {
   } catch {}
 }
 
-/** Persist a failed portal decision for later sync / shop visibility. */
 export function queuePortalDecision(entry) {
   const rows = readDecisionQueue()
   rows.push({
@@ -81,22 +80,42 @@ export function clearQueuedPortalDecisions() {
   writeDecisionQueue([])
 }
 
+async function parseJson(res) {
+  return res.json().catch(() => ({}))
+}
+
 export async function fetchPortalView(token, { base = PORTAL_BASE } = {}) {
   const t = String(token || '').trim()
   if (!t) throw new Error('Missing portal link')
-  const res = await fetch(`${base}/api/portal/view/${encodeURIComponent(t)}`, {
-    headers: { Accept: 'application/json' },
-  })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error || data.message || 'Portal link invalid or expired')
-  return data
+  const paths = [
+    `${base}/api/portal/view/${encodeURIComponent(t)}`,
+    `${base}/api/portal/${encodeURIComponent(t)}`,
+  ]
+  let lastErr = 'Portal link invalid or expired'
+  for (const url of paths) {
+    try {
+      const res = await fetch(url, { headers: { Accept: 'application/json' } })
+      const data = await parseJson(res)
+      if (res.ok) return data
+      lastErr = data.error || data.message || lastErr
+      // 404 on alias → try next
+      if (res.status === 404 || res.status === 405) continue
+      throw new Error(lastErr)
+    } catch (e) {
+      if (e?.message && !/Failed to fetch|NetworkError|fetch/i.test(e.message)) throw e
+      lastErr = e?.message || lastErr
+    }
+  }
+  throw new Error(lastErr)
 }
 
-/**
- * Submit approve/reject. On network/server failure, queues locally and returns
- * { ok: true, offline: true, decision } so the client UI can still confirm.
- */
-export async function submitPortalQuoteDecision(token, quoteId, action, note = '', { base = PORTAL_BASE, quote } = {}) {
+export async function submitPortalQuoteDecision(
+  token,
+  quoteId,
+  action,
+  note = '',
+  { base = PORTAL_BASE, quote } = {},
+) {
   const t = String(token || '').trim()
   if (!t) throw new Error('Missing portal link')
   if (!quoteId) throw new Error('Missing quote')
@@ -104,31 +123,68 @@ export async function submitPortalQuoteDecision(token, quoteId, action, note = '
     String(action).toLowerCase() === 'reject' || String(action).toLowerCase() === 'decline'
       ? 'reject'
       : 'approve'
-  const body = {
+  const noteStr = String(note || '').slice(0, 500)
+  const attempts = [
+    {
+      url: `${base}/api/portal/quote-decision`,
+      body: {
+        token: t,
+        quoteId,
+        quote_id: quoteId,
+        action: act,
+        note: noteStr,
+      },
+    },
+    {
+      url: `${base}/api/portal/${encodeURIComponent(t)}/quote/${encodeURIComponent(quoteId)}/decision`,
+      body: {
+        decision: act === 'reject' ? 'rejected' : 'approved',
+        reason: noteStr,
+        note: noteStr,
+      },
+    },
+  ]
+  let lastErr = 'Could not save decision'
+  for (const attempt of attempts) {
+    try {
+      const res = await fetch(attempt.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(attempt.body),
+      })
+      const data = await parseJson(res)
+      if (res.ok) return { ...data, ok: true, offline: false }
+      lastErr = data.error || data.message || lastErr
+      if (res.status === 404 || res.status === 405) continue
+      // Business errors (409 already decided) should not go offline-queue as success path
+      if (res.status >= 400 && res.status < 500 && res.status !== 404) {
+        throw new Error(lastErr)
+      }
+    } catch (e) {
+      if (e?.message && !/Failed to fetch|NetworkError|fetch/i.test(e.message)) {
+        // rethrow client errors after queue? only queue network failures
+        if (!/already decided|not found|required/i.test(e.message)) {
+          /* fall through */
+        } else {
+          throw e
+        }
+      }
+      lastErr = e?.message || lastErr
+    }
+  }
+  const decision = quote ? buildQuoteDecision(quote, act, noteStr) : null
+  queuePortalDecision({
     token: t,
     quoteId,
-    quote_id: quoteId,
     action: act,
-    note: String(note || '').slice(0, 500),
-  }
-  try {
-    const res = await fetch(`${base}/api/portal/quote-decision`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify(body),
-    })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.error || data.message || 'Could not save decision')
-    return { ...data, ok: true, offline: false }
-  } catch (err) {
-    const decision = quote ? buildQuoteDecision(quote, act, note) : null
-    queuePortalDecision({ token: t, quoteId, action: act, note: body.note, error: String(err?.message || err) })
-    return {
-      ok: true,
-      offline: true,
-      decision,
-      message: 'Saved offline — shop will see this when sync is available',
-    }
+    note: noteStr,
+    error: lastErr,
+  })
+  return {
+    ok: true,
+    offline: true,
+    decision,
+    message: 'Saved offline — shop will see this when sync is available',
   }
 }
 
