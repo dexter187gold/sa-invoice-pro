@@ -33,6 +33,8 @@ export default function Shell({ children }) {
   const [open, setOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [assistantBusy, setAssistantBusy] = useState(false)
+  const ledPhase = assistantBusy ? 'busy' : syncPhase
   const [syncPhase, setSyncPhase] = useState(() => document.documentElement.dataset.saipSyncState || (navigator.onLine ? 'idle' : 'offline'))
   const [moreOpen, setMoreOpen] = useState(false)
   const [forceRoot, setForceRoot] = useState(false)
@@ -180,13 +182,16 @@ export default function Shell({ children }) {
     const onState = (e) => setSyncPhase(e.detail || 'idle')
     const onOnline = () => setSyncPhase('idle')
     const onOffline = () => setSyncPhase('offline')
+    const onAssistantActivity = (e) => setAssistantBusy(Boolean(e.detail))
     window.addEventListener('saip-sync-state', onState)
     window.addEventListener('online', onOnline)
     window.addEventListener('offline', onOffline)
+    window.addEventListener('saip-ai-activity', onAssistantActivity)
     return () => {
       window.removeEventListener('saip-sync-state', onState)
       window.removeEventListener('online', onOnline)
       window.removeEventListener('offline', onOffline)
+      window.removeEventListener('saip-ai-activity', onAssistantActivity)
     }
   }, [])
 
@@ -281,7 +286,7 @@ export default function Shell({ children }) {
         </button>
         <AppLogo size={28} />
         <strong style={{ fontSize: 13, letterSpacing: '-0.02em', flex: 1 }}>{brandLabel}</strong>
-        <div className={'live-leds phase-' + syncPhase} role="status" aria-label={'Sync status: ' + syncPhase} title={'Sync status: ' + syncPhase}>
+        <div className={'live-leds phase-' + ledPhase} role="status" aria-label={assistantBusy ? 'AI assistant working' : 'Sync status: ' + syncPhase} title={assistantBusy ? 'AI assistant working' : 'Sync status: ' + syncPhase}>
           <span /><span /><span />
         </div>
         <button type="button" className="btn btn-outline btn-sm" onClick={() => toggleHelp()} aria-label="Open AI assistant">✦</button>
@@ -371,7 +376,7 @@ export default function Shell({ children }) {
             </div>
             <div className="desktop-only header-actions" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span className="live-activity-brand">PC Repair Dex</span>
-              <div className={'live-leds phase-' + syncPhase} role="status" aria-label={'Sync status: ' + syncPhase} title={'Sync status: ' + syncPhase}><span /><span /><span /></div>
+              <div className={'live-leds phase-' + ledPhase} role="status" aria-label={assistantBusy ? 'AI assistant working' : 'Sync status: ' + syncPhase} title={assistantBusy ? 'AI assistant working' : 'Sync status: ' + syncPhase}><span /><span /><span /></div>
               <button type="button" className="btn btn-outline btn-sm" onClick={() => toggleHelp()} aria-label="Open AI assistant">✦ AI</button>
               <ActiveSeatChip compact />
               <button type="button" className="btn btn-outline btn-sm" onClick={runSync} disabled={syncing}>
