@@ -336,6 +336,23 @@ export const Sync = {
       body: JSON.stringify(payload || {}),
     })
   },
+
+  async createSupportTicket(payload) {
+    return request('/api/support/tickets', { method: 'POST', body: JSON.stringify(payload || {}) })
+  },
+
+  async listSupportTickets() {
+    return request('/api/support/tickets')
+  },
+
+  async listAdminSupportTickets(status = '') {
+    const query = status ? '?status=' + encodeURIComponent(status) : ''
+    return request('/api/admin/support/tickets' + query)
+  },
+
+  async updateSupportTicket(id, payload) {
+    return request('/api/admin/support/tickets/' + encodeURIComponent(id), { method: 'PATCH', body: JSON.stringify(payload || {}) })
+  },
 }
 
 export default Sync
