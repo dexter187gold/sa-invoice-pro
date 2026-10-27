@@ -130,7 +130,7 @@ export function AppProvider({ children }) {
             const now = Date.now()
             if (now - lastFailToast.current > 30 * 60 * 1000) {
               lastFailToast.current = now
-              toast('Cloud sync paused — will retry. Tap Sync Now if data is missing.', 'info')
+              console.warn('[5min-sync] cloud sync paused; retrying automatically', r.reason || 'Sync did not complete')
             }
           }
         })
