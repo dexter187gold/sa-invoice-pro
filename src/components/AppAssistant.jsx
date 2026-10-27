@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAppAssistant } from '../hooks/useAppAssistant'
 import { useApp } from '../context/AppContext'
 import { formatMoney } from '../lib/money'
+import Sync from '../lib/sync'
 
 function mdLite(text) {
   const parts = String(text).split(/(\*\*[^*]+\*\*)/g)
@@ -62,6 +63,7 @@ function buildReply(q, ctx) {
 export default function AppAssistant() {
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState('')
+  const [pending, setPending] = useState(false)
   const [msgs, setMsgs] = useState(() => [
     { role: 'assistant', text: 'SAIP Assistant ready. Ask about invoices, overdue balances, sync, or how to use this screen.' },
   ])
@@ -90,15 +92,27 @@ export default function AppAssistant() {
     [invoices, clients, tickets, company, pathname, searchFaq, hints],
   )
 
-  const send = (text) => {
+  const send = async (text) => {
     const q = String(text || input).trim()
-    if (!q) return
+    if (!q || pending) return
     setInput('')
-    setMsgs((m) => [...m, { role: 'user', text: q }])
-    const reply = buildReply(q, ctx)
-    setTimeout(() => {
-      setMsgs((m) => [...m, { role: 'assistant', text: reply }])
-    }, 180)
+    const userMessage = { role: 'user', text: q }
+    const history = [...msgs, userMessage].slice(-8)
+    setMsgs((m) => [...m, userMessage])
+    setPending(true)
+    try {
+      if (Sync.isLoggedIn()) {
+        const result = await Sync.askAssistant(history.map((m) => ({ role: m.role, content: m.text })))
+        setMsgs((m) => [...m, { role: 'assistant', text: result.answer || 'I could not produce an answer. Please try again.' }])
+      } else {
+        setMsgs((m) => [...m, { role: 'assistant', text: buildReply(q, ctx) + '\\n\\nSign in to your cloud account to enable Cloudflare AI. This answer was generated locally.' }])
+      }
+    } catch (error) {
+      const fallback = buildReply(q, ctx)
+      setMsgs((m) => [...m, { role: 'assistant', text: `Cloud AI is unavailable right now, so here is local help instead:\\n\\n${fallback}\\n\\nNo invoice or client records were sent with this request. ${error?.message || ''}` }])
+    } finally {
+      setPending(false)
+    }
   }
 
   if (!open) {
@@ -120,7 +134,8 @@ export default function AppAssistant() {
       <div className="app-assist-head">
         <div>
           <strong>SAIP Assistant</strong>
-          <div className="muted" style={{ fontSize: 12 }}>On-device · {pathname}</div>
+          <div className="muted" style={{ fontSize: 12 }}>{Sync.isLoggedIn() ? 'Cloudflare AI · ' : 'Local help · '}{pathname}</div>
+          <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{Sync.isLoggedIn() ? 'Your question is sent to Cloudflare AI. Do not include sensitive client or banking details.' : 'Sign in to your cloud account for AI answers. Local help works without sign-in.'}</div>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           <button type="button" className="btn btn-outline btn-sm" onClick={() => setMsgs([{ role: 'assistant', text: 'Chat cleared. How can I help?' }])}>Clear</button>
@@ -134,7 +149,7 @@ export default function AppAssistant() {
           ))}
         </div>
       </div>
-      <div className="app-assist-messages">
+      <div className="app-assist-messages" aria-live="polite">
         {msgs.map((m, i) => (
           <div key={i} className={`assist-bubble ${m.role}`}>{mdLite(m.text)}</div>
         ))}
@@ -152,9 +167,10 @@ export default function AppAssistant() {
           placeholder="Ask anything about your books…"
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          disabled={pending}
           autoFocus
         />
-        <button type="submit" className="btn btn-primary btn-sm">Send</button>
+        <button type="submit" className="btn btn-primary btn-sm" disabled={pending || !input.trim()}>{pending ? 'Thinking…' : 'Send'}</button>
       </form>
       <div className="app-assist-section" style={{ marginTop: 8 }}>
         <div className="app-assist-label">Quick open</div>
