@@ -3,8 +3,8 @@
  * Updates invoice balances, posts accounting journals (Dr Bank / Cr AR),
  * and supports reverse on delete.
  */
-import * as db from './db'
-import { STORES } from './db'
+import * as db from './db.js'
+import { STORES } from './db.js'
 
 export function sumPaymentsForInvoice(payments, invoiceId) {
   return (payments || [])
