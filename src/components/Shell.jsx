@@ -362,7 +362,7 @@ export default function Shell({ children }) {
         <>
           <nav className="bottom-nav" aria-label={forceRoot ? 'Main navigation shortcuts' : 'Contextual navigation'}>
             <div className="bottom-nav-scroll" aria-label="Swipe horizontally for more navigation items">
-              {bottomItems.map((item) => (
+              {bottomItems.filter((item) => !item.isRoot && !item.isMore).map((item) => (
                 <NavLink
                   key={item.to + item.label}
                   to={item.to}
