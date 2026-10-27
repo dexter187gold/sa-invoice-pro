@@ -5,6 +5,7 @@ import { APP_VERSION } from '../config'
 import CommandPalette from './CommandPalette'
 import AppLogo from './AppLogo'
 import AppAssistant, { toggleHelp } from './AppAssistant'
+import LegalConsent from './LegalConsent'
 import NotificationBell from './NotificationBell'
 import QuickActions from './QuickActions'
 import { Sync } from '../lib/sync'
@@ -33,6 +34,7 @@ export default function Shell({ children }) {
   const [open, setOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [syncPhase, setSyncPhase] = useState(() => navigator.onLine ? 'idle' : 'offline')
   const [moreOpen, setMoreOpen] = useState(false)
   const [forceRoot, setForceRoot] = useState(false)
   const nav = useNavigate()
@@ -136,6 +138,8 @@ export default function Shell({ children }) {
           { to: '/documents', label: 'Documents' },
           { to: '/excel', label: 'Excel viewer' },
           { to: '/sync', label: 'Sync health' },
+          { to: '/support', label: 'Help & support' },
+          { to: '/roadmap', label: 'P1–P20 roadmap' },
         ],
       },
       {
@@ -158,16 +162,34 @@ export default function Shell({ children }) {
       return
     }
     setSyncing(true)
+    setSyncPhase('syncing')
+    const busyTimer = window.setTimeout(() => setSyncPhase('busy'), 650)
     try {
-      if (typeof syncNow === 'function') await syncNow()
-      else await Sync?.pullAndMerge?.()
-      toast?.('Synced', 'success')
+      const result = typeof syncNow === 'function' ? await syncNow() : await Sync?.pullAndMerge?.()
+      setSyncPhase(result?.ok === false ? 'error' : 'synced')
+      if (result?.ok === false) toast?.(result.message || 'Sync needs attention. Open Sync Health for details.', 'error')
     } catch (e) {
+      setSyncPhase('error')
       toast?.(e?.message || 'Sync failed', 'error')
     } finally {
+      window.clearTimeout(busyTimer)
       setSyncing(false)
     }
   }
+
+  useEffect(() => {
+    const onState = (e) => setSyncPhase(e.detail || 'idle')
+    const onOnline = () => setSyncPhase('idle')
+    const onOffline = () => setSyncPhase('offline')
+    window.addEventListener('saip-sync-state', onState)
+    window.addEventListener('online', onOnline)
+    window.addEventListener('offline', onOffline)
+    return () => {
+      window.removeEventListener('saip-sync-state', onState)
+      window.removeEventListener('online', onOnline)
+      window.removeEventListener('offline', onOffline)
+    }
+  }, [])
 
   useEffect(() => {
     const onKey = (e) => {
@@ -247,6 +269,7 @@ export default function Shell({ children }) {
     <>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <AppAssistant />
+      <LegalConsent />
       <QuickActions />
 
       <div className="mobile-bar">
@@ -260,9 +283,10 @@ export default function Shell({ children }) {
         </button>
         <AppLogo size={28} />
         <strong style={{ fontSize: 13, letterSpacing: '-0.02em', flex: 1 }}>{brandLabel}</strong>
-        <button type="button" className="btn btn-outline btn-sm" onClick={() => toggleHelp()} aria-label="Help">
-          ✦
-        </button>
+        <div className={'live-leds phase-' + syncPhase} role="status" aria-label={'Sync status: ' + syncPhase} title={'Sync status: ' + syncPhase}>
+          <span /><span /><span />
+        </div>
+        <button type="button" className="btn btn-outline btn-sm" onClick={() => toggleHelp()} aria-label="Open AI assistant">✦</button>
         <NotificationBell />
         <span className={`status-dot ${online ? 'on' : 'off'}`} title={online ? 'Online' : 'Offline'} />
       </div>
@@ -348,6 +372,9 @@ export default function Shell({ children }) {
               ) : null}
             </div>
             <div className="desktop-only header-actions" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span className="live-activity-brand">PC Repair Dex</span>
+              <div className={'live-leds phase-' + syncPhase} role="status" aria-label={'Sync status: ' + syncPhase} title={'Sync status: ' + syncPhase}><span /><span /><span /></div>
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => toggleHelp()} aria-label="Open AI assistant">✦ AI</button>
               <ActiveSeatChip compact />
               <button type="button" className="btn btn-outline btn-sm" onClick={runSync} disabled={syncing}>
                 {syncing ? 'Syncing…' : 'Sync'}
