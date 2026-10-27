@@ -71,7 +71,6 @@ function normalizePortalResponse(data, clientId) {
   const token = data.token || data.portalToken || data.id || ''
   let url = data.url || data.link || data.portalUrl || ''
   if (!url && token) {
-    // SPA path — works on any host that serves the React app
     const origin = typeof window !== 'undefined' ? window.location.origin : ''
     url = `${origin}/portal/${encodeURIComponent(token)}`
   }
@@ -267,10 +266,6 @@ export const Sync = {
     return request('/api/device/heartbeat', { method: 'POST', body: JSON.stringify({ fingerprint }) })
   },
 
-  /**
-   * Create portal link. Tries production `/api/portal/create`, then registers a
-   * full client snapshot via `/api/portal/register` (6.23+ server) when available.
-   */
   async createPortalLink(clientId, { days = 90, snapshot } = {}) {
     let data
     try {
@@ -279,7 +274,6 @@ export const Sync = {
         body: JSON.stringify({ clientId, client_id: clientId, days }),
       })
     } catch (e) {
-      // Fallback: register endpoint on 6.23+ Express portal store
       if (snapshot) {
         data = await request('/api/portal/register', {
           method: 'POST',
@@ -297,7 +291,6 @@ export const Sync = {
       }
     }
     const normalized = normalizePortalResponse(data, clientId)
-    // Best-effort: attach snapshot so quote-decision can resolve lines (when register exists)
     if (snapshot && normalized.token) {
       try {
         await request('/api/portal/register', {
@@ -314,7 +307,7 @@ export const Sync = {
           _maxAttempts: 1,
         })
       } catch {
-        /* production saip-sync may not have register yet — offline queue still works */
+        /* optional */
       }
     }
     return normalized
@@ -327,6 +320,21 @@ export const Sync = {
 
   async listPortalDecisions({ limit = 50 } = {}) {
     return request(`/api/portal/decisions?limit=${limit}`, { _maxAttempts: 2 })
+  },
+
+  /** Issue customer portal login (email + PIN) for a client */
+  async issueClientPortalLogin(payload) {
+    return request('/api/client-portal/issue', {
+      method: 'POST',
+      body: JSON.stringify(payload || {}),
+    })
+  },
+
+  async pushClientPortalSnapshot(payload) {
+    return request('/api/client-portal/push-snapshot', {
+      method: 'POST',
+      body: JSON.stringify(payload || {}),
+    })
   },
 }
 
