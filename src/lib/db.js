@@ -1,5 +1,5 @@
 
-import versionInfo from '../../version.json'
+import versionInfo from '../../version.json' with { type: 'json' }
 
 const DB_NAME = 'SAInvoicePro_v2'
 const DB_VERSION = 3
