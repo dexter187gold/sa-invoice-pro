@@ -105,11 +105,11 @@ export default function AppAssistant() {
         const result = await Sync.askAssistant([{ role: 'user', content: q }])
         setMsgs((m) => [...m, { role: 'assistant', text: result.answer || 'I could not produce an answer. Please try again.' }])
       } else {
-        setMsgs((m) => [...m, { role: 'assistant', text: buildReply(q, ctx) + '\\n\\nSign in to your cloud account to enable Cloudflare AI. This answer was generated locally.' }])
+        setMsgs((m) => [...m, { role: 'assistant', text: buildReply(q, ctx) + '\n\nSign in to your cloud account to enable Cloudflare AI. This answer was generated locally.' }])
       }
     } catch (error) {
       const fallback = buildReply(q, ctx)
-      setMsgs((m) => [...m, { role: 'assistant', text: `Cloud AI is unavailable right now, so here is local help instead:\\n\\n${fallback}\\n\\nNo invoice or client records were sent with this request. ${error?.message || ''}` }])
+      setMsgs((m) => [...m, { role: 'assistant', text: `Cloud AI is unavailable right now, so here is local help instead:\n\n${fallback}\n\nNo invoice or client records were sent with this request. ${error?.message || ''}` }])
     } finally {
       setPending(false)
       window.dispatchEvent(new CustomEvent('saip-ai-activity', { detail: false }))
