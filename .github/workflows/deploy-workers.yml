@@ -15,9 +15,13 @@ jobs:
           node-version: '20'
       - run: npm ci || npm install
       - run: npm run build
-      # Cloudflare's connected Git repository performs the production auto-deploy.
-      # Use Wrangler as a fallback only when both GitHub deployment secrets are configured.
-      - name: Deploy to Cloudflare Workers (optional Wrangler fallback)
+      - name: Require Cloudflare deployment credentials
+        if: ${{ env.HAS_CLOUDFLARE_DEPLOY_CREDENTIALS != 'true' }}
+        run: |
+          echo '::error::Production deployment was not performed. Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID as GitHub Actions repository secrets; a successful build alone is not a deployment.'
+          exit 1
+      # Wrangler performs the production deployment when repository secrets are configured.
+      - name: Deploy to Cloudflare Workers
         if: ${{ env.HAS_CLOUDFLARE_DEPLOY_CREDENTIALS == 'true' }}
         uses: cloudflare/wrangler-action@v3
         with:
