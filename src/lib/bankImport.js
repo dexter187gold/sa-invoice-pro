@@ -56,7 +56,13 @@ export function parseBankCsv(text) {
 
 function findCol(headers, candidates) {
   for (const c of candidates) {
-    const i = headers.findIndex((h) => h.includes(c))
+    // Short bank abbreviations such as CR/DR must match a whole header token;
+    // substring matching made "description" look like a credit column.
+    const i = headers.findIndex((raw) => {
+      const h = String(raw || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+      if (c.length <= 3) return h.split(/\\s+/).includes(c)
+      return h.includes(c)
+    })
     if (i >= 0) return i
   }
   return -1
