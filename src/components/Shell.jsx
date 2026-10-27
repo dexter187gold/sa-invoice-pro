@@ -33,7 +33,7 @@ export default function Shell({ children }) {
   const [open, setOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [syncing, setSyncing] = useState(false)
-  const [syncPhase, setSyncPhase] = useState(() => navigator.onLine ? 'idle' : 'offline')
+  const [syncPhase, setSyncPhase] = useState(() => document.documentElement.dataset.saipSyncState || (navigator.onLine ? 'idle' : 'offline'))
   const [moreOpen, setMoreOpen] = useState(false)
   const [forceRoot, setForceRoot] = useState(false)
   const nav = useNavigate()
