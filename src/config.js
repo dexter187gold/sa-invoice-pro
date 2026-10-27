@@ -1,7 +1,7 @@
-export const APP_VERSION = '6.27.0'
+export const APP_VERSION = '6.28.0'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
-export const APP_CODENAME = '6.27.0 · Mega: convert · soft license · SLA'
+export const APP_CODENAME = '6.28.0 · Mega: bank match v2 · portal e2e · desk polish'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
 export const HELIX_ROUTES = {
