@@ -24,7 +24,7 @@ const PHASES = [
 ]
 
 const GATES = [
-  { key: 'code', title: 'Implementation', count: 4, detail: 'P1–P4 code committed; P5 partially underway.' },
+  { key: 'code', title: 'Implementation', count: 5, detail: 'P1–P4 code committed; P5 partially underway.' },
   { key: 'tests', title: 'Latest tests verified', count: 0, detail: 'Do not count earlier runs as validation of the latest AI integration commit.' },
   { key: 'deploy', title: 'Latest deployment verified', count: 0, detail: 'The AI Worker and support backend need rollout confirmation against the current commits.' },
   { key: 'accept', title: 'Accepted / legally reviewed', count: 0, detail: 'No phase is marked accepted before operational checks and required legal review.' },
