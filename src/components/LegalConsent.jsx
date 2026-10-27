@@ -27,7 +27,10 @@ export const TERMS_SUMMARY = [
 ]
 
 function readConsent() {
-  try { return JSON.parse(localStorage.getItem(KEY) || 'null') } catch { return null }
+  try {
+    const value = JSON.parse(localStorage.getItem(KEY) || 'null')
+    return value?.version === POLICY_VERSION ? value : null
+  } catch { return null }
 }
 function saveConsent(value) {
   const record = { ...value, version: POLICY_VERSION, savedAt: new Date().toISOString() }
@@ -38,7 +41,7 @@ function saveConsent(value) {
 export default function LegalConsent() {
   const [consent, setConsent] = useState(() => readConsent())
   const [panel, setPanel] = useState('')
-  const [analytics, setAnalytics] = useState(false)
+  const [analytics, setAnalytics] = useState(() => !!readConsent()?.analytics)
 
   useEffect(() => {
     const onOpen = (e) => setPanel(e.detail || 'privacy')
