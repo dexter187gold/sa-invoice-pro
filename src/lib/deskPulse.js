@@ -47,7 +47,8 @@ export function deskNextActions({ quotes = [], tickets = [], invoices = [] } = {
   const accept = acceptedQuotesAwaitingConvert(quotes)
   const declined = declinedQuotesRecent(quotes)
   const overdueJobs = jobsPastPromise(tickets)
-  const openAr = (invoices || []).filter(isOpenInvoice).length
+  const openAr = (invoices || []).filter(isOpenInvoice)
+  const openArCount = openAr.length
   const actions = []
   if (accept.length) {
     actions.push({
@@ -67,13 +68,20 @@ export function deskNextActions({ quotes = [], tickets = [], invoices = [] } = {
       tone: 'warn',
     })
   }
-  if (openAr > 0) {
+  if (openArCount > 0) {
     actions.push({
       id: 'ar',
       priority: 3,
-      title: `${openAr} open invoice${openAr > 1 ? 's' : ''} on the books`,
+      title: `${openArCount} open invoice${openArCount > 1 ? 's' : ''} on the books`,
       href: '/invoices?status=overdue',
       tone: 'warn',
+    })
+    actions.push({
+      id: 'bank_import',
+      priority: 3.5,
+      title: 'Match bank CSV to open invoices',
+      href: '/bank',
+      tone: 'muted',
     })
   }
   if (declined.length) {
