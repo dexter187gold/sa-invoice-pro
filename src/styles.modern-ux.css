@@ -15,13 +15,81 @@ html, body {
   min-height: 44px;
 }
 .btn-sm, .chip { min-height: 36px; }
+/* FAB stack: Quick Actions above AI, both clear of bottom nav */
 html.nav-bottom .main,
 html.nav-bottom .page,
 html.nav-bottom .content {
-  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)) !important;
 }
+.quick-actions-fab-wrap {
+  position: fixed;
+  right: max(12px, env(safe-area-inset-right, 0px));
+  bottom: calc(var(--nav-h, 56px) + env(safe-area-inset-bottom, 0px) + 68px);
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: none;
+}
+.quick-actions-fab-wrap > * { pointer-events: auto; }
+.quick-actions-fab {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #a855f7, #6366f1);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(168, 85, 247, 0.4);
+}
+.quick-actions-panel {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  width: min(320px, calc(100vw - 24px));
+  max-height: min(70vh, 480px);
+  overflow: auto;
+  background: var(--card, #0f172a);
+  border: 1px solid var(--border, rgba(255,255,255,.12));
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(0,0,0,.35);
+  z-index: 46;
+}
+.quick-actions-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border, rgba(255,255,255,.08));
+}
+.quick-actions-list { display: flex; flex-direction: column; }
+.quick-actions-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid var(--border, rgba(255,255,255,.06));
+}
+.quick-actions-item:hover { background: rgba(255,255,255,.04); }
+.quick-actions-icon { font-size: 16px; line-height: 1.2; }
+.quick-actions-text { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
 html.nav-bottom .app-assist-fab {
-  bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+  right: max(12px, env(safe-area-inset-right, 0px)) !important;
+  bottom: calc(var(--nav-h, 56px) + env(safe-area-inset-bottom, 0px) + 12px) !important;
+  z-index: 45 !important;
+}
+html:not(.nav-bottom) .quick-actions-fab-wrap {
+  bottom: 88px;
+}
+html:not(.nav-bottom) .app-assist-fab {
+  right: max(12px, env(safe-area-inset-right, 0px)) !important;
+  bottom: 24px !important;
 }
 .sticky-tools {
   top: env(safe-area-inset-top, 0px);
@@ -81,7 +149,7 @@ button, a.bnav, .nav-link {
 .bottom-nav { z-index: 40; }
 .drawer, .drawer-backdrop { z-index: 50; }
 .modal-backdrop { z-index: 80; }
-.app-assist-fab { z-index: 35; }
+.app-assist-fab { z-index: 45; }
 .mobile-bar { z-index: 30; }
 
 /* Portal + signature */
