@@ -88,16 +88,29 @@ def _safe_return_url(candidate: str, site_url: str, path: str, query: dict) -> s
 
 
 def _verify_payfast_itn(form: dict, passphrase: str, sandbox: bool) -> tuple[bool, str]:
-    """Verify both the posted signature and PayFast's server-side ITN confirmation."""
+    """Verify the ITN signature in received field order, then ask PayFast to validate it."""
     received = str(form.get("signature") or "").strip().lower()
     if not received:
         return False, "Missing PayFast signature"
-    signed_fields = {k: str(v) for k, v in form.items() if k != "signature"}
-    expected = _pf_signature(signed_fields, passphrase)
+
+    # PayFast's ITN signature string includes empty submitted fields, unlike checkout
+    # form signature generation. Preserve incoming field order and omit only signature.
+    parts = []
+    for key, value in form.items():
+        if key == "signature":
+            continue
+        encoded = urlencode({key: str(value).strip()})[len(key) + 1:]
+        parts.append(f"{key}={encoded}")
+    param_string = "&".join(parts)
+    if passphrase:
+        encoded_passphrase = urlencode({"passphrase": passphrase.strip()})[len("passphrase") + 1:]
+        param_string += f"&passphrase={encoded_passphrase}"
+    expected = hashlib.md5(param_string.encode("utf-8")).hexdigest()
     if not hmac.compare_digest(expected, received):
         return False, "PayFast signature mismatch"
+
     host = "sandbox.payfast.co.za" if sandbox else "www.payfast.co.za"
-    payload = urlencode(signed_fields).encode("utf-8")
+    payload = urlencode({k: str(v) for k, v in form.items() if k != "signature"}).encode("utf-8")
     req = urllib.request.Request(
         f"https://{host}/eng/query/validate",
         data=payload,
