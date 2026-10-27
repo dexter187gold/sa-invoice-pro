@@ -6,11 +6,14 @@ Soft device ids are bound later on activate.
 from __future__ import annotations
 
 import hashlib
+import hmac
 import os
 import secrets
 import string
+import urllib.request
+from decimal import Decimal, InvalidOperation
 from datetime import datetime, timezone
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 PLANS = {
     "solo": {
@@ -61,11 +64,54 @@ def _pf_signature(fields: dict, passphrase: str) -> str:
             continue
         if k == "signature":
             continue
-        parts.append(f"{k}={urlencode({k: str(v)})[len(k)+1:]}")
+        parts.append(f"{k}={urlencode({k: str(v).strip()})[len(k)+1:]}")
     param_string = "&".join(parts)
     if passphrase:
         param_string += f"&passphrase={urlencode({'passphrase': passphrase})[len('passphrase')+1:]}"
     return hashlib.md5(param_string.encode("utf-8")).hexdigest()
+
+
+def _safe_return_url(candidate: str, site_url: str, path: str, query: dict) -> str:
+    """Only permit return URLs on the configured HTTPS marketing-site origin."""
+    site_url = (site_url or "https://sa-invoice.pages.dev").rstrip("/")
+    origin = urlparse(site_url)
+    fallback = site_url + path + ("?" + urlencode(query) if query else "")
+    if not candidate:
+        return fallback
+    try:
+        parsed = urlparse(candidate)
+        if parsed.scheme == "https" and parsed.netloc == origin.netloc and parsed.path == path:
+            return candidate
+    except Exception:
+        pass
+    return fallback
+
+
+def _verify_payfast_itn(form: dict, passphrase: str, sandbox: bool) -> tuple[bool, str]:
+    """Verify both the posted signature and PayFast's server-side ITN confirmation."""
+    received = str(form.get("signature") or "").strip().lower()
+    if not received:
+        return False, "Missing PayFast signature"
+    signed_fields = {k: str(v) for k, v in form.items() if k != "signature"}
+    expected = _pf_signature(signed_fields, passphrase)
+    if not hmac.compare_digest(expected, received):
+        return False, "PayFast signature mismatch"
+    host = "sandbox.payfast.co.za" if sandbox else "www.payfast.co.za"
+    payload = urlencode(signed_fields).encode("utf-8")
+    req = urllib.request.Request(
+        f"https://{host}/eng/query/validate",
+        data=payload,
+        headers={"Content-Type": "application/x-www-form-urlencoded", "User-Agent": "SA-Invoice-Pro/1.0"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as response:
+            confirmation = response.read(256).decode("utf-8", errors="replace").strip()
+    except Exception:
+        return False, "PayFast server validation request failed"
+    if confirmation != "VALID":
+        return False, "PayFast server validation did not return VALID"
+    return True, "VALID"
 
 
 def register_billing(app, load_db, save_db, load_owner_config, gen_key_fn=None):
@@ -126,9 +172,20 @@ def register_billing(app, load_db, save_db, load_owner_config, gen_key_fn=None):
             }), 503
 
         payment_id = f"saip-{plan_id}-{secrets.token_hex(6)}"
-        base = (request.url_root or "https://sa-invoice-license.onrender.com").rstrip("/")
-        return_url = (data.get("return_url") or f"{base}/?paid=1&email={email}&plan={plan_id}").strip()
-        cancel_url = (data.get("cancel_url") or f"{base}/?cancelled=1").strip()
+        site_url = os.environ.get("SA_WEBSITE_URL", "https://sa-invoice.pages.dev").rstrip("/")
+        return_url = _safe_return_url(
+            str(data.get("return_url") or "").strip(),
+            site_url,
+            "/payment-success.html",
+            {"plan": plan_id, "email": email},
+        )
+        cancel_url = _safe_return_url(
+            str(data.get("cancel_url") or "").strip(),
+            site_url,
+            "/payment-cancelled.html",
+            {"plan": plan_id},
+        )
+        base = os.environ.get("SA_LICENSE_SERVER_URL", "https://sa-invoice-license.onrender.com").rstrip("/")
         notify_url = f"{base}/api/billing/itn"
 
         db = load_db()
@@ -194,89 +251,97 @@ def register_billing(app, load_db, save_db, load_owner_config, gen_key_fn=None):
 
     @app.route("/api/billing/itn", methods=["POST", "OPTIONS"])
     def billing_itn():
-        """PayFast Instant Transaction Notification — auto-issue seats."""
+        """PayFast ITN: validate source, signature, merchant, amount and pending order."""
         if request.method == "OPTIONS":
             return ("", 204)
         form = request.form.to_dict() if request.form else (request.get_json(silent=True) or {})
-        payment_id = (form.get("m_payment_id") or "").strip()
-        payment_status = (form.get("payment_status") or "").strip().upper()
-        email = (form.get("custom_str1") or form.get("email_address") or "").strip().lower()
-        plan_id = (form.get("custom_str2") or "shop").strip().lower()
-        seats_s = form.get("custom_str3") or "1"
+        payment_id = str(form.get("m_payment_id") or "").strip()
+        payment_status = str(form.get("payment_status") or "").strip().upper()
+        if payment_status != "COMPLETE":
+            return "ignored", 200
+        if not payment_id:
+            return "missing payment id", 400
 
         cfg = load_owner_config() or {}
         pf = (cfg.get("payfast") or {}) if isinstance(cfg, dict) else {}
-        passphrase = (pf.get("passphrase") or os.environ.get("PAYFAST_PASSPHRASE") or "").strip()
-
-        # Signature check when present
-        recv_sig = (form.get("signature") or "").lower()
-        if recv_sig and passphrase is not None:
-            check = {k: v for k, v in form.items() if k != "signature"}
-            # Preserve rough order from form
-            calc = _pf_signature(check, passphrase)
-            if calc != recv_sig:
-                # Soft-fail in sandbox misconfig; still log
-                pass
-
-        if payment_status and payment_status not in ("COMPLETE", "COMPLETE ", "COMPLETED"):
-            if payment_status != "COMPLETE":
-                return "ignored", 200
-
-        if plan_id not in PLANS:
-            plan_id = "shop"
-        plan = PLANS[plan_id]
-        try:
-            seats = int(seats_s) or plan["seats"]
-        except ValueError:
-            seats = plan["seats"]
+        merchant_id = str(pf.get("merchantId") or os.environ.get("PAYFAST_MERCHANT_ID") or "").strip()
+        passphrase = str(pf.get("passphrase") or os.environ.get("PAYFAST_PASSPHRASE") or "").strip()
+        sandbox_setting = pf.get("sandbox")
+        sandbox = True if sandbox_setting is None else str(sandbox_setting).lower() not in ("false", "0", "off", "no")
 
         db = load_db()
         pending = db.setdefault("pending_payments", {})
-        rec = pending.get(payment_id) or {}
-        if not email:
-            email = (rec.get("email") or "").strip().lower()
-        if not email:
-            return "no email", 400
+        rec = pending.get(payment_id)
+        if not rec:
+            return "unknown payment", 404
+        if rec.get("status") not in ("pending", "paid"):
+            return "payment is not pending", 400
+        if not merchant_id or str(form.get("merchant_id") or "").strip() != merchant_id:
+            return "merchant mismatch", 400
 
+        try:
+            expected_amount = Decimal(str(rec.get("amount") or "0")).quantize(Decimal("0.01"))
+            received_amount = Decimal(str(form.get("amount_gross") or "0")).quantize(Decimal("0.01"))
+        except (InvalidOperation, ValueError):
+            return "invalid payment amount", 400
+        if expected_amount <= 0 or abs(expected_amount - received_amount) > Decimal("0.01"):
+            return "amount mismatch", 400
+
+        expected_email = str(rec.get("email") or "").strip().lower()
+        received_email = str(form.get("custom_str1") or form.get("email_address") or "").strip().lower()
+        expected_plan = str(rec.get("plan") or "").strip().lower()
+        received_plan = str(form.get("custom_str2") or "").strip().lower()
+        if not expected_email or received_email != expected_email:
+            return "email mismatch", 400
+        if expected_plan not in PLANS or received_plan != expected_plan:
+            return "plan mismatch", 400
+
+        valid, reason = _verify_payfast_itn(form, passphrase, sandbox)
+        if not valid:
+            return reason, 400
         if rec.get("status") == "paid" and rec.get("key"):
-            return "OK", 200  # idempotent
+            return "OK", 200
 
-        key = gen_key(plan["code"])
+        plan = PLANS[expected_plan]
+        seats = int(plan["seats"])
+        key = _gen_key(plan["code"])
         now = _now()
         accounts = db.setdefault("accounts", {})
-        accounts[email] = {
-            "email": email,
-            "plan": plan_id,
+        existing_account = accounts.get(expected_email) or {}
+        accounts[expected_email] = {
+            **existing_account,
+            "email": expected_email,
+            "plan": expected_plan,
             "seats": seats,
             "key": key,
             "status": "active",
             "paidAt": now,
             "paymentId": payment_id,
-            "devices": accounts.get(email, {}).get("devices") or [],
-            "pfPaymentId": form.get("pf_payment_id") or "",
+            "devices": existing_account.get("devices") or [],
+            "pfPaymentId": str(form.get("pf_payment_id") or ""),
         }
         keys = db.setdefault("keys", {})
         keys[key] = {
             "key": key,
             "plan": plan["code"],
-            "planId": plan_id,
+            "planId": expected_plan,
             "seats": seats,
-            "email": email,
+            "email": expected_email,
             "createdAt": now,
             "used": False,
             "source": "payfast",
             "paymentId": payment_id,
         }
-        if payment_id:
-            pending[payment_id] = {
-                **rec,
-                "email": email,
-                "plan": plan_id,
-                "seats": seats,
-                "status": "paid",
-                "key": key,
-                "paidAt": now,
-            }
+        pending[payment_id] = {
+            **rec,
+            "email": expected_email,
+            "plan": expected_plan,
+            "seats": seats,
+            "status": "paid",
+            "key": key,
+            "paidAt": now,
+            "pfPaymentId": str(form.get("pf_payment_id") or ""),
+        }
         save_db(db)
         return "OK", 200
 
@@ -297,7 +362,6 @@ def register_billing(app, load_db, save_db, load_owner_config, gen_key_fn=None):
             "email": email,
             "plan": acc.get("plan"),
             "seats": acc.get("seats"),
-            "key": acc.get("key"),
             "devices": len(acc.get("devices") or []),
             "paidAt": acc.get("paidAt"),
         })
