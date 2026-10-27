@@ -1,9 +1,9 @@
 /**
  * Bank CSV import + match to open invoices (FNB / Standard / ABSA / Nedbank / Capitec / Discovery-ish).
  */
-import * as db from './db'
-import { STORES } from './db'
-import { recordPayment } from './payments'
+import * as db from './db.js'
+import { STORES } from './db.js'
+import { recordPayment } from './payments.js'
 
 /** Detect delimiter and parse a simple CSV into rows of cells. */
 export function parseBankCsv(text) {
