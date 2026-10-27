@@ -322,7 +322,7 @@ html.nav-bottom .main {
   padding-bottom: calc(18px + var(--nav-h) + var(--safe-bottom)) !important;
   min-height: 100vh;
 }
-html.nav-bottom .bottom-nav { display: grid; }
+html.nav-bottom .bottom-nav { display: flex; }
 html.nav-bottom .mobile-bar { display: flex; }
 
 html:not(.nav-bottom) .bottom-nav,
