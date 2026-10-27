@@ -11,7 +11,7 @@ import { cloudLogin, cloudRegister } from '../lib/cloudAuth'
 
 const AppCtx = createContext(null)
 const FIVE_MIN_MS = 5 * 60 * 1000
-const syncActivity = (state) => { try { window.dispatchEvent(new CustomEvent('saip-sync-state', { detail: state })) } catch {} }
+const syncActivity = (state) => { try { document.documentElement.dataset.saipSyncState = state; window.dispatchEvent(new CustomEvent('saip-sync-state', { detail: state })) } catch {} }
 
 export function AppProvider({ children }) {
   const [ready, setReady] = useState(false)
