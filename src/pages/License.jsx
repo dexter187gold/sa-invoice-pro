@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import * as licenseApi from '../lib/license'
+import * as billing from '../lib/billing'
 import * as db from '../lib/db'
 import { APP_VERSION, SA_CONFIG, APP_LINKS } from '../config'
 import { TIERS } from '../lib/licenseTiers'
@@ -9,8 +10,10 @@ import { PageFade, StatCard, LoadingButton, CopyButton, EmptyState } from '../co
 
 export default function License() {
   const { toast, online } = useApp()
+  const [params] = useSearchParams()
   const [status, setStatus] = useState(null)
   const [serverUrl, setServerUrl] = useState('')
+  const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
   const [log, setLog] = useState(null)
   const [ping, setPing] = useState(null)
@@ -20,9 +23,19 @@ export default function License() {
     setStatus(s)
     setServerUrl(await licenseApi.getServerUrl())
     setLog(s.exchange || null)
+    const em = await billing.getLicenseEmail()
+    if (em) setEmail(em)
   }
 
-  useEffect(() => { reload() }, [])
+  useEffect(() => {
+    reload()
+  }, [])
+
+  useEffect(() => {
+    if (params.get('paid') === '1') {
+      toast('Payment return — click Claim paid license if not activated yet', 'info')
+    }
+  }, [params, toast])
 
   const saveUrl = async () => {
     await db.setSetting('licenseServerUrl', serverUrl.trim().replace(/\/$/, ''))
@@ -56,6 +69,22 @@ export default function License() {
     }
   }
 
+  const buy = async (planId) => {
+    setBusy(true)
+    try {
+      await billing.buyPlan(planId, email)
+      // page navigates to PayFast
+    } catch (e) {
+      toast(e.message || String(e), 'error')
+      setLog({ error: e.message, details: e.details })
+      setBusy(false)
+    }
+  }
+
+  const claim = async () => {
+    await run(() => billing.claimPaidLicense(email), 'Paid license claimed')
+  }
+
   const licensed = !!status?.licensed
   const trialLeft = status?.trialDaysLeft
 
@@ -65,33 +94,66 @@ export default function License() {
         <div>
           <h1>License</h1>
           <p className="subtitle">
-            {online ? 'Online' : 'Offline'} · HWID handshake · 30-day soft alpha · v{APP_VERSION}
+            {online ? 'Online' : 'Offline'} · Pay → auto seats on email · v{APP_VERSION}
           </p>
         </div>
         <button type="button" className="btn btn-outline" onClick={reload} disabled={busy}>Refresh</button>
       </div>
 
       <div className="card" style={{ marginBottom: 12, borderLeft: '4px solid #38bdf8' }}>
-        <strong>Alpha soft mode</strong>
+        <strong>Self-serve licensing</strong>
         <p className="muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
-          Desk stays fully usable for the free-tier window. Handshake → Request → approve on the{' '}
-          <a href={APP_LINKS.licenseDashboard} target="_blank" rel="noreferrer">license dashboard</a>
-          {' '}→ Activate. Admin config: {' '}
-          <a href={APP_LINKS.licenseAdmin} target="_blank" rel="noreferrer">/admin</a>.
+          Buy a plan → PayFast → seats attach to your <strong>email</strong> (not IP or MAC).
+          Soft device id only counts seats after claim. Admin:{" '"}
+          <a href={APP_LINKS.licenseAdmin} target="_blank" rel="noreferrer">/admin</a>
+          {" "}(PayFast merchant keys).
+        </p>
+      </div>
+
+      <div className="card form-grid" style={{ marginBottom: 16 }}>
+        <div>
+          <label className="label">License email (account owner)</label>
+          <input
+            className="input"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@shop.co.za"
+          />
+        </div>
+        <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+          Use the same email at checkout. After payment, click <strong>Claim paid license</strong>.
         </p>
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginTop: 0 }}>License tiers</h3>
-        <p className="muted" style={{ fontSize: 13 }}>Product packaging for IT workshops — pick the plan that matches your shop.</p>
+        <h3 style={{ marginTop: 0 }}>Buy a plan</h3>
         <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fill,minmax(180px,1fr))' }}>
           {TIERS.map((t) => (
-            <div key={t.id} style={{ border: t.recommended ? '2px solid var(--green,#22c55e)' : '1px solid var(--border,rgba(255,255,255,.12))', borderRadius: 12, padding: 12 }}>
+            <div
+              key={t.id}
+              style={{
+                border: t.recommended ? '2px solid var(--green,#22c55e)' : '1px solid var(--border,rgba(255,255,255,.12))',
+                borderRadius: 12,
+                padding: 12,
+              }}
+            >
               <strong>{t.name}</strong>
               <div className="muted" style={{ fontSize: 11, margin: '4px 0 8px' }}>{t.priceHint}</div>
-              <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12 }}>
-                {t.features.map((f) => <li key={f}>{f}</li>)}
+              <ul style={{ margin: '0 0 10px', paddingLeft: 16, fontSize: 12 }}>
+                {t.features.map((f) => (
+                  <li key={f}>{f}</li>
+                ))}
               </ul>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                style={{ width: '100%' }}
+                disabled={busy || !email.includes('@')}
+                onClick={() => buy(t.id)}
+              >
+                Buy {t.name}
+              </button>
             </div>
           ))}
         </div>
@@ -101,7 +163,7 @@ export default function License() {
         <div className="card" style={{ marginBottom: '1rem', borderLeft: '4px solid var(--warn, #f59e0b)' }}>
           <strong>{trialLeft != null && trialLeft <= 0 ? 'Trial ended (soft)' : 'Trial / unlicensed workspace'}</strong>
           <p className="muted" style={{ margin: '0.35rem 0 0' }}>
-            Copy your HWID below, or use <strong>Activate on server</strong> after the vendor issues a key on the dashboard.
+            Alpha soft mode keeps the desk open. Pay when ready — no manual approve on the server.
           </p>
         </div>
       )}
@@ -109,9 +171,7 @@ export default function License() {
       {licensed && (
         <div className="card" style={{ marginBottom: '1rem', borderLeft: '4px solid var(--green, #10b981)' }}>
           <strong>Licensed</strong>
-          <p className="muted" style={{ margin: '0.35rem 0 0' }}>
-            This device is activated. Keep a backup from Settings.
-          </p>
+          <p className="muted" style={{ margin: '0.35rem 0 0' }}>This device is activated against a paid/issued key.</p>
         </div>
       )}
 
@@ -133,30 +193,29 @@ export default function License() {
 
       {ping && (
         <div className="card" style={{ marginBottom: 12, fontSize: 13 }}>
-          <strong>Ping:</strong>{' '}
-          {ping.ok ? `OK · ${ping.base}` : `${ping.error || 'failed'} · ${ping.base || ''}`}
+          <strong>Ping:</strong> {ping.ok ? `OK · ${ping.base}` : `${ping.error || 'failed'} · ${ping.base || ''}`}
         </div>
       )}
 
       <div className="card" style={{ marginBottom: '1rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap' }}>
           <div>
-            <div className="label">Hardware ID (HWID)</div>
+            <div className="label">Soft device id (seat binding only)</div>
             <code style={{ fontSize: 13, wordBreak: 'break-all' }}>{status?.hwid || '…'}</code>
           </div>
-          {status?.hwid ? <CopyButton text={status.hwid} label="Copy HWID" /> : null}
+          {status?.hwid ? <CopyButton text={status.hwid} label="Copy id" /> : null}
         </div>
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-        <LoadingButton loading={busy} onClick={() => run(() => licenseApi.fullActivate(), 'Server activated')}>
-          Activate on server
+        <LoadingButton loading={busy} onClick={claim}>
+          Claim paid license
+        </LoadingButton>
+        <LoadingButton loading={busy} onClick={() => run(() => licenseApi.fullActivate(), 'Legacy activate')}>
+          Legacy activate
         </LoadingButton>
         <button type="button" className="btn btn-outline" disabled={busy} onClick={() => run(() => licenseApi.handshake(), 'Handshake OK')}>
-          Handshake only
-        </button>
-        <button type="button" className="btn btn-outline" disabled={busy} onClick={() => run(() => licenseApi.requestLicense(), 'Request queued')}>
-          Request only
+          Handshake
         </button>
         <Link className="btn btn-outline" to="/settings">Settings / backup</Link>
       </div>
@@ -170,9 +229,7 @@ export default function License() {
         </div>
       )}
 
-      {!status && (
-        <EmptyState title="Loading license status…" hint="If this hangs, check network and server URL." />
-      )}
+      {!status && <EmptyState title="Loading license status…" hint="If this hangs, check network and server URL." />}
     </PageFade>
   )
 }

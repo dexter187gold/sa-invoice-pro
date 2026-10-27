@@ -1,10 +1,11 @@
-# SA Invoice Pro 6.30.0
+# SA Invoice Pro 6.31.0
 
-Field desk for SA repair / MSP · soft licensing (30-day alpha) · multi-page portal · bank match v2 · one-tap convert.
+Self-serve licensing (PayFast → email seats) · multi-page portal · bank match · desk pulse.
 
 ```bash
-npm install && npm run dev && npm run test:unit
+npm install && npm run dev
 ```
 
-**Links:** [docs/APP_LINKS.md](docs/APP_LINKS.md)  
-**Product:** sainvoicepro@gmail.com
+License server entry: `python start_license.py`  
+Website: https://github.com/dexter187gold/sa-invoice-pro-website  
+Product: **sainvoicepro@gmail.com**

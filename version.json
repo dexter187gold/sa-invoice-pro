@@ -1,5 +1,5 @@
 {
-  "version": "6.30.0",
-  "codename": "Active soft licensing · APP_LINKS · license rebuild",
-  "message": "30-day alpha soft trial, license UI status, APP_LINKS map, Render license/updates redeploy"
+  "version": "6.31.0",
+  "codename": "Self-serve PayFast · account seats",
+  "message": "PayFast checkout + ITN auto-issue; claim by email; no IP/MAC binding"
 }
