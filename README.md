@@ -1,9 +1,10 @@
-# SA Invoice Pro 6.29.0
+# SA Invoice Pro 6.30.0
 
-Field desk for SA repair / MSP · multi-page portal (incl. Payments) · bank match v2 · one-tap quote convert · soft alpha license.
+Field desk for SA repair / MSP · soft licensing (30-day alpha) · multi-page portal · bank match v2 · one-tap convert.
 
 ```bash
 npm install && npm run dev && npm run test:unit
 ```
 
-Product: **sainvoicepro@gmail.com**
+**Links:** [docs/APP_LINKS.md](docs/APP_LINKS.md)  
+**Product:** sainvoicepro@gmail.com

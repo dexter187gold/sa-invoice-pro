@@ -1,6 +1,9 @@
 import { getSetting, setSetting } from './db.js'
 import { SA_CONFIG } from '../config.js'
 
+/** Alpha soft trial length (days). Matches deviceLicense SOFT_LIMITS. */
+export const ALPHA_TRIAL_DAYS = 30
+
 export async function getHardwareId() {
   let id = await getSetting('hwid', null)
   if (id) return id
@@ -74,7 +77,7 @@ export async function requestLicense() {
     app: 'sa-invoice-pro',
     version: SA_CONFIG.appVersion,
     appVersion: SA_CONFIG.appVersion,
-    email: (await getSetting('licenseEmail', '')) || '',
+    email: (await getSetting('licenseEmail', '')) || SA_CONFIG.productEmail || '',
   })
   await setSetting('lastLicenseExchange', { step: 'request', at: new Date().toISOString(), response: j })
   const key = j.key || j.licenseKey || j.license_key
@@ -93,7 +96,6 @@ export async function activate(key) {
   const hwid = await getHardwareId()
   const j = await postJson(base, ['/api/activate', '/api/license/activate', '/api/activate-validate'], { hwid, key: k, app: 'sa-invoice-pro' })
   if (j.valid === false || j.ok === false || j.activated === false) throw new Error(j.error || j.message || 'Server did not confirm activation')
-  // Normalise activate-validate response shape
   if (j.valid === true && j.ok === undefined) { j.ok = true; j.activated = true }
   if (j.valid === true && !j.meta) j.meta = { plan: j.plan, label: j.label, expiresAt: j.expiresAt, server: true, activatedAt: new Date().toISOString() }
   await setSetting('licenseKey', j.key || k)
@@ -112,24 +114,47 @@ export async function fullActivate() {
   return { handshake: hs, request: req, activate: act }
 }
 
+export async function ensureTrialStarted() {
+  let trialStart = await getSetting('trialStartedAt', null)
+  if (!trialStart) {
+    trialStart = new Date().toISOString()
+    await setSetting('trialStartedAt', trialStart)
+  }
+  return trialStart
+}
+
 export async function getLicenseStatus() {
+  const trialStart = await ensureTrialStarted()
   const key = await getSetting('licenseKey', null)
   const meta = await getSetting('licenseMeta', null)
-  const trialStart = await getSetting('trialStartedAt', null)
   const hwid = await getHardwareId()
-  let trialDaysLeft = 7
-  if (trialStart) {
-    const elapsed = (Date.now() - new Date(trialStart).getTime()) / 86400000
-    trialDaysLeft = Math.max(0, Math.ceil(7 - elapsed))
-  }
+  const elapsed = (Date.now() - new Date(trialStart).getTime()) / 86400000
+  const trialDaysLeft = Math.max(0, Math.ceil(ALPHA_TRIAL_DAYS - elapsed))
   const exchange = await getSetting('lastLicenseExchange', null)
+  const serverUrl = await getServerUrl()
   return {
     licensed: !!(key && meta && meta.server),
     key,
     meta,
     hwid,
     trialDaysLeft,
+    trialDaysTotal: ALPHA_TRIAL_DAYS,
     handshakeOk: !!(await getSetting('handshakeOk', false)),
     exchange,
+    serverUrl,
+    alphaSoft: true,
+  }
+}
+
+/** Probe license server without mutating state. */
+export async function pingLicenseServer() {
+  const base = await getServerUrl()
+  if (!base) return { ok: false, error: 'No server URL' }
+  try {
+    const res = await fetch(base + '/api/public-config', { headers: { Accept: 'application/json' } })
+    const j = await res.json().catch(() => ({}))
+    return { ok: res.ok, status: res.status, config: j, base }
+  } catch (e) {
+    return { ok: false, error: e.message || String(e), base }
   }
 }

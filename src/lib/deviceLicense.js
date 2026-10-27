@@ -31,7 +31,7 @@ export async function getSoftLicenseState() {
     message = `${trialDaysLeft} trial day(s) left — desk stays fully usable in alpha.`
   } else {
     level = 'ok'
-    message = `Alpha trial · ${trialDaysLeft ?? '—'} days soft window`
+    message = `Alpha trial · ${trialDaysLeft ?? '—'} of ${st.trialDaysTotal ?? 30} days soft window`
   }
 
   return {

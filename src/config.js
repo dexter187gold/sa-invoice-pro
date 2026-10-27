@@ -1,7 +1,7 @@
-export const APP_VERSION = '6.29.0'
+export const APP_VERSION = '6.30.0'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
-export const APP_CODENAME = '6.29.0 · Portal payments · shared convert · e2e'
+export const APP_CODENAME = '6.30.0 · Active soft licensing · APP_LINKS'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
 export const HELIX_ROUTES = {
@@ -13,10 +13,22 @@ export const HELIX_ROUTES = {
 export const VAT_RATE_DEFAULT = 0.15
 export const SUPPORT_RATES_DEFAULT = { onsite: 450, remote: 300 }
 
+/** Canonical production hosts (also see docs/APP_LINKS.md). */
+export const APP_LINKS = {
+  licenseServer: 'https://sa-invoice-license.onrender.com',
+  licenseAdmin: 'https://sa-invoice-license.onrender.com/admin',
+  licenseDashboard: 'https://sa-invoice-license.onrender.com/',
+  updatesServer: 'https://sa-invoice-updates.onrender.com',
+  syncServer: 'https://saip-sync.onrender.com',
+  productEmail: 'sainvoicepro@gmail.com',
+  repo: 'https://github.com/dexter187gold/sa-invoice-pro',
+  syncRepo: 'https://github.com/dexter187gold/saip-sync',
+}
+
 export const SA_CONFIG = {
   appVersion: APP_VERSION,
-  defaultLicenseServerUrl: 'https://sa-invoice-license.onrender.com',
-  syncServerUrl: 'https://saip-sync.onrender.com',
+  defaultLicenseServerUrl: APP_LINKS.licenseServer,
+  syncServerUrl: APP_LINKS.syncServer,
   syncEnabled: true,
   helixUrl: '',
   helixPathDesk: HELIX_ROUTES.tickets,
@@ -24,7 +36,8 @@ export const SA_CONFIG = {
   oliveRepo: OLIVE_REPO,
   helixRoutes: HELIX_ROUTES,
   vatRateDefault: VAT_RATE_DEFAULT,
-  productEmail: 'sainvoicepro@gmail.com',
+  productEmail: APP_LINKS.productEmail,
+  updatesServerUrl: APP_LINKS.updatesServer,
 }
 
 export const DOC_TYPES = [
