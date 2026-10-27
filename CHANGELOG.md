@@ -1,16 +1,18 @@
 # Changelog
 
-## 6.26.0 — Multi-page client portal (2026-10-27)
+## 6.27.0 — Mega desk (2026-10-27)
 
-### Client portal (public)
-Four sections with sticky nav:
-1. **Overview** — balance, quote/job counts, quick links
-2. **Quotes** — accept / decline + notes (existing flow)
-3. **Invoices** — list, open balance, PayFast pay when configured
-4. **Service** — job cards, WhatsApp/email shop, NPS feedback
+### Owner desk
+- **One-tap Convert** on Home for accepted portal quotes → tax invoice
+- Soft **alpha device license** banner (never hard-blocks free-tier alpha)
+- Deeper **ticket SLA** (promised date + priority clocks)
 
-Routes: `/portal/:token`, `/portal/:token/quotes|invoices|service`
+### Lib
+- `quoteConvert.js`, `deviceLicense.js`, `ticketSla.js` + unit tests
+
+### Sync (saip-sync)
+- WA Cloud API scaffold routes (env-gated)
+
+## 6.26.0 — Multi-page client portal
 
 ## 6.25.0 — Desk pulse & portal convert
-
-## 6.24.0 — Portal snapshot fallback & go-live

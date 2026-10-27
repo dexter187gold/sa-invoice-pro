@@ -1,13 +1,12 @@
-# Roadmap progress — 6.26.0
+# Roadmap — 6.27.0
 
-## Overall **~98.5%** product-desk completeness
+## **~99%** practical desk product (alpha)
 
 | Phase | % |
 |-------|--:|
-| P4 Client portal | **99%** multi-page SPA + live saip-sync aliases |
+| P2 Desk | 92% |
+| P4 Portal | 99% |
+| P8 License | 88% soft alpha |
+| P6 Comms | 82% WA scaffold |
 
-### This slice
-Portal pages: Overview · Quotes · Invoices · Service
-
-### Free-tier alpha
-Render free + git data · device licensing after beta
+Free-tier alpha 3 months · hard licensing after paid beta.
