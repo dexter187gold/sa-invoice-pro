@@ -16,10 +16,13 @@ import {
   deskNextActions,
   jobsPastPromise,
 } from '../lib/deskPulse'
+import { convertQuoteToInvoice, canConvertQuote } from '../lib/quoteConvert'
+import { computeTicketSla, sortBySlaUrgency } from '../lib/ticketSla'
 import OnboardingChecklist from '../components/OnboardingChecklist'
 import PhaseBoard from '../components/PhaseBoard'
 import DeskRulesCard from '../components/DeskRulesCard'
 import NpsCard from '../components/NpsCard'
+import SoftLicenseBanner from '../components/SoftLicenseBanner'
 
 function greeting() {
   const h = new Date().getHours()
@@ -37,8 +40,11 @@ function daysPastDue(inv) {
 
 export default function Home() {
   const nav = useNavigate()
-  const { company, invoices, clients, tickets, quotes, payments, expenses, toast } = useApp()
+  const {
+    company, invoices, clients, tickets, quotes, payments, expenses, toast, refresh, vatRate, vatEnabled,
+  } = useApp()
   const [focus, setFocus] = useState('all')
+  const [convertingId, setConvertingId] = useState(null)
   const shedding = isLoadSheddingMode()
 
   const open = invoices.filter((i) => ['unpaid', 'partial', 'overdue'].includes(i.status))
@@ -58,7 +64,7 @@ export default function Home() {
 
   const acceptQueue = useMemo(() => acceptedQuotesAwaitingConvert(quotes).slice(0, 5), [quotes])
   const declinedRecent = useMemo(() => declinedQuotesRecent(quotes).slice(0, 3), [quotes])
-  const slaJobs = useMemo(() => jobsPastPromise(tickets).slice(0, 5), [tickets])
+  const slaJobs = useMemo(() => sortBySlaUrgency(jobsPastPromise(tickets)).slice(0, 5), [tickets])
   const nextActions = useMemo(
     () => deskNextActions({ quotes, tickets, invoices }),
     [quotes, tickets, invoices],
@@ -86,6 +92,25 @@ export default function Home() {
       .filter((t) => !t.invoiceId && (t.status === 'done' || t.status === 'resolved' || t.billable))
       .slice(0, 5)
   }, [openJobs])
+
+  const oneTapConvert = async (qt) => {
+    if (!canConvertQuote(qt)) return toast?.('Cannot convert this quote', 'error')
+    setConvertingId(qt.id)
+    try {
+      const { invoice } = await convertQuoteToInvoice(qt, {
+        invoices,
+        vatRate: vatRate ?? 0.15,
+        vatEnabled: vatEnabled !== false,
+      })
+      await refresh?.()
+      toast?.(`Invoice ${invoice.number} created`, 'success')
+      nav(`/invoices/${invoice.id}`)
+    } catch (e) {
+      toast?.(e?.message || 'Convert failed', 'error')
+    } finally {
+      setConvertingId(null)
+    }
+  }
 
   const chaseWhatsApp = (client, total, count) => {
     const phone = String(client?.phone || '').replace(/\D/g, '')
@@ -135,6 +160,7 @@ export default function Home() {
 
   return (
     <PageFade>
+      <SoftLicenseBanner />
       <OnboardingChecklist />
       <PhaseBoard compact />
       <DeskRulesCard invoices={invoices} tickets={tickets} clients={clients} />
@@ -244,7 +270,7 @@ export default function Home() {
       {acceptQueue.length > 0 && (
         <section className="pulse-section">
           <div className="pulse-section-head">
-            <h2>Client accepted — convert</h2>
+            <h2>Client accepted — one-tap convert</h2>
             <span className="muted">Portal / desk</span>
           </div>
           <div className="pulse-chase">
@@ -261,7 +287,14 @@ export default function Home() {
                   </div>
                   <div className="pulse-chase-btns">
                     <button type="button" className="btn btn-outline btn-sm" onClick={() => thankAccepted(qt)}>WA thank</button>
-                    <Link className="btn btn-primary btn-sm" to="/quotes">Convert</Link>
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      disabled={convertingId === qt.id}
+                      onClick={() => oneTapConvert(qt)}
+                    >
+                      {convertingId === qt.id ? '…' : 'Convert'}
+                    </button>
                   </div>
                 </div>
               )
@@ -298,18 +331,19 @@ export default function Home() {
       {showJobs && slaJobs.length > 0 && (
         <section className="pulse-section">
           <div className="pulse-section-head">
-            <h2>Past promised date</h2>
+            <h2>SLA risk</h2>
             <Link to="/tickets" className="btn btn-outline btn-sm">Desk</Link>
           </div>
           <div className="pulse-jobs">
             {slaJobs.map((t) => {
               const c = clients.find((x) => String(x.id) === String(t.clientId))
+              const sla = computeTicketSla(t)
               return (
                 <div key={t.id} className="pulse-job-card">
                   <div>
                     <strong>{t.title || t.number || 'Job'}</strong>
                     <div className="muted" style={{ fontSize: 12 }}>
-                      {c?.name || '—'} · promised {String(t.promisedAt || t.dueDate || t.slaDue || '').slice(0, 10)}
+                      {c?.name || '—'} · <span className={sla.cls}>{sla.label}</span>
                     </div>
                   </div>
                   <Link className="btn btn-primary btn-sm" to="/tickets">Open</Link>
