@@ -5,7 +5,6 @@ import { APP_VERSION } from '../config'
 import CommandPalette from './CommandPalette'
 import AppLogo from './AppLogo'
 import AppAssistant, { toggleHelp } from './AppAssistant'
-import LegalConsent from './LegalConsent'
 import NotificationBell from './NotificationBell'
 import QuickActions from './QuickActions'
 import { Sync } from '../lib/sync'
@@ -269,7 +268,6 @@ export default function Shell({ children }) {
     <>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <AppAssistant />
-      <LegalConsent />
       <QuickActions />
 
       <div className="mobile-bar">
