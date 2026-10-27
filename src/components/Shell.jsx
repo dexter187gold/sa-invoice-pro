@@ -360,25 +360,9 @@ export default function Shell({ children }) {
 
       {useBottom ? (
         <>
-          <nav className="bottom-nav" aria-label="Contextual navigation">
-            {bottomItems.map((item) => {
-              if (item.isMore || item.isRoot) {
-                return (
-                  <button
-                    key={item.to + item.label}
-                    type="button"
-                    className={`bnav ${moreOpen && item.isMore ? 'on' : ''}`}
-                    onClick={(e) => onBottomClick(item, e)}
-                    aria-label={item.label}
-                  >
-                    <span className="ico" aria-hidden>
-                      {item.icon}
-                    </span>
-                    {item.label}
-                  </button>
-                )
-              }
-              return (
+          <nav className="bottom-nav" aria-label={forceRoot ? 'Main navigation shortcuts' : 'Contextual navigation'}>
+            <div className="bottom-nav-scroll" aria-label="Swipe horizontally for more navigation items">
+              {bottomItems.map((item) => (
                 <NavLink
                   key={item.to + item.label}
                   to={item.to}
@@ -391,8 +375,20 @@ export default function Shell({ children }) {
                   </span>
                   {item.label}
                 </NavLink>
-              )
-            })}
+              ))}
+            </div>
+            <button
+              type="button"
+              className={`bnav bottom-nav-fixed ${forceRoot && moreOpen ? 'on' : ''}`}
+              onClick={(e) => onBottomClick(forceRoot
+                ? { to: '__more__', label: 'More', icon: '☰', isMore: true }
+                : { to: '__root__', label: 'Main', icon: '⌂', isRoot: true }, e)}
+              aria-label={forceRoot ? 'Open all pages menu' : 'Show main navigation'}
+              aria-expanded={forceRoot ? moreOpen : true}
+            >
+              <span className="ico" aria-hidden>{forceRoot ? '☰' : '⌂'}</span>
+              {forceRoot ? 'More' : 'Main'}
+            </button>
           </nav>
 
           <div
