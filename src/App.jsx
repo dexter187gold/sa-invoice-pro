@@ -33,6 +33,8 @@ import Payments from './pages/Payments'
 import ExcelViewer from './pages/ExcelViewer'
 import Changelog from './pages/Changelog'
 import SyncHealth from './pages/SyncHealth'
+import Support from './pages/Support'
+import Roadmap from './pages/Roadmap'
 import Inbox from './pages/Inbox'
 import Portal from './pages/Portal'
 import { APP_VERSION } from './config'
@@ -104,6 +106,8 @@ function AppInner() {
                 <Route path="/excel" element={<ExcelViewer />} />
                 <Route path="/changelog" element={<Changelog />} />
                 <Route path="/sync" element={<SyncHealth />} />
+                <Route path="/support" element={<Support />} />
+                <Route path="/roadmap" element={<Roadmap />} />
                 <Route path="/accounting" element={<Accounting />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/documents" element={<Documents />} />
