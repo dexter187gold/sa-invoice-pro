@@ -164,6 +164,8 @@ export default function AppAssistant() {
             ['Clients', '/clients'],
             ['Tickets', '/tickets'],
             ['Settings', '/settings'],
+            ['Help & Support', '/support'],
+            ['P1–P20 Roadmap', '/roadmap'],
           ].map(([label, to]) => (
             <button
               key={to}
