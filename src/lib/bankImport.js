@@ -1,5 +1,5 @@
 /**
- * Bank CSV import + match to open invoices (FNB / Standard / ABSA / Nedbank-ish).
+ * Bank CSV import + match to open invoices (FNB / Standard / ABSA / Nedbank / Capitec / Discovery-ish).
  */
 import * as db from './db'
 import { STORES } from './db'
@@ -38,9 +38,13 @@ export function parseBankCsv(text) {
 
   const matrix = lines.map(parseLine)
   let headerIdx = 0
-  for (let i = 0; i < Math.min(5, matrix.length); i++) {
-    const nums = matrix[i].filter((c) => /^-?[\d\s,.]+$/.test(c) && /\d/.test(c)).length
-    if (nums < matrix[i].length / 2) {
+  for (let i = 0; i < Math.min(8, matrix.length); i++) {
+    const row = matrix[i]
+    const joined = row.join(' ').toLowerCase()
+    // Skip bank statement title rows
+    if (/statement|account number|opening balance|closing balance|period from/i.test(joined) && !/date/i.test(joined)) continue
+    const nums = row.filter((c) => /^-?[\d\s,.]+$/.test(c) && /\d/.test(c)).length
+    if (nums < row.length / 2) {
       headerIdx = i
       break
     }
@@ -60,8 +64,10 @@ function findCol(headers, candidates) {
 
 function parseAmount(s) {
   if (s == null || s === '') return null
-  let t = String(s).replace(/\s/g, '').replace(/R/gi, '')
-  if (/\d,\d{2}$/.test(t) && !t.includes('.')) t = t.replace(/\./g, '').replace(',', '.')
+  let t = String(s).replace(/\s/g, '').replace(/R/gi, '').replace(/ZAR/gi, '')
+  // SA style 1.234,56 → 1234.56
+  if (/\d\.\d{3},\d{2}$/.test(t)) t = t.replace(/\./g, '').replace(',', '.')
+  else if (/\d,\d{2}$/.test(t) && !t.includes('.')) t = t.replace(/\./g, '').replace(',', '.')
   else t = t.replace(/,/g, '')
   const n = Number(t)
   return Number.isFinite(n) ? n : null
@@ -71,11 +77,15 @@ function parseDate(s) {
   if (!s) return null
   const t = String(s).trim()
   if (/^\d{4}-\d{2}-\d{2}/.test(t)) return t.slice(0, 10)
-  const m = t.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/)
+  // DD/MM/YYYY or DD-MM-YYYY (ZA)
+  const m = t.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/)
   if (m) {
     let y = m[3]
     if (y.length === 2) y = `20${y}`
-    return `${y}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`
+    // Prefer DMY for SA banks
+    const day = m[1].padStart(2, '0')
+    const mon = m[2].padStart(2, '0')
+    return `${y}-${mon}-${day}`
   }
   const d = new Date(t)
   if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10)
@@ -83,12 +93,16 @@ function parseDate(s) {
 }
 
 export function normalizeBankRows({ headers, rows }) {
-  const iDate = findCol(headers, ['date', 'trans date', 'transaction date', 'posting date', 'value date'])
-  const iDesc = findCol(headers, ['description', 'narrative', 'particulars', 'details', 'transaction'])
-  const iRef = findCol(headers, ['reference', 'ref', 'cheque', 'stmt'])
-  const iAmount = findCol(headers, ['amount', 'value', 'transaction amount'])
-  const iCredit = findCol(headers, ['credit', 'deposit', 'money in', 'cr'])
-  const iDebit = findCol(headers, ['debit', 'withdrawal', 'money out', 'dr'])
+  const iDate = findCol(headers, [
+    'date', 'trans date', 'transaction date', 'posting date', 'value date', 'txn date', 'effective date',
+  ])
+  const iDesc = findCol(headers, [
+    'description', 'narrative', 'particulars', 'details', 'transaction', 'description 1', 'memo', 'payee',
+  ])
+  const iRef = findCol(headers, ['reference', 'ref', 'cheque', 'stmt', 'beneficiary reference', 'your reference'])
+  const iAmount = findCol(headers, ['amount', 'value', 'transaction amount', 'txn amount'])
+  const iCredit = findCol(headers, ['credit', 'deposit', 'money in', 'cr', 'credit amount', 'paid in'])
+  const iDebit = findCol(headers, ['debit', 'withdrawal', 'money out', 'dr', 'debit amount', 'paid out'])
 
   const out = []
   for (let ri = 0; ri < rows.length; ri++) {
@@ -127,6 +141,17 @@ export function normalizeBankRows({ headers, rows }) {
   return out
 }
 
+function daysBetween(a, b) {
+  try {
+    const da = new Date(String(a).slice(0, 10) + 'T12:00:00').getTime()
+    const db = new Date(String(b).slice(0, 10) + 'T12:00:00').getTime()
+    if (!Number.isFinite(da) || !Number.isFinite(db)) return null
+    return Math.abs(da - db) / 86400000
+  } catch {
+    return null
+  }
+}
+
 /** Explain why a score was awarded (for bank match UX tooltips). */
 export function explainMatchScore(txn, inv, client) {
   const reasons = []
@@ -140,12 +165,15 @@ export function explainMatchScore(txn, inv, client) {
     score += 50
     reasons.push('Exact amount')
   } else if (amtDiff < 1) {
-    score += 35
+    score += 38
     reasons.push('Amount within R1')
-  } else if (amtDiff < due * 0.05) {
-    score += 20
-    reasons.push('Amount within 5%')
-  } else if (txn.amount > due * 1.05) {
+  } else if (amtDiff < due * 0.03) {
+    score += 25
+    reasons.push('Amount within 3%')
+  } else if (amtDiff < due * 0.08) {
+    score += 12
+    reasons.push('Amount close')
+  } else if (txn.amount > due * 1.08) {
     return { score: 0, reasons: ['Payment larger than balance'] }
   }
 
@@ -155,12 +183,23 @@ export function explainMatchScore(txn, inv, client) {
     score += 40
     reasons.push('Invoice number in description')
   } else if (num) {
-    const tail = num.replace(/[^0-9]/g, '').slice(-4)
+    const digits = num.replace(/[^0-9]/g, '')
+    const tail = digits.slice(-4)
     if (tail && hay.includes(tail)) {
-      score += 15
+      score += 18
       reasons.push('Invoice number tail')
     }
+    // Partial like INV-26 or 2026-0001
+    const parts = num.split(/[-_/]/).filter((p) => p.length >= 3)
+    for (const p of parts) {
+      if (hay.includes(p.toLowerCase())) {
+        score += 8
+        reasons.push('Invoice fragment')
+        break
+      }
+    }
   }
+
   const name = String(client?.name || '').toLowerCase()
   if (name && name.length > 2) {
     const parts = name.split(/\s+/).filter((p) => p.length > 2)
@@ -175,10 +214,30 @@ export function explainMatchScore(txn, inv, client) {
   }
   const phone = String(client?.phone || client?.whatsapp || '').replace(/\D/g, '')
   if (phone.length >= 7 && hay.includes(phone.slice(-7))) {
-    score += 10
+    score += 12
     reasons.push('Phone match')
   }
-  return { score, reasons: reasons.length ? reasons : ['Weak signals only'] }
+
+  // Date proximity: payment near invoice date or due date
+  const invDate = inv.date || inv.issueDate
+  const dueDate = inv.dueDate
+  const d1 = daysBetween(txn.date, invDate)
+  const d2 = daysBetween(txn.date, dueDate)
+  const bestDays = [d1, d2].filter((x) => x != null).sort((a, b) => a - b)[0]
+  if (bestDays != null) {
+    if (bestDays <= 3) {
+      score += 12
+      reasons.push('Within 3 days of inv/due')
+    } else if (bestDays <= 14) {
+      score += 6
+      reasons.push('Within 2 weeks of inv/due')
+    } else if (bestDays > 90) {
+      score -= 8
+      reasons.push('Date far from invoice')
+    }
+  }
+
+  return { score: Math.max(0, Math.min(100, score)), reasons: reasons.length ? reasons : ['Weak signals only'] }
 }
 
 export function scoreMatch(txn, inv, client) {
@@ -187,7 +246,7 @@ export function scoreMatch(txn, inv, client) {
 
 export function matchBankToInvoices(txns, invoices, clients) {
   const open = (invoices || []).filter(
-    (i) => !i.isCredit && ['unpaid', 'partial', 'overdue'].includes(i.status || 'unpaid')
+    (i) => !i.isCredit && ['unpaid', 'partial', 'overdue'].includes(i.status || 'unpaid'),
   )
   const used = new Set()
   const results = []
