@@ -1,6 +1,6 @@
 /**
- * SA Invoice Pro – Cloud Sync client v1.9.0
- * Auth recovery + workspace + team + portal.
+ * SA Invoice Pro – Cloud Sync client
+ * Auth recovery + workspace + team + portal (create + register snapshot fallback).
  */
 const BASE = 'https://saip-sync.onrender.com'
 const TOKEN_KEY = 'saip_sync_token'
@@ -45,7 +45,7 @@ async function request(path, opts = {}, attempt = 1) {
     throw new Error(
       isNet
         ? 'Cloud server waking up or offline — wait 20s and try Sync Now again'
-        : 'Network error — check connection to cloud sync'
+        : 'Network error — check connection to cloud sync',
     )
   }
   const data = await res.json().catch(() => ({}))
@@ -55,7 +55,10 @@ async function request(path, opts = {}, attempt = 1) {
       await sleep(2000 * attempt)
       return request(path, opts, attempt + 1)
     }
-    throw new Error(err)
+    const e = new Error(err)
+    e.status = res.status
+    e.data = data
+    throw e
   }
   return data
 }
@@ -63,6 +66,23 @@ async function request(path, opts = {}, attempt = 1) {
 let _autoTimer = null
 let _lastPushAt = 0
 let _lastError = null
+
+function normalizePortalResponse(data, clientId) {
+  const token = data.token || data.portalToken || data.id || ''
+  let url = data.url || data.link || data.portalUrl || ''
+  if (!url && token) {
+    // SPA path — works on any host that serves the React app
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    url = `${origin}/portal/${encodeURIComponent(token)}`
+  }
+  return {
+    ...data,
+    token,
+    url,
+    expires: data.expires || data.expiresAt || data.expires_at,
+    clientId: data.clientId || clientId,
+  }
+}
 
 export const Sync = {
   base: BASE,
@@ -108,7 +128,6 @@ export const Sync = {
     })
   },
 
-  /** One-step recovery: code + new password → JWT (workspace kept) */
   async recoverAccount(email, code, newPassword) {
     const data = await request('/api/auth/recover', {
       method: 'POST',
@@ -247,15 +266,67 @@ export const Sync = {
   async deviceHeartbeat(fingerprint) {
     return request('/api/device/heartbeat', { method: 'POST', body: JSON.stringify({ fingerprint }) })
   },
-  async createPortalLink(clientId, { days = 90 } = {}) {
-    return request('/api/portal/create', {
-      method: 'POST',
-      body: JSON.stringify({ clientId, client_id: clientId, days }),
-    })
+
+  /**
+   * Create portal link. Tries production `/api/portal/create`, then registers a
+   * full client snapshot via `/api/portal/register` (6.23+ server) when available.
+   */
+  async createPortalLink(clientId, { days = 90, snapshot } = {}) {
+    let data
+    try {
+      data = await request('/api/portal/create', {
+        method: 'POST',
+        body: JSON.stringify({ clientId, client_id: clientId, days }),
+      })
+    } catch (e) {
+      // Fallback: register endpoint on 6.23+ Express portal store
+      if (snapshot) {
+        data = await request('/api/portal/register', {
+          method: 'POST',
+          body: JSON.stringify({
+            clientId,
+            days,
+            company: snapshot.company || {},
+            client: snapshot.client || {},
+            quotes: (snapshot.quotes || []).filter((q) => String(q.clientId) === String(clientId)),
+            invoices: (snapshot.invoices || []).filter((i) => String(i.clientId) === String(clientId)),
+          }),
+        })
+      } else {
+        throw e
+      }
+    }
+    const normalized = normalizePortalResponse(data, clientId)
+    // Best-effort: attach snapshot so quote-decision can resolve lines (when register exists)
+    if (snapshot && normalized.token) {
+      try {
+        await request('/api/portal/register', {
+          method: 'POST',
+          body: JSON.stringify({
+            token: normalized.token,
+            refresh: true,
+            clientId,
+            company: snapshot.company || {},
+            client: snapshot.client || {},
+            quotes: (snapshot.quotes || []).filter((q) => String(q.clientId) === String(clientId)),
+            invoices: (snapshot.invoices || []).filter((i) => String(i.clientId) === String(clientId)),
+          }),
+          _maxAttempts: 1,
+        })
+      } catch {
+        /* production saip-sync may not have register yet — offline queue still works */
+      }
+    }
+    return normalized
   },
+
   async listPortalLinks() { return request('/api/portal/list') },
   async revokePortalLink(token) {
     return request('/api/portal/revoke', { method: 'POST', body: JSON.stringify({ token }) })
+  },
+
+  async listPortalDecisions({ limit = 50 } = {}) {
+    return request(`/api/portal/decisions?limit=${limit}`, { _maxAttempts: 2 })
   },
 }
 

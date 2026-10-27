@@ -1,5 +1,5 @@
 {
-  "version": "6.23.0",
-  "codename": "Portal server write-back · auth Playwright",
-  "message": "File-backed portal decisions on Express API, Quotes queue apply, e2e session helpers"
+  "version": "6.24.0",
+  "codename": "Portal snapshot fallback · owner go-live",
+  "message": "createPortalLink registers snapshot when server supports it; OWNER_GO_LIVE checklist"
 }

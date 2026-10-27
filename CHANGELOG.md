@@ -1,21 +1,19 @@
 # Changelog
 
-## 6.23.0 — Portal server write-back & auth e2e (2026-10-27)
+## 6.24.0 — Portal snapshot fallback & go-live (2026-10-27)
 
-### Client portal (P4)
-- **Server:** `server/src/portal-store.js` + `/api/portal/*` routes
-  - `GET /view/:token`, `POST /quote-decision`, `POST /register`, `GET /decisions`
-  - File store under `DATA_DIR/portal-store.json`
-- Decisions persist status on the token snapshot (accepted/rejected + note).
+### Portal / sync
+- `Sync.createPortalLink` accepts full **snapshot** (company, client, quotes, invoices).
+- After `/api/portal/create`, best-effort `POST /api/portal/register` refresh for decision write-back servers.
+- Falls back to `/api/portal/register` when create is missing.
+- Clients page passes snapshot on portal create.
 
-### Platform (P9)
-- Playwright **auth harness** (`e2e/helpers.js`, `e2e/auth.spec.js`) — session injection + IndexedDB company seed.
-- Desk routes smoke under fake session (invoices, quotes, products).
+### Docs
+- `docs/OWNER_GO_LIVE.md` — manual steps (Render portal routes, Cloudflare, OAuth, day-one shop).
 
-## 6.22.0 — Inter-branch stock (2026-10-27)
+### Note
+Live saip-sync still lacks `view` / `quote-decision` until owner deploys `server/` portal routes.
 
-- branchStock transfers on Products.
+## 6.23.0 — Portal server write-back & auth e2e
 
-## 6.21.0 — PDF brand & portal offline (2026-10-27)
-
-- PDF logo/accent; offline portal decision queue.
+Express portal-store + Playwright auth harness.

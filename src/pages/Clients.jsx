@@ -74,11 +74,21 @@ export default function Clients() {
   }
 
   const preparePortal = async (client) => {
-    const syncResult = await Sync.pushAll({ company, clients, invoices, quotes, tickets, payments, products, services, expenses })
+    const syncResult = await Sync.pushAll({
+      company, clients, invoices, quotes, tickets, payments, products, services, expenses,
+    })
     if (!syncResult?.ok) {
       throw new Error(syncResult?.error || 'Cloud sync did not complete. No portal link was created; try Sync Now and retry.')
     }
-    return Sync.createPortalLink(client.id, { days: 90 })
+    return Sync.createPortalLink(client.id, {
+      days: 90,
+      snapshot: {
+        company,
+        client,
+        quotes,
+        invoices,
+      },
+    })
   }
 
   const createPortal = async (client) => {
