@@ -384,7 +384,7 @@ export default function Shell({ children }) {
                 ? { to: '__more__', label: 'More', icon: '☰', isMore: true }
                 : { to: '__root__', label: 'Main', icon: '⌂', isRoot: true }, e)}
               aria-label={forceRoot ? 'Open all pages menu' : 'Show main navigation'}
-              aria-expanded={forceRoot ? moreOpen : true}
+              aria-expanded={forceRoot ? moreOpen : false}
             >
               <span className="ico" aria-hidden>{forceRoot ? '☰' : '⌂'}</span>
               {forceRoot ? 'More' : 'Main'}
