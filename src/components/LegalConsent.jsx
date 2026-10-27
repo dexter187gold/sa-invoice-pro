@@ -64,7 +64,7 @@ export default function LegalConsent() {
         <section className="cookie-consent" role="dialog" aria-label="Privacy and cookie choices" aria-live="polite">
           <div className="cookie-consent-copy">
             <strong>Your privacy matters</strong>
-            <p>SA Invoice Pro uses essential browser storage to keep the app working. Optional analytics are off unless you choose them. Read our <button type="button" className="legal-inline-link" onClick={() => setPanel('privacy')}>Privacy & POPIA notice</button> and <button type="button" className="legal-inline-link" onClick={() => setPanel('terms')}>Terms</button>.</p>
+            <p>SA Invoice Pro uses essential browser storage to keep the app working. Optional analytics are not active in this build; saving a preference does not enable trackers. Read our <button type="button" className="legal-inline-link" onClick={() => setPanel('privacy')}>Privacy & POPIA notice</button> and <button type="button" className="legal-inline-link" onClick={() => setPanel('terms')}>Terms</button>.</p>
           </div>
           <div className="cookie-consent-actions">
             <button type="button" className="btn btn-outline btn-sm" onClick={() => setPanel('preferences')}>Preferences</button>
