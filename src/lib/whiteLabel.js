@@ -23,6 +23,11 @@ export function loadWhiteLabel() {
   }
 }
 
+/** Backwards-compatible accessor used by the Webhooks white-label settings panel. */
+export function getWhiteLabel() {
+  return loadWhiteLabel()
+}
+
 export function saveWhiteLabel(partial) {
   const next = { ...loadWhiteLabel(), ...partial }
   if (next.logoDataUrl && String(next.logoDataUrl).length > 400000) {
