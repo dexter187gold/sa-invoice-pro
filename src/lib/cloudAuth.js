@@ -26,11 +26,16 @@ export async function cloudLogin(username, password, ctx = {}) {
     try {
       const data = await Sync.login(isEmail(email) ? email : raw, password)
       const u = data.user || { email, name: email.split('@')[0] }
+      let profile = null
+      try { profile = await Sync.me() } catch {}
+      const cloudUser = profile?.user || {}
       const session = {
         id: u.id,
         email: u.email || email,
         name: u.name || (u.email || email).split('@')[0],
         cloud: true,
+        teamRole: cloudUser.teamRole || null,
+        linkedWorkspaceOwnerId: cloudUser.linkedWorkspaceOwnerId || null,
       }
       setSession?.(session)
       setUser?.(session)
@@ -42,7 +47,7 @@ export async function cloudLogin(username, password, ctx = {}) {
         )
         const hashed = await hashPassword(password)
         if (local) {
-          await db.put(STORES.users, { ...local, password: hashed, name: session.name, email: session.email })
+          await db.put(STORES.users, { ...local, password: hashed, name: session.name, email: session.email, teamRole: session.teamRole, linkedWorkspaceOwnerId: session.linkedWorkspaceOwnerId })
         } else {
           await db.put(STORES.users, {
             id: session.id || (crypto.randomUUID?.() || 'u_' + Date.now()),
@@ -50,6 +55,8 @@ export async function cloudLogin(username, password, ctx = {}) {
             email: session.email,
             name: session.name,
             password: hashed,
+            teamRole: session.teamRole,
+            linkedWorkspaceOwnerId: session.linkedWorkspaceOwnerId,
           })
         }
       } catch (e) {
