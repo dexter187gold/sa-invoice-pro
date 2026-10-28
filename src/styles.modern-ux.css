@@ -191,3 +191,7 @@ button, a.bnav, .nav-link {
 .it-pack-banner {
   border-left: 4px solid var(--green, #22c55e);
 }
+
+
+/* App routes must remain renderable if an old splash/transition leaves an inherited hidden state. */
+body { visibility: visible !important; }
