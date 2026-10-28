@@ -113,6 +113,7 @@ export default function Settings() {
 
   return (
     <PageFade>
+      <div className="settings-page">
       <div className="page-header">
         <div>
           <h1>Settings</h1>
