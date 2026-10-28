@@ -502,7 +502,9 @@ html.dark .btn-danger { border-color: rgba(185, 28, 28, 0.35); }
 .mobile-top-tools{display:flex;align-items:center;gap:6px;flex-shrink:0}
 .mobile-top-tools .active-seat-chip{max-width:100px;overflow:hidden;white-space:nowrap;font-size:10px!important;padding:4px 7px!important}
 .mobile-top-tools .active-seat-chip strong{overflow:hidden;text-overflow:ellipsis;max-width:50px}
-.mobile-sync-btn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);flex-shrink:0}
-.mobile-sync-btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.mobile-sync-btn:disabled{opacity:.55}
+.mobile-sync-indicator{appearance:none;cursor:pointer;min-width:43px;min-height:34px;justify-content:center;padding:7px 9px!important;color:var(--text);transition:background .15s ease,transform .15s ease}
+.mobile-sync-indicator:hover{background:var(--green-soft,rgba(16,185,129,.12));transform:translateY(-1px)}
+.mobile-sync-indicator:focus-visible{outline:2px solid var(--green,#10b981);outline-offset:2px}
+.mobile-sync-indicator:disabled{opacity:.6;cursor:wait;transform:none}
+.mobile-sync-indicator span{pointer-events:none}
 @media(max-width:520px){.mobile-bar{gap:6px;padding:8px}.mobile-top-tools .active-seat-chip{max-width:74px}.mobile-top-tools .active-seat-chip>span{display:none}.mobile-top-tools .active-seat-chip strong{max-width:44px}.mobile-ai-btn{padding:5px 8px!important;min-width:30px}}
