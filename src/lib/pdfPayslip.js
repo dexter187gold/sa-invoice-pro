@@ -31,7 +31,7 @@ async function generatePayslipAlternative(payslip, company = {}, opts = {}) {
   }
   const earnings = [
     ['Cash Salary', payslip.basicSalary ?? payslip.salary, payslip.hours?.ordinary],
-    ['Travel / Call-out Allowance', Number(payslip.transportAllowance || 0) + Number(payslip.otherAllowance || 0)],
+    ['Travel Allowance', payslip.transportAllowance], ['Other Taxable Allowance', payslip.otherAllowance],
     ['Overtime @ 1.5', payslip.overtime15], ['Overtime @ 2.0', payslip.overtime20],
     ['Overtime', payslip.overtime], ['Sunday / Public Holiday Pay', payslip.sundayHolidayPay],
     ['Standby Allowance', payslip.standbyAllowance], ['Site Allowance', payslip.siteAllowance],
@@ -88,8 +88,8 @@ async function generatePayslipAlternative(payslip, company = {}, opts = {}) {
     doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...muted)
     doc.text('Pay Period: '+cleanVal(payslip.period)+'   Pay Date: '+dateVal(payslip.payDate),right,y+7,{align:'right'})
     y+=14; rule(margin,y,right); y+=4; section('Employee and company information')
-    const left=[['Emp. Code',emp.employeeNumber||payslip.employeeNumber],['Emp. Name',emp.name||payslip.employeeName],['Known As',emp.knownAs],['ID Number',emp.idNumber||payslip.idNumber],['Emp. Address',emp.address||payslip.employeeAddress],['Income Tax No.',emp.taxNumber||payslip.taxNumber],['Date Engaged',dateVal(emp.employmentStart||payslip.employmentStart)],['Job Title',emp.occupation||emp.role||payslip.occupation],['Job Grade',emp.jobGrade]]
-    const rightInfo=[['Pay Period',payslip.period],['Co. Name',employer.name||payslip.companyName],['Co. Address',employer.address||employer.physicalAddress||employer.businessAddress],['Company Rule',emp.companyRule||employer.companyRule],['PAYE Ref. No.',employer.payeReference],['UIF Reg. No.',employer.uifReference],['Rate Per Hour',emp.hourlyRate?'R '+emp.hourlyRate:payslip.hours?.rate],['Account No.',emp.accountNumber||payslip.accountNumber],['Payment Type',emp.paymentMethod||payslip.paymentMethod]]
+    const left=[['Emp. Code',emp.employeeNumber||payslip.employeeNumber],['Emp. Name',emp.name||payslip.employeeName],['Known As',emp.knownAs],['ID Number',emp.idNumber||payslip.idNumber],['Emp. Address',emp.address||payslip.employeeAddress],['Income Tax No.',emp.taxNumber||payslip.taxNumber],['Date Engaged',dateVal(emp.employmentStart||payslip.employmentStart)],['Job Title',emp.occupation||emp.role||payslip.occupation],['Job Grade',emp.jobGrade],['Hours Per Period',emp.hoursPerPeriod||emp.ordinaryHoursWorked],['Branch Code',emp.branchCode||payslip.branchCode]]
+    const rightInfo=[['Pay Period',payslip.period],['Co. Name',employer.name||payslip.companyName],['Co. Address',employer.address||employer.physicalAddress||employer.businessAddress],['Company Rule',emp.companyRule||employer.companyRule],['PAYE Ref. No.',employer.payeReference],['UIF Reg. No.',employer.uifReference],['Rate Per Hour',emp.hourlyRate?'R '+emp.hourlyRate:payslip.hours?.rate],['Account No.',emp.accountNumber||payslip.accountNumber],['Payment Type',emp.paymentMethod||payslip.paymentMethod],['Account No.',emp.accountNumber||payslip.accountNumber],['Branch Code',emp.branchCode||payslip.branchCode]]
     const half=(width-4)/2
     for(let i=0;i<left.length;i++){
       ensure(7); const a=left[i],b=rightInfo[i]
