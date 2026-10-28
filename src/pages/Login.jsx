@@ -20,6 +20,52 @@ export default function Login() {
   const [splash, setSplash] = useState(() => { try { return sessionStorage.getItem('sa_splash_done') !== '1' } catch { return true } })
   const [fade, setFade] = useState(false)
   const [profileCount, setProfileCount] = useState(null)
+  const [companies, setCompanies] = useState([])
+  const [companyEditor, setCompanyEditor] = useState(null)
+  const [companyForm, setCompanyForm] = useState({ name: '', email: '', phone: '', address: '', vatNumber: '' })
+  const [companyBusy, setCompanyBusy] = useState(false)
+  const [companyPanel, setCompanyPanel] = useState(false)
+
+  const loadCompanies = async () => {
+    const rows = await db.getCompanies()
+    setCompanies(rows || [])
+    const active = await db.getCompany()
+    if (active) setCompanyForm({ name: active.name || '', email: active.email || '', phone: active.phone || '', address: active.address || '', vatNumber: active.vatNumber || '' })
+  }
+  useEffect(() => { loadCompanies().catch(() => {}) }, [])
+
+  const startCompanyEdit = (row = null) => {
+    setCompanyEditor(row?.id || 'new')
+    setCompanyForm({ name: row?.name || '', email: row?.email || '', phone: row?.phone || '', address: row?.address || '', vatNumber: row?.vatNumber || '' })
+    setCompanyPanel(true)
+  }
+  const saveCompanyProfile = async (e) => {
+    e.preventDefault()
+    if (!companyForm.name.trim()) return toast('Company name is required', 'error')
+    setCompanyBusy(true)
+    try {
+      const row = { ...(companyEditor && companyEditor !== 'new' ? { id: companyEditor } : {}), ...companyForm, name: companyForm.name.trim() }
+      const saved = await db.saveCompany(row)
+      await db.setActiveCompany(saved.id)
+      await loadCompanies()
+      setCompanyEditor(null); setCompanyPanel(false)
+      toast('Company profile saved', 'success')
+    } catch (err) { toast(err?.message || 'Could not save company', 'error') }
+    finally { setCompanyBusy(false) }
+  }
+  const chooseCompany = async (id) => {
+    try { await db.setActiveCompany(id); await loadCompanies(); toast('Company profile selected', 'success') }
+    catch (err) { toast(err?.message || 'Could not select company', 'error') }
+  }
+  const removeCompanyProfile = async (row) => {
+    if (!window.confirm('Delete company profile "' + row.name + '"? This removes the profile only.')) return
+    try {
+      const active = await db.deleteCompany(row.id)
+      await loadCompanies()
+      if (active) await db.setActiveCompany(active.id)
+      toast('Company profile deleted', 'success')
+    } catch (err) { toast(err?.message || 'Could not delete company', 'error') }
+  }
 
   // Google OAuth return: store token and enter app
   useEffect(() => {
@@ -138,6 +184,30 @@ export default function Login() {
         <p className="muted" style={{ textAlign: 'center', marginTop: 0 }}>Lab · offline-first · South Africa · v{APP_VERSION}</p>
         {profileCount === 0 && mode !== 'forgot' && (
           <p className="muted" style={{ textAlign: 'center', fontSize: 13, marginTop: 0 }}>No local profiles on this device yet. Create an account or import a backup below.</p>
+        )}
+        {mode === 'in' && (
+          <section className="card" style={{ margin: '12px 0', padding: 12, border: '1px solid var(--border, #d1d5db)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <div><strong>Company profiles</strong><p className="muted" style={{ margin: '3px 0 0', fontSize: 12 }}>Select or manage the company identity used by the workspace.</p></div>
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => companyPanel ? (setCompanyPanel(false), setCompanyEditor(null)) : startCompanyEdit(null)}>{companyPanel ? 'Cancel' : '+ Add company'}</button>
+            </div>
+            {companies.length > 0 ? <div className="stack" style={{ gap: 6, marginTop: 10 }}>
+              {companies.map((co) => <div key={co.id} style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', padding: 8, border: '1px solid var(--border, #d1d5db)', borderRadius: 8 }}>
+                <div style={{ minWidth: 0, flex: '1 1 140px' }}><strong>{co.name || 'Unnamed company'}</strong><div className="muted" style={{ fontSize: 12 }}>{co.email || co.phone || 'No contact details'}</div></div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><button type="button" className="btn btn-outline btn-sm" onClick={() => chooseCompany(co.id)}>Use</button><button type="button" className="btn btn-outline btn-sm" onClick={() => startCompanyEdit(co)}>Edit</button><button type="button" className="btn btn-outline btn-sm" onClick={() => removeCompanyProfile(co)} aria-label={'Delete ' + co.name}>Delete</button></div>
+              </div>)}
+            </div> : <p className="muted" style={{ fontSize: 12 }}>No company profile yet. Add one or sign in and complete setup.</p>}
+            {companyPanel && <form className="stack" onSubmit={saveCompanyProfile} style={{ gap: 8, marginTop: 12 }}>
+              <strong>{companyEditor && companyEditor !== 'new' ? 'Edit company profile' : 'Add company profile'}</strong>
+              <label className="stack" style={{ gap: 4 }}><span className="muted" style={{ fontSize: 12 }}>Company name *</span><input className="input" required value={companyForm.name} onChange={(e) => setCompanyForm({ ...companyForm, name: e.target.value })} /></label>
+              <label className="stack" style={{ gap: 4 }}><span className="muted" style={{ fontSize: 12 }}>Email</span><input className="input" type="email" value={companyForm.email} onChange={(e) => setCompanyForm({ ...companyForm, email: e.target.value })} /></label>
+              <label className="stack" style={{ gap: 4 }}><span className="muted" style={{ fontSize: 12 }}>Phone</span><input className="input" value={companyForm.phone} onChange={(e) => setCompanyForm({ ...companyForm, phone: e.target.value })} /></label>
+              <label className="stack" style={{ gap: 4 }}><span className="muted" style={{ fontSize: 12 }}>VAT number</span><input className="input" value={companyForm.vatNumber} onChange={(e) => setCompanyForm({ ...companyForm, vatNumber: e.target.value })} /></label>
+              <label className="stack" style={{ gap: 4 }}><span className="muted" style={{ fontSize: 12 }}>Address</span><textarea className="input" rows={2} value={companyForm.address} onChange={(e) => setCompanyForm({ ...companyForm, address: e.target.value })} /></label>
+              <button className="btn btn-primary" type="submit" disabled={companyBusy}>{companyBusy ? 'Saving…' : 'Save company profile'}</button>
+              <p className="muted" style={{ fontSize: 11, margin: 0 }}>Profiles are selectable identities. Separate records and role-bound accounts need server-side tenant access controls before using this for independent legal entities.</p>
+            </form>}
+          </section>
         )}
         <div className="tabs">
           <button type="button" className={`tab ${mode === 'in' ? 'active' : ''}`} onClick={() => setMode('in')}>Sign in</button>
