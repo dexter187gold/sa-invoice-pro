@@ -32,6 +32,7 @@ async function generatePayslipAlternative(payslip, company = {}, opts = {}) {
   const earnings = [
     ['Cash Salary', payslip.basicSalary ?? payslip.salary, payslip.hours?.ordinary],
     ['Travel Allowance', payslip.transportAllowance], ['Other Taxable Allowance', payslip.otherAllowance],
+    ['Call Out Allowance', payslip.callOutAllowance],
     ['Overtime @ 1.5', payslip.overtime15], ['Overtime @ 2.0', payslip.overtime20],
     ['Overtime', payslip.overtime], ['Sunday / Public Holiday Pay', payslip.sundayHolidayPay],
     ['Standby Allowance', payslip.standbyAllowance], ['Site Allowance', payslip.siteAllowance],
@@ -88,8 +89,8 @@ async function generatePayslipAlternative(payslip, company = {}, opts = {}) {
     doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...muted)
     doc.text('Pay Period: '+cleanVal(payslip.period)+'   Pay Date: '+dateVal(payslip.payDate),right,y+7,{align:'right'})
     y+=14; rule(margin,y,right); y+=4; section('Employee and company information')
-    const left=[['Emp. Code',emp.employeeNumber||payslip.employeeNumber],['Emp. Name',emp.name||payslip.employeeName],['Known As',emp.knownAs],['ID Number',emp.idNumber||payslip.idNumber],['Emp. Address',emp.address||payslip.employeeAddress],['Income Tax No.',emp.taxNumber||payslip.taxNumber],['Date Engaged',dateVal(emp.employmentStart||payslip.employmentStart)],['Job Title',emp.occupation||emp.role||payslip.occupation],['Job Grade',emp.jobGrade],['Hours Per Period',emp.hoursPerPeriod||emp.ordinaryHoursWorked],['Branch Code',emp.branchCode||payslip.branchCode]]
-    const rightInfo=[['Pay Period',payslip.period],['Co. Name',employer.name||payslip.companyName],['Co. Address',employer.address||employer.physicalAddress||employer.businessAddress],['Company Rule',emp.companyRule||employer.companyRule],['PAYE Ref. No.',employer.payeReference],['UIF Reg. No.',employer.uifReference],['Rate Per Hour',emp.hourlyRate?'R '+emp.hourlyRate:payslip.hours?.rate],['Account No.',emp.accountNumber||payslip.accountNumber],['Payment Type',emp.paymentMethod||payslip.paymentMethod],['Account No.',emp.accountNumber||payslip.accountNumber],['Branch Code',emp.branchCode||payslip.branchCode]]
+    const left=[['Emp. Code',emp.employeeNumber||payslip.employeeNumber],['Emp. Name',emp.name||payslip.employeeName],['Known As',emp.knownAs],['ID Number',emp.idNumber||payslip.idNumber],['Emp. Address',emp.address||payslip.employeeAddress],['Income Tax No.',emp.taxNumber||payslip.taxNumber],['Date Engaged',dateVal(emp.employmentStart||payslip.employmentStart)],['Job Title',emp.occupation||emp.role||payslip.occupation],['Job Grade',emp.jobGrade],['Hours Per Period',emp.hoursPerPeriod||emp.ordinaryHoursWorked],['Account No.',emp.accountNumber||payslip.accountNumber],['Branch Code',emp.branchCode||payslip.branchCode]]
+    const rightInfo=[['Pay Period',payslip.period],['Co. Name',employer.name||payslip.companyName],['Co. Address',employer.address||employer.physicalAddress||employer.businessAddress],['Company Rule',emp.companyRule||employer.companyRule],['PAYE Ref. No.',employer.payeReference],['UIF Reg. No.',employer.uifReference],['Rate Per Hour',emp.hourlyRate?'R '+emp.hourlyRate:payslip.hours?.rate],['Account No.',emp.accountNumber||payslip.accountNumber],['Payment Type',emp.paymentMethod||payslip.paymentMethod],['Employee Email',emp.email||payslip.employeeEmail],['Company Registration',employer.registrationNumber],['SDL Ref. No.',employer.sdlReference]]
     const half=(width-4)/2
     for(let i=0;i<left.length;i++){
       ensure(7); const a=left[i],b=rightInfo[i]
@@ -273,8 +274,13 @@ export async function generatePayslipPdf(payslip, company = {}, opts = {}) {
   const earnings = [
     ['Basic salary / wages', ZAR(payslip.basicSalary ?? payslip.salary)],
     ['Travel allowance', ZAR(payslip.transportAllowance)],
-    ['Other taxable allowance / earnings', ZAR(payslip.otherAllowance)],
+    ['Other taxable allowance', ZAR(payslip.otherAllowance)],
   ]
+  if (Number(payslip.callOutAllowance) !== 0) earnings.push(['Call-out allowance', ZAR(payslip.callOutAllowance)])
+  if (Number(payslip.overtime15) !== 0) earnings.push(['Overtime @ 1.5', ZAR(payslip.overtime15)])
+  if (Number(payslip.overtime20) !== 0) earnings.push(['Overtime @ 2.0', ZAR(payslip.overtime20)])
+  if (Number(payslip.standbyAllowance) !== 0) earnings.push(['Standby allowance', ZAR(payslip.standbyAllowance)])
+  if (Number(payslip.siteAllowance) !== 0) earnings.push(['Site allowance', ZAR(payslip.siteAllowance)])
   if (Number(payslip.overtime) !== 0) earnings.push(['Overtime pay', ZAR(payslip.overtime)])
   if (Number(payslip.sundayHolidayPay) !== 0) earnings.push(['Sunday / public holiday pay', ZAR(payslip.sundayHolidayPay)])
   if (Number(payslip.commission) !== 0) earnings.push(['Commission', ZAR(payslip.commission)])
@@ -311,7 +317,12 @@ export async function generatePayslipPdf(payslip, company = {}, opts = {}) {
   table(['Item', 'Amount (ZAR)'], [
     ['UIF — employer contribution (not deducted from employee)', ZAR(payslip.uifEmployer)],
     ['SDL — Skills Development Levy (employer-only; where applicable)', ZAR(payslip.sdl)],
+    ['MIBCO / bargaining council employer contribution', ZAR(payslip.mibcoEmployer)],
+    ['Employer pension / provident contribution', ZAR(payslip.pensionEmployer)],
+    ['Employer provident risk contribution', ZAR(payslip.pensionRiskEmployer)],
     ['ETI — Employment Tax Incentive (employer credit, informational)', ZAR(payslip.eti)],
+    ['Fringe benefits recorded', ZAR(payslip.fringeBenefits)],
+    ['Tax-deductible deductions recorded', ZAR(payslip.taxDeductibleDeductions)],
     ['PAYE taxable remuneration (estimate basis)', ZAR(payslip.taxableRemuneration ?? payslip.gross)],
   ], { widths: [width - 42, 42] })
 
@@ -319,10 +330,12 @@ export async function generatePayslipPdf(payslip, company = {}, opts = {}) {
   const hours = payslip.hours || {}
   table(['Measure', 'Value'], [
     ['Ordinary hours worked', clean(hours.ordinary)],
+    ['Hours per pay period', clean(hours.hoursPerPeriod)],
     ['Overtime hours worked', clean(hours.overtime)],
     ['Sunday hours worked', clean(hours.sunday)],
     ['Public holiday hours worked', clean(hours.publicHoliday)],
     ['Ordinary / overtime rate', clean(hours.rate)],
+    ['Company rule / bargaining agreement', clean(emp.companyRule)],
     ['SARS code 3601 — basic salary', ZAR(payslip.sourceCodes?.[3601] ?? payslip.sourceCodes?.['3601'] ?? payslip.basicSalary ?? payslip.salary)],
     ['SARS code 3701 — travel allowance', ZAR(payslip.sourceCodes?.[3701] ?? payslip.sourceCodes?.['3701'] ?? payslip.transportAllowance)],
     ['SARS code 4102 — PAYE', ZAR(payslip.sourceCodes?.[4102] ?? payslip.sourceCodes?.['4102'] ?? payslip.paye)],
@@ -334,6 +347,9 @@ export async function generatePayslipPdf(payslip, company = {}, opts = {}) {
     ['Gross cash earnings', ZAR(ytd.gross)],
     ['PAYE deducted', ZAR(ytd.paye)],
     ['UIF employee contributions', ZAR(ytd.uif)],
+    ['Taxable remuneration', ZAR(ytd.taxable ?? payslip.taxableRemuneration)],
+    ['Fringe benefits', ZAR(ytd.fringeBenefits ?? payslip.fringeBenefits)],
+    ['Tax-deductible deductions', ZAR(ytd.taxDeductibleDeductions ?? payslip.taxDeductibleDeductions)],
     ['Net pay', ZAR(ytd.net)],
   ], { widths: [width - 52, 52] })
 
