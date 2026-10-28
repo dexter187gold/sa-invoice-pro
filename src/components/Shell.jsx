@@ -289,7 +289,13 @@ export default function Shell({ children }) {
         <div className={'live-leds phase-' + ledPhase} role="status" aria-label={assistantBusy ? 'AI assistant working' : 'Sync status: ' + syncPhase} title={assistantBusy ? 'AI assistant working' : 'Sync status: ' + syncPhase}>
           <span /><span /><span />
         </div>
-        <button type="button" className="btn btn-outline btn-sm" onClick={() => toggleHelp()} aria-label="Open AI assistant">✦</button>
+        <div className="mobile-top-tools" aria-label="Workspace controls">
+          <ActiveSeatChip compact />
+          <button type="button" className="mobile-sync-btn" onClick={runSync} disabled={syncing} aria-label={syncing ? 'Syncing' : 'Sync now'} title={syncing ? 'Syncing' : 'Sync now'}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6.1 9A7 7 0 0 1 18 6l2 1M4 17l2-1a7 7 0 0 0 11.9-3" /></svg>
+          </button>
+        </div>
+        <button type="button" className="btn btn-outline btn-sm mobile-ai-btn" onClick={() => toggleHelp()} aria-label="Open AI assistant">✦</button>
         <NotificationBell />
         <span className={`status-dot ${online ? 'on' : 'off'}`} title={online ? 'Online' : 'Offline'} />
       </div>
