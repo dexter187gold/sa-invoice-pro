@@ -14,12 +14,140 @@ const monthName = (period) => {
   return new Date(Number(period.slice(0, 4)), Number(period.slice(5, 7)) - 1, 1).toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' })
 }
 
+
+async function generatePayslipAlternative(payslip, company = {}, opts = {}) {
+  const jsPDF = await loadJsPdf()
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const layout = opts.layout === 'example' ? 'example' : 'simplified'
+  const margin = 10, right = 200, width = 180
+  const emp = payslip.employee || {}
+  const employer = payslip.employer || company || {}
+  const money = (v) => ZAR(Number(v) || 0)
+  const cleanVal = (v) => String(v ?? '').trim() || '—'
+  const dateVal = (v) => {
+    if (!v) return '—'
+    const d = new Date(v)
+    return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleDateString('en-ZA')
+  }
+  const earnings = [
+    ['Cash Salary', payslip.basicSalary ?? payslip.salary, payslip.hours?.ordinary],
+    ['Travel / Call-out Allowance', Number(payslip.transportAllowance || 0) + Number(payslip.otherAllowance || 0)],
+    ['Overtime @ 1.5', payslip.overtime15], ['Overtime @ 2.0', payslip.overtime20],
+    ['Overtime', payslip.overtime], ['Sunday / Public Holiday Pay', payslip.sundayHolidayPay],
+    ['Standby Allowance', payslip.standbyAllowance], ['Site Allowance', payslip.siteAllowance],
+    ['Commission', payslip.commission], ['Bonus / Incentive', payslip.bonus], ['Other Earnings', payslip.otherEarnings],
+  ].filter((r) => r[1] != null && (Number(r[1]) !== 0 || r[0] === 'Cash Salary'))
+  const gross = Number(payslip.gross ?? earnings.reduce((s, r) => s + (Number(r[1]) || 0), 0)) || 0
+  const deductions = [
+    ['Pay As You Earn (PAYE)', payslip.paye], ['Unemployment Insurance Fund (UIF)', payslip.uif],
+    ['Mibco / Bargaining Council Levy', payslip.mibcoLevy], ['Pension / Provident Fund', payslip.pensionEmployee],
+    ['Medical Aid', payslip.medicalAidEmployee], ['Union Fees', payslip.unionFees], ['Other Authorised Deductions', payslip.otherDeductions],
+  ].filter((r) => Number(r[1]) !== 0 || /PAYE|UIF/.test(r[0]))
+  const deductionTotal = Number(payslip.totalDeductions ?? deductions.reduce((s, r) => s + (Number(r[1]) || 0), 0)) || 0
+  const contrib = [
+    ['Skills Development Levy (SDL)', payslip.sdl], ['Unemployment Insurance Fund', payslip.uifEmployer],
+    ['Mibco / Bargaining Council Levy', payslip.mibcoEmployer], ['Provident Fund', payslip.pensionEmployer],
+    ['Provident Fund Risk', payslip.pensionRiskEmployer],
+  ].filter((r) => Number(r[1]) !== 0)
+  const ytd = payslip.ytd || {}
+  let y = margin
+  const green = [20, 83, 45], pale = [239, 247, 241], muted = [92, 102, 96]
+  const ensure = (h = 8) => { if (y + h > 282) { doc.addPage(); y = margin } }
+  const rule = (x1, yy, x2) => { doc.setDrawColor(205,215,208); doc.setLineWidth(.22); doc.line(x1,yy,x2,yy) }
+  const section = (title, x = margin, w = width) => {
+    ensure(9); doc.setFillColor(...pale); doc.rect(x,y,w,6,'F')
+    doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(...green)
+    doc.text(title.toUpperCase(),x+1.5,y+4.1); y += 8; doc.setTextColor(25,35,29)
+  }
+  const drawTable = (headers, rows, x, yy, w, widths, rowHeight = 5.2, fs = 6.5) => {
+    let ty = yy
+    doc.setFillColor(245,247,245); doc.rect(x,ty-3.1,w,5,'F')
+    doc.setFont('helvetica','bold'); doc.setFontSize(fs); doc.setTextColor(...muted)
+    let xx=x
+    headers.forEach((h,i) => { const align = i > 0 ? 'right' : 'left'; doc.text(String(h),align==='right'?xx+widths[i]-1:xx+1,ty,{align}); xx+=widths[i] })
+    ty+=4
+    for (const row of rows) {
+      const lines=doc.splitTextToSize(String(row[0] ?? ''),widths[0]-2)
+      const rh=Math.max(rowHeight,lines.length*2.8+1.5)
+      if (ty+rh>281) { doc.addPage(); ty=margin+4 }
+      doc.setFont('helvetica',row.bold?'bold':'normal'); doc.setFontSize(fs); doc.setTextColor(30,40,34)
+      doc.text(lines,x+1,ty)
+      let cx=x+widths[0]
+      for(let i=1;i<headers.length;i++){doc.text(row[i]==null||row[i]===''?'—':String(row[i]),cx+widths[i]-1,ty,{align:'right'});cx+=widths[i]}
+      ty+=rh; rule(x,ty-1,x+w)
+    }
+    return ty+1
+  }
+  if (layout === 'example') {
+    doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...green)
+    doc.text(String(employer.name || payslip.companyName || 'Company Name'),margin,y+2)
+    doc.setFont('helvetica','normal'); doc.setFontSize(6.5); doc.setTextColor(...muted)
+    doc.text(cleanVal(employer.address || employer.physicalAddress || employer.businessAddress),margin,y+6)
+    doc.text('PAYE Ref: '+cleanVal(employer.payeReference)+'   UIF Reg: '+cleanVal(employer.uifReference)+'   SDL Ref: '+cleanVal(employer.sdlReference),margin,y+9)
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...green); doc.text('EMPLOYEE PAYSLIP',right,y+2,{align:'right'})
+    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...muted)
+    doc.text('Pay Period: '+cleanVal(payslip.period)+'   Pay Date: '+dateVal(payslip.payDate),right,y+7,{align:'right'})
+    y+=14; rule(margin,y,right); y+=4; section('Employee and company information')
+    const left=[['Emp. Code',emp.employeeNumber||payslip.employeeNumber],['Emp. Name',emp.name||payslip.employeeName],['Known As',emp.knownAs],['ID Number',emp.idNumber||payslip.idNumber],['Emp. Address',emp.address||payslip.employeeAddress],['Income Tax No.',emp.taxNumber||payslip.taxNumber],['Date Engaged',dateVal(emp.employmentStart||payslip.employmentStart)],['Job Title',emp.occupation||emp.role||payslip.occupation],['Job Grade',emp.jobGrade]]
+    const rightInfo=[['Pay Period',payslip.period],['Co. Name',employer.name||payslip.companyName],['Co. Address',employer.address||employer.physicalAddress||employer.businessAddress],['Company Rule',emp.companyRule||employer.companyRule],['PAYE Ref. No.',employer.payeReference],['UIF Reg. No.',employer.uifReference],['Rate Per Hour',emp.hourlyRate?'R '+emp.hourlyRate:payslip.hours?.rate],['Account No.',emp.accountNumber||payslip.accountNumber],['Payment Type',emp.paymentMethod||payslip.paymentMethod]]
+    const half=(width-4)/2
+    for(let i=0;i<left.length;i++){
+      ensure(7); const a=left[i],b=rightInfo[i]
+      doc.setFontSize(6.2);doc.setFont('helvetica','bold');doc.setTextColor(...muted);doc.text(a[0],margin+1,y)
+      doc.setFont('helvetica','normal');doc.setTextColor(30,40,34);doc.text(doc.splitTextToSize(cleanVal(a[1]),half-24),margin+23,y)
+      doc.setFont('helvetica','bold');doc.setTextColor(...muted);doc.text(b[0],margin+half+4,y)
+      doc.setFont('helvetica','normal');doc.setTextColor(30,40,34);doc.text(doc.splitTextToSize(cleanVal(b[1]),half-26),margin+half+28,y);y+=5.1
+    }
+    y+=2; section('Earnings',margin,half); const top=y-8
+    const erows=earnings.map(r=>[r[0],r[2]==null?'':String(r[2]),money(r[1]),'0.00']);erows.push(['Total Earnings','',money(gross),''])
+    const eEnd=drawTable(['Description','Units','Amount','Open'],erows,margin,y,half,[half-40,10,21,9],5,5.8)
+    section('Deductions',margin+half+4,half)
+    const drows=deductions.map(r=>[r[0],'',money(r[1]),'0.00']);drows.push(['Total Deductions','',money(deductionTotal),''])
+    const dEnd=drawTable(['Description','Units','Amount','Open'],drows,margin+half+4,top+8,half,[half-40,10,21,9],5,5.8)
+    y=Math.max(eEnd,dEnd)+3;ensure(16)
+    doc.setFillColor(...green);doc.roundedRect(margin,y,width,10,1,1,'F');doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(255,255,255)
+    doc.text('NET PAYOUT:',margin+3,y+6.5);doc.setFontSize(12);doc.text(money(payslip.net),right-3,y+6.5,{align:'right'});y+=14
+    const half2=(width-4)/2;section('Company contributions',margin,half2)
+    const crows=contrib.map(r=>[r[0],'',money(r[1]),'0.00']);crows.push(['Total Company Contributions','',money(payslip.companyContributionsTotal??contrib.reduce((s,r)=>s+(Number(r[1])||0),0)),''])
+    const cEnd=drawTable(['Description','Units','Amount','Open'],crows,margin,y,half2,[half2-40,10,21,9],5,5.5)
+    section('Year To Date Totals',margin+half2+4,half2)
+    const yEnd=drawTable(['Description','Amount'],[['Tax Paid',money(ytd.paye)],['Taxable Earnings',money(ytd.taxable??payslip.taxableRemuneration)],['Fringe Benefits',money(ytd.fringeBenefits)],['Tax Deductible Deductions',money(ytd.taxDeductibleDeductions)]],margin+half2+4,y,[half2-23,23].reduce((a,b)=>a+b,0),[half2-23,23],5.5,5.7)
+    y=Math.max(cEnd,yEnd)+3;section('Leave balances')
+    let leaveRows=(payslip.leaveBalances||emp.leaveBalances||[]).map(l=>[l.description||l.name||'Leave',cleanVal(l.entitlement),cleanVal(l.balanceBfwd??l.openingBalance),cleanVal(l.accrued),cleanVal(l.balanceCfwd??l.closingBalance??l.balance)])
+    if(!leaveRows.length) leaveRows=[['No leave balances recorded','—','—','—','—']]
+    y=drawTable(['Description','Entitlement','Balance B/Fwd','Accrued','Balance C/Fwd'],leaveRows,margin,y,width,[width-83,20,25,18,20],5.5,5.7)
+    doc.setFont('helvetica','normal');doc.setFontSize(6);doc.setTextColor(...muted);doc.text('PAYE values are estimates where indicated. Verify payroll figures before issuing.',margin,Math.min(y+3,288),{maxWidth:width})
+  } else {
+    doc.setFillColor(...green);doc.roundedRect(margin,y,width,25,2,2,'F')
+    doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(255,255,255);doc.text(String(employer.name||payslip.companyName||'Company Name'),margin+4,y+7,{maxWidth:120})
+    doc.setFontSize(8);doc.text('PAYSLIP',right-4,y+7,{align:'right'})
+    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.text(cleanVal(payslip.period)+' · Pay date '+dateVal(payslip.payDate),margin+4,y+14)
+    doc.text(cleanVal(employer.address||employer.physicalAddress||employer.businessAddress),margin+4,y+19,{maxWidth:width-10});y+=31
+    section('Employee')
+    const pairs=[[['Name',emp.name||payslip.employeeName],['Employee no.',emp.employeeNumber||payslip.employeeNumber]],[['Role',emp.occupation||emp.role||payslip.occupation],['ID / passport',emp.idNumber||payslip.idNumber]],[['Tax reference',emp.taxNumber||payslip.taxNumber],['Pay period',payslip.period]]]
+    for(const pair of pairs){const xx=margin+2,rx=margin+width/2+2;doc.setFontSize(6.5);doc.setTextColor(...muted);doc.setFont('helvetica','normal');doc.text(pair[0][0]+': '+cleanVal(pair[0][1]),xx,y);doc.text(pair[1][0]+': '+cleanVal(pair[1][1]),rx,y);y+=6}
+    section('Earnings');let rows=earnings.map(r=>[r[0],money(r[1])]);rows.push(['Total earnings',money(gross),true]);y=drawTable(['Description','Amount (ZAR)'],rows,margin,y,width,[width-40,40],5.6,7)
+    section('Deductions');rows=deductions.map(r=>[r[0],money(r[1])]);rows.push(['Total deductions',money(deductionTotal),true]);y=drawTable(['Description','Amount (ZAR)'],rows,margin,y,width,[width-40,40],5.6,7)
+    ensure(17);doc.setFillColor(...green);doc.roundedRect(margin,y,width,13,1.5,1.5,'F');doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(255,255,255);doc.text('NET PAY',margin+3,y+8);doc.setFontSize(13);doc.text(money(payslip.net),right-3,y+8,{align:'right'});y+=18
+    section('Year-to-date');y=drawTable(['Measure','Tax year to date'],[['Gross earnings',money(ytd.gross)],['PAYE deducted',money(ytd.paye)],['UIF employee',money(ytd.uif)],['Net pay',money(ytd.net)]],margin,y,width,[width-48,48],5.5,6.8)
+    doc.setFont('helvetica','normal');doc.setFontSize(6.2);doc.setTextColor(...muted);doc.text('PAYE and statutory calculations are estimates. Review against current SARS rules and the employment agreement.',margin,Math.min(y+4,288),{maxWidth:width})
+  }
+  const blob=doc.output('blob')
+  const safeName=String(payslip.employeeName||emp.name||'staff').trim().replace(/[^\w.-]+/g,'-')
+  const filename='payslip-'+safeName+'-'+(payslip.period||'period')+'-'+layout+'.pdf'
+  const url=URL.createObjectURL(blob);revokeLater(url)
+  if(opts.download!==false) await downloadJsPdf(doc,filename)
+  else if(opts.preview) showInAppPdfViewer(url,filename)
+  return {blob,filename}
+}
+
 /**
  * Generate a detailed South African employee payslip PDF.
  * Values are snapshots saved when payroll is run so historical slips do not
  * silently change when the employee profile is edited later.
  */
 export async function generatePayslipPdf(payslip, company = {}, opts = {}) {
+  if (opts.layout === 'example' || opts.layout === 'simplified') return generatePayslipAlternative(payslip, company, opts)
   const jsPDF = await loadJsPdf()
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const pageW = 210
