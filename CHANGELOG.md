@@ -1,5 +1,15 @@
 # Changelog
 
+## 6.34.0 — P1 CRUD mega · roadmap (2026-10-28)
+
+### Desk CRUD
+- **Products / Services:** Edit · Update · Duplicate · Delete · Actions menu
+- **Expenses:** Edit · Update · Duplicate · Delete · Actions menu
+- Preserve stock / branch fields on product update
+
+### Roadmap
+- Owner **P1–P10** scoreboard + 100+ feature backlog in `ROADMAP_STATUS.md`
+
 ## 6.33.0 — Employees CRUD · release polish (2026-10-28)
 
 ### Employees

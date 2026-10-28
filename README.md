@@ -1,6 +1,6 @@
-# SA Invoice Pro 6.32.0
+# SA Invoice Pro 6.34.0
 
-Cleaner chrome · FAB stack above bottom nav · self-serve licensing · multi-page portal.
+P1 desk CRUD mega · employees/products/expenses edit+Actions · portal deep routes · self-serve licensing.
 
 ```bash
 npm install && npm run dev
