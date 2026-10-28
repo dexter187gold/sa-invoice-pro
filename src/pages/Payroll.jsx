@@ -101,6 +101,7 @@ export default function Payroll() {
     })
     const additionalDeductions =
       (Number(emp.pensionEmployee) || 0) +
+      (Number(emp.mibcoLevy) || 0) +
       (Number(emp.medicalAidEmployee) || 0) +
       (Number(emp.unionFees) || 0) +
       (Number(emp.otherDeductions) || 0)
