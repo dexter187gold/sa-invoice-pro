@@ -275,7 +275,7 @@ export default function Shell({ children }) {
     <>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <AppAssistant />
-      <QuickActions open={commandOpen} onOpenChange={setCommandOpen} hideTrigger={loc.pathname !== '/'} />
+      <QuickActions open={commandOpen} onOpenChange={setCommandOpen} hideTrigger={true} />
 
       <div className="mobile-bar">
         <button
