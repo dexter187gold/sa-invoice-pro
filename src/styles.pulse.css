@@ -3,9 +3,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 18px;
+  flex-wrap: wrap;
   margin-bottom: 16px;
-  padding: 18px 18px 8px;
+  padding: 18px;
   border-radius: 20px;
   background: linear-gradient(135deg, color-mix(in srgb, var(--green, #22c55e) 12%, transparent), transparent);
   border: 1px solid var(--border, rgba(255,255,255,.08));
@@ -30,7 +31,9 @@
   opacity: 0.75;
   max-width: 36ch;
 }
-.pulse-ring-wrap { flex-shrink: 0; }
+.pulse-ring-wrap { flex-shrink: 0; margin-left: auto; }
+.pulse-hero-text { min-width: 0; flex: 1 1 300px; }
+.pulse-hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin-top: 16px; }
 .pulse-ring {
   width: 88px;
   height: 88px;
@@ -129,18 +132,26 @@
   text-decoration: none;
   color: inherit;
   border: 1px solid var(--border, rgba(255,255,255,.12));
-  border-radius: 999px;
-  padding: 10px 14px;
+  background: var(--card, rgba(255,255,255,.04));
+  border-radius: 12px;
+  padding: 9px 13px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 650;
   min-height: 42px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+  transition: transform .12s ease, border-color .12s ease, background .12s ease;
 }
+.pulse-action:hover { border-color: var(--green, #22c55e); transform: translateY(-1px); }
+.pulse-action svg { width: 17px; height: 17px; flex: 0 0 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .pulse-action.primary {
   background: var(--green, #22c55e);
   color: #04120a;
   border-color: transparent;
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--green, #22c55e) 24%, transparent);
 }
 .pulse-section { margin-bottom: 22px; }
 .pulse-section-head {
@@ -185,3 +196,12 @@
   margin: 24px 0 8px;
 }
 .pulse-empty { margin-bottom: 16px; }
+
+@media (max-width: 620px) {
+  .pulse-hero { align-items: flex-start; padding: 15px; gap: 12px; position: relative; }
+  .pulse-hero-text { flex-basis: 100%; padding-right: 0; }
+  .pulse-ring-wrap { position: absolute; right: 14px; top: 14px; margin-top: 0; opacity: .96; }
+  .pulse-title, .pulse-sub { padding-right: 94px; }
+  .pulse-hero-actions { gap: 8px; margin-top: 14px; margin-right: 0; }
+  .pulse-action { flex: 1 1 calc(50% - 8px); padding: 9px 10px; }
+}
