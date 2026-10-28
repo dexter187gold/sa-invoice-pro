@@ -34,6 +34,15 @@ const empty = {
   salary: '',
   transportAllowance: '',
   otherAllowance: '',
+  callOutAllowance: '',
+  overtime15: '',
+  overtime20: '',
+  standbyAllowance: '',
+  siteAllowance: '',
+  sundayHolidayPay: '',
+  commission: '',
+  bonus: '',
+  otherEarnings: '',
   uif: true,
   email: '',
   address: '',
@@ -95,6 +104,15 @@ export default function Employees() {
       salary: Number(form.salary) || 0,
       transportAllowance: Number(form.transportAllowance) || 0,
       otherAllowance: Number(form.otherAllowance) || 0,
+      callOutAllowance: Number(form.callOutAllowance) || 0,
+      overtime15: Number(form.overtime15) || 0,
+      overtime20: Number(form.overtime20) || 0,
+      standbyAllowance: Number(form.standbyAllowance) || 0,
+      siteAllowance: Number(form.siteAllowance) || 0,
+      sundayHolidayPay: Number(form.sundayHolidayPay) || 0,
+      commission: Number(form.commission) || 0,
+      bonus: Number(form.bonus) || 0,
+      otherEarnings: Number(form.otherEarnings) || 0,
       pensionEmployee: Number(form.pensionEmployee) || 0,
       medicalAidEmployee: Number(form.medicalAidEmployee) || 0,
       unionFees: Number(form.unionFees) || 0,
@@ -239,6 +257,42 @@ export default function Employees() {
           <div>
             <label className="label">Other taxable allowance</label>
             <input className="input" type="number" step="0.01" placeholder="0.00" value={form.otherAllowance} onChange={(e) => setForm({ ...form, otherAllowance: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Call-out allowance (ZAR)</label>
+            <input className="input" type="number" min="0" step="0.01" value={form.callOutAllowance} onChange={(e) => setForm({ ...form, callOutAllowance: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Overtime @ 1.5 (ZAR)</label>
+            <input className="input" type="number" min="0" step="0.01" value={form.overtime15} onChange={(e) => setForm({ ...form, overtime15: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Overtime @ 2.0 (ZAR)</label>
+            <input className="input" type="number" min="0" step="0.01" value={form.overtime20} onChange={(e) => setForm({ ...form, overtime20: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Standby allowance (ZAR)</label>
+            <input className="input" type="number" min="0" step="0.01" value={form.standbyAllowance} onChange={(e) => setForm({ ...form, standbyAllowance: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Site allowance (ZAR)</label>
+            <input className="input" type="number" min="0" step="0.01" value={form.siteAllowance} onChange={(e) => setForm({ ...form, siteAllowance: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Sunday / public holiday pay (ZAR)</label>
+            <input className="input" type="number" min="0" step="0.01" value={form.sundayHolidayPay} onChange={(e) => setForm({ ...form, sundayHolidayPay: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Commission (ZAR)</label>
+            <input className="input" type="number" min="0" step="0.01" value={form.commission} onChange={(e) => setForm({ ...form, commission: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Bonus / incentive (ZAR)</label>
+            <input className="input" type="number" min="0" step="0.01" value={form.bonus} onChange={(e) => setForm({ ...form, bonus: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Other earnings (ZAR)</label>
+            <input className="input" type="number" min="0" step="0.01" value={form.otherEarnings} onChange={(e) => setForm({ ...form, otherEarnings: e.target.value })} />
           </div>
           <div>
             <label className="label">Email</label>
