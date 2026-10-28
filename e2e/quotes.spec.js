@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test'
-import { injectSession } from './helpers.js'
+import { injectSession, seedIndexedDbCompany } from './helpers.js'
 
 test.describe('Quotes desk', () => {
   test('quotes route loads with session', async ({ page }) => {
     await injectSession(page)
+    await seedIndexedDbCompany(page)
     const errors = []
     page.on('pageerror', (e) => errors.push(String(e)))
     await page.goto('/quotes')
