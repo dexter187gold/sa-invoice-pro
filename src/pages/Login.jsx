@@ -45,7 +45,7 @@ export default function Login() {
     setCompanyBusy(true)
     try {
       const row = { ...(companyEditor && companyEditor !== 'new' ? { id: companyEditor } : {}), ...companyForm, name: companyForm.name.trim() }
-      const saved = await db.saveCompany(row)
+      const saved = await db.saveCompany(row, { createNew: companyEditor === 'new' })
       await db.setActiveCompany(saved.id)
       await loadCompanies()
       setCompanyEditor(null); setCompanyPanel(false)
