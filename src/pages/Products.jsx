@@ -5,7 +5,7 @@ import * as db from '../lib/db'
 import { STORES } from '../lib/db'
 import { formatMoney } from '../lib/money'
 import {
-  SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, Segmented, downloadCsv,
+  SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, Segmented, downloadCsv, ActionMenu,
 } from '../components/ui'
 import { IT_SERVICE_PRESETS, IT_PRODUCT_PRESETS, presetToServiceRow, presetToProductRow } from '../lib/itCatalog'
 import { listBranches } from '../lib/branches'
@@ -14,7 +14,8 @@ import { applyStockTransfer, stockAt, stockTotal, formatBranchLabel, HQ_KEY } fr
 export default function Products() {
   const { products, services, refresh, toast } = useApp()
   const [tab, setTab] = useState('products')
-  const [form, setForm] = useState({ name: '', price: '', sku: '', stock: '', description: '' })
+  const blankForm = () => ({ id: undefined, name: '', price: '', sku: '', stock: '', description: '' })
+  const [form, setForm] = useState(blankForm())
   const [q, setQ] = useState('')
   const [confirm, setConfirm] = useState(null)
   const [branches, setBranches] = useState([])
@@ -53,283 +54,215 @@ export default function Products() {
   const save = async (e) => {
     e.preventDefault()
     if (!form.name.trim()) return toast('Name required', 'error')
-    const row = {
-      name: form.name.trim(),
-      price: Number(form.price) || 0,
-      description: form.description || '',
-      sku: form.sku || '',
+    try {
+      const row = {
+        name: form.name.trim(),
+        price: Number(form.price) || 0,
+        description: form.description || '',
+        sku: form.sku || '',
+        updatedAt: new Date().toISOString(),
+      }
+      if (form.id) row.id = form.id
+      if (tab === 'products') row.stock = form.stock === '' ? null : Number(form.stock)
+      if (form.id) {
+        const existing = (list || []).find((x) => String(x.id) === String(form.id))
+        await db.put(store, { ...(existing || {}), ...row })
+        toast('Updated', 'success')
+      } else {
+        await db.add(store, row)
+        toast('Saved', 'success')
+      }
+      setForm(blankForm())
+      await refresh()
+    } catch (err) {
+      toast(err?.message || 'Save failed', 'error')
     }
-    if (tab === 'products') row.stock = form.stock === '' ? null : Number(form.stock)
-    await db.add(store, row)
-    setForm({ name: '', price: '', sku: '', stock: '', description: '' })
-    await refresh()
-    toast('Saved', 'success')
   }
 
-  const del = (id) => {
+  const startEdit = (item) => {
+    setForm({
+      id: item.id,
+      name: item.name || '',
+      price: item.price ?? '',
+      sku: item.sku || '',
+      stock: item.stock == null ? '' : item.stock,
+      description: item.description || '',
+    })
+    try { window.scrollTo({ top: 0, behavior: 'smooth' }) } catch {}
+  }
+
+  const duplicateItem = (item) => {
+    setForm({
+      id: undefined,
+      name: `${item.name || 'Item'} (copy)`,
+      price: item.price ?? '',
+      sku: '',
+      stock: item.stock == null ? '' : item.stock,
+      description: item.description || '',
+    })
+    toast('Editing a copy — save to create', 'info')
+  }
+
+  const del = (item) => {
+    const id = typeof item === 'object' ? item?.id : item
     setConfirm({
-      title: `Delete ${tab === 'products' ? 'product' : 'service'}?`,
-      message: 'This cannot be undone.',
+      title: 'Delete item?',
+      message: `Remove ${typeof item === 'object' && item?.name ? item.name : 'this item'} permanently?`,
       danger: true,
       confirmLabel: 'Delete',
       action: async () => {
-        await db.remove(store, id)
-        await refresh()
-        toast('Deleted', 'success')
-        setConfirm(null)
+        try {
+          if (id == null) throw new Error('Missing id')
+          await db.remove(store, id)
+          await refresh()
+          toast('Deleted', 'success')
+          if (form.id != null && String(form.id) === String(id)) setForm(blankForm())
+        } catch (err) {
+          toast(err?.message || 'Delete failed', 'error')
+        } finally {
+          setConfirm(null)
+        }
       },
     })
   }
 
-  const duplicate = async (p) => {
-    await db.add(store, {
-      name: `${p.name || 'Item'} (copy)`,
-      price: Number(p.price) || 0,
-      description: p.description || '',
-      sku: p.sku ? `${p.sku}-COPY` : '',
-      stock: tab === 'products' ? (p.stock ?? null) : undefined,
-    })
-    await refresh()
-    toast('Duplicated', 'success')
-  }
-
   const adjustStock = async (p, delta) => {
-    if (tab !== 'products') return
+    const total = stockTotal(p)
     const next = Math.max(0, (Number(p.stock) || 0) + delta)
-    await db.put(store, { ...p, stock: next })
+    await db.put(STORES.products, { ...p, stock: next, updatedAt: new Date().toISOString() })
     await refresh()
-    toast(`Stock → ${next}`, 'success')
+    toast(delta > 0 ? `Stock +1 (${total + delta})` : `Stock −1 (${Math.max(0, total + delta)})`, 'success')
   }
 
-  const runTransfer = async (e) => {
-    e?.preventDefault?.()
-    const p = products.find((x) => String(x.id) === String(xfer.productId))
-    if (!p) return toast('Select a product', 'error')
+  const doTransfer = async (e) => {
+    e.preventDefault()
     try {
-      const next = applyStockTransfer(p, {
-        fromBranchId: xfer.from === HQ_KEY ? '' : xfer.from,
-        toBranchId: xfer.to === HQ_KEY ? '' : xfer.to,
-        qty: xfer.qty,
-        note: xfer.note,
-      })
-      await db.put(STORES.products, next)
+      const product = products.find((x) => String(x.id) === String(xfer.productId))
+      if (!product) return toast('Pick a product', 'error')
+      const qty = Number(xfer.qty) || 0
+      if (qty <= 0) return toast('Qty required', 'error')
+      const next = applyStockTransfer(product, { from: xfer.from, to: xfer.to, qty })
+      await db.put(STORES.products, { ...next, updatedAt: new Date().toISOString() })
       await refresh()
-      toast(
-        `Moved ${xfer.qty} · ${formatBranchLabel(xfer.from, branches)} → ${formatBranchLabel(xfer.to, branches)}`,
-        'success',
-      )
-      setXfer((s) => ({ ...s, qty: '1', note: '' }))
+      toast('Transfer applied', 'success')
     } catch (err) {
       toast(err?.message || 'Transfer failed', 'error')
     }
   }
 
   const exportCsv = () => {
-    const headers =
-      tab === 'products'
-        ? ['Name', 'SKU', 'Price', 'Stock total', 'Description']
-        : ['Name', 'SKU', 'Price', 'Description']
-    const rows = filtered.map((p) => {
-      if (tab === 'products')
-        return [p.name || '', p.sku || '', Number(p.price) || 0, stockTotal(p), p.description || '']
-      return [p.name || '', p.sku || '', Number(p.price) || 0, p.description || '']
-    })
-    downloadCsv(`${tab}-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows)
+    downloadCsv(
+      `${tab}-${new Date().toISOString().slice(0, 10)}.csv`,
+      ['Name', 'SKU', 'Price', 'Stock', 'Description'],
+      filtered.map((p) => [p.name || '', p.sku || '', Number(p.price) || 0, tab === 'products' ? stockTotal(p) : '', p.description || '']),
+    )
     toast('CSV exported', 'success')
   }
 
-  const lowStock = tab === 'products' ? filtered.filter((p) => p.stock != null && Number(p.stock) <= 5) : []
-
   return (
     <PageFade>
-      <div className="card it-pack-banner" style={{ marginBottom: 12 }}>
-        <strong>IT & repair pack</strong>
-        <p className="muted" style={{ margin: '6px 0 10px', fontSize: 13 }}>
-          One-tap catalog for PC, smartphone, FRP/lock assist (legal owner only), on-site, remote, workshop, retainers — rates you can edit.
-        </p>
-        <button type="button" className="btn btn-primary btn-sm" onClick={installItPack}>
-          Install IT service pack
-        </button>
-      </div>
-
       <div className="page-header">
         <div>
-          <h1>Products & services</h1>
-          <p className="subtitle">
-            Catalog · inter-branch stock · {products.length} products · {services.length} services
-            {lowStock.length ? ` · ${lowStock.length} low stock` : ''}
-          </p>
+          <h1>Catalog</h1>
+          <p className="subtitle">Products & services · edit · stock · branches</p>
         </div>
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
-          <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={!filtered.length}>
-            Export CSV
-          </button>
-          <Link className="btn btn-secondary" to="/invoices/new">
-            Use on invoice
-          </Link>
-          <Link className="btn btn-outline" to="/quotes">
-            Use on quote
-          </Link>
+          <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={!filtered.length}>Export</button>
+          <button type="button" className="btn btn-secondary" onClick={installItPack}>Install IT pack</button>
+          <Link className="btn btn-outline" to="/branches">Branches</Link>
         </div>
       </div>
 
-      <div className="toolbar sticky-tools">
-        <Segmented
-          options={[
-            { id: 'products', label: `Products (${products.length})` },
-            { id: 'services', label: `Services (${services.length})` },
-          ]}
-          value={tab}
-          onChange={(id) => {
-            setTab(id)
-            setQ('')
-          }}
-        />
+      <Segmented
+        options={[
+          { id: 'products', label: `Products (${products.length})` },
+          { id: 'services', label: `Services (${services.length})` },
+        ]}
+        value={tab}
+        onChange={(id) => { setTab(id); setForm(blankForm()) }}
+      />
+
+      <div className="sticky-tools toolbar">
         <SearchInput value={q} onChange={setQ} placeholder="Search name, SKU…" />
       </div>
 
       {tab === 'products' && branches.length > 0 && (
-        <form className="card form-grid cols-2" onSubmit={runTransfer} style={{ marginBottom: 16 }}>
-          <h3 style={{ margin: 0, gridColumn: '1 / -1', fontSize: 15 }}>Transfer stock between branches</h3>
+        <form className="card form-grid cols-2" onSubmit={doTransfer} style={{ marginBottom: '1rem' }}>
+          <div style={{ gridColumn: '1 / -1' }}><strong>Branch stock transfer</strong></div>
           <div>
             <label className="label">Product</label>
-            <select
-              className="input select"
-              value={xfer.productId}
-              onChange={(e) => setXfer({ ...xfer, productId: e.target.value })}
-              required
-            >
+            <select className="input select" value={xfer.productId} onChange={(e) => setXfer({ ...xfer, productId: e.target.value })}>
               <option value="">Select…</option>
               {products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} (total {stockTotal(p)})
-                </option>
+                <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
           </div>
           <div>
             <label className="label">Qty</label>
-            <input
-              className="input"
-              type="number"
-              min={1}
-              value={xfer.qty}
-              onChange={(e) => setXfer({ ...xfer, qty: e.target.value })}
-              required
-            />
+            <input className="input" type="number" min="1" value={xfer.qty} onChange={(e) => setXfer({ ...xfer, qty: e.target.value })} />
           </div>
           <div>
             <label className="label">From</label>
-            <select
-              className="input select"
-              value={xfer.from}
-              onChange={(e) => setXfer({ ...xfer, from: e.target.value })}
-            >
-              <option value={HQ_KEY}>HQ / unassigned</option>
+            <select className="input select" value={xfer.from} onChange={(e) => setXfer({ ...xfer, from: e.target.value })}>
+              <option value={HQ_KEY}>{formatBranchLabel(HQ_KEY, branches)}</option>
               {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
+                <option key={b.id} value={b.id}>{formatBranchLabel(b.id, branches)}</option>
               ))}
             </select>
           </div>
           <div>
             <label className="label">To</label>
-            <select
-              className="input select"
-              value={xfer.to}
-              onChange={(e) => setXfer({ ...xfer, to: e.target.value })}
-              required
-            >
+            <select className="input select" value={xfer.to} onChange={(e) => setXfer({ ...xfer, to: e.target.value })}>
               <option value="">Select…</option>
-              <option value={HQ_KEY}>HQ / unassigned</option>
+              <option value={HQ_KEY}>{formatBranchLabel(HQ_KEY, branches)}</option>
               {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
+                <option key={b.id} value={b.id}>{formatBranchLabel(b.id, branches)}</option>
               ))}
             </select>
           </div>
-          <div style={{ gridColumn: '1 / -1' }}>
-            <label className="label">Note (optional)</label>
-            <input
-              className="input"
-              value={xfer.note}
-              onChange={(e) => setXfer({ ...xfer, note: e.target.value })}
-              placeholder="e.g. Sandton job board restock"
-            />
-          </div>
-          <button type="submit" className="btn btn-primary">
-            Transfer
-          </button>
+          <button type="submit" className="btn btn-primary">Transfer</button>
         </form>
       )}
 
       <form className="card form-grid cols-2" onSubmit={save} style={{ marginBottom: '1rem' }}>
+        <div style={{ gridColumn: '1 / -1' }}>
+          <strong>{form.id ? 'Edit item' : `New ${tab === 'products' ? 'product' : 'service'}`}</strong>
+        </div>
         <div>
           <label className="label">Name *</label>
-          <input
-            className="input"
-            placeholder="Name"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            required
-          />
+          <input className="input" placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
         </div>
         <div>
           <label className="label">Price (excl. VAT)</label>
-          <input
-            className="input"
-            type="number"
-            step="0.01"
-            placeholder="0.00"
-            value={form.price}
-            onChange={(e) => setForm({ ...form, price: e.target.value })}
-          />
+          <input className="input" type="number" step="0.01" placeholder="0.00" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
         </div>
         <div>
           <label className="label">SKU / code</label>
-          <input
-            className="input"
-            placeholder="SKU"
-            value={form.sku}
-            onChange={(e) => setForm({ ...form, sku: e.target.value })}
-          />
+          <input className="input" placeholder="SKU" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
         </div>
         {tab === 'products' && (
           <div>
             <label className="label">Stock level (HQ)</label>
-            <input
-              className="input"
-              type="number"
-              placeholder="Optional"
-              value={form.stock}
-              onChange={(e) => setForm({ ...form, stock: e.target.value })}
-            />
+            <input className="input" type="number" placeholder="Optional" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} />
           </div>
         )}
         <div style={{ gridColumn: '1 / -1' }}>
           <label className="label">Description</label>
-          <input
-            className="input"
-            placeholder="Description"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-          />
+          <input className="input" placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
         </div>
         <button className="btn btn-primary" type="submit">
-          Add {tab === 'products' ? 'product' : 'service'}
+          {form.id ? 'Update' : 'Add'} {tab === 'products' ? 'product' : 'service'}
         </button>
+        {form.id ? (
+          <button type="button" className="btn btn-outline" onClick={() => setForm(blankForm())}>Cancel edit</button>
+        ) : null}
       </form>
 
       {!filtered.length ? (
         <EmptyState
           title={list.length ? 'No matches' : `No ${tab} yet`}
-          hint={
-            list.length
-              ? 'Try another search.'
-              : `Add your first ${tab === 'products' ? 'product' : 'service'} — or install the IT pack above.`
-          }
+          hint={list.length ? 'Try another search.' : `Add your first ${tab === 'products' ? 'product' : 'service'} — or install the IT pack above.`}
         />
       ) : (
         filtered
@@ -339,11 +272,7 @@ export default function Products() {
             const total = stockTotal(p)
             const stockLow = total <= 5 && (p.stock != null || p.branchStock)
             return (
-              <div
-                key={p.id}
-                className="list-card"
-                style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}
-              >
+              <div key={p.id} className="list-card" style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                 <div>
                   <strong>{p.name}</strong>
                   <div className="muted" style={{ fontSize: 13 }}>
@@ -359,45 +288,25 @@ export default function Products() {
                     </div>
                   ) : null}
                   {p.description ? (
-                    <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
-                      {p.description}
-                    </div>
+                    <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{p.description}</div>
                   ) : null}
                 </div>
                 <div className="list-card-actions">
                   {tab === 'products' && (
                     <>
-                      <button
-                        type="button"
-                        className="btn btn-outline btn-sm"
-                        onClick={() => adjustStock(p, -1)}
-                        title="Stock −1"
-                      >
-                        −1
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-outline btn-sm"
-                        onClick={() => adjustStock(p, 1)}
-                        title="Stock +1"
-                      >
-                        +1
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => setXfer((s) => ({ ...s, productId: p.id }))}
-                      >
-                        Transfer
-                      </button>
+                      <button type="button" className="btn btn-outline btn-sm" onClick={() => adjustStock(p, -1)} title="Stock −1">−1</button>
+                      <button type="button" className="btn btn-outline btn-sm" onClick={() => adjustStock(p, 1)} title="Stock +1">+1</button>
                     </>
                   )}
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => duplicate(p)}>
-                    Dup
-                  </button>
-                  <button type="button" className="btn btn-outline btn-sm" onClick={() => del(p.id)}>
-                    Delete
-                  </button>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => startEdit(p)}>Edit</button>
+                  <ActionMenu
+                    label="Actions"
+                    items={[
+                      { id: 'edit', label: 'Edit', onClick: () => startEdit(p) },
+                      { id: 'dup', label: 'Duplicate', onClick: () => duplicateItem(p) },
+                      { id: 'del', label: 'Delete', danger: true, onClick: () => del(p) },
+                    ]}
+                  />
                 </div>
               </div>
             )
