@@ -14,14 +14,24 @@ import {
 } from '../lib/seats'
 import { computeUsage } from '../lib/usageMetrics'
 import ActiveSeatChip from '../components/ActiveSeatChip'
+import { Sync } from '../lib/sync'
 
 export default function Team() {
-  const { toast, invoices, clients, tickets, payments, company } = useApp()
+  const { toast, invoices, clients, tickets, payments, company, user } = useApp()
   const [seats, setSeats] = useState([])
   const [active, setActive] = useState('')
   const [form, setForm] = useState({ name: '', email: '', role: 'tech', pin: '', id: '' })
   const [pinPrompt, setPinPrompt] = useState(null)
   const [pinInput, setPinInput] = useState('')
+  const [cloudTeam, setCloudTeam] = useState(null)
+  const [inviteRole, setInviteRole] = useState('tech')
+  const [newInvite, setNewInvite] = useState(null)
+  const [cloudBusy, setCloudBusy] = useState(false)
+  const reloadCloudTeam = async () => {
+    if (!user?.cloud || !Sync.isLoggedIn()) return
+    try { setCloudTeam(await Sync.getTeam()) } catch (err) { setCloudTeam({ error: err?.message || 'Cloud team unavailable' }) }
+  }
+  useEffect(() => { reloadCloudTeam() }, [user?.id, user?.cloud])
 
   const license = company?.license || {}
   const limits = seatLimits({ tier: company?.tier }, license)
@@ -88,6 +98,38 @@ export default function Team() {
         </div>
         <ActiveSeatChip />
       </div>
+
+      {user?.cloud && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <h2 style={{ marginTop: 0 }}>Cloud team accounts</h2>
+          <p className="muted" style={{ fontSize: 13 }}>Each teammate signs in with their own email and password. Invite codes assign a server-side role to that account.</p>
+          {cloudTeam?.error && <p role="alert" className="muted">{cloudTeam.error}</p>}
+          {cloudTeam?.owner && <p className="muted" style={{ fontSize: 12 }}>Workspace owner: {cloudTeam.owner.email} · {cloudTeam.isOwner ? 'You can invite members' : 'Only the owner can invite members'}</p>}
+          {cloudTeam?.members?.length > 0 && <div className="stack" style={{ gap: 6, marginBottom: 12 }}>
+            {cloudTeam.members.map((member) => <div key={member.id} style={{ display: 'flex', gap: 8, justifyContent: 'space-between', flexWrap: 'wrap', padding: 8, border: '1px solid var(--border, #d1d5db)', borderRadius: 8 }}>
+              <span><strong>{member.name || member.email}</strong><br /><span className="muted" style={{ fontSize: 12 }}>{member.email}</span></span>
+              <span className="chip">{member.role || 'member'}{member.isOwner ? ' · owner' : ''}</span>
+            </div>)}
+          </div>}
+          {cloudTeam?.isOwner && <div className="form-grid cols-2">
+            <div><label className="label">Invite role</label><select className="input" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}>
+              {ROLES.filter((r) => r.id !== 'owner').map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+            </select></div>
+            <div style={{ display: 'flex', alignItems: 'end' }}><button type="button" className="btn btn-primary" disabled={cloudBusy} onClick={async () => {
+              setCloudBusy(true)
+              try { const inv = await Sync.createTeamInvite(inviteRole); setNewInvite(inv); await reloadCloudTeam(); toast('Invite code created', 'success') }
+              catch (err) { toast(err?.message || 'Could not create invite', 'error') }
+              finally { setCloudBusy(false) }
+            }}>{cloudBusy ? 'Creating…' : 'Create invite code'}</button></div>
+          </div>}
+          {newInvite && <div style={{ marginTop: 12, padding: 12, border: '1px solid var(--border, #d1d5db)', borderRadius: 8 }}>
+            <strong>Invite code · {newInvite.role}</strong>
+            <p style={{ fontSize: 24, fontFamily: 'monospace', letterSpacing: '.12em', margin: '4px 0' }}>{newInvite.code}</p>
+            <p className="muted" style={{ fontSize: 12 }}>Expires: {newInvite.expires ? new Date(newInvite.expires).toLocaleString() : 'in 7 days'}. Share this code with the teammate. They enter it on the Create account screen.</p>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => { navigator.clipboard?.writeText(newInvite.code).catch(() => {}); toast('Invite code copied if clipboard permission was granted', 'info') }}>Copy code</button>
+          </div>}
+        </div>
+      )}
 
       <div className="card" style={{ marginBottom: 16 }}>
         <strong>Usage this month ({usage.month})</strong>
