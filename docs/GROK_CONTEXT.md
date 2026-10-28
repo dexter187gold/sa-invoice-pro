@@ -16,6 +16,9 @@ Read first: [Android Owner Experience Mega Pack](./ANDROID_OWNER_MEGA_PACK.md)
 ## Current working agreement
 - IT Document Studio lives in `src/pages/Documents.jsx`; the detailed catalogue is `src/lib/itDocumentTemplates.js`. Keep templates searchable/category-filtered, with structured sections, A4 multi-page PDF output, company/client metadata, approval/sign-off and a clear draft/review disclaimer.
 - The IT template catalogue is tested by `tests/itDocumentTemplates.test.js`. Add a regression test whenever template shape, PDF rendering contract or filtering behaviour changes. Do not describe a template as legal advice or guaranteed compliance.
+- Document Studio can link one existing local app record (client, invoice, quote, ticket, product, service, employee or time entry) to a generated PDF. Keep linked-record content limited to business-relevant fields and never include authentication secrets.
+- Generated document history is stored locally in IndexedDB `documentRenders`. It records metadata for reuse, not the PDF file itself and not a cloud-shared document. Keep this distinction clear in the UI and docs.
+
 
 - Owner-first, touch-first UX; keep the UI uncluttered and avoid duplicate floating controls.
 - Main/More navigation and Command Centre changes must be checked against src/components/Shell.jsx and src/components/QuickActions.jsx before editing.
