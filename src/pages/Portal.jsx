@@ -75,8 +75,6 @@ function cardStyle(extra = {}) {
 }
 
 export default function Portal() {
-  // The client portal is a public, standalone route. Clear any stale page-level
-  // visibility lock left by an interrupted splash/transition before rendering it.
   useEffect(() => {
     const makePageVisible = () => {
       for (const element of [document.documentElement, document.body, document.getElementById('root')]) {
@@ -202,51 +200,6 @@ export default function Portal() {
     }
   }
 
-  const submitFeedback = async () => {
-    setFbMsg('')
-    try {
-      const base = 'https://saip-sync.onrender.com'
-      const res = await fetch(`${base}/api/portal/${encodeURIComponent(token)}/feedback`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ score: Number(fbScore), note: fbNote }),
-      })
-      const j = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(j.error || 'Could not send feedback')
-      setFbMsg(`Thanks — score ${j.score ?? fbScore} recorded`)
-      setFbNote('')
-    } catch (e) {
-      setFbMsg(e?.message || 'Feedback unavailable right now')
-    }
-  }
-
-  const payInvoice = async (inv) => {
-    try {
-      const base = 'https://saip-sync.onrender.com'
-      const res = await fetch(`${base}/api/portal/${encodeURIComponent(token)}/pay/${encodeURIComponent(inv.id)}`)
-      const j = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(j.error || 'Pay link failed')
-      if (!j.configured) {
-        setFlash(j.message || 'Pay online not configured — use EFT / contact the shop')
-        return
-      }
-      const form = document.createElement('form')
-      form.method = 'POST'
-      form.action = j.processUrl
-      Object.entries(j.fields || {}).forEach(([k, v]) => {
-        const inp = document.createElement('input')
-        inp.type = 'hidden'
-        inp.name = k
-        inp.value = v
-        form.appendChild(inp)
-      })
-      document.body.appendChild(form)
-      form.submit()
-    } catch (e) {
-      setFlash(e?.message || 'Could not start payment')
-    }
-  }
-
   const navBar = (
     <nav style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16, position: 'sticky', top: 0, zIndex: 5, padding: '8px 0', background: 'var(--bg, #0f172a)' }}>
       {PAGES.map((p) => (
@@ -268,7 +221,6 @@ export default function Portal() {
         >
           {p.label}
           {p.id === 'quotes' && summary.open ? ` (${summary.open})` : ''}
-          {p.id === 'invoices' && openBal > 0 ? ' ·' : ''}
         </button>
       ))}
     </nav>
@@ -299,44 +251,15 @@ export default function Portal() {
                   <strong>{qt.number || 'Quote'}</strong> <StatusPill status={qt.status} />
                   <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>
                     {formatMoney(qt.total)} · dated {formatDate(qt.date)}
-                    {qt.validUntil ? ` · valid until ${formatDate(qt.validUntil)}` : ''}
                   </div>
                 </div>
               </div>
-              {Array.isArray(qt.lines) && qt.lines.length > 0 && (
-                <ul style={{ margin: '12px 0 0', paddingLeft: 18, fontSize: 13 }}>
-                  {qt.lines.slice(0, 8).map((l, i) => (
-                    <li key={i}>
-                      {(l.qty != null ? `${l.qty}× ` : '') + (l.description || l.name || 'Line')}{' '}
-                      <span style={{ opacity: 0.75 }}>{formatMoney(l.price)}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
               {open && (
-                <div style={{ marginTop: 14 }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 4, opacity: 0.75 }}>Optional note to the shop</label>
-                  <textarea
-                    className="input"
-                    rows={2}
-                    style={{ width: '100%', marginBottom: 8 }}
-                    placeholder="e.g. Please start next week · COD on collection"
-                    value={noteById[qt.id] || ''}
-                    onChange={(e) => setNoteById((m) => ({ ...m, [qt.id]: e.target.value }))}
-                  />
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <button type="button" className="btn btn-primary" disabled={!!busyId} onClick={() => decide(qt, 'approve')}>
-                      {busyId === qt.id ? 'Saving…' : 'Accept quote'}
-                    </button>
-                    <button type="button" className="btn btn-outline" disabled={!!busyId} onClick={() => decide(qt, 'reject')}>
-                      Decline
-                    </button>
-                  </div>
+                <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button type="button" className="btn btn-primary btn-sm" disabled={busyId === qt.id} onClick={() => decide(qt, 'accept')}>Accept</button>
+                  <button type="button" className="btn btn-outline btn-sm" disabled={busyId === qt.id} onClick={() => decide(qt, 'reject')}>Decline</button>
                 </div>
               )}
-              {!open && qt.portalNote ? (
-                <p style={{ margin: '10px 0 0', fontSize: 13, opacity: 0.8 }}>Your note: {qt.portalNote}</p>
-              ) : null}
             </div>
           )
         })
@@ -352,34 +275,20 @@ export default function Portal() {
           <div style={{ fontSize: 12, opacity: 0.7 }}>Open balance</div>
           <strong style={{ fontSize: 22 }}>{formatMoney(openBal)}</strong>
         </div>
-        <div style={{ fontSize: 13, opacity: 0.8 }}>
-          {invoices.length} invoice{invoices.length === 1 ? '' : 's'} on file
-        </div>
       </div>
       {!invoices.length ? (
         <div style={cardStyle()}>No invoices yet.</div>
       ) : (
-        invoices.map((inv) => {
-          const due = Number(inv.amountDue ?? inv.total) || 0
-          const canPay = due > 0 && ['unpaid', 'partial', 'overdue'].includes(String(inv.status || '').toLowerCase())
-          return (
-            <div key={inv.id || inv.number} style={{ ...cardStyle(), display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <div>
-                <strong>{inv.number || 'Invoice'}</strong> <StatusPill status={inv.status} />
-                <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>
-                  {formatDate(inv.date)}
-                  {inv.dueDate ? ` · due ${formatDate(inv.dueDate)}` : ''}
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <strong>{formatMoney(due)}</strong>
-                {canPay ? (
-                  <button type="button" className="btn btn-primary btn-sm" onClick={() => payInvoice(inv)}>Pay</button>
-                ) : null}
+        invoices.map((inv) => (
+          <div key={inv.id || inv.number} style={{ ...cardStyle(), display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div>
+              <strong>{inv.number || 'Invoice'}</strong> <StatusPill status={inv.status} />
+              <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>
+                {formatMoney(inv.amountDue != null ? inv.amountDue : inv.total)} · {formatDate(inv.date)}
               </div>
             </div>
-          )
-        })
+          </div>
+        ))
       )}
     </>
   )
@@ -387,125 +296,55 @@ export default function Portal() {
   const paymentsBlock = (
     <>
       <h2 style={{ fontSize: 16, margin: '0 0 12px' }}>Payment history</h2>
-      <div style={cardStyle({ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 })}>
-        <div>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>Paid to date</div>
-          <strong style={{ fontSize: 22 }}>{formatMoney(paidTotal)}</strong>
-        </div>
-        <div style={{ fontSize: 13, opacity: 0.8 }}>
-          {paidInvoices.length} paid invoice{paidInvoices.length === 1 ? '' : 's'}
-        </div>
+      <div style={cardStyle()}>
+        <div style={{ fontSize: 12, opacity: 0.7 }}>Paid to date</div>
+        <strong style={{ fontSize: 22 }}>{formatMoney(paidTotal)}</strong>
       </div>
-      {!paidInvoices.length ? (
-        <div style={cardStyle()}>No paid invoices on this portal yet. Open invoices appear under Invoices.</div>
+      {!(data?.payments || []).length ? (
+        <div style={cardStyle()}>No payments recorded yet.</div>
       ) : (
-        paidInvoices
-          .slice()
-          .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
-          .map((inv) => (
-            <div key={inv.id || inv.number} style={{ ...cardStyle(), display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <div>
-                <strong>{inv.number || 'Invoice'}</strong> <StatusPill status="paid" />
-                <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>
-                  {formatDate(inv.date)}
-                  {inv.paidAt ? ` · paid ${formatDate(inv.paidAt)}` : ''}
-                </div>
-              </div>
-              <strong>{formatMoney(inv.total)}</strong>
-            </div>
-          ))
+        (data.payments || []).map((p, i) => (
+          <div key={p.id || i} style={cardStyle()}>
+            <strong>{formatMoney(p.amount)}</strong>
+            <div style={{ fontSize: 13, opacity: 0.8 }}>{formatDate(p.date || p.paidAt)} · {p.method || p.reference || ''}</div>
+          </div>
+        ))
       )}
-      <p style={{ fontSize: 13, opacity: 0.75, marginTop: 8 }}>
-        Need a statement or proof of payment? WhatsApp the shop from the Service tab.
-      </p>
     </>
   )
 
   const serviceBlock = (
     <>
-      <h2 style={{ fontSize: 16, margin: '0 0 12px' }}>Jobs & service</h2>
-      {!tickets.length ? (
-        <div style={cardStyle()}>No open job cards shared on this link yet. The shop can still help via WhatsApp or phone.</div>
+      <h2 style={{ fontSize: 16, margin: '0 0 12px' }}>Service / jobs</h2>
+      {!openJobs.length && !tickets.length ? (
+        <div style={cardStyle()}>No open service jobs.</div>
       ) : (
-        tickets.map((t) => (
+        (tickets.length ? tickets : openJobs).map((t) => (
           <div key={t.id || t.number} style={cardStyle()}>
-            <strong>{t.title || t.number || 'Job'}</strong> <StatusPill status={t.status || 'open'} />
-            <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>
-              {t.device || t.imei ? [t.device, t.imei].filter(Boolean).join(' · ') : null}
-              {t.promisedAt || t.dueDate ? ` · promised ${formatDate(t.promisedAt || t.dueDate)}` : ''}
-            </div>
-            {t.publicNote || t.customerNote ? (
-              <p style={{ margin: '8px 0 0', fontSize: 13, opacity: 0.85 }}>{t.publicNote || t.customerNote}</p>
-            ) : null}
+            <strong>{t.title || t.subject || t.number || t.id}</strong> <StatusPill status={t.status} />
+            <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>{(t.description || '').slice(0, 160)}</div>
           </div>
         ))
       )}
-
-      <h2 style={{ fontSize: 16, margin: '20px 0 12px' }}>Contact the shop</h2>
-      <div style={cardStyle()}>
-        <div style={{ marginBottom: 8 }}><strong>{company.name || 'Shop'}</strong></div>
-        {company.phone || company.whatsapp ? (
-          <div style={{ fontSize: 14, marginBottom: 6 }}>Phone / WA: {company.phone || company.whatsapp}</div>
-        ) : null}
-        {company.email ? <div style={{ fontSize: 14, marginBottom: 12 }}>Email: {company.email}</div> : null}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className="btn btn-primary btn-sm"
-            onClick={() =>
-              openWhatsApp(
-                company.whatsapp || company.phone,
-                `Hi ${company.name || ''}, I'm messaging from my client portal (${client.name || 'client'}).`,
-              )
-            }
-          >
-            WhatsApp shop
-          </button>
-          {company.email ? (
-            <button
-              type="button"
-              className="btn btn-outline btn-sm"
-              onClick={() =>
-                openEmail(company.email, `Portal enquiry — ${client.name || 'client'}`, 'Hello, I have a question from the client portal.\n')
-              }
-            >
-              Email
-            </button>
-          ) : null}
-        </div>
-      </div>
-
-      <h2 style={{ fontSize: 16, margin: '20px 0 12px' }}>Rate this service</h2>
-      <div style={cardStyle()}>
-        <p style={{ margin: '0 0 8px', fontSize: 13, opacity: 0.8 }}>0–10 · helps the shop improve</p>
-        <input type="range" min={0} max={10} value={fbScore} onChange={(e) => setFbScore(Number(e.target.value))} style={{ width: '100%' }} />
-        <div style={{ fontWeight: 700, margin: '8px 0' }}>{fbScore}</div>
-        <input className="input" style={{ width: '100%', marginBottom: 8 }} placeholder="Optional note" value={fbNote} onChange={(e) => setFbNote(e.target.value)} />
-        <button type="button" className="btn btn-primary btn-sm" onClick={submitFeedback}>Send feedback</button>
-        {fbMsg ? <p style={{ margin: '8px 0 0', fontSize: 13 }}>{fbMsg}</p> : null}
-      </div>
     </>
   )
 
   const overviewBlock = (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(140px,1fr))', gap: 10, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 10, marginBottom: 16 }}>
         <div style={cardStyle({ marginBottom: 0 })}>
           <div style={{ fontSize: 12, opacity: 0.7 }}>Open balance</div>
           <strong style={{ fontSize: 20 }}>{formatMoney(openBal)}</strong>
         </div>
         <div style={cardStyle({ marginBottom: 0 })}>
           <div style={{ fontSize: 12, opacity: 0.7 }}>Quotes</div>
-          <strong style={{ fontSize: 20 }}>
-            {summary.open} open · {summary.accepted} accepted
-          </strong>
+          <strong style={{ fontSize: 20 }}>{summary.open} open · {summary.accepted} accepted</strong>
         </div>
         <div style={cardStyle({ marginBottom: 0 })}>
           <div style={{ fontSize: 12, opacity: 0.7 }}>Jobs</div>
           <strong style={{ fontSize: 20 }}>{openJobs.length} open</strong>
         </div>
       </div>
-
       <div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
         <button type="button" className="btn btn-primary" style={{ textAlign: 'left' }} onClick={() => go('quotes')}>
           Quotes — accept or decline ({summary.open} waiting)
@@ -520,23 +359,14 @@ export default function Portal() {
           Jobs, contact & feedback
         </button>
       </div>
-
-      {summary.open > 0 && (
-        <div style={cardStyle({ borderLeft: '4px solid #f59e0b' })}>
-          <strong>Action needed:</strong> you have {summary.open} quote{summary.open > 1 ? 's' : ''} waiting for
-          Accept or Decline.{' '}
-          <button type="button" className="btn btn-sm btn-primary" style={{ marginLeft: 8 }} onClick={() => go('quotes')}>
-            Review quotes
-          </button>
-        </div>
-      )}
     </>
   )
 
   return (
-    <div className="portal-public" style={shellStyle()}>
+    <div className="portal-public" data-testid="portal-shell" style={shellStyle()}>
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 16px 48px' }}>
         {header}
+        {token ? navBar : null}
         {loading && <div style={cardStyle()}>Loading your portal…</div>}
         {!loading && error && (
           <div style={cardStyle({ borderLeft: '4px solid #f59e0b' })}>
@@ -549,7 +379,6 @@ export default function Portal() {
         )}
         {!loading && !error && data && (
           <>
-            {navBar}
             {flash ? (
               <div style={{ ...cardStyle(), background: 'rgba(16,185,129,.12)', border: '1px solid rgba(16,185,129,.35)' }}>
                 {flash}
