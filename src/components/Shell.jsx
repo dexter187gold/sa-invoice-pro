@@ -37,6 +37,7 @@ export default function Shell({ children }) {
   const [syncPhase, setSyncPhase] = useState(() => document.documentElement.dataset.saipSyncState || (navigator.onLine ? 'idle' : 'offline'))
   const ledPhase = assistantBusy ? 'busy' : syncPhase
   const [moreOpen, setMoreOpen] = useState(false)
+  const [commandOpen, setCommandOpen] = useState(false)
   const [forceRoot, setForceRoot] = useState(false)
   const nav = useNavigate()
   const loc = useLocation()
@@ -57,6 +58,7 @@ export default function Shell({ children }) {
     setForceRoot(false)
     setMoreOpen(false)
     setOpen(false)
+    setCommandOpen(false)
   }, [loc.pathname, loc.search])
 
   useEffect(() => {
@@ -273,14 +275,18 @@ export default function Shell({ children }) {
     <>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <AppAssistant />
-      <QuickActions />
+      <QuickActions open={commandOpen} onOpenChange={setCommandOpen} hideTrigger={loc.pathname !== '/'} />
 
       <div className="mobile-bar">
         <button
           type="button"
           className="btn btn-outline btn-sm"
-          onClick={() => (useBottom ? setMoreOpen(true) : setOpen(true))}
-          aria-label="Open menu"
+          onClick={() => {
+            if (loc.pathname === '/') setCommandOpen((v) => !v)
+            else if (useBottom) setMoreOpen(true)
+            else setOpen(true)
+          }}
+          aria-label={loc.pathname === '/' ? 'Open command centre' : 'Open menu'}
         >
           Menu
         </button>
@@ -299,7 +305,6 @@ export default function Shell({ children }) {
             <span /><span /><span />
           </button>
         </div>
-        <button type="button" className="btn btn-outline btn-sm mobile-ai-btn" onClick={() => toggleHelp()} aria-label="Open AI assistant">✦</button>
         <NotificationBell />
         <span className={`status-dot ${online ? 'on' : 'off'}`} title={online ? 'Online' : 'Offline'} />
       </div>
@@ -387,7 +392,6 @@ export default function Shell({ children }) {
             <div className="desktop-only header-actions" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span className="live-activity-brand">PC Repair Dex</span>
               <div className={'live-leds phase-' + ledPhase} role="status" aria-label={assistantBusy ? 'AI assistant working' : 'Sync status: ' + syncPhase} title={assistantBusy ? 'AI assistant working' : 'Sync status: ' + syncPhase}><span /><span /><span /></div>
-              <button type="button" className="btn btn-outline btn-sm" onClick={() => toggleHelp()} aria-label="Open AI assistant">✦ AI</button>
               <ActiveSeatChip compact />
               <button type="button" className="btn btn-outline btn-sm" onClick={runSync} disabled={syncing}>
                 {syncing ? 'Syncing…' : 'Sync'}
