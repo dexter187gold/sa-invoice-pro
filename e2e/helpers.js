@@ -40,8 +40,17 @@ export async function seedIndexedDbCompany(page) {
       req.onerror = () => reject(req.error)
       req.onupgradeneeded = (e) => {
         const d = e.target.result
-        if (!d.objectStoreNames.contains('company')) d.createObjectStore('company', { keyPath: 'id' })
-        if (!d.objectStoreNames.contains('settings')) d.createObjectStore('settings', { keyPath: 'key' })
+        const stores = {
+          users: 'id', company: 'id', clients: 'id', products: 'id', services: 'id',
+          invoices: 'id', quotes: 'id', tickets: 'id', ticketComments: 'id',
+          timeEntries: 'id', expenses: 'id', payments: 'id', employees: 'id',
+          payslips: 'id', bankTxns: 'id', journal: 'id', accounts: 'id',
+          reconciliations: 'id', popiaRequests: 'id', documentTemplates: 'id',
+          documentRenders: 'id', reminders: 'id', settings: 'key',
+        }
+        for (const [name, keyPath] of Object.entries(stores)) {
+          if (!d.objectStoreNames.contains(name)) d.createObjectStore(name, { keyPath, ...(name === 'settings' ? {} : { autoIncrement: name !== 'company' }) })
+        }
       }
       req.onsuccess = () => {
         const db = req.result
