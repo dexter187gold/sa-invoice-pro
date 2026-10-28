@@ -75,6 +75,21 @@ function cardStyle(extra = {}) {
 }
 
 export default function Portal() {
+  // The client portal is a public, standalone route. Clear any stale page-level
+  // visibility lock left by an interrupted splash/transition before rendering it.
+  useEffect(() => {
+    const makePageVisible = () => {
+      for (const element of [document.documentElement, document.body, document.getElementById('root')]) {
+        if (!element) continue
+        element.style.setProperty('visibility', 'visible', 'important')
+      }
+    }
+    makePageVisible()
+    const observer = new MutationObserver(makePageVisible)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'class'] })
+    observer.observe(document.body, { attributes: true, attributeFilter: ['style', 'class'] })
+    return () => observer.disconnect()
+  }, [])
   const location = useLocation()
   const params = useParams()
   const nav = useNavigate()
