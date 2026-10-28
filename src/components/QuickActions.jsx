@@ -4,9 +4,11 @@ import { useApp } from '../context/AppContext'
 import { formatMoney } from '../lib/money'
 
 /** Floating quick-actions — expanded control surface Q1–Q5 */
-export default function QuickActions() {
+export default function QuickActions({ open: controlledOpen, onOpenChange, hideTrigger = false }) {
   const { invoices, clients, tickets, quotes, expenses, payments, online } = useApp()
-  const [open, setOpen] = useState(false)
+  const [localOpen, setLocalOpen] = useState(false)
+  const open = controlledOpen ?? localOpen
+  const setOpen = onOpenChange ?? setLocalOpen
   const rootRef = useRef(null)
 
   const openT = tickets.filter((t) => !['closed', 'resolved', 'cancelled'].includes(String(t.status || '').toLowerCase()))
@@ -68,7 +70,7 @@ export default function QuickActions() {
 
   return (
     <div className="quick-actions-fab-wrap" ref={rootRef}>
-      <button
+      {!hideTrigger && <button
         type="button"
         className="quick-actions-fab"
         onClick={() => setOpen((v) => !v)}
@@ -81,7 +83,7 @@ export default function QuickActions() {
           <rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" strokeWidth="1.75" />
           <path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
         </svg>
-      </button>
+      </button>}
       {open && (
         <div className="quick-actions-panel" role="menu" aria-label="Quick actions">
           <div className="quick-actions-head">
