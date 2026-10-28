@@ -1,5 +1,5 @@
 {
-  "version": "6.33.0",
-  "codename": "Employees CRUD · release polish",
-  "message": "Edit/update/archive/delete employees with Actions menu; async-safe confirm dialogs"
+  "version": "6.34.0",
+  "codename": "P1 CRUD mega · roadmap",
+  "message": "Products/Expenses full edit+Actions; P1–P10 owner roadmap with % progress"
 }
