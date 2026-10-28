@@ -1,8 +1,11 @@
 import { can } from './roles'
 import { getActiveSeat } from './seats'
+import { getSession } from './storage'
 
 export async function currentRoleId() {
   try {
+    const session = getSession()
+    if (session?.cloud && session?.teamRole) return session.teamRole
     const seat = await getActiveSeat()
     if (seat?.role) return seat.role
   } catch {}
