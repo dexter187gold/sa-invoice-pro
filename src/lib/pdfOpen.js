@@ -217,7 +217,6 @@ export async function downloadJsPdf(doc, name = 'document.pdf') {
   const blob = doc.output('blob')
   const url = URL.createObjectURL(blob)
   revokeLater(url)
-  showInAppPdfViewer(url, name)
   try {
     const dataUrl = await blobToDataUrl(blob)
     triggerAnchorDownload(dataUrl, name)
@@ -238,7 +237,6 @@ export async function openPdfBlob(blob, name = 'document.pdf') {
 export async function downloadPdfBlob(blob, name = 'document.pdf') {
   const url = URL.createObjectURL(blob)
   revokeLater(url)
-  showInAppPdfViewer(url, name)
   try {
     const dataUrl = await blobToDataUrl(blob)
     triggerAnchorDownload(dataUrl, name)
