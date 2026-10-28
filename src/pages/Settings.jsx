@@ -136,6 +136,14 @@ export default function Settings() {
           <input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           <label className="label">VAT number</label>
           <input className="input" value={form.vatNumber} onChange={(e) => setForm({ ...form, vatNumber: e.target.value })} />
+          <label className="label">Company registration number</label>
+          <input className="input" value={form.registrationNumber || ''} onChange={(e) => setForm({ ...form, registrationNumber: e.target.value })} />
+          <label className="label">SARS PAYE reference</label>
+          <input className="input" value={form.payeReference || ''} onChange={(e) => setForm({ ...form, payeReference: e.target.value })} />
+          <label className="label">UIF reference</label>
+          <input className="input" value={form.uifReference || ''} onChange={(e) => setForm({ ...form, uifReference: e.target.value })} />
+          <label className="label">SDL reference</label>
+          <input className="input" value={form.sdlReference || ''} onChange={(e) => setForm({ ...form, sdlReference: e.target.value })} />
           <label className="label">Address</label>
           <textarea className="input" rows={2} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
           <label className="label">Bank name</label>
