@@ -14,6 +14,9 @@ Read first: [Android Owner Experience Mega Pack](./ANDROID_OWNER_MEGA_PACK.md)
 - The APK workflow is .github/workflows/build-apk.yml. Inspect its actual implementation before claiming native Android capabilities.
 
 ## Current working agreement
+- IT Document Studio lives in `src/pages/Documents.jsx`; the detailed catalogue is `src/lib/itDocumentTemplates.js`. Keep templates searchable/category-filtered, with structured sections, A4 multi-page PDF output, company/client metadata, approval/sign-off and a clear draft/review disclaimer.
+- The IT template catalogue is tested by `tests/itDocumentTemplates.test.js`. Add a regression test whenever template shape, PDF rendering contract or filtering behaviour changes. Do not describe a template as legal advice or guaranteed compliance.
+
 - Owner-first, touch-first UX; keep the UI uncluttered and avoid duplicate floating controls.
 - Main/More navigation and Command Centre changes must be checked against src/components/Shell.jsx and src/components/QuickActions.jsx before editing.
 - Sync status and manual sync behaviour must remain accessible and must distinguish pending, syncing, offline, error and successful sync.
