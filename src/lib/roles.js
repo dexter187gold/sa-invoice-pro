@@ -32,6 +32,12 @@ export const ROLES = [
     permissions: ['clients', 'tickets', 'quotes', 'invoices', 'payments'],
   },
   {
+    id: 'helpdesk',
+    label: 'Helpdesk',
+    description: 'Support queue, customer communication and job triage',
+    permissions: ['tickets', 'clients', 'quotes', 'invoices'],
+  },
+  {
     id: 'tech',
     label: 'Technician',
     description: 'Jobs & job photos · bill own work',
