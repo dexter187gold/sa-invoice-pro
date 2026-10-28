@@ -247,7 +247,8 @@ export default function Shell({ children }) {
   const onBottomClick = (item, e) => {
     if (item.isMore) {
       e.preventDefault()
-      setMoreOpen((v) => !v)
+      setCommandOpen((v) => !v)
+      setMoreOpen(false)
       return
     }
     if (item.isRoot) {
@@ -282,11 +283,10 @@ export default function Shell({ children }) {
           type="button"
           className="btn btn-outline btn-sm"
           onClick={() => {
-            if (loc.pathname === '/') setCommandOpen((v) => !v)
-            else if (useBottom) setMoreOpen(true)
+            if (useBottom) setMoreOpen(true)
             else setOpen(true)
           }}
-          aria-label={loc.pathname === '/' ? 'Open command centre' : 'Open menu'}
+          aria-label="Open menu"
         >
           Menu
         </button>
@@ -427,10 +427,10 @@ export default function Shell({ children }) {
               onClick={(e) => onBottomClick(forceRoot
                 ? { to: '__more__', label: 'More', icon: '☰', isMore: true }
                 : { to: '__root__', label: 'Main', icon: '⌂', isRoot: true }, e)}
-              aria-label={forceRoot ? 'Open all pages menu' : 'Show main navigation'}
-              aria-expanded={forceRoot ? moreOpen : false}
+              aria-label={forceRoot ? 'Open command centre' : 'Show main navigation'}
+              aria-expanded={forceRoot ? commandOpen : false}
             >
-              <span className="ico" aria-hidden>{forceRoot ? '☰' : '⌂'}</span>
+              <span className="ico" aria-hidden>{forceRoot ? '▦' : '⌂'}</span>
               {forceRoot ? 'More' : 'Main'}
             </button>
           </nav>
