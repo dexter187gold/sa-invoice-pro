@@ -4,7 +4,7 @@ import * as db from '../lib/db'
 import { STORES } from '../lib/db'
 import { APP_NAME, APP_VERSION } from '../config'
 import { loadJsPdf } from '../lib/loadJsPdf'
-import { openJsPdf, downloadJsPdf } from '../lib/pdfOpen'
+import { openJsPdf, downloadJsPdf, sharePdf } from '../lib/pdfOpen'
 import { IT_DOCUMENT_TEMPLATES, searchITDocumentTemplates, getITDocumentTemplate } from '../lib/itDocumentTemplates'
 
 const GREEN = [0, 122, 77]
@@ -277,17 +277,21 @@ export default function Documents() {
               {CATEGORIES.filter((item) => item !== 'all').map((item) => <option key={item} value={item}>{IT_DOCUMENT_TEMPLATES.find((t) => t.category === item)?.categoryLabel || item}</option>)}
             </select>
           </div>
-          <div className="it-doc-template-grid">
-            {filtered.map((item, index) => (
-              <button key={item.id} type="button" className={'it-doc-template' + (item.id === type ? ' selected' : '')} onClick={() => setType(item.id)} aria-pressed={item.id === type}>
-                <span className="it-doc-template-index">{String(index + 1).padStart(2, '0')}</span>
-                <span className="it-doc-template-category">{item.categoryLabel}</span>
-                <strong>{item.title}</strong>
-                <span className="it-doc-template-purpose">{item.purpose}</span>
-                <span className="it-doc-template-action">{item.id === type ? 'Selected template ✓' : 'Use this template →'}</span>
-              </button>
-            ))}
-            {!filtered.length && <div className="card it-doc-empty"><strong>No templates found</strong><p>Try a broader search or choose All categories.</p><button type="button" className="btn btn-outline" onClick={() => { setSearch(''); setCategory('all') }}>Clear filters</button></div>}
+          <div className="it-doc-table-wrap">
+            <table className="table it-doc-table">
+              <thead><tr><th>Document template</th><th>Category</th><th>Purpose</th><th>Selection</th></tr></thead>
+              <tbody>
+                {filtered.map((item) => (
+                  <tr key={item.id} className={item.id === type ? 'it-doc-row-selected' : ''}>
+                    <td><strong>{item.title}</strong><small className="it-doc-row-ref">{item.id}</small></td>
+                    <td><span className="it-doc-template-category">{item.categoryLabel}</span></td>
+                    <td className="it-doc-table-purpose">{item.purpose}</td>
+                    <td><button type="button" className={item.id === type ? 'btn btn-primary btn-sm' : 'btn btn-outline btn-sm'} onClick={() => setType(item.id)} aria-pressed={item.id === type}>{item.id === type ? 'Selected' : 'Use template'}</button></td>
+                  </tr>
+                ))}
+                {!filtered.length && <tr><td colSpan="4"><div className="it-doc-empty"><strong>No templates found</strong><p>Try a broader search or choose All categories.</p><button type="button" className="btn btn-outline" onClick={() => { setSearch(''); setCategory('all') }}>Clear filters</button></div></td></tr>}
+              </tbody>
+            </table>
           </div>
         </section>
 
@@ -317,6 +321,20 @@ export default function Documents() {
             <div className="it-doc-actions">
               <button type="button" className="btn btn-primary" disabled={busy} onClick={() => generate(false)}>{busy ? 'Generating…' : 'Download A4 PDF'}</button>
               <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => generate(true)}>Preview PDF</button>
+              <button type="button" className="btn btn-outline" disabled={busy} onClick={async () => {
+                setBusy(true)
+                try {
+                  const pdfDoc = await buildPdf()
+                  const blob = pdfDoc.output('blob')
+                  const url = URL.createObjectURL(blob)
+                  await sharePdf(url, (docRef || 'it-document').replace(/[^\w.-]+/g, '_') + '.pdf')
+                  window.setTimeout(() => URL.revokeObjectURL(url), 300000)
+                } catch (err) {
+                  toast?.(err?.message || 'Could not prepare PDF for sharing', 'error')
+                } finally {
+                  setBusy(false)
+                }
+              }}>Share PDF</button>
             </div>
             <button type="button" className="it-doc-text-button" onClick={() => setShowPreview((v) => !v)} aria-expanded={showPreview}>{showPreview ? 'Hide' : 'Show'} document outline</button>
           </div>
