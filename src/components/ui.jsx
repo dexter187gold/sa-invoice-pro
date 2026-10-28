@@ -81,7 +81,7 @@ export function Toolbar({ children }) {
 
 export function StatCard({ label, value, hint, tone }) {
   return (
-    <div className={`card stat ${tone ? `stat-${tone}` : ''}`}>
+    <div className={`card stat ${tone ? `stat-${tone}` : ''`}>
       <div className="label">{label}</div>
       <div className="value">{value}</div>
       {hint ? <div className="stat-hint muted">{hint}</div> : null}
@@ -218,7 +218,7 @@ export function useSort(defaultKey = 'date', defaultDir = 'desc') {
   return { sort, onSort, apply }
 }
 
-/** Confirm modal */
+/** Confirm modal — awaits async onConfirm (delete/save) */
 export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', danger, onConfirm, onCancel }) {
   useEffect(() => {
     if (!open) return
@@ -240,7 +240,13 @@ export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', 
           <button
             type="button"
             className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`}
-            onClick={onConfirm}
+            onClick={async () => {
+              try {
+                await onConfirm?.()
+              } catch (err) {
+                console.error(err)
+              }
+            }}
             autoFocus
           >
             {confirmLabel}

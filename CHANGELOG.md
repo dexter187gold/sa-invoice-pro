@@ -1,5 +1,18 @@
 # Changelog
 
+## 6.33.0 — Employees CRUD · release polish (2026-10-28)
+
+### Employees
+- **Edit** existing staff (update via IndexedDB `put`)
+- **Actions** menu: Edit · Duplicate · Archive/Restore · Delete
+- Dedicated **Edit** button on each card
+- Active / Archived / All filter
+- Safer delete with error toasts and id checks
+
+### Stability
+- Confirm dialogs **await** async confirm handlers (delete/save no longer race)
+- Vite `base: '/'` so deep portal routes load assets (smoke green)
+
 ## 6.32.0 — Clean chrome · FAB stack (2026-10-27)
 
 ### Layout
