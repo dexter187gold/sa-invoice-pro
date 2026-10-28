@@ -58,7 +58,8 @@ export const ROLES = [
 ]
 
 export function roleById(id) {
-  return ROLES.find((r) => r.id === id) || ROLES[0]
+  // Unknown server-supplied roles must fail closed, never inherit owner access.
+  return ROLES.find((r) => r.id === id) || ROLES.find((r) => r.id === 'viewer')
 }
 
 export function can(roleId, perm) {
