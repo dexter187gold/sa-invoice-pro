@@ -146,6 +146,7 @@ export default function Payroll() {
           payDate: payDate || '',
           paymentMethod: emp.paymentMethod || 'Not recorded',
           companyName: company?.name || '',
+          employer: { ...(company || {}) },
           salary: Number(emp.salary) || 0,
           basicSalary: Number(emp.salary) || 0,
           transportAllowance: Number(emp.transportAllowance) || 0,
