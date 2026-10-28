@@ -79,7 +79,7 @@ export default function Payroll() {
       emp.age != null
         ? Number(emp.age)
         : ageFromSaId(emp.idNumber) ?? 30
-    return processProudlySaPayrollRun({
+    const calc = processProudlySaPayrollRun({
       baseSalaryCents: toCents(emp.salary),
       transportAllowanceCents: toCents(emp.transportAllowance || 0),
       otherTaxableCents: toCents(emp.otherAllowance || 0),
@@ -87,6 +87,17 @@ export default function Payroll() {
       age,
       etiMonth: Number(emp.etiMonth) || 0,
     })
+    const additionalDeductions =
+      (Number(emp.pensionEmployee) || 0) +
+      (Number(emp.medicalAidEmployee) || 0) +
+      (Number(emp.unionFees) || 0) +
+      (Number(emp.otherDeductions) || 0)
+    return {
+      ...calc,
+      additionalDeductionsR: additionalDeductions,
+      totalDeductionsR: calc.payeR + calc.uifR + additionalDeductions,
+      netR: Math.max(0, calc.grossR - calc.payeR - calc.uifR - additionalDeductions),
+    }
   }
 
   const runPayroll = async () => {
@@ -144,7 +155,7 @@ export default function Payroll() {
           paye: calc.payeR,
           uif: calc.uifR,
           net: calc.netR,
-          totalDeductions: calc.payeR + calc.uifR,
+          totalDeductions: calc.totalDeductionsR,
           eti: calc.etiR,
           sdl: calc.sdlR,
           uifEmployer: fromCents(calc.uifEmployerCents),
