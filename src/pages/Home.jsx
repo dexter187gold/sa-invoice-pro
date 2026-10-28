@@ -199,13 +199,16 @@ export default function Home() {
           <p className="pulse-kicker">{greeting()}</p>
           <h1 className="pulse-title">{company?.name || 'SA Invoice Pro'}</h1>
           <p className="pulse-sub">Field desk · v{APP_VERSION}</p>
+          <div className="pulse-hero-actions" aria-label="Quick create actions">
+            <Link className="pulse-action primary" to="/invoices/new"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.75h7l4 4v12.5H7z" /><path d="M14 3.75v4h4M9.5 13h6M9.5 16.5h4" /></svg><span>Invoice</span></Link>
+            <Link className="pulse-action" to="/tickets"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h16v12H4zM8 7.5V4.5h8v3M8 12h8M8 15.5h5" /></svg><span>Job card</span></Link>
+            <Link className="pulse-action" to="/quotes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.75h9l3 3v13.5H6zM15 3.75v3h3M9 12h6M9 15.5h6" /></svg><span>Quote</span></Link>
+            <Link className="pulse-action" to="/clients"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 19.5v-1.25a3.25 3.25 0 0 0-3.25-3.25h-5.5A3.25 3.25 0 0 0 4 18.25v1.25M10 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM16 5.1a3.5 3.5 0 0 1 0 6.8M17 15.1a3.25 3.25 0 0 1 3 3.15v1.25" /></svg><span>Clients</span></Link>
+          </div>
         </div>
         <div className="pulse-ring-wrap" title="Collection rate">
           <div className="pulse-ring" style={ringStyle}>
-            <div className="pulse-ring-inner">
-              <strong>{collectionRate}%</strong>
-              <span>collected</span>
-            </div>
+            <div className="pulse-ring-inner"><strong>{collectionRate}%</strong><span>collected</span></div>
           </div>
         </div>
       </section>
@@ -243,13 +246,6 @@ export default function Home() {
           <span className="pulse-stat-v good">{acceptQueue.length}</span>
           <span className="pulse-stat-h">To convert</span>
         </button>
-      </div>
-
-      <div className="pulse-actions">
-        <Link className="pulse-action primary" to="/invoices/new">＋ Invoice</Link>
-        <Link className="pulse-action" to="/tickets">＋ Job card</Link>
-        <Link className="pulse-action" to="/quotes">＋ Quote</Link>
-        <Link className="pulse-action" to="/clients">Clients</Link>
       </div>
 
       {isNew && (
