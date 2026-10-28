@@ -30,6 +30,7 @@ export async function generatePayslipPdf(payslip, company = {}, opts = {}) {
   const muted = [93, 105, 99]
   const pale = [239, 247, 241]
   const emp = payslip.employee || {}
+  const employer = payslip.employer || company || {}
   let y = margin
 
   const ensureSpace = (height = 12) => {
@@ -97,7 +98,7 @@ export async function generatePayslipPdf(payslip, company = {}, opts = {}) {
     y += 2
   }
 
-  const companyName = company.name || payslip.companyName || 'Employer'
+  const companyName = employer.name || payslip.companyName || 'Employer'
   doc.setFillColor(...green)
   doc.roundedRect(margin, y - 4, width, 27, 2, 2, 'F')
   doc.setTextColor(255, 255, 255)
@@ -111,10 +112,10 @@ export async function generatePayslipPdf(payslip, company = {}, opts = {}) {
   doc.text(monthName(payslip.period), right - 4, y + 8, { align: 'right' })
   doc.setFontSize(7)
   const employerLines = [
-    company.address || company.physicalAddress || company.businessAddress,
-    [company.email, company.phone || company.telephone].filter(Boolean).join(' · '),
-    [company.registrationNumber && `Reg: ${company.registrationNumber}`, company.vatNumber && `VAT: ${company.vatNumber}`].filter(Boolean).join(' · '),
-    [company.payeReference && `PAYE: ${company.payeReference}`, company.uifReference && `UIF: ${company.uifReference}`, company.sdlReference && `SDL: ${company.sdlReference}`].filter(Boolean).join(' · '),
+    employer.address || employer.physicalAddress || employer.businessAddress,
+    [employer.email, employer.phone || employer.telephone].filter(Boolean).join(' · '),
+    [employer.registrationNumber && `Reg: ${employer.registrationNumber}`, employer.vatNumber && `VAT: ${employer.vatNumber}`].filter(Boolean).join(' · '),
+    [employer.payeReference && `PAYE: ${employer.payeReference}`, employer.uifReference && `UIF: ${employer.uifReference}`, employer.sdlReference && `SDL: ${employer.sdlReference}`].filter(Boolean).join(' · '),
   ].filter(Boolean)
   let ey = y + 9
   employerLines.forEach((s) => { doc.text(String(s), margin + 4, ey, { maxWidth: 118 }); ey += 4 })
