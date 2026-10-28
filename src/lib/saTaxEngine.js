@@ -126,7 +126,9 @@ export function processProudlySaPayrollRun({
     }
   }
 
-  const netPay = monthlyTaxable - monthlyPaye - uifEmployee
+  // Net pay is based on actual cash earnings, not the PAYE-taxable portion of a travel allowance.
+  const cashGross = cleanBase + cleanTransport + cleanOther
+  const netPay = cashGross - monthlyPaye - uifEmployee
 
   return {
     sarsSourceCode3601: cleanBase, // Income (basic salary)
@@ -137,9 +139,14 @@ export function processProudlySaPayrollRun({
     uifEmployerCents: uifEmployer,
     sdlEmployerCents: sdlEmployer,
     monthlyTaxableCents: monthlyTaxable,
+    cashGrossCents: cashGross,
     finalNetPayDisbursement: Math.max(0, netPay),
     // convenience rand values
-    grossR: monthlyTaxable / 100,
+    grossR: cashGross / 100,
+    taxableR: monthlyTaxable / 100,
+    basicSalaryR: cleanBase / 100,
+    transportAllowanceR: cleanTransport / 100,
+    otherTaxableR: cleanOther / 100,
     payeR: monthlyPaye / 100,
     uifR: uifEmployee / 100,
     netR: Math.max(0, netPay) / 100,
