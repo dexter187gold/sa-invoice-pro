@@ -116,19 +116,7 @@ export default function AppAssistant() {
     }
   }
 
-  if (!open) {
-    return (
-      <button
-        type="button"
-        className="app-assist-fab"
-        aria-label="Open AI assistant"
-        onClick={() => setOpen(true)}
-        title="AI assistant"
-      >
-        AI
-      </button>
-    )
-  }
+  if (!open) return null
 
   return (
     <div className="app-assist-panel app-assist-chat" role="dialog" aria-label="AI assistant">
