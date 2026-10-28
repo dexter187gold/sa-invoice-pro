@@ -22,6 +22,13 @@ export default function Settings() {
     vatEnabled, vatRate, setVatEnabled, setVatRate, theme, setTheme,
   } = useApp()
   const [tab, setTab] = useState('company')
+  const [ownerDefaults, setOwnerDefaults] = useState(() => {
+    try {
+      return { currency: 'ZAR', invoicePrefix: 'INV', quoteValidityDays: 14, paymentTermsDays: 7, lowStockThreshold: 3, fiscalYearStart: '03-01', ...JSON.parse(localStorage.getItem('sa_owner_defaults') || '{}') }
+    } catch {
+      return { currency: 'ZAR', invoicePrefix: 'INV', quoteValidityDays: 14, paymentTermsDays: 7, lowStockThreshold: 3, fiscalYearStart: '03-01' }
+    }
+  })
   const [form, setForm] = useState({
     name: company?.name || '', email: company?.email || '', phone: company?.phone || '',
     vatNumber: company?.vatNumber || '', address: company?.address || '',
@@ -100,6 +107,8 @@ export default function Settings() {
     { id: 'cloud', label: 'Cloud' },
     { id: 'data', label: 'Data' },
     { id: 'comms', label: 'Comms' },
+    { id: 'operations', label: 'Owner defaults' },
+    { id: 'security', label: 'Security & access' },
   ]
 
   return (
@@ -353,6 +362,41 @@ export default function Settings() {
         </div>
       )}
 
+      {tab === 'operations' && (
+        <div className="card form-grid settings-control-card" style={{ marginTop: 12 }}>
+          <h3 style={{ marginTop: 0 }}>Business operating defaults</h3>
+          <p className="muted" style={{ fontSize: 12, marginTop: 0 }}>These owner preferences are saved on this device. They are a settings register for upcoming workflows; they do not automatically rewrite existing invoices or quotes.</p>
+          <label className="label">Default currency</label>
+          <select className="select input" value={ownerDefaults.currency} onChange={(e) => setOwnerDefaults({ ...ownerDefaults, currency: e.target.value })}>
+            <option value="ZAR">ZAR · South African rand</option><option value="USD">USD · US dollar</option><option value="EUR">EUR · Euro</option><option value="GBP">GBP · Pound sterling</option>
+          </select>
+          <label className="label">New invoice reference prefix</label>
+          <input className="input" maxLength={12} value={ownerDefaults.invoicePrefix} onChange={(e) => setOwnerDefaults({ ...ownerDefaults, invoicePrefix: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '') })} />
+          <label className="label">Default payment terms (days)</label>
+          <input className="input" type="number" min={0} max={365} value={ownerDefaults.paymentTermsDays} onChange={(e) => setOwnerDefaults({ ...ownerDefaults, paymentTermsDays: Math.max(0, Math.min(365, Number(e.target.value) || 0)) })} />
+          <label className="label">Quote validity (days)</label>
+          <input className="input" type="number" min={1} max={365} value={ownerDefaults.quoteValidityDays} onChange={(e) => setOwnerDefaults({ ...ownerDefaults, quoteValidityDays: Math.max(1, Math.min(365, Number(e.target.value) || 1)) })} />
+          <label className="label">Low-stock alert threshold (units)</label>
+          <input className="input" type="number" min={0} max={100000} value={ownerDefaults.lowStockThreshold} onChange={(e) => setOwnerDefaults({ ...ownerDefaults, lowStockThreshold: Math.max(0, Math.min(100000, Number(e.target.value) || 0)) })} />
+          <label className="label">Financial year start</label>
+          <select className="select input" value={ownerDefaults.fiscalYearStart} onChange={(e) => setOwnerDefaults({ ...ownerDefaults, fiscalYearStart: e.target.value })}>
+            <option value="03-01">1 March · South African common year</option><option value="01-01">1 January</option><option value="04-01">1 April</option><option value="07-01">1 July</option>
+          </select>
+          <button type="button" className="btn btn-primary" onClick={() => { try { localStorage.setItem('sa_owner_defaults', JSON.stringify(ownerDefaults)); toast('Owner defaults saved on this device', 'success') } catch { toast('Could not save defaults on this device', 'error') } }}>Save owner defaults</button>
+          <p className="muted" style={{ fontSize: 11 }}>Before relying on financial-year or tax settings for reporting, verify the accounting module uses these defaults and confirm the correct dates with your accountant.</p>
+        </div>
+      )}
+      {tab === 'security' && (
+        <div className="card form-grid settings-control-card" style={{ marginTop: 12 }}>
+          <h3 style={{ marginTop: 0 }}>Security, access & privacy</h3>
+          <p className="muted" style={{ fontSize: 12, marginTop: 0 }}>Use these existing workspace controls to review access and data handling. A visible setting is not a substitute for server-side enforcement.</p>
+          <div className="settings-shortcut-row"><div><strong>Team & seat access</strong><span>Review workspace membership and seat assignments.</span></div><Link className="btn btn-outline btn-sm" to="/team">Manage team</Link></div>
+          <div className="settings-shortcut-row"><div><strong>Cloud sync & connected services</strong><span>Review the current sync connection and configuration.</span></div><button type="button" className="btn btn-outline btn-sm" onClick={() => setTab('cloud')}>Open cloud settings</button></div>
+          <div className="settings-shortcut-row"><div><strong>Data export & recovery</strong><span>Create a backup before major changes or device replacement.</span></div><button type="button" className="btn btn-outline btn-sm" onClick={() => setTab('data')}>Open data & backup</button></div>
+          <div className="settings-shortcut-row"><div><strong>Communications & opt-outs</strong><span>Review quiet hours and customer opt-out records.</span></div><button type="button" className="btn btn-outline btn-sm" onClick={() => setTab('comms')}>Open communications</button></div>
+          <p className="muted" style={{ fontSize: 11 }}>Recommended owner checks: keep backups off-device as well, limit team access to job duties, review opt-outs before messaging, and never store credentials in document notes.</p>
+        </div>
+      )}
       <div className="settings-owner-note">
         <strong>Owner checklist</strong>
         <span>Review company identity, VAT defaults, backups, communications and cloud sync whenever your business details change.</span>
