@@ -16,9 +16,14 @@ import {
   ConfirmDialog, LoadingButton, StatCard, EmptyState, PageFade, SearchInput, matchesQuery, downloadCsv,
 } from '../components/ui'
 
+function localIsoDate(date = new Date()) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return [year, month, day].join('-')
+}
 function currentPeriod() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  return localIsoDate().slice(0, 7)
 }
 function periodDates(period) {
   const [year, month] = String(period || '').split('-').map(Number)
@@ -40,7 +45,7 @@ export default function Payroll() {
   const { employees, company, refresh, toast } = useApp()
   const [payslips, setPayslips] = useState([])
   const [period, setPeriod] = useState(currentPeriod())
-  const [payDate, setPayDate] = useState(new Date().toISOString().slice(0, 10))
+  const [payDate, setPayDate] = useState(localIsoDate())
   const [selected, setSelected] = useState({})
   const [busy, setBusy] = useState(false)
   const [preview, setPreview] = useState(null)
@@ -461,7 +466,7 @@ export default function Payroll() {
               <tbody>
                 <tr><td>Basic salary (3601)</td><td style={{ textAlign: 'right' }}>{formatMoney(fromCents(preview.calc.sarsSourceCode3601))}</td></tr>
                 <tr><td>Travel / other</td><td style={{ textAlign: 'right' }}>{formatMoney(fromCents(preview.calc.sarsSourceCode3701))}</td></tr>
-                <tr><td>Taxable for PAYE</td><td style={{ textAlign: 'right' }}>{formatMoney(preview.calc.grossR)}</td></tr>
+                <tr><td>Taxable for PAYE (estimate)</td><td style={{ textAlign: 'right' }}>{formatMoney(preview.calc.taxableR)}</td></tr>
                 <tr><td>PAYE (4102)</td><td style={{ textAlign: 'right' }}>{formatMoney(preview.calc.payeR)}</td></tr>
                 <tr><td>UIF employee</td><td style={{ textAlign: 'right' }}>{formatMoney(preview.calc.uifR)}</td></tr>
                 <tr><td>UIF employer</td><td style={{ textAlign: 'right' }}>{formatMoney(fromCents(preview.calc.uifEmployerCents))}</td></tr>
