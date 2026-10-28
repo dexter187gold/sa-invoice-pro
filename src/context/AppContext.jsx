@@ -145,6 +145,7 @@ export function AppProvider({ children }) {
     if (!ready || !user) return
     let timer
     let expired = false
+    let lastActivityAt = Date.now()
     const signOutForInactivity = () => {
       if (expired) return
       expired = true
@@ -155,12 +156,17 @@ export function AppProvider({ children }) {
     }
     const resetTimer = () => {
       if (expired) return
+      lastActivityAt = Date.now()
       clearTimeout(timer)
       timer = setTimeout(signOutForInactivity, FIVE_MIN_MS)
     }
     const activityEvents = ['pointerdown', 'keydown', 'touchstart', 'scroll', 'click']
     activityEvents.forEach((eventName) => window.addEventListener(eventName, resetTimer, { passive: true }))
-    const onVisibility = () => { if (document.visibilityState === 'visible') resetTimer() }
+    const onVisibility = () => {
+      if (document.visibilityState !== 'visible' || expired) return
+      if (Date.now() - lastActivityAt >= FIVE_MIN_MS) signOutForInactivity()
+      else resetTimer()
+    }
     document.addEventListener('visibilitychange', onVisibility)
     resetTimer()
     return () => {
