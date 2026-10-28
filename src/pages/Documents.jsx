@@ -1,5 +1,7 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useApp } from '../context/AppContext'
+import * as db from '../lib/db'
+import { STORES } from '../lib/db'
 import { APP_NAME, APP_VERSION } from '../config'
 import { loadJsPdf } from '../lib/loadJsPdf'
 import { openJsPdf, downloadJsPdf } from '../lib/pdfOpen'
@@ -16,7 +18,7 @@ function safeText(value, fallback = 'To be completed') {
 }
 
 export default function Documents() {
-  const { clients = [], company, toast } = useApp()
+  const { clients = [], company, toast, invoices = [], quotes = [], tickets = [], products = [], services = [], employees = [], timeEntries = [] } = useApp()
   const [type, setType] = useState('it_assessment')
   const [clientId, setClientId] = useState('')
   const [docRef, setDocRef] = useState(() => 'IT-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-5))
@@ -25,6 +27,27 @@ export default function Documents() {
   const [category, setCategory] = useState('all')
   const [busy, setBusy] = useState(false)
   const [showPreview, setShowPreview] = useState(true)
+  const [sourceKey, setSourceKey] = useState('')
+  const [history, setHistory] = useState([])
+
+  const sourceOptions = useMemo(() => {
+    const groups = [
+      ['Client', clients], ['Invoice', invoices], ['Quote', quotes], ['Support ticket', tickets],
+      ['Product / asset', products], ['IT service', services], ['Employee', employees], ['Time entry', timeEntries],
+    ]
+    return groups.flatMap(([kind, rows]) => rows.map((row) => {
+      const id = String(row.id ?? '')
+      const title = row.name || row.title || row.number || row.subject || row.description || `${kind} ${id}`
+      const label = `${kind} · ${title}${row.number && row.number !== title ? ` · ${row.number}` : ''}`
+      return { key: `${kind}:${id}`, kind, row, label }
+    })).filter((item) => item.row && item.row.id != null)
+  }, [clients, invoices, quotes, tickets, products, services, employees, timeEntries])
+  const linkedSource = sourceOptions.find((item) => item.key === sourceKey) || null
+  const refreshHistory = async () => {
+    const rows = await db.getAll(STORES.documentRenders)
+    setHistory((rows || []).sort((a, b) => String(b.generatedAt || '').localeCompare(String(a.generatedAt || ''))).slice(0, 12))
+  }
+  useEffect(() => { refreshHistory().catch(() => {}) }, [])
 
   const selected = getITDocumentTemplate(type)
   const client = clients.find((c) => String(c.id) === String(clientId)) || { name: 'Client / business owner' }
@@ -39,6 +62,7 @@ export default function Documents() {
   const buildPdf = async () => {
     const co = company || {}
     const template = getITDocumentTemplate(type)
+    const source = linkedSource
     const jsPDF = await loadJsPdf()
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
     const pageW = doc.internal.pageSize.getWidth()
@@ -137,7 +161,20 @@ export default function Documents() {
     drawWrapped(template.scope, 9.5, 4.8, 'normal', SLATE, 6)
 
     for (const section of template.sections) drawSection(section.heading, section.body)
-    if (notes.trim()) drawSection('12. Business-specific instructions and additional clauses', notes.trim())
+    if (source) {
+      const row = source.row
+      const sourceFields = [
+        ['Record type', source.kind], ['Record ID', row.id],
+        ['Title / name', row.title || row.name || row.number || row.subject || '—'],
+        ['Status', row.status || row.state || '—'], ['Date', row.date || row.createdAt || row.updatedAt || '—'],
+        ['Client reference', row.clientId ? (clients.find((item) => String(item.id) === String(row.clientId))?.name || `Client ${row.clientId}`) : '—'],
+        ['Priority / category', row.priority || row.category || '—'],
+        ['Amount / total', row.total != null ? `R ${Number(row.total).toFixed(2)}` : row.price != null ? `R ${Number(row.price).toFixed(2)}` : '—'],
+        ['Summary / description', row.description || row.notes || row.workDone || row.purpose || '—'],
+      ]
+      drawSection('12. Linked SA INVOICE PRO record', sourceFields.map(([label, value]) => `${label}: ${safeText(value, '—')}`).join('\\n'))
+    }
+    if (notes.trim()) drawSection(`${source ? '13' : '12'}. Business-specific instructions and additional clauses`, notes.trim())
 
     ensureSpace(36)
     drawWrapped('APPROVAL RECORD', 10, 4.5, 'bold', GREEN, 4)
@@ -179,7 +216,20 @@ export default function Documents() {
         toast?.('Document preview ready.', 'success')
       } else {
         await downloadJsPdf(doc, name)
-        toast?.('Detailed PDF generated. Review it before sending.', 'success')
+        const record = {
+          documentRef: safeText(docRef), templateId: selected.id, templateTitle: selected.title,
+          category: selected.category, clientId: clientId || null, clientName: safeText(client.name),
+          sourceType: linkedSource?.kind || null, sourceId: linkedSource?.row?.id ?? null,
+          sourceLabel: linkedSource?.label || null, notes: notes.trim(), status: 'generated',
+          generatedAt: new Date().toISOString(), fileName: name,
+        }
+        try {
+          await db.add(STORES.documentRenders, record)
+          await refreshHistory()
+        } catch (historyError) {
+          console.warn('[Document Studio] Could not save history', historyError)
+        }
+        toast?.('Detailed PDF generated and added to local document history.', 'success')
       }
     } catch (err) {
       console.error(err)
@@ -253,6 +303,12 @@ export default function Documents() {
               <option value="">General / not linked to a client</option>
               {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
+            <label className="label" htmlFor="it-doc-source">Link an existing app record (optional)</label>
+            <select id="it-doc-source" className="select" value={sourceKey} onChange={(e) => setSourceKey(e.target.value)}>
+              <option value="">No linked record</option>
+              {sourceOptions.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
+            </select>
+            {linkedSource && <div className="it-doc-linked-record"><strong>{linkedSource.kind} linked</strong><span>{linkedSource.label}</span><small>Its reference details will be included in the generated PDF.</small></div>}
             <label className="label" htmlFor="it-doc-reference">Document reference</label>
             <input id="it-doc-reference" className="input" value={docRef} onChange={(e) => setDocRef(e.target.value)} maxLength={80} />
             <label className="label" htmlFor="it-doc-notes">Business-specific details / additional clauses</label>
@@ -271,6 +327,9 @@ export default function Documents() {
             {notes.trim() && <div className="it-doc-outline-item"><strong>Business-specific instructions</strong><p>{notes}</p></div>}
           </div>}
           <div className="it-doc-disclaimer"><strong>Review before issuing</strong><p>Templates are detailed operational drafts. Legal, privacy, contractual and regulatory requirements vary by context; adapt the document and obtain qualified review where needed.</p></div>
+          <div className="it-doc-history"><div className="it-doc-history-head"><h3>Recently generated</h3><button type="button" className="it-doc-text-button" onClick={() => refreshHistory()}>Refresh</button></div>
+            {history.length ? history.map((item) => <div className="it-doc-history-item" key={item.id}><div><strong>{item.templateTitle || item.templateId}</strong><span>{item.documentRef} · {item.clientName || 'General'}</span><small>{item.generatedAt ? new Date(item.generatedAt).toLocaleString('en-ZA') : 'Date unavailable'}{item.sourceLabel ? ` · ${item.sourceLabel}` : ''}</small></div><button type="button" className="btn btn-outline btn-sm" onClick={() => { setType(item.templateId || 'it_assessment'); setDocRef(item.documentRef || ''); setClientId(item.clientId ? String(item.clientId) : ''); setNotes(item.notes || ''); const match = sourceOptions.find((source) => source.kind === item.sourceType && String(source.row.id) === String(item.sourceId)); setSourceKey(match?.key || ''); toast?.('Loaded saved document details. Generate again to create a fresh PDF.', 'info') }}>Reuse</button></div>) : <p className="muted">Generated PDFs are not uploaded. This list stores local metadata so you can reuse a document setup on this device.</p>}
+          </div>
         </aside>
       </div>
     </div>
