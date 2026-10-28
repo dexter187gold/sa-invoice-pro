@@ -114,9 +114,10 @@ export async function getCompany() {
   const activeId = await getSetting(ACTIVE_COMPANY_KEY, null)
   return all.find((c) => String(c.id) === String(activeId)) || all[0] || null
 }
-export async function saveCompany(data) {
-  const existing = data?.id ? await get(STORES.company, data.id) : await getCompany()
-  const row = { ...(existing || {}), ...data, id: data?.id || existing?.id || 'main', updatedAt: new Date().toISOString() }
+export async function saveCompany(data, { createNew = false } = {}) {
+  const existing = data?.id ? await get(STORES.company, data.id) : (createNew ? null : await getCompany())
+  const row = { ...(existing || {}), ...data, id: data?.id || existing?.id || (createNew ? crypto.randomUUID() : 'main'), updatedAt: new Date().toISOString() }
+  delete row.createNew
   await put(STORES.company, row)
   await setActiveCompany(row.id)
   return row
