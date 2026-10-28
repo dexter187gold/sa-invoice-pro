@@ -11,10 +11,26 @@ import {
 
 const empty = {
   name: '',
+  knownAs: '',
   employeeNumber: '',
   idNumber: '',
   taxNumber: '',
   role: '',
+  jobGrade: '',
+  companyRule: '',
+  accountNumber: '',
+  branchCode: '',
+  hoursPerPeriod: '',
+  mibcoLevy: '',
+  mibcoEmployer: '',
+  pensionEmployer: '',
+  pensionRiskEmployer: '',
+  fringeBenefits: '',
+  taxDeductibleDeductions: '',
+  annualLeaveEntitlement: '',
+  annualLeaveOpening: '',
+  annualLeaveAccrued: '',
+  annualLeaveClosing: '',
   salary: '',
   transportAllowance: '',
   otherAllowance: '',
@@ -84,6 +100,22 @@ export default function Employees() {
       unionFees: Number(form.unionFees) || 0,
       otherDeductions: Number(form.otherDeductions) || 0,
       hourlyRate: Number(form.hourlyRate) || 0,
+      mibcoLevy: Number(form.mibcoLevy) || 0,
+      mibcoEmployer: Number(form.mibcoEmployer) || 0,
+      pensionEmployer: Number(form.pensionEmployer) || 0,
+      pensionRiskEmployer: Number(form.pensionRiskEmployer) || 0,
+      fringeBenefits: Number(form.fringeBenefits) || 0,
+      taxDeductibleDeductions: Number(form.taxDeductibleDeductions) || 0,
+      annualLeaveEntitlement: Number(form.annualLeaveEntitlement) || 0,
+      annualLeaveOpening: Number(form.annualLeaveOpening) || 0,
+      annualLeaveAccrued: Number(form.annualLeaveAccrued) || 0,
+      annualLeaveClosing: Number(form.annualLeaveClosing) || 0,
+      knownAs: form.knownAs.trim(),
+      jobGrade: form.jobGrade.trim(),
+      companyRule: form.companyRule.trim(),
+      accountNumber: form.accountNumber.trim(),
+      branchCode: form.branchCode.trim(),
+      hoursPerPeriod: Number(form.hoursPerPeriod) || 0,
       uif: !!form.uif,
       etiMonth: Number(form.etiMonth) || 0,
       age: age ?? undefined,
@@ -159,6 +191,30 @@ export default function Employees() {
           <div>
             <label className="label">Employee / payroll number</label>
             <input className="input" value={form.employeeNumber} onChange={(e) => setForm({ ...form, employeeNumber: e.target.value })} placeholder="e.g. EMP-001" />
+          </div>
+          <div>
+            <label className="label">Known as / preferred name</label>
+            <input className="input" value={form.knownAs} onChange={(e) => setForm({ ...form, knownAs: e.target.value })} placeholder="Preferred name" />
+          </div>
+          <div>
+            <label className="label">Job grade / band</label>
+            <input className="input" value={form.jobGrade} onChange={(e) => setForm({ ...form, jobGrade: e.target.value })} placeholder="e.g. Band 1" />
+          </div>
+          <div>
+            <label className="label">Company rule / bargaining agreement</label>
+            <input className="input" value={form.companyRule} onChange={(e) => setForm({ ...form, companyRule: e.target.value })} placeholder="Applicable company rule" />
+          </div>
+          <div>
+            <label className="label">Bank account number</label>
+            <input className="input" value={form.accountNumber} onChange={(e) => setForm({ ...form, accountNumber: e.target.value })} placeholder="Account number" autoComplete="off" />
+          </div>
+          <div>
+            <label className="label">Bank branch code</label>
+            <input className="input" value={form.branchCode} onChange={(e) => setForm({ ...form, branchCode: e.target.value })} placeholder="6-digit branch code" />
+          </div>
+          <div>
+            <label className="label">Hours per pay period</label>
+            <input className="input" type="number" min="0" step="0.25" value={form.hoursPerPeriod} onChange={(e) => setForm({ ...form, hoursPerPeriod: e.target.value })} />
           </div>
           <div>
             <label className="label">ID / passport</label>
@@ -243,6 +299,46 @@ export default function Employees() {
           <div>
             <label className="label">Other authorised deductions (ZAR)</label>
             <input className="input" type="number" min="0" step="0.01" value={form.otherDeductions} onChange={(e) => setForm({ ...form, otherDeductions: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">MIBCO / bargaining council employee levy (ZAR)</label>
+            <input className="input" type="number" min="0" step="0.01" value={form.mibcoLevy} onChange={(e) => setForm({ ...form, mibcoLevy: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">MIBCO / bargaining council employer contribution (ZAR)</label>
+            <input className="input" type="number" min="0" step="0.01" value={form.mibcoEmployer} onChange={(e) => setForm({ ...form, mibcoEmployer: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Employer pension / provident contribution (ZAR)</label>
+            <input className="input" type="number" min="0" step="0.01" value={form.pensionEmployer} onChange={(e) => setForm({ ...form, pensionEmployer: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Employer provident risk contribution (ZAR)</label>
+            <input className="input" type="number" min="0" step="0.01" value={form.pensionRiskEmployer} onChange={(e) => setForm({ ...form, pensionRiskEmployer: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Monthly fringe benefits (ZAR)</label>
+            <input className="input" type="number" min="0" step="0.01" value={form.fringeBenefits} onChange={(e) => setForm({ ...form, fringeBenefits: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Tax-deductible deductions (YTD opening / payroll input) (ZAR)</label>
+            <input className="input" type="number" min="0" step="0.01" value={form.taxDeductibleDeductions} onChange={(e) => setForm({ ...form, taxDeductibleDeductions: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Annual leave entitlement (days)</label>
+            <input className="input" type="number" min="0" step="0.25" value={form.annualLeaveEntitlement} onChange={(e) => setForm({ ...form, annualLeaveEntitlement: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Annual leave balance brought forward (days)</label>
+            <input className="input" type="number" min="0" step="0.25" value={form.annualLeaveOpening} onChange={(e) => setForm({ ...form, annualLeaveOpening: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Annual leave accrued this period (days)</label>
+            <input className="input" type="number" min="0" step="0.25" value={form.annualLeaveAccrued} onChange={(e) => setForm({ ...form, annualLeaveAccrued: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Annual leave balance carried forward (days)</label>
+            <input className="input" type="number" min="0" step="0.25" value={form.annualLeaveClosing} onChange={(e) => setForm({ ...form, annualLeaveClosing: e.target.value })} />
           </div>
           <div>
             <label className="label">ETI months claimed (0–24)</label>
