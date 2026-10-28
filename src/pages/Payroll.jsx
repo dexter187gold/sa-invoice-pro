@@ -122,6 +122,20 @@ export default function Payroll() {
     if (!employees.length) return toast('Add employees first', 'error')
     const ids = Object.keys(selected).filter((id) => selected[id])
     if (!ids.length) return toast('Select at least one employee', 'error')
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(period)) return toast('Choose a valid pay period', 'error')
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(payDate) || Number.isNaN(new Date(payDate + 'T12:00:00').getTime())) return toast('Choose a valid actual payment date', 'error')
+    const chosen = employees.filter((emp) => selected[emp.id] && !alreadyRunIds.has(emp.id))
+    const invalid = chosen.filter((emp) => {
+      const amounts = [emp.salary, emp.transportAllowance, emp.otherAllowance, emp.callOutAllowance, emp.overtime15, emp.overtime20, emp.standbyAllowance, emp.siteAllowance, emp.sundayHolidayPay, emp.commission, emp.bonus, emp.otherEarnings, emp.pensionEmployee, emp.mibcoLevy, emp.medicalAidEmployee, emp.unionFees, emp.otherDeductions]
+      return !String(emp.name || '').trim() || amounts.some((value) => value !== '' && value != null && (!Number.isFinite(Number(value)) || Number(value) < 0))
+    })
+    if (invalid.length) return toast('Fix missing employee names or invalid/negative payroll amounts: ' + invalid.map((e) => e.name || e.employeeNumber || 'Unnamed employee').join(', '), 'error')
+    const deductionsTooHigh = chosen.filter((emp) => {
+      const gross = [emp.salary, emp.transportAllowance, emp.otherAllowance, emp.callOutAllowance, emp.overtime15, emp.overtime20, emp.standbyAllowance, emp.siteAllowance, emp.sundayHolidayPay, emp.commission, emp.bonus, emp.otherEarnings].reduce((sum, value) => sum + (Number(value) || 0), 0)
+      const deductions = [emp.pensionEmployee, emp.mibcoLevy, emp.medicalAidEmployee, emp.unionFees, emp.otherDeductions].reduce((sum, value) => sum + (Number(value) || 0), 0)
+      return deductions > gross
+    })
+    if (deductionsTooHigh.length) return toast('Deductions exceed gross earnings for: ' + deductionsTooHigh.map((e) => e.name).join(', ') + '. Correct the employee profile first.', 'error')
 
     setBusy(true)
     try {
