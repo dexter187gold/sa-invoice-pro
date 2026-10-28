@@ -83,7 +83,18 @@ export default function Payroll() {
     const calc = processProudlySaPayrollRun({
       baseSalaryCents: toCents(emp.salary),
       transportAllowanceCents: toCents(emp.transportAllowance || 0),
-      otherTaxableCents: toCents(emp.otherAllowance || 0),
+      otherTaxableCents: toCents(
+        (Number(emp.otherAllowance) || 0) +
+        (Number(emp.callOutAllowance) || 0) +
+        (Number(emp.overtime15) || 0) +
+        (Number(emp.overtime20) || 0) +
+        (Number(emp.standbyAllowance) || 0) +
+        (Number(emp.siteAllowance) || 0) +
+        (Number(emp.sundayHolidayPay) || 0) +
+        (Number(emp.commission) || 0) +
+        (Number(emp.bonus) || 0) +
+        (Number(emp.otherEarnings) || 0)
+      ),
       uifApplicable: emp.uif !== false,
       age,
       etiMonth: Number(emp.etiMonth) || 0,
@@ -152,6 +163,33 @@ export default function Payroll() {
           basicSalary: Number(emp.salary) || 0,
           transportAllowance: Number(emp.transportAllowance) || 0,
           otherAllowance: Number(emp.otherAllowance) || 0,
+          callOutAllowance: Number(emp.callOutAllowance) || 0,
+          overtime15: Number(emp.overtime15) || 0,
+          overtime20: Number(emp.overtime20) || 0,
+          standbyAllowance: Number(emp.standbyAllowance) || 0,
+          siteAllowance: Number(emp.siteAllowance) || 0,
+          sundayHolidayPay: Number(emp.sundayHolidayPay) || 0,
+          commission: Number(emp.commission) || 0,
+          bonus: Number(emp.bonus) || 0,
+          otherEarnings: Number(emp.otherEarnings) || 0,
+          mibcoLevy: Number(emp.mibcoLevy) || 0,
+          mibcoEmployer: Number(emp.mibcoEmployer) || 0,
+          pensionEmployer: Number(emp.pensionEmployer) || 0,
+          pensionRiskEmployer: Number(emp.pensionRiskEmployer) || 0,
+          fringeBenefits: Number(emp.fringeBenefits) || 0,
+          taxDeductibleDeductions: Number(emp.taxDeductibleDeductions) || 0,
+          leaveBalances: [{
+            description: 'RSA Annual Leave',
+            entitlement: Number(emp.annualLeaveEntitlement) || 0,
+            balanceBfwd: Number(emp.annualLeaveOpening) || 0,
+            accrued: Number(emp.annualLeaveAccrued) || 0,
+            balanceCfwd: Number(emp.annualLeaveClosing) || 0,
+          }],
+          companyContributionsTotal:
+            (Number(emp.mibcoEmployer) || 0) +
+            (Number(emp.pensionEmployer) || 0) +
+            (Number(emp.pensionRiskEmployer) || 0) +
+            calc.sdlR + fromCents(calc.uifEmployerCents),
           gross: calc.grossR,
           taxableRemuneration: calc.taxableR,
           paye: calc.payeR,
@@ -168,11 +206,19 @@ export default function Payroll() {
           hours: {
             ordinary: emp.ordinaryHoursWorked ?? '',
             overtime: emp.overtimeHoursWorked ?? '',
+            overtime15: emp.overtimeHoursWorked ?? '',
+            overtime20: '',
             sunday: emp.sundayHoursWorked ?? '',
             publicHoliday: emp.publicHolidayHoursWorked ?? '',
+            hoursPerPeriod: emp.hoursPerPeriod ?? '',
             rate: emp.hourlyRate ? `R${emp.hourlyRate}/hour` : '',
           },
-          ytd,
+          ytd: {
+            ...ytd,
+            taxable: sumRows(previous, 'taxableRemuneration') + calc.taxableR,
+            fringeBenefits: sumRows(previous, 'fringeBenefits') + (Number(emp.fringeBenefits) || 0),
+            taxDeductibleDeductions: sumRows(previous, 'taxDeductibleDeductions') + (Number(emp.taxDeductibleDeductions) || 0),
+          },
           sourceCodes: {
             3601: fromCents(calc.sarsSourceCode3601),
             3701: fromCents(calc.sarsSourceCode3701),
