@@ -20,11 +20,27 @@ function currentPeriod() {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
+function periodDates(period) {
+  const [year, month] = String(period || '').split('-').map(Number)
+  if (!year || !month) return { periodStart: '', periodEnd: '' }
+  return {
+    periodStart: `${period}-01`,
+    periodEnd: new Date(year, month, 0).toISOString().slice(0, 10),
+  }
+}
+function taxYearStart(period) {
+  const [year, month] = String(period || '').split('-').map(Number)
+  return month >= 3 ? `${year}-03` : `${year - 1}-03`
+}
+function sumRows(rows, key) {
+  return rows.reduce((sum, row) => sum + (Number(row[key]) || 0), 0)
+}
 
 export default function Payroll() {
   const { employees, company, refresh, toast } = useApp()
   const [payslips, setPayslips] = useState([])
   const [period, setPeriod] = useState(currentPeriod())
+  const [payDate, setPayDate] = useState(new Date().toISOString().slice(0, 10))
   const [selected, setSelected] = useState({})
   const [busy, setBusy] = useState(false)
   const [preview, setPreview] = useState(null)
@@ -86,19 +102,64 @@ export default function Payroll() {
         if (alreadyRunIds.has(emp.id)) continue
 
         const calc = calcForEmployee(emp)
+        const dates = periodDates(period)
+        const yearStart = taxYearStart(period)
+        const previous = payslips.filter((row) =>
+          String(row.employeeId) === String(emp.id) &&
+          String(row.period || '') >= yearStart &&
+          String(row.period || '') < period
+        )
+        const current = {
+          gross: calc.grossR, paye: calc.payeR, uif: calc.uifR, net: calc.netR,
+        }
+        const ytd = {
+          gross: sumRows(previous, 'gross') + current.gross,
+          paye: sumRows(previous, 'paye') + current.paye,
+          uif: sumRows(previous, 'uif') + current.uif,
+          net: sumRows(previous, 'net') + current.net,
+        }
         await db.add(STORES.payslips, {
           employeeId: emp.id,
           employeeName: emp.name,
+          employeeNumber: emp.employeeNumber || '',
+          occupation: emp.occupation || emp.role || '',
+          idNumber: emp.idNumber || '',
+          taxNumber: emp.taxNumber || '',
+          employeeEmail: emp.email || '',
+          employeeAddress: emp.address || '',
+          employmentStart: emp.employmentStart || '',
+          payFrequency: emp.payFrequency || 'Monthly',
+          employee: { ...emp },
           period,
+          ...dates,
+          payDate: payDate || '',
+          paymentMethod: emp.paymentMethod || 'Not recorded',
           companyName: company?.name || '',
           salary: Number(emp.salary) || 0,
+          basicSalary: Number(emp.salary) || 0,
+          transportAllowance: Number(emp.transportAllowance) || 0,
+          otherAllowance: Number(emp.otherAllowance) || 0,
           gross: calc.grossR,
+          taxableRemuneration: calc.taxableR,
           paye: calc.payeR,
           uif: calc.uifR,
           net: calc.netR,
+          totalDeductions: calc.payeR + calc.uifR,
           eti: calc.etiR,
           sdl: calc.sdlR,
           uifEmployer: fromCents(calc.uifEmployerCents),
+          pensionEmployee: Number(emp.pensionEmployee) || 0,
+          medicalAidEmployee: Number(emp.medicalAidEmployee) || 0,
+          unionFees: Number(emp.unionFees) || 0,
+          otherDeductions: Number(emp.otherDeductions) || 0,
+          hours: {
+            ordinary: emp.ordinaryHoursWorked ?? '',
+            overtime: emp.overtimeHoursWorked ?? '',
+            sunday: emp.sundayHoursWorked ?? '',
+            publicHoliday: emp.publicHolidayHoursWorked ?? '',
+            rate: emp.hourlyRate ? `R${emp.hourlyRate}/hour` : '',
+          },
+          ytd,
           sourceCodes: {
             3601: fromCents(calc.sarsSourceCode3601),
             3701: fromCents(calc.sarsSourceCode3701),
@@ -106,6 +167,8 @@ export default function Payroll() {
             4118: fromCents(calc.sarsSourceCode4118),
           },
           idValid: emp.idNumber ? isValidSaId(emp.idNumber) : null,
+          taxYear: yearStart,
+          createdAt: new Date().toISOString(),
         })
         created++
       }
@@ -210,6 +273,10 @@ export default function Payroll() {
             <input className="input" type="month" value={period} onChange={(e) => setPeriod(e.target.value)} />
           </div>
           <div>
+            <label className="label">Actual payment date</label>
+            <input className="input" type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
+          </div>
+          <div>
             <label className="label">Employees selected</label>
             <div className="muted" style={{ paddingTop: 6 }}>
               {Object.values(selected).filter(Boolean).length} / {employees.length}
@@ -221,8 +288,9 @@ export default function Payroll() {
           </div>
         </div>
         <p className="muted" style={{ margin: '.75rem 0 0', fontSize: 13 }}>
-          2026/27 SARS brackets + primary rebate, UIF 1% capped, SDL 1% employer. Medical credits and full ETI
-          rules are simplified. Verify with a tax practitioner before SARS submission.
+          The detailed PDF records employee/employer details, cash earnings, deductions, employer-only contributions,
+          hours where recorded, source-code references and South African tax-year-to-date totals. PAYE, medical credits,
+          retirement deductions and ETI still need professional verification before statutory filing.
         </p>
       </div>
 
