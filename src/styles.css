@@ -567,3 +567,19 @@ html.dark .btn-danger { border-color: rgba(185, 28, 28, 0.35); }
 @media(max-width:1050px){.it-doc-layout{grid-template-columns:minmax(0,1fr)}.it-doc-workbench{position:static}.it-doc-outline{max-height:420px}}
 @media(max-width:560px){.it-doc-hero{padding:1.15rem;border-radius:13px}.it-doc-hero-mark{width:76px;height:76px;border-radius:18px}.it-doc-hero-mark span{font-size:2rem}.it-doc-hero-mark i{font-size:.48rem;letter-spacing:.2em}.it-doc-hero-stats{gap:.55rem}.it-doc-hero-stats span{padding-right:.6rem;font-size:.68rem}.it-doc-hero-stats strong{font-size:.86rem}.it-doc-library{padding:.65rem}.it-doc-template-grid{grid-template-columns:minmax(0,1fr)}.it-doc-template{padding:.8rem}.it-doc-template-purpose{-webkit-line-clamp:2}.it-doc-search-row{grid-template-columns:1fr}.it-doc-actions{grid-template-columns:1fr}.it-doc-workbench-head,.it-doc-form,.it-doc-outline,.it-doc-disclaimer{padding-left:.85rem;padding-right:.85rem}}
 @media(prefers-reduced-motion:reduce){.it-doc-template{transition:none}.it-doc-template:hover{transform:none}}
+
+
+/* Document Studio live-record linking and local generation history */
+.it-doc-linked-record{display:flex;flex-direction:column;gap:3px;padding:.7rem .75rem;margin:.55rem 0 .25rem;border:1px solid rgba(0,122,77,.25);border-radius:9px;background:var(--green-soft)}
+.it-doc-linked-record strong{font-size:.75rem;color:var(--green)}
+.it-doc-linked-record span{font-size:.76rem;line-height:1.4;overflow-wrap:anywhere}
+.it-doc-linked-record small{font-size:.68rem;color:var(--muted);line-height:1.45}
+.it-doc-history{padding:1rem 1.1rem}
+.it-doc-history-head{display:flex;align-items:center;justify-content:space-between;gap:.7rem;margin-bottom:.4rem}
+.it-doc-history-head h3{margin:0;font-size:.88rem}
+.it-doc-history-head .it-doc-text-button{padding:0}
+.it-doc-history-item{display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.7rem 0;border-top:1px solid var(--border)}
+.it-doc-history-item>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.it-doc-history-item strong{font-size:.74rem;line-height:1.4}
+.it-doc-history-item span,.it-doc-history-item small{font-size:.68rem;color:var(--muted);line-height:1.45;overflow-wrap:anywhere}
+.it-doc-history-item .btn{flex-shrink:0}
