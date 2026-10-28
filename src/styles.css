@@ -583,3 +583,25 @@ html.dark .btn-danger { border-color: rgba(185, 28, 28, 0.35); }
 .it-doc-history-item strong{font-size:.74rem;line-height:1.4}
 .it-doc-history-item span,.it-doc-history-item small{font-size:.68rem;color:var(--muted);line-height:1.45;overflow-wrap:anywhere}
 .it-doc-history-item .btn{flex-shrink:0}
+
+
+/* Owner-first settings navigation and mobile-safe scrolling */
+.settings-page{min-width:0;width:100%;padding-bottom:calc(2rem + env(safe-area-inset-bottom))}
+.settings-tabs-scroll{display:flex;gap:.4rem;overflow-x:auto;overflow-y:hidden;max-width:100%;padding:.35rem .1rem .7rem;margin:.25rem 0 .4rem;scrollbar-width:thin;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.settings-tabs-scroll .settings-tab{flex:0 0 auto;white-space:nowrap;min-height:42px;padding:.65rem .9rem;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);font-weight:700;font-size:.82rem}
+.settings-tabs-scroll .settings-tab.active{background:var(--green);border-color:var(--green);color:#fff}
+.settings-tabs-scroll .settings-tab:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.settings-owner-note{display:flex;flex-direction:column;gap:.25rem;margin:1rem 0;padding:.9rem 1rem;border:1px solid var(--border);border-radius:12px;background:var(--bg-elevated)}
+.settings-owner-note strong{font-size:.82rem}
+.settings-owner-note span{font-size:.76rem;line-height:1.5;color:var(--muted)}
+.it-doc-table-wrap{max-width:100%;overflow:auto;border:1px solid var(--border);border-radius:10px;-webkit-overflow-scrolling:touch}
+.it-doc-table{width:100%;border-collapse:separate;border-spacing:0;min-width:640px}
+.it-doc-table th,.it-doc-table td{padding:.8rem .75rem;vertical-align:top;border-bottom:1px solid var(--border);text-align:left}
+.it-doc-table tbody tr:last-child td{border-bottom:0}
+.it-doc-table td strong{display:block;font-size:.82rem;line-height:1.4}
+.it-doc-row-ref{display:block;margin-top:.2rem;font-size:.65rem;color:var(--muted);overflow-wrap:anywhere}
+.it-doc-table-purpose{max-width:360px;min-width:180px;white-space:normal;font-size:.76rem;line-height:1.5;color:var(--muted)}
+.it-doc-row-selected{background:var(--green-soft)}
+.it-doc-table .it-doc-template-category{max-width:180px}
+.it-doc-actions{grid-template-columns:1fr 1fr}
+@media(max-width:600px){.settings-page .page-header{align-items:flex-start}.settings-tabs-scroll{margin-right:-.25rem}.it-doc-table-wrap{border-radius:8px}.it-doc-table th,.it-doc-table td{padding:.65rem .55rem}}
