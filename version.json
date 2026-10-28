@@ -1,5 +1,5 @@
 {
-  "version": "6.34.0",
-  "codename": "P1 CRUD mega · roadmap",
-  "message": "Products/Expenses full edit+Actions; P1–P10 owner roadmap with % progress"
+  "version": "6.35.0",
+  "codename": "Payroll · Bank Import · Document Studio",
+  "message": "Three payslip layouts and expanded South African payroll details; bank statement import and reconciliation; 69-template IT Document Studio; E2E visibility recovery and versioned PWA cache."
 }
