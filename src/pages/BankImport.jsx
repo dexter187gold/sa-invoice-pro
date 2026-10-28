@@ -181,6 +181,48 @@ export default function BankImport() {
     }
   }
 
+  const bookkeepingCategories = ['Unclassified', 'Sales income', 'Customer payment', 'Supplier expense', 'Bank fees', 'Fuel & travel', 'Software & subscriptions', 'Office supplies', 'Utilities', 'Salaries', 'Owner transfer', 'Inter-account transfer', 'Loan', 'Tax / VAT', 'Other']
+
+  const saveCategory = async (txn, category) => {
+    if (!txn) return
+    setBusy(true)
+    try {
+      const all = await db.getAll(STORES.bankTxns)
+      const key = (t) => [String(t.date || '').slice(0, 10), Number(t.amount || 0).toFixed(2), String(t.description || '').trim().toLowerCase(), String(t.reference || '').trim().toLowerCase()].join('|')
+      const existing = all.find((t) => key(t) === key(txn))
+      if (existing) await db.put(STORES.bankTxns, { ...existing, category, bookkeepingStatus: category === 'Unclassified' ? 'needs-review' : 'classified' })
+      else await db.add(STORES.bankTxns, { ...txn, accountLabel, statementName: statementName || 'Pasted bank statement', source: 'statement-import', category, reconciled: false, bookkeepingStatus: category === 'Unclassified' ? 'needs-review' : 'classified', importedAt: new Date().toISOString() })
+      await refresh()
+      setReviewStatus((s) => ({ ...s, [txn.id]: category === 'Unclassified' ? 'Saved for review' : 'Category saved' }))
+      toast('Bookkeeping category saved', 'success')
+    } catch (err) {
+      toast(err.message || 'Could not save category', 'error')
+    } finally { setBusy(false) }
+  }
+
+  const createExpenseFromTxn = async (txn) => {
+    if (!txn || !(Number(txn.amount) < 0)) return toast('Only debit transactions can be converted to expenses', 'info')
+    setBusy(true)
+    try {
+      const all = await db.getAll(STORES.bankTxns)
+      const key = (t) => [String(t.date || '').slice(0, 10), Number(t.amount || 0).toFixed(2), String(t.description || '').trim().toLowerCase(), String(t.reference || '').trim().toLowerCase()].join('|')
+      let bankRow = all.find((t) => key(t) === key(txn))
+      if (bankRow?.linkedExpenseId) return toast('This bank line already has an expense', 'info')
+      const category = categories[txn.id] || 'General'
+      const expense = await db.add(STORES.expenses, {
+        date: txn.date, description: txn.description || 'Bank payment', amount: Math.abs(Number(txn.amount) || 0),
+        category, accountCode: category === 'Bank fees' ? '6900' : '6900',
+        vendor: txn.description || '', source: 'bank-statement', bankTxnFingerprint: key(txn),
+      })
+      if (bankRow) await db.put(STORES.bankTxns, { ...bankRow, linkedExpenseId: expense.id, category, bookkeepingStatus: 'expense-recorded' })
+      else await db.add(STORES.bankTxns, { ...txn, amount: Number(txn.amount), accountLabel, statementName: statementName || 'Pasted bank statement', source: 'statement-import', category, linkedExpenseId: expense.id, reconciled: false, bookkeepingStatus: 'expense-recorded', importedAt: new Date().toISOString() })
+      await refresh()
+      setReviewStatus((s) => ({ ...s, [txn.id]: 'Expense created' }))
+      toast('Expense created and linked to bank transaction', 'success')
+    } catch (err) { toast(err.message || 'Could not create expense', 'error') }
+    finally { setBusy(false) }
+  }
+
   const resolveInvoice = (row, idx) => {
     const key = row.txn?.id || String(idx)
     const mid = manualPick[key]
@@ -434,23 +476,16 @@ export default function BankImport() {
                         </div>
                       )}
                     </td>
+                    <td style={{ minWidth: 190 }}>
+                      <select className="input" style={{ fontSize: 12, marginBottom: 5 }} value={categories[t.id] || 'Unclassified'} onChange={(e) => setCategories((s) => ({ ...s, [t.id]: e.target.value }))}>
+                        {bookkeepingCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+                      </select>
+                      <button type="button" className="btn btn-outline btn-sm" disabled={busy} onClick={() => saveCategory(t, categories[t.id] || 'Unclassified')}>Save category</button>
+                      {reviewStatus[t.id] ? <div className="muted" style={{ fontSize: 10 }}>{reviewStatus[t.id]}</div> : null}
+                    </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
-                      <button
-                        type="button"
-                        className="btn btn-primary btn-sm"
-                        disabled={busy || !resolveInvoice(row, idx)}
-                        onClick={() => applyOne(row, idx)}
-                      >
-                        Apply
-                      </button>{' '}
-                      <button
-                        type="button"
-                        className="btn btn-outline btn-sm"
-                        disabled={busy}
-                        onClick={() => setSkipped((s) => ({ ...s, [key]: true }))}
-                      >
-                        Skip
-                      </button>
+                      {Number(t.amount) > 0 ? <button type="button" className="btn btn-primary btn-sm" disabled={busy || !resolveInvoice(row, idx)} onClick={() => applyOne(row, idx)}>Apply payment</button> : <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={() => createExpenseFromTxn(t)}>Create expense</button>}{' '}
+                      <button type="button" className="btn btn-outline btn-sm" disabled={busy} onClick={() => setSkipped((s) => ({ ...s, [key]: true }))}>Skip</button>
                     </td>
                   </tr>
                 )
