@@ -270,6 +270,10 @@ export default function Shell({ children }) {
     settings: 'Account',
   }[section] || 'Menu'
 
+  const handleSignOut = () => {
+    try { logout?.() } finally { nav('/login', { replace: true }) }
+  }
+
   const useBottom = navPrefs.layout === 'bottom'
 
   return (
@@ -305,6 +309,11 @@ export default function Shell({ children }) {
             <span /><span /><span />
           </button>
         </div>
+        {user ? (
+          <button type="button" className="btn btn-outline btn-sm mobile-signout" onClick={handleSignOut} aria-label="Sign out" title="Sign out">
+            Sign out
+          </button>
+        ) : null}
         <NotificationBell />
         <span className={`status-dot ${online ? 'on' : 'off'}`} title={online ? 'Online' : 'Offline'} />
       </div>
@@ -359,16 +368,7 @@ export default function Shell({ children }) {
               Theme
             </button>
             {user ? (
-              <button
-                type="button"
-                className="btn btn-outline btn-sm"
-                onClick={() => {
-                  logout?.()
-                  nav('/login')
-                }}
-              >
-                Sign out
-              </button>
+              <button type="button" className="btn btn-outline btn-sm" onClick={handleSignOut}>Sign out</button>
             ) : null}
           </div>
         </aside>
@@ -396,6 +396,7 @@ export default function Shell({ children }) {
               <button type="button" className="btn btn-outline btn-sm" onClick={runSync} disabled={syncing}>
                 {syncing ? 'Syncing…' : 'Sync'}
               </button>
+              {user ? <button type="button" className="btn btn-outline btn-sm" onClick={handleSignOut}>Sign out</button> : null}
             </div>
           </div>
           {children}
@@ -441,6 +442,7 @@ export default function Shell({ children }) {
           <div className={`drawer ${moreOpen ? 'open' : ''}`} id="more-drawer" role="dialog" aria-label="More pages">
             <div className="drawer-handle" />
             <h3>All sections</h3>
+            {user ? <button type="button" className="btn btn-outline btn-sm" style={{ width: '100%', marginBottom: 12 }} onClick={handleSignOut}>Sign out</button> : null}
             {sections.map((sec) => (
               <div key={sec.title} className="drawer-section">
                 <div className="drawer-section-title">{sec.title}</div>
