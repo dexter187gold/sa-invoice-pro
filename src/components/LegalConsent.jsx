@@ -44,8 +44,15 @@ function saveConsent(value) {
 
 export default function LegalConsent() {
   const [consent, setConsent] = useState(() => readConsent())
+  const [showPrivacyReopen, setShowPrivacyReopen] = useState(() => !readConsent())
   const [panel, setPanel] = useState('')
   const [analytics, setAnalytics] = useState(() => !!readConsent()?.analytics)
+
+  useEffect(() => {
+    if (!consent || !showPrivacyReopen) return undefined
+    const timer = window.setTimeout(() => setShowPrivacyReopen(false), 2800)
+    return () => window.clearTimeout(timer)
+  }, [consent, showPrivacyReopen])
 
   useEffect(() => {
     const onOpen = (e) => setPanel(e.detail || 'privacy')
@@ -73,9 +80,9 @@ export default function LegalConsent() {
             <button type="button" className="btn btn-primary btn-sm" onClick={() => { setAnalytics(true); const next = saveConsent({ essential: true, analytics: true, preferences: true, decision: 'accepted-all' }); setConsent(next) }}>Accept all</button>
           </div>
         </section>
-      ) : (
+      ) : showPrivacyReopen ? (
         <button type="button" className="privacy-reopen" onClick={() => setPanel('preferences')} aria-label="Privacy and cookie settings">Privacy</button>
-      )}
+      ) : null}
       {panel ? (
         <div className="legal-overlay" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setPanel('') }}>
           <section className="legal-panel" role="dialog" aria-modal="true" aria-label={panel === 'terms' ? 'Terms and conditions' : panel === 'privacy' ? 'Privacy and POPIA notice' : 'Privacy preferences'}>
