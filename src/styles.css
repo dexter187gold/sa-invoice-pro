@@ -497,3 +497,12 @@ html.dark .btn-danger { border-color: rgba(185, 28, 28, 0.35); }
 }
 .tabs-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1rem; }
 .line-table input { min-width: 0; }
+
+/* Compact workspace controls in the mobile top bar */
+.mobile-top-tools{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.mobile-top-tools .active-seat-chip{max-width:100px;overflow:hidden;white-space:nowrap;font-size:10px!important;padding:4px 7px!important}
+.mobile-top-tools .active-seat-chip strong{overflow:hidden;text-overflow:ellipsis;max-width:50px}
+.mobile-sync-btn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);flex-shrink:0}
+.mobile-sync-btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.mobile-sync-btn:disabled{opacity:.55}
+@media(max-width:520px){.mobile-bar{gap:6px;padding:8px}.mobile-top-tools .active-seat-chip{max-width:74px}.mobile-top-tools .active-seat-chip>span{display:none}.mobile-top-tools .active-seat-chip strong{max-width:44px}.mobile-ai-btn{padding:5px 8px!important;min-width:30px}}
