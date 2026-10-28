@@ -1,6 +1,6 @@
-# SA Invoice Pro 6.34.0
+# SA Invoice Pro 6.35.0
 
-P1 desk CRUD mega · employees/products/expenses edit+Actions · portal deep routes · self-serve licensing.
+Payroll + bank statement import + 69-template IT Document Studio · P1 desk CRUD · PWA cache refresh.
 
 ```bash
 npm install && npm run dev
