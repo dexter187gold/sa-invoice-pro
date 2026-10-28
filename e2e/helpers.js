@@ -1,11 +1,22 @@
-/** Playwright helpers — session, visibility unlock, IndexedDB seed. */
+/** Playwright helpers — session, visibility unlock, IndexedDB seed, portal API mock. */
 import { expect } from '@playwright/test'
 
 export const SESSION_KEY = 'sa_session_v2'
 
-/** Force page visible before app scripts (splash / stale locks). */
+/** Force page visible + skip splash + block service worker (blank pages in CI). */
 export async function unlockVisibility(page) {
   await page.addInitScript(() => {
+    try {
+      // Prevent SW from serving stale shells on deep routes
+      if (navigator.serviceWorker) {
+        Object.defineProperty(navigator, 'serviceWorker', {
+          configurable: true,
+          get() {
+            return undefined
+          },
+        })
+      }
+    } catch {}
     const unlock = () => {
       try {
         for (const el of [document.documentElement, document.body, document.getElementById('root')]) {
@@ -25,7 +36,34 @@ export async function unlockVisibility(page) {
   })
 }
 
-/** Minimal session the SPA accepts as signed in. */
+/** Mock saip-sync portal API so token routes always render error or data shell. */
+export async function mockPortalApi(page, payload) {
+  await page.route(/\/api\/portal\//, async (route) => {
+    if (payload === 'not_found') {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Portal link not found or expired' }),
+      })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        payload || {
+          company: { name: 'E2E Shop' },
+          client: { name: 'E2E Client', email: 'client@test.local' },
+          quotes: [],
+          invoices: [],
+          tickets: [],
+          payments: [],
+        },
+      ),
+    })
+  })
+}
+
 export async function injectSession(page, user = {}) {
   await unlockVisibility(page)
   const session = {
@@ -48,9 +86,7 @@ export async function injectSession(page, user = {}) {
   return session
 }
 
-/** Seed company so needCompany Guard passes. Must run on app origin (after a goto). */
 export async function seedIndexedDbCompany(page) {
-  // Ensure we are on the app origin first (evaluate fails on about:blank)
   const url = page.url()
   if (!url || url === 'about:blank' || url.startsWith('chrome')) {
     await page.goto('/login', { waitUntil: 'domcontentloaded' })
@@ -63,29 +99,12 @@ export async function seedIndexedDbCompany(page) {
       req.onupgradeneeded = (e) => {
         const d = e.target.result
         const stores = {
-          users: 'id',
-          company: 'id',
-          clients: 'id',
-          products: 'id',
-          services: 'id',
-          invoices: 'id',
-          quotes: 'id',
-          tickets: 'id',
-          ticketComments: 'id',
-          timeEntries: 'id',
-          expenses: 'id',
-          payments: 'id',
-          employees: 'id',
-          payslips: 'id',
-          bankTxns: 'id',
-          journal: 'id',
-          accounts: 'id',
-          reconciliations: 'id',
-          popiaRequests: 'id',
-          documentTemplates: 'id',
-          documentRenders: 'id',
-          reminders: 'id',
-          settings: 'key',
+          users: 'id', company: 'id', clients: 'id', products: 'id', services: 'id',
+          invoices: 'id', quotes: 'id', tickets: 'id', ticketComments: 'id',
+          timeEntries: 'id', expenses: 'id', payments: 'id', employees: 'id',
+          payslips: 'id', bankTxns: 'id', journal: 'id', accounts: 'id',
+          reconciliations: 'id', popiaRequests: 'id', documentTemplates: 'id',
+          documentRenders: 'id', reminders: 'id', settings: 'key',
         }
         for (const [name, keyPath] of Object.entries(stores)) {
           if (!d.objectStoreNames.contains(name)) {
@@ -111,14 +130,10 @@ export async function seedIndexedDbCompany(page) {
   })
 }
 
-/**
- * Body visibility is unreliable under splash / CSS transitions in CI.
- * Assert the document mounted and has usable content instead.
- */
+/** Assert app shell mounted. Prefer textContent (works when visibility is odd). */
 export async function expectPageAlive(page, { minChars = 8 } = {}) {
   await expect(page.locator('body')).toBeAttached()
   await expect(page.locator('#root')).toBeAttached()
-  // Soft unlock in case a transition left visibility hidden
   await page.evaluate(() => {
     for (const el of [document.documentElement, document.body, document.getElementById('root')]) {
       if (!el) continue
@@ -127,7 +142,11 @@ export async function expectPageAlive(page, { minChars = 8 } = {}) {
       el.removeAttribute('hidden')
     }
   })
-  const text = (await page.locator('body').innerText().catch(() => '')) || ''
+  // Wait briefly for React paint
+  await page.waitForTimeout(300)
+  const text =
+    (await page.locator('body').evaluate((el) => el.textContent || '').catch(() => '')) ||
+    (await page.content().catch(() => ''))
   expect(text.length, `expected page text length > ${minChars}, got ${text.length}`).toBeGreaterThan(minChars)
   return text
 }

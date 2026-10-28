@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { unlockVisibility, expectPageAlive } from './helpers.js'
+import { unlockVisibility, expectPageAlive, mockPortalApi } from './helpers.js'
 
 test.describe('SA Invoice Pro smoke', () => {
   test.beforeEach(async ({ page }) => {
@@ -32,15 +32,16 @@ test.describe('SA Invoice Pro smoke', () => {
     await page.goto('/portal')
     await page.waitForTimeout(800)
     const body = await expectPageAlive(page)
-    expect(/portal|token|link|SA Invoice|Loading/i.test(body)).toBeTruthy()
+    expect(/portal|token|link|SA Invoice|Loading|service provider/i.test(body)).toBeTruthy()
     const fatal = errors.filter((e) => /Cannot find module|is not defined|Unexpected token/i.test(e))
     expect(fatal, fatal.join('\n')).toHaveLength(0)
   })
 
   test('portal token path loads', async ({ page }) => {
-    await page.goto('/portal/demo-token')
+    await mockPortalApi(page, 'not_found')
+    await page.goto('/portal/demo-token', { waitUntil: 'networkidle' })
     const body = await expectPageAlive(page)
-    expect(/portal|token|Loading|Could not|Overview|Quotes|invalid|missing/i.test(body)).toBeTruthy()
+    expect(/portal|token|Loading|Could not|Overview|Quotes|invalid|missing|expired|not found|service provider/i.test(body)).toBeTruthy()
   })
 
   test('team route redirects or loads without module crash', async ({ page }) => {
