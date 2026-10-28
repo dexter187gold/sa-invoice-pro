@@ -96,15 +96,38 @@ export async function getSetting(key, def = null) {
 export async function setSetting(key, value) {
   return put(STORES.settings, { key, value })
 }
+const ACTIVE_COMPANY_KEY = 'activeCompanyId'
+
+export async function getCompanies() {
+  return (await getAll(STORES.company)).sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
+}
+export async function setActiveCompany(id) {
+  if (id) await setSetting(ACTIVE_COMPANY_KEY, String(id))
+  else {
+    try { await remove(STORES.settings, ACTIVE_COMPANY_KEY) } catch {}
+  }
+  return getCompany()
+}
 export async function getCompany() {
   const all = await getAll(STORES.company)
-  return all[0] || null
+  if (!all.length) return null
+  const activeId = await getSetting(ACTIVE_COMPANY_KEY, null)
+  return all.find((c) => String(c.id) === String(activeId)) || all[0] || null
 }
 export async function saveCompany(data) {
-  const existing = await getCompany()
-  const row = { ...(existing || {}), ...data, id: existing?.id || 'main' }
+  const existing = data?.id ? await get(STORES.company, data.id) : await getCompany()
+  const row = { ...(existing || {}), ...data, id: data?.id || existing?.id || 'main', updatedAt: new Date().toISOString() }
   await put(STORES.company, row)
+  await setActiveCompany(row.id)
   return row
+}
+export async function deleteCompany(id) {
+  const all = await getAll(STORES.company)
+  if (all.length <= 1) throw new Error('Keep at least one company profile. Add another company before deleting this one.')
+  await remove(STORES.company, id)
+  const activeId = await getSetting(ACTIVE_COMPANY_KEY, null)
+  if (String(activeId) === String(id)) await setActiveCompany(all.find((c) => String(c.id) !== String(id))?.id)
+  return getCompany()
 }
 export async function exportAll() {
   const out = {}
