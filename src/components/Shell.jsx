@@ -286,13 +286,17 @@ export default function Shell({ children }) {
         </button>
         <AppLogo size={28} />
         <strong style={{ fontSize: 13, letterSpacing: '-0.02em', flex: 1 }}>{brandLabel}</strong>
-        <div className={'live-leds phase-' + ledPhase} role="status" aria-label={assistantBusy ? 'AI assistant working' : 'Sync status: ' + syncPhase} title={assistantBusy ? 'AI assistant working' : 'Sync status: ' + syncPhase}>
-          <span /><span /><span />
-        </div>
         <div className="mobile-top-tools" aria-label="Workspace controls">
           <ActiveSeatChip compact />
-          <button type="button" className="mobile-sync-btn" onClick={runSync} disabled={syncing} aria-label={syncing ? 'Syncing' : 'Sync now'} title={syncing ? 'Syncing' : 'Sync now'}>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6.1 9A7 7 0 0 1 18 6l2 1M4 17l2-1a7 7 0 0 0 11.9-3" /></svg>
+          <button
+            type="button"
+            className={'live-leds mobile-sync-indicator phase-' + ledPhase}
+            onClick={runSync}
+            disabled={syncing}
+            aria-label={syncing ? 'Syncing now' : 'Tap three dots to sync'}
+            title={syncing ? 'Syncing…' : 'Sync now'}
+          >
+            <span /><span /><span />
           </button>
         </div>
         <button type="button" className="btn btn-outline btn-sm mobile-ai-btn" onClick={() => toggleHelp()} aria-label="Open AI assistant">✦</button>
