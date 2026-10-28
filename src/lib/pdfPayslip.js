@@ -114,6 +114,7 @@ export async function generatePayslipPdf(payslip, company = {}, opts = {}) {
     company.address || company.physicalAddress || company.businessAddress,
     [company.email, company.phone || company.telephone].filter(Boolean).join(' · '),
     [company.registrationNumber && `Reg: ${company.registrationNumber}`, company.vatNumber && `VAT: ${company.vatNumber}`].filter(Boolean).join(' · '),
+    [company.payeReference && `PAYE: ${company.payeReference}`, company.uifReference && `UIF: ${company.uifReference}`, company.sdlReference && `SDL: ${company.sdlReference}`].filter(Boolean).join(' · '),
   ].filter(Boolean)
   let ey = y + 9
   employerLines.forEach((s) => { doc.text(String(s), margin + 4, ey, { maxWidth: 118 }); ey += 4 })
