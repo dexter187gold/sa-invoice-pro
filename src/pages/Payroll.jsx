@@ -46,6 +46,7 @@ export default function Payroll() {
   const [preview, setPreview] = useState(null)
   const [confirm, setConfirm] = useState(null)
   const [pdfBusy, setPdfBusy] = useState(null)
+  const [pdfLayouts, setPdfLayouts] = useState({})
   const [q, setQ] = useState('')
 
   const loadPayslips = async () => {
@@ -214,7 +215,7 @@ export default function Payroll() {
   const downloadPdf = async (p) => {
     setPdfBusy(p.id)
     try {
-      await generatePayslipPdf(p, company, { download: true, preview: true })
+      await generatePayslipPdf(p, company, { download: true, preview: true, layout: pdfLayouts[p.id] || 'detailed' })
       toast('Payslip PDF ready', 'success')
     } catch (e) {
       console.error(e)
@@ -380,9 +381,23 @@ export default function Payroll() {
               <strong>{formatMoney(p.net)}</strong>
             </div>
           </div>
-          <div className="list-card-actions">
+          <div className="list-card-actions" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
+              <span className="muted">Layout</span>
+              <select
+                className="select"
+                aria-label={'Payslip layout for ' + (p.employeeName || 'employee')}
+                value={pdfLayouts[p.id] || 'detailed'}
+                onChange={(e) => setPdfLayouts((current) => ({ ...current, [p.id]: e.target.value }))}
+                style={{ width: 'auto', minWidth: 125, padding: '6px 8px', fontSize: 12 }}
+              >
+                <option value="example">Template match</option>
+                <option value="simplified">Simplified</option>
+                <option value="detailed">Detailed</option>
+              </select>
+            </label>
             <button type="button" className="btn btn-secondary btn-sm" disabled={pdfBusy === p.id} onClick={() => downloadPdf(p)}>
-              {pdfBusy === p.id ? 'PDF…' : 'PDF'}
+              {pdfBusy === p.id ? 'PDF…' : 'Generate PDF'}
             </button>
             <button type="button" className="btn btn-outline btn-sm" onClick={() => delPayslip(p.id)}>Delete</button>
           </div>
