@@ -13,7 +13,7 @@ export default function Login() {
   const nav = useNavigate()
   const fileRef = useRef(null)
   const [mode, setMode] = useState('in')
-  const [form, setForm] = useState({ username: '', email: '', password: '', name: '', emailConfirm: '', newPassword: '', recoveryCode: '' })
+  const [form, setForm] = useState({ username: '', email: '', password: '', name: '', emailConfirm: '', newPassword: '', recoveryCode: '', inviteCode: '' })
   const [shownCode, setShownCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [googleEnabled, setGoogleEnabled] = useState(false)
@@ -115,7 +115,15 @@ export default function Login() {
         if (!form.username || !form.email || !form.password) throw new Error('Fill username, email and password')
         if (form.password.length < 6) throw new Error('Password must be at least 6 characters')
         await register(form)
-        toast('Account created', 'success')
+        if (form.inviteCode.trim()) {
+          await Sync.joinTeam(form.inviteCode)
+          await Sync.logout()
+          await login(form.email, form.password)
+          await refresh?.()
+          toast('Account created and linked to the team role', 'success')
+        } else {
+          toast('Account created', 'success')
+        }
         nav('/setup', { replace: true })
       } else {
         const email = form.emailConfirm || form.email || form.username
@@ -268,6 +276,11 @@ export default function Login() {
               )}
               <label className="stack" style={{ gap: 4 }}><span className="muted" style={{ fontSize: 12 }}>{mode === 'up' ? 'Username' : 'Username or email'}</span>
                 <input className="input" required value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} autoComplete="username" /></label>
+              {mode === 'up' && (
+                <label className="stack" style={{ gap: 4 }}><span className="muted" style={{ fontSize: 12 }}>Team invite code (optional)</span>
+                  <input className="input" value={form.inviteCode} onChange={(e) => setForm({ ...form, inviteCode: e.target.value.trim().toLowerCase() })} placeholder="Enter code from your company admin" autoComplete="off" />
+                </label>
+              )}
               {mode === 'up' && (
                 <label className="stack" style={{ gap: 4 }}><span className="muted" style={{ fontSize: 12 }}>Email</span>
                   <input className="input" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} autoComplete="email" /></label>
