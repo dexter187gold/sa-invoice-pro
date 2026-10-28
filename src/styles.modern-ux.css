@@ -193,5 +193,6 @@ button, a.bnav, .nav-link {
 }
 
 
-/* App routes must remain renderable if an old splash/transition leaves an inherited hidden state. */
-body { visibility: visible !important; }
+/* App routes must remain renderable if a stale splash/transition hides the document. */
+html, body, #root { visibility: visible !important; }
+body { opacity: 1 !important; }
