@@ -34,8 +34,8 @@ export default function Shell({ children }) {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [assistantBusy, setAssistantBusy] = useState(false)
-  const ledPhase = assistantBusy ? 'busy' : syncPhase
   const [syncPhase, setSyncPhase] = useState(() => document.documentElement.dataset.saipSyncState || (navigator.onLine ? 'idle' : 'offline'))
+  const ledPhase = assistantBusy ? 'busy' : syncPhase
   const [moreOpen, setMoreOpen] = useState(false)
   const [forceRoot, setForceRoot] = useState(false)
   const nav = useNavigate()
