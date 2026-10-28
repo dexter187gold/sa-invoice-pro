@@ -140,6 +140,36 @@ export function AppProvider({ children }) {
     return () => clearInterval(id)
   }, [ready, toast])
 
+  // Lock the authenticated workspace after five minutes without user input.
+  useEffect(() => {
+    if (!ready || !user) return
+    let timer
+    let expired = false
+    const signOutForInactivity = () => {
+      if (expired) return
+      expired = true
+      try { Sync.logout() } catch {}
+      try { setSession(null) } catch {}
+      setUser(null)
+      toast('Signed out after 5 minutes of inactivity. Sign in again to continue.', 'info')
+    }
+    const resetTimer = () => {
+      if (expired) return
+      clearTimeout(timer)
+      timer = setTimeout(signOutForInactivity, FIVE_MIN_MS)
+    }
+    const activityEvents = ['pointerdown', 'keydown', 'touchstart', 'scroll', 'click']
+    activityEvents.forEach((eventName) => window.addEventListener(eventName, resetTimer, { passive: true }))
+    const onVisibility = () => { if (document.visibilityState === 'visible') resetTimer() }
+    document.addEventListener('visibilitychange', onVisibility)
+    resetTimer()
+    return () => {
+      clearTimeout(timer)
+      activityEvents.forEach((eventName) => window.removeEventListener(eventName, resetTimer))
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [ready, user?.id, user?.email, toast])
+
   useEffect(() => {
     document.documentElement.dataset.theme = theme
     document.documentElement.classList.toggle('dark', theme === 'dark')
