@@ -111,7 +111,9 @@ export default function Settings() {
         </div>
       </div>
 
-      <Segmented options={tabs} value={tab} onChange={setTab} />
+      <div className="settings-tabs-scroll" role="tablist" aria-label="Settings sections">
+        {tabs.map((item) => <button key={item.id} type="button" role="tab" aria-selected={tab === item.id} className={`settings-tab ${tab === item.id ? 'active' : ''}`} onClick={() => setTab(item.id)}>{item.label}</button>)}
+      </div>
 
       {tab === 'company' && (
         <form className="card form-grid" onSubmit={saveCompany} style={{ marginTop: 12 }}>
@@ -351,6 +353,11 @@ export default function Settings() {
         </div>
       )}
 
+      <div className="settings-owner-note">
+        <strong>Owner checklist</strong>
+        <span>Review company identity, VAT defaults, backups, communications and cloud sync whenever your business details change.</span>
+      </div>
+      </div>
       <ConfirmDialog
         open={!!confirm}
         title={confirm?.title}
