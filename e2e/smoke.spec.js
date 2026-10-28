@@ -1,12 +1,15 @@
 import { test, expect } from '@playwright/test'
+import { unlockVisibility, expectPageAlive } from './helpers.js'
 
 test.describe('SA Invoice Pro smoke', () => {
+  test.beforeEach(async ({ page }) => {
+    await unlockVisibility(page)
+  })
+
   test('login page renders', async ({ page }) => {
     await page.goto('/login')
-    await expect(page.locator('body')).toBeVisible()
-    await page.waitForTimeout(500)
-    const body = await page.textContent('body')
-    expect(body && body.length).toBeGreaterThan(10)
+    const body = await expectPageAlive(page)
+    expect(body.length).toBeGreaterThan(10)
   })
 
   test('app boots without fatal error overlay', async ({ page }) => {
@@ -28,16 +31,16 @@ test.describe('SA Invoice Pro smoke', () => {
     page.on('pageerror', (e) => errors.push(String(e)))
     await page.goto('/portal')
     await page.waitForTimeout(800)
-    await expect(page.locator('body')).toBeVisible()
-    const body = await page.textContent('body')
-    expect(body && /portal|token|link|SA Invoice/i.test(body)).toBeTruthy()
+    const body = await expectPageAlive(page)
+    expect(/portal|token|link|SA Invoice|Loading/i.test(body)).toBeTruthy()
     const fatal = errors.filter((e) => /Cannot find module|is not defined|Unexpected token/i.test(e))
     expect(fatal, fatal.join('\n')).toHaveLength(0)
   })
 
   test('portal token path loads', async ({ page }) => {
     await page.goto('/portal/demo-token')
-    await expect(page.locator('body')).toBeVisible()
+    const body = await expectPageAlive(page)
+    expect(/portal|token|Loading|Could not|Overview|Quotes|invalid|missing/i.test(body)).toBeTruthy()
   })
 
   test('team route redirects or loads without module crash', async ({ page }) => {

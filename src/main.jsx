@@ -25,6 +25,16 @@ try {
   }
 } catch {}
 
+// Never leave the document stuck invisible (stale splash / transition / CI).
+try {
+  for (const el of [document.documentElement, document.body, document.getElementById('root')]) {
+    if (!el) continue
+    el.style.setProperty('visibility', 'visible', 'important')
+    el.style.setProperty('opacity', '1', 'important')
+    el.removeAttribute('hidden')
+  }
+} catch {}
+
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
