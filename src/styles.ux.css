@@ -349,3 +349,6 @@ html:not(.nav-bottom) .drawer-backdrop { display: none !important; }
 
 .roadmap-gates{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:18px}.roadmap-gate{display:flex;flex-direction:column;gap:7px;min-width:0;padding:13px;border:1px solid var(--border,#dbe2ea);border-radius:12px;background:var(--card,#fff)}.roadmap-gate-count{font-size:21px;font-weight:900;letter-spacing:-.03em}.roadmap-gate strong{font-size:12px}.roadmap-gate p{font-size:11px;line-height:1.5;color:var(--muted,#64748b);margin:0}.roadmap-note{font-size:11px;margin:14px 0 0}.roadmap-item-detail{align-items:flex-start}.roadmap-item-detail .roadmap-item-copy{padding-top:2px}.roadmap-item-detail .roadmap-item-copy span{line-height:1.5}.roadmap-state.committed{background:#dbeafe;color:#1d4ed8}.roadmap-state.in-progress{background:#fff7ed;color:#9a3412}
 @media(max-width:760px){.roadmap-gates{grid-template-columns:repeat(2,minmax(0,1fr))}.roadmap-item-detail{flex-wrap:wrap}.roadmap-item-detail .roadmap-item-copy{min-width:calc(100% - 58px)}.roadmap-item-detail>.roadmap-state{margin-left:50px}}
+
+/* Keep the seat and sync controls in the top bar on mobile, not beside page titles. */
+@media(max-width:860px){.desktop-only.header-actions{display:none!important}}
