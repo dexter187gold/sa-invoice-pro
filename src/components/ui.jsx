@@ -81,7 +81,7 @@ export function Toolbar({ children }) {
 
 export function StatCard({ label, value, hint, tone }) {
   return (
-    <div className={`card stat ${tone ? `stat-${tone}` : ''`}>
+    <div className={`card stat ${tone ? `stat-${tone}` : ''}`}>
       <div className="label">{label}</div>
       <div className="value">{value}</div>
       {hint ? <div className="stat-hint muted">{hint}</div> : null}
