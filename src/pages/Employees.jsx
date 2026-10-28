@@ -11,6 +11,7 @@ import {
 
 const empty = {
   name: '',
+  employeeNumber: '',
   idNumber: '',
   taxNumber: '',
   role: '',
@@ -19,6 +20,19 @@ const empty = {
   otherAllowance: '',
   uif: true,
   email: '',
+  address: '',
+  employmentStart: '',
+  payFrequency: 'Monthly',
+  paymentMethod: 'EFT',
+  ordinaryHoursWorked: '',
+  overtimeHoursWorked: '',
+  sundayHoursWorked: '',
+  publicHolidayHoursWorked: '',
+  hourlyRate: '',
+  pensionEmployee: '',
+  medicalAidEmployee: '',
+  unionFees: '',
+  otherDeductions: '',
   etiMonth: '0',
 }
 
@@ -61,9 +75,15 @@ export default function Employees() {
     await db.add(STORES.employees, {
       ...form,
       name: form.name.trim(),
+      employeeNumber: form.employeeNumber.trim(),
       salary: Number(form.salary) || 0,
       transportAllowance: Number(form.transportAllowance) || 0,
       otherAllowance: Number(form.otherAllowance) || 0,
+      pensionEmployee: Number(form.pensionEmployee) || 0,
+      medicalAidEmployee: Number(form.medicalAidEmployee) || 0,
+      unionFees: Number(form.unionFees) || 0,
+      otherDeductions: Number(form.otherDeductions) || 0,
+      hourlyRate: Number(form.hourlyRate) || 0,
       uif: !!form.uif,
       etiMonth: Number(form.etiMonth) || 0,
       age: age ?? undefined,
@@ -137,6 +157,10 @@ export default function Employees() {
             <input className="input focus-ring" placeholder="Full name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required autoFocus />
           </div>
           <div>
+            <label className="label">Employee / payroll number</label>
+            <input className="input" value={form.employeeNumber} onChange={(e) => setForm({ ...form, employeeNumber: e.target.value })} placeholder="e.g. EMP-001" />
+          </div>
+          <div>
             <label className="label">ID / passport</label>
             <input className="input" placeholder="13-digit SA ID validated" value={form.idNumber} onChange={(e) => setForm({ ...form, idNumber: e.target.value })} />
           </div>
@@ -163,6 +187,62 @@ export default function Employees() {
           <div>
             <label className="label">Email</label>
             <input className="input" type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Residential address</label>
+            <input className="input" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Employee address" />
+          </div>
+          <div>
+            <label className="label">Employment start date</label>
+            <input className="input" type="date" value={form.employmentStart} onChange={(e) => setForm({ ...form, employmentStart: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Pay frequency</label>
+            <select className="input" value={form.payFrequency} onChange={(e) => setForm({ ...form, payFrequency: e.target.value })}>
+              <option>Monthly</option><option>Fortnightly</option><option>Weekly</option><option>Hourly</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">Payment method</label>
+            <select className="input" value={form.paymentMethod} onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}>
+              <option>EFT</option><option>Cash</option><option>Cheque</option><option>Other</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">Ordinary hours worked (period)</label>
+            <input className="input" type="number" min="0" step="0.25" value={form.ordinaryHoursWorked} onChange={(e) => setForm({ ...form, ordinaryHoursWorked: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Overtime hours worked (period)</label>
+            <input className="input" type="number" min="0" step="0.25" value={form.overtimeHoursWorked} onChange={(e) => setForm({ ...form, overtimeHoursWorked: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Sunday hours worked (period)</label>
+            <input className="input" type="number" min="0" step="0.25" value={form.sundayHoursWorked} onChange={(e) => setForm({ ...form, sundayHoursWorked: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Public holiday hours worked (period)</label>
+            <input className="input" type="number" min="0" step="0.25" value={form.publicHolidayHoursWorked} onChange={(e) => setForm({ ...form, publicHolidayHoursWorked: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Hourly pay rate (ZAR)</label>
+            <input className="input" type="number" min="0" step="0.01" value={form.hourlyRate} onChange={(e) => setForm({ ...form, hourlyRate: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Pension / provident deduction (ZAR)</label>
+            <input className="input" type="number" min="0" step="0.01" value={form.pensionEmployee} onChange={(e) => setForm({ ...form, pensionEmployee: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Medical aid employee contribution (ZAR)</label>
+            <input className="input" type="number" min="0" step="0.01" value={form.medicalAidEmployee} onChange={(e) => setForm({ ...form, medicalAidEmployee: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Union / bargaining council fees (ZAR)</label>
+            <input className="input" type="number" min="0" step="0.01" value={form.unionFees} onChange={(e) => setForm({ ...form, unionFees: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Other authorised deductions (ZAR)</label>
+            <input className="input" type="number" min="0" step="0.01" value={form.otherDeductions} onChange={(e) => setForm({ ...form, otherDeductions: e.target.value })} />
           </div>
           <div>
             <label className="label">ETI months claimed (0–24)</label>
