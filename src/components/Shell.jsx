@@ -423,15 +423,13 @@ export default function Shell({ children }) {
             </div>
             <button
               type="button"
-              className={`bnav bottom-nav-fixed ${forceRoot && moreOpen ? 'on' : ''}`}
-              onClick={(e) => onBottomClick(forceRoot
-                ? { to: '__more__', label: 'More', icon: '☰', isMore: true }
-                : { to: '__root__', label: 'Main', icon: '⌂', isRoot: true }, e)}
-              aria-label={forceRoot ? 'Open command centre' : 'Show main navigation'}
-              aria-expanded={forceRoot ? commandOpen : false}
+              className={`bnav bottom-nav-fixed ${commandOpen ? 'on' : ''}`}
+              onClick={() => { setCommandOpen((v) => !v); setMoreOpen(false) }}
+              aria-label={commandOpen ? 'Close command centre' : 'Open command centre'}
+              aria-expanded={commandOpen}
             >
-              <span className="ico" aria-hidden>{forceRoot ? '▦' : '⌂'}</span>
-              {forceRoot ? 'More' : 'Main'}
+              <span className="ico" aria-hidden>▦</span>
+              More
             </button>
           </nav>
 
