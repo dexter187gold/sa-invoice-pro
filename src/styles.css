@@ -605,3 +605,10 @@ html.dark .btn-danger { border-color: rgba(185, 28, 28, 0.35); }
 .it-doc-table .it-doc-template-category{max-width:180px}
 .it-doc-actions{grid-template-columns:1fr 1fr}
 @media(max-width:600px){.settings-page .page-header{align-items:flex-start}.settings-tabs-scroll{margin-right:-.25rem}.it-doc-table-wrap{border-radius:8px}.it-doc-table th,.it-doc-table td{padding:.65rem .55rem}}
+
+.settings-control-card{max-width:900px}
+.settings-shortcut-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.85rem 0;border-top:1px solid var(--border)}
+.settings-shortcut-row>div{display:flex;flex-direction:column;gap:.2rem;min-width:0}
+.settings-shortcut-row strong{font-size:.82rem}
+.settings-shortcut-row span{font-size:.74rem;line-height:1.5;color:var(--muted)}
+@media(max-width:520px){.settings-shortcut-row{align-items:flex-start;flex-direction:column}.settings-shortcut-row .btn{align-self:flex-start}}
