@@ -4,6 +4,7 @@
  */
 export function analyzeFinancialIntegrity({ invoices = [], payments = [], bankTxns = [], journal = [] } = {}) {
   const findings = []
+  const repairCandidates = []
   const invoiceById = new Map((invoices || []).map((row) => [String(row.id), row]))
   const paymentSums = new Map()
   const paymentsByInvoice = new Map()
@@ -26,6 +27,11 @@ export function analyzeFinancialIntegrity({ invoices = [], payments = [], bankTx
     const due = Number(invoice.amountDue)
     const linkedPaid = paymentSums.get(id) || 0
     const knownPaid = Number.isFinite(Number(invoice.amountPaid)) ? Number(invoice.amountPaid) : linkedPaid
+    const linkedPaymentIds = (payments || []).filter((p) => String(p.invoiceId) === id && Number(p.amount) > 0).map((p) => p.id).filter((pid) => pid != null)
+    const linkedEvidenceComplete = linkedPaymentIds.length > 0 && Math.abs(linkedPaid - total) <= 0.01
+    if (String(invoice.status || '').toLowerCase() === 'paid' && (due > 0.01 || knownPaid + 0.01 < total) && linkedEvidenceComplete) {
+      repairCandidates.push({ invoiceId: invoice.id, invoiceNumber: invoice.number || String(invoice.id), total, linkedPaid, paymentIds: linkedPaymentIds })
+    }
     if (String(invoice.status || '').toLowerCase() === 'paid' && (due > 0.01 || knownPaid + 0.01 < total)) {
       findings.push({
         severity: 'high', code: 'paid_invoice_balance_mismatch', recordId: invoice.id,
@@ -86,6 +92,7 @@ export function analyzeFinancialIntegrity({ invoices = [], payments = [], bankTx
   return {
     scanned: { invoices: invoices.length, payments: payments.length, bankTransactions: bankTxns.length, journalEntries: journal.length },
     findings,
+    repairCandidates,
     counts: {
       high: findings.filter((f) => f.severity === 'high').length,
       review: findings.filter((f) => f.severity === 'review').length,
