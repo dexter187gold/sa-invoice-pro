@@ -280,19 +280,18 @@ export default function Shell({ children }) {
     <>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <AppAssistant />
-      <QuickActions open={commandOpen} onOpenChange={setCommandOpen} hideTrigger={true} />
+      <QuickActions open={commandOpen} onOpenChange={setCommandOpen} hideTrigger={true} sections={sections} />
 
       <div className="mobile-bar">
         <button
           type="button"
           className="btn btn-outline btn-sm"
-          onClick={() => {
-            if (useBottom) setMoreOpen(true)
-            else setOpen(true)
-          }}
-          aria-label="Open menu"
+          onClick={() => { setCommandOpen((v) => !v); setOpen(false); setMoreOpen(false) }}
+          aria-label={commandOpen ? 'Close command centre' : 'Open command centre'}
+          aria-expanded={commandOpen}
+          title="Menu and command centre"
         >
-          Menu
+          {commandOpen ? 'Close' : 'Menu'}
         </button>
         <AppLogo size={28} />
         <strong style={{ fontSize: 13, letterSpacing: '-0.02em', flex: 1 }}>{brandLabel}</strong>
@@ -430,7 +429,7 @@ export default function Shell({ children }) {
               aria-expanded={commandOpen}
             >
               <span className="ico" aria-hidden>▦</span>
-              More
+              {commandOpen ? "Close" : "Command"}
             </button>
           </nav>
 
