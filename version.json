@@ -1,5 +1,5 @@
 {
-  "version": "6.36.0",
-  "codename": "WhatsApp responder helpers",
-  "message": "Pure helpers for suggested ZA-tone WhatsApp replies on jobs, invoices and quotes. wa.me links ready. Advances P7 messaging."
+  "version": "6.37.0",
+  "codename": "Command Centre and WhatsApp quick replies",
+  "message": "Restore single-toggle Command Centre navigation and align release metadata for reliable CI builds."
 }
