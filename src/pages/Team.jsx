@@ -106,9 +106,41 @@ export default function Team() {
           {cloudTeam?.error && <p role="alert" className="muted">{cloudTeam.error}</p>}
           {cloudTeam?.owner && <p className="muted" style={{ fontSize: 12 }}>Workspace owner: {cloudTeam.owner.email} · {cloudTeam.isOwner ? 'You can invite members' : 'Only the owner can invite members'}</p>}
           {cloudTeam?.members?.length > 0 && <div className="stack" style={{ gap: 6, marginBottom: 12 }}>
-            {cloudTeam.members.map((member) => <div key={member.id} style={{ display: 'flex', gap: 8, justifyContent: 'space-between', flexWrap: 'wrap', padding: 8, border: '1px solid var(--border, #d1d5db)', borderRadius: 8 }}>
+            {cloudTeam.members.map((member) => <div key={member.id} style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', padding: 8, border: '1px solid var(--border, #d1d5db)', borderRadius: 8 }}>
               <span><strong>{member.name || member.email}</strong><br /><span className="muted" style={{ fontSize: 12 }}>{member.email}</span></span>
-              <span className="chip">{member.role || 'member'}{member.isOwner ? ' · owner' : ''}</span>
+              {cloudTeam.isOwner && !member.isOwner ? (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                  <span className="muted">Role</span>
+                  <select
+                    className="input"
+                    aria-label={`Role for ${member.email}`}
+                    value={member.role || 'member'}
+                    disabled={cloudBusy}
+                    style={{ minWidth: 130 }}
+                    onChange={async (e) => {
+                      const role = e.target.value
+                      if (!role || !window.confirm(`Change ${member.email}'s role to ${role.replace('_', ' ')}?`)) {
+                        await reloadCloudTeam()
+                        return
+                      }
+                      setCloudBusy(true)
+                      try {
+                        await Sync.updateTeamMemberRole(member.id, role)
+                        await reloadCloudTeam()
+                        toast('Team member role updated', 'success')
+                      } catch (err) {
+                        await reloadCloudTeam()
+                        toast(err?.message || 'Could not update team role', 'error')
+                      } finally {
+                        setCloudBusy(false)
+                      }
+                    }}
+                  >
+                    {!ROLES.some((r) => r.id === member.role) && <option value={member.role || 'member'}>{member.role || 'member'} (legacy)</option>}
+                    {ROLES.filter((r) => r.id !== 'owner').map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+                  </select>
+                </label>
+              ) : <span className="chip">{member.role || 'member'}{member.isOwner ? ' · owner' : ''}</span>}
             </div>)}
           </div>}
           {cloudTeam?.isOwner && <div className="form-grid cols-2">

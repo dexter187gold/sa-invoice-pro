@@ -246,6 +246,10 @@ export const Sync = {
   async leaveTeam() {
     return request('/api/team/leave', { method: 'POST', body: JSON.stringify({}) })
   },
+  async updateTeamMemberRole(userId, role) {
+    return request('/api/team/member-role', { method: 'POST', body: JSON.stringify({ userId, role }) })
+  },
+
   async removeTeamMember(userId) {
     return request('/api/team/remove', { method: 'POST', body: JSON.stringify({ userId }) })
   },
