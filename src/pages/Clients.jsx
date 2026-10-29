@@ -12,6 +12,7 @@ import {
   SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, ActionMenu, DataTable,
 } from '../components/ui'
 import PortalCard from '../components/PortalCard'
+import { CUSTOMER_ACCOUNT_CATEGORIES, CUSTOMER_PAYMENT_TERMS } from '../lib/customerCategories'
 import {
   CLIENT_TAG_PRESETS, normalizeTags, filterClientsByTag, toggleClientTag, clientHasTag,
 } from '../lib/clientTags'
@@ -45,7 +46,10 @@ export default function Clients() {
       phone: form.phone || '',
       company: form.company || '',
       notes: form.notes || '',
-      tags: normalizeTags(form.tags),\n      accountCategory: form.accountCategory || 'individual',\n      paymentTerms: form.paymentTerms || 'Due on receipt',\n      creditLimit: Math.max(0, Number(form.creditLimit) || 0),
+      tags: normalizeTags(form.tags),
+      accountCategory: form.accountCategory || 'individual',
+      paymentTerms: form.paymentTerms || 'Due on receipt',
+      creditLimit: Math.max(0, Number(form.creditLimit) || 0),
     })
     setForm({ name: '', email: '', phone: '', company: '', notes: '', tags: [], accountCategory: 'individual', paymentTerms: 'Due on receipt', creditLimit: '' })
     await refresh()
@@ -128,7 +132,10 @@ export default function Clients() {
         portalUrl: data.portalUrl,
         loginHint: data.loginHint,
       })
-      const msg = `Portal login\n${data.email}\nPIN: ${data.pin}\n${data.portalUrl || ''}`
+      const msg = `Portal login
+${data.email}
+PIN: ${data.pin}
+${data.portalUrl || ''}`
       try {
         await navigator.clipboard.writeText(msg)
         toast('Portal login created & copied', 'success')
@@ -202,7 +209,10 @@ export default function Clients() {
           </div>
           <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button type="button" className="btn btn-outline btn-sm" onClick={() => {
-              const msg = `Portal login\n${portalCreds.email}\nPIN: ${portalCreds.pin}\n${portalCreds.portalUrl || ''}`
+              const msg = `Portal login
+${portalCreds.email}
+PIN: ${portalCreds.pin}
+${portalCreds.portalUrl || ''}`
               navigator.clipboard?.writeText(msg)
               toast('Copied', 'success')
             }}>Copy again</button>
@@ -270,7 +280,9 @@ export default function Clients() {
               <th>Name</th>
               <th>Email</th>
               <th>Phone</th>
-              <th>Account category</th>\n              <th>Payment terms</th>\n              <th>Tags</th>
+              <th>Account category</th>
+              <th>Payment terms</th>
+              <th>Tags</th>
               <th />
             </tr>
           </thead>
