@@ -305,6 +305,56 @@ export default function BankImport() {
     } finally { setBusy(false) }
   }
 
+  const createDraftInvoicesFromCredits = async () => {
+    const credits = txns.filter((t) => Number(t.amount) > 0 && !matches.some((m) => m.txn?.id === t.id && m.invoice))
+    const candidates = credits.map((txn) => {
+      const hay = (String(txn.description || '') + ' ' + String(txn.reference || '')).toLowerCase()
+      const hits = clients.filter((client) => {
+        const name = String(client.name || '').trim().toLowerCase()
+        return name.length > 2 && hay.includes(name)
+      })
+      return { txn, client: hits.length === 1 ? hits[0] : null }
+    }).filter((x) => x.client)
+    if (!candidates.length) return toast('No unmatched income lines clearly identify exactly one existing client. Review descriptions or match them to invoices instead.', 'info')
+    const approved = window.confirm('Create ' + candidates.length + ' DRAFT invoice(s) for unmatched credits that clearly name one existing client? These will remain unpaid drafts for review and will not be marked paid.')
+    if (!approved) return
+    setBusy(true)
+    try {
+      const allInvoices = await db.getAll(STORES.invoices)
+      let created = 0
+      for (const { txn, client } of candidates) {
+        const fp = [String(txn.date || '').slice(0, 10), Number(txn.amount).toFixed(2), String(txn.description || '').trim().toLowerCase(), String(txn.reference || '').trim().toLowerCase()].join('|')
+        if (allInvoices.some((i) => i.bankTxnFingerprint === fp)) continue
+        const number = 'DRAFT-BANK-' + String(txn.date || new Date().toISOString().slice(0, 10)).replace(/-/g, '') + '-' + String(created + 1).padStart(3, '0')
+        const amount = Number(txn.amount)
+        await db.add(STORES.invoices, {
+          clientId: client.id,
+          number,
+          date: txn.date,
+          dueDate: txn.date,
+          status: 'unpaid',
+          notes: 'Draft created from imported bank statement. Verify goods/services and tax treatment before issuing.',
+          templateId: 'standard',
+          lines: [{ description: String(txn.description || 'Bank credit').slice(0, 250), qty: 1, price: amount }],
+          exclusive: amount,
+          vatAmount: 0,
+          total: amount,
+          amountPaid: 0,
+          amountDue: amount,
+          source: 'bank-statement-draft',
+          bankTxnFingerprint: fp,
+          needsReview: true,
+          updatedAt: new Date().toISOString(),
+        })
+        created++
+      }
+      await refresh()
+      toast('Created ' + created + ' review-only draft invoice(s). Confirm the actual sale and VAT before issuing.', created ? 'success' : 'info')
+    } catch (err) {
+      toast(err.message || 'Could not create draft invoices', 'error')
+    } finally { setBusy(false) }
+  }
+
   const resolveInvoice = (row, idx) => {
     const key = row.txn?.id || String(idx)
     const mid = manualPick[key]
@@ -445,6 +495,9 @@ export default function BankImport() {
             <div><button type="button" className="btn btn-primary" disabled={busy} onClick={saveStatementToBooks}>{busy ? 'Saving…' : 'Import transactions into books'}</button>
             <button type="button" className="btn btn-secondary" onClick={createAllExpenses} disabled={busy || !txns.some((t) => Number(t.amount) < 0)}>
               Create all expenses
+            </button>
+            <button type="button" className="btn btn-outline" onClick={createDraftInvoicesFromCredits} disabled={busy || !txns.some((t) => Number(t.amount) > 0)}>
+              Draft invoices from identifiable income
             </button></div>
             <p className="muted" style={{ fontSize: 11, margin: 0 }}>Importing statements only saves bank lines for review; it does not change invoice statuses. Matching is a suggestion. Apply a payment one transaction at a time after reviewing and confirming the invoice, amount and customer.</p>
           </div>
