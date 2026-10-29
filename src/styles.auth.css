@@ -1,0 +1,83 @@
+/* SA Invoice Pro — modern branded authentication experience */
+.auth-page {
+  position: relative;
+  isolation: isolate;
+  min-height: 100svh;
+  padding: clamp(16px, 3vw, 36px);
+  display: grid;
+  place-items: center;
+  overflow-x: hidden;
+  background:
+    radial-gradient(ellipse at 12% 12%, rgba(16,185,129,.18), transparent 38%),
+    radial-gradient(ellipse at 92% 88%, rgba(0,122,77,.15), transparent 36%),
+    linear-gradient(145deg, #071a14 0%, #0b2e22 48%, #073b2a 100%);
+}
+.auth-page::before,.auth-page::after{content:"";position:absolute;z-index:-1;border:1px solid rgba(167,243,208,.11);border-radius:50%;pointer-events:none}
+.auth-page::before{width:min(76vw,760px);aspect-ratio:1;top:-38%;right:-22%}
+.auth-page::after{width:min(58vw,560px);aspect-ratio:1;bottom:-34%;left:-18%}
+.auth-card-modern {
+  width:min(100%, 500px);
+  max-height:calc(100svh - 32px);
+  overflow-y:auto;
+  padding:clamp(22px,4vw,36px);
+  border:1px solid rgba(255,255,255,.72);
+  border-radius:22px;
+  background:rgba(255,255,255,.97);
+  box-shadow:0 28px 90px rgba(0,0,0,.32),0 4px 14px rgba(0,0,0,.12);
+  color:#10251c;
+  backdrop-filter:blur(18px);
+}
+.auth-card-modern h1{font-size:1.35rem!important;letter-spacing:-.045em!important;color:#0d3324}
+.auth-card-modern>.muted{color:#64766d}
+.auth-card-modern .card{box-shadow:none}
+.auth-card-modern .tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding:5px;background:#eef5f0;border:1px solid #e1ebe4;border-radius:12px;margin:18px 0 12px}
+.auth-card-modern .tab{border:0;border-radius:8px;padding:10px 6px;color:#52645a;font-size:.82rem;background:transparent}
+.auth-card-modern .tab.active{background:#08794e;color:white;box-shadow:0 2px 7px rgba(0,80,48,.2)}
+.auth-card-modern .input{min-height:46px;border-color:#d8e3dc;background:#fff;border-radius:9px;color:#10251c}
+.auth-card-modern .input:focus{border-color:#078452;box-shadow:0 0 0 3px rgba(0,122,77,.12)}
+.auth-card-modern .label{color:#41564a;font-size:.76rem}
+.auth-card-modern .btn-primary{min-height:46px;border-radius:9px;background:linear-gradient(135deg,#078452,#005c3a);box-shadow:0 6px 16px rgba(0,105,65,.18)}
+.auth-card-modern .btn-outline{border-color:#d5e1d9;color:#214a36}
+.auth-card-modern .btn:not(.tab){border-radius:9px}
+.auth-card-modern section.card{background:#f7faf8;border-color:#e5eee8;border-radius:12px}
+.auth-card-modern a{color:#08794e}
+.login-splash{
+ position:fixed;inset:0;z-index:2000;display:grid;place-items:center;padding:24px;
+ background:radial-gradient(ellipse at 50% 42%,rgba(16,185,129,.24),transparent 42%),linear-gradient(145deg,#061a13,#064b34 72%,#08794e);
+ opacity:1;transition:opacity .48s ease,visibility .48s ease
+}
+.login-splash.fade-out{opacity:0;visibility:hidden;pointer-events:none}
+.login-splash-inner{width:min(100%,460px);text-align:center;color:#fff;animation:sa-auth-rise .65s cubic-bezier(.2,.8,.2,1) both}
+.login-splash-inner>div:first-child{display:grid;place-items:center;margin:0 auto 22px;width:116px;height:116px;border:1px solid rgba(209,250,229,.32);border-radius:28px;background:rgba(255,255,255,.08);box-shadow:0 20px 60px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.15)}
+.login-splash-title{font-size:clamp(1.4rem,4vw,2rem);font-weight:850;letter-spacing:.08em;color:#fff}
+.login-splash-inner p{color:#cde9d9!important}
+.login-splash-inner p:last-of-type{display:none}
+.login-splash-bar{width:170px;height:3px;margin:28px auto 0;background:rgba(255,255,255,.2);border-radius:9px;overflow:hidden}
+.login-splash-bar span{display:block;width:42%;height:100%;border-radius:9px;background:#a7f3d0;animation:sa-auth-progress 2.4s ease-in-out infinite}
+@keyframes sa-auth-rise{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes sa-auth-progress{0%{transform:translateX(-110%)}100%{transform:translateX(260%)}}
+@media(max-width:560px){
+ .auth-page{padding:12px;place-items:center}
+ .auth-card-modern{max-height:calc(100svh - 24px);padding:22px 18px;border-radius:18px}
+ .auth-card-modern .tabs{gap:3px}
+ .auth-card-modern .tab{font-size:.75rem;padding:9px 3px}
+}
+@media(prefers-reduced-motion:reduce){.login-splash-inner,.login-splash-bar span{animation:none}.login-splash{transition:none}}
+
+.auth-layout{width:min(100%,1080px);display:grid;grid-template-columns:minmax(0,1fr) minmax(390px,500px);align-items:stretch;gap:clamp(24px,5vw,64px);position:relative;z-index:1}
+.auth-brand-panel{display:flex;flex-direction:column;justify-content:space-between;min-height:650px;padding:clamp(24px,4vw,54px) 0;color:#ecfdf5}
+.auth-brand-lockup{display:flex;align-items:center;gap:14px}
+.auth-brand-lockup>div:first-child{width:70px;height:70px;display:grid;place-items:center;border:1px solid rgba(209,250,229,.28);border-radius:18px;background:rgba(255,255,255,.08)}
+.auth-brand-lockup>div:last-child{display:flex;flex-direction:column;gap:3px}
+.auth-brand-lockup strong{font-size:1.08rem;letter-spacing:.08em;color:white}
+.auth-brand-lockup span,.auth-brand-foot,.auth-eyebrow{font-size:.65rem;font-weight:800;letter-spacing:.15em;color:#a7f3d0}
+.auth-brand-copy{max-width:510px;margin:60px 0}
+.auth-brand-copy h2{max-width:480px;margin:14px 0;font-size:clamp(2.4rem,5vw,4.2rem);line-height:1.03;letter-spacing:-.06em;color:#fff}
+.auth-brand-copy p{max-width:460px;font-size:1rem;line-height:1.8;color:#cde9d9}
+.auth-feature-list{display:grid;gap:13px;margin-top:32px}
+.auth-feature-list span{display:flex;align-items:center;gap:12px;font-size:.9rem;color:#e4f7eb}
+.auth-feature-list i{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:rgba(167,243,208,.15);color:#a7f3d0;font-style:normal;font-weight:900}
+.auth-brand-foot{color:rgba(209,250,229,.72)}
+.auth-layout .auth-card-modern{align-self:center;width:100%;max-height:calc(100svh - 48px)}
+@media(max-width:900px){.auth-layout{grid-template-columns:minmax(0,500px);justify-content:center}.auth-brand-panel{display:none}}
+@media(max-width:560px){.auth-layout{width:100%;}.auth-layout .auth-card-modern{max-height:calc(100svh - 24px)}}

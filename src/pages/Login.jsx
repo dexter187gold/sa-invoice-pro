@@ -107,7 +107,7 @@ export default function Login() {
     try {
       if (mode === 'in') {
         await login(form.username || form.email, form.password)
-        toast('Welcome back to the lab', 'success')
+        toast('Welcome back', 'success')
         await refresh?.()
         const co = await db.getCompany()
         nav(co?.name ? '/' : '/setup', { replace: true })
@@ -180,16 +180,31 @@ export default function Login() {
           <div className="login-splash-inner">
             <AppLogo size={104} />
             <div className="login-splash-title">SA INVOICE PRO</div>
-            <p className="muted" style={{ color: 'rgba(240,230,255,0.85)', margin: '0.35rem 0 0' }}>Invoices · Job cards · Payroll · Accounting · SA</p>
-            <p className="muted" style={{ color: 'rgba(232,121,249,0.75)', margin: '0.35rem 0 0', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Pinky & the Brain · Lab Edition</p>
+            <p className="muted" style={{ color: 'rgba(220,252,231,0.9)', margin: '0.35rem 0 0' }}>Professional invoicing, payments & business management</p>
+            <p className="muted" style={{ color: 'rgba(167,243,208,0.85)', margin: '0.35rem 0 0', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>SOUTH AFRICAN BUSINESS WORKSPACE</p>
             <div className="login-splash-bar" aria-hidden><span /></div>
           </div>
         </div>
       )}
-      <div className="card auth-card auth-card-modern">
+      <div className="auth-layout">
+        <aside className="auth-brand-panel">
+          <div className="auth-brand-lockup"><AppLogo size={58} /><div><strong>SA INVOICE PRO</strong><span>BUSINESS MANAGEMENT SUITE</span></div></div>
+          <div className="auth-brand-copy">
+            <span className="auth-eyebrow">ONE WORKSPACE. COMPLETE CONTROL.</span>
+            <h2>Run your business with confidence.</h2>
+            <p>Professional tools for South African businesses — from quotes and invoices to payments, accounting, payroll and customer management.</p>
+            <div className="auth-feature-list">
+              <span><i>✓</i> Invoicing & customer accounts</span>
+              <span><i>✓</i> Payments & bank reconciliation</span>
+              <span><i>✓</i> Accounting, expenses & payroll</span>
+            </div>
+          </div>
+          <div className="auth-brand-foot">SECURE · OFFLINE-READY · BUILT FOR SOUTH AFRICA</div>
+        </aside>
+        <div className="card auth-card auth-card-modern">
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}><AppLogo size={72} /></div>
         <h1 style={{ margin: '0 0 .25rem', textAlign: 'center', fontSize: '1.35rem', letterSpacing: '0.06em' }}>SA INVOICE PRO</h1>
-        <p className="muted" style={{ textAlign: 'center', marginTop: 0 }}>Lab · offline-first · South Africa · v{APP_VERSION}</p>
+        <p className="muted" style={{ textAlign: 'center', marginTop: 0 }}>Secure business workspace · South Africa · v{APP_VERSION}</p>
         {profileCount === 0 && mode !== 'forgot' && (
           <p className="muted" style={{ textAlign: 'center', fontSize: 13, marginTop: 0 }}>No local profiles on this device yet. Create an account or import a backup below.</p>
         )}
@@ -258,7 +273,7 @@ export default function Login() {
                 {busy ? 'Requesting…' : 'Get recovery code'}
               </button>
               {shownCode ? (
-                <p style={{ margin: 0, padding: '10px 12px', background: 'rgba(232,121,249,.15)', borderRadius: 8, fontFamily: 'monospace', fontSize: 22, letterSpacing: '0.2em', textAlign: 'center' }}>
+                <p style={{ margin: 0, padding: '10px 12px', background: 'rgba(0,122,77,.10)', borderRadius: 8, fontFamily: 'monospace', fontSize: 22, letterSpacing: '0.2em', textAlign: 'center' }}>
                   {shownCode}
                 </p>
               ) : null}
@@ -287,7 +302,7 @@ export default function Login() {
               )}
               <label className="stack" style={{ gap: 4 }}><span className="muted" style={{ fontSize: 12 }}>Password</span>
                 <input className="input" type="password" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} autoComplete={mode === 'in' ? 'current-password' : 'new-password'} /></label>
-              <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Please wait…' : mode === 'in' ? 'Enter the lab' : 'Create account'}</button>
+              <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Please wait…' : mode === 'in' ? 'Sign in securely' : 'Create account'}</button>
               {mode === 'in' && (
                 <>
                   <p className="muted" style={{ textAlign: 'center', margin: '4px 0 0', fontSize: 12 }}>or</p>
@@ -308,13 +323,14 @@ export default function Login() {
         </form>
         {mode === 'in' && (
           <p style={{ textAlign: 'center', marginTop: 10, fontSize: 13 }}>
-            <button type="button" style={{ background: 'none', border: 0, color: '#e879f9', cursor: 'pointer' }} onClick={() => setMode('forgot')}>Forgot password?</button>
+            <button type="button" style={{ background: 'none', border: 0, color: 'var(--green)', cursor: 'pointer' }} onClick={() => setMode('forgot')}>Forgot password?</button>
           </p>
         )}
-        <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid rgba(232,121,249,.2)' }}>
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid rgba(0,122,77,.18)' }}>
           <p className="muted" style={{ fontSize: 12, margin: '0 0 8px', textAlign: 'center' }}>Moving from another phone/browser? Import your JSON backup here (works before sign-in).</p>
           <input ref={fileRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={onImportBackup} />
           <button type="button" className="btn" style={{ width: '100%' }} disabled={busy} onClick={() => fileRef.current?.click()}>Import backup JSON</button>
+        </div>
         </div>
       </div>
     </div>

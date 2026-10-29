@@ -94,7 +94,7 @@ export async function seedIndexedDbCompany(page) {
   await page.evaluate(async () => {
     const company = { id: 'main', name: 'E2E Repair Bench', email: 'bench@test.local' }
     await new Promise((resolve, reject) => {
-      const req = indexedDB.open('SAInvoicePro_v2', 3)
+      const req = indexedDB.open('SAInvoicePro_v2', 4)
       req.onerror = () => reject(req.error)
       req.onupgradeneeded = (e) => {
         const d = e.target.result
@@ -103,7 +103,7 @@ export async function seedIndexedDbCompany(page) {
           invoices: 'id', quotes: 'id', tickets: 'id', ticketComments: 'id',
           timeEntries: 'id', expenses: 'id', payments: 'id', employees: 'id',
           payslips: 'id', bankTxns: 'id', journal: 'id', accounts: 'id',
-          reconciliations: 'id', popiaRequests: 'id', documentTemplates: 'id',
+          reconciliations: 'id', pettyCash: 'id', popiaRequests: 'id', documentTemplates: 'id',
           documentRenders: 'id', reminders: 'id', settings: 'key',
         }
         for (const [name, keyPath] of Object.entries(stores)) {

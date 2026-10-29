@@ -12,6 +12,7 @@ import {
   SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, ActionMenu, DataTable,
 } from '../components/ui'
 import PortalCard from '../components/PortalCard'
+import { CUSTOMER_ACCOUNT_CATEGORIES, CUSTOMER_PAYMENT_TERMS } from '../lib/customerCategories'
 import {
   CLIENT_TAG_PRESETS, normalizeTags, filterClientsByTag, toggleClientTag, clientHasTag,
 } from '../lib/clientTags'
@@ -20,21 +21,23 @@ export default function Clients() {
   const { clients, invoices, payments, quotes, tickets, products, services, expenses, company, refresh, toast } = useApp()
   const [q, setQ] = useState('')
   const [tagFilter, setTagFilter] = useState('all')
+  const [categoryFilter, setCategoryFilter] = useState('all')
   const [confirm, setConfirm] = useState(null)
   const [portalBusyId, setPortalBusyId] = useState(null)
   const [portalCreds, setPortalCreds] = useState(null)
   const [lastPortal, setLastPortal] = useState(null)
-  const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', notes: '', tags: [] })
+  const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', notes: '', tags: [], accountCategory: 'individual', paymentTerms: 'Due on receipt', creditLimit: '' })
 
   const filtered = useMemo(() => {
     let rows = filterClientsByTag(clients, tagFilter)
+    if (categoryFilter !== 'all') rows = rows.filter((client) => (client.accountCategory || 'individual') === categoryFilter)
     rows = rows.filter((c) => matchesQuery(
       { ...c, tagsJoined: normalizeTags(c.tags).join(' ') },
       q,
-      ['name', 'email', 'phone', 'company', 'notes', 'tagsJoined'],
+      ['name', 'email', 'phone', 'company', 'notes', 'tagsJoined', 'accountCategory', 'paymentTerms'],
     ))
     return rows
-  }, [clients, q, tagFilter])
+  }, [clients, q, tagFilter, categoryFilter])
 
   const save = async (e) => {
     e.preventDefault()
@@ -46,8 +49,11 @@ export default function Clients() {
       company: form.company || '',
       notes: form.notes || '',
       tags: normalizeTags(form.tags),
+      accountCategory: form.accountCategory || 'individual',
+      paymentTerms: form.paymentTerms || 'Due on receipt',
+      creditLimit: Math.max(0, Number(form.creditLimit) || 0),
     })
-    setForm({ name: '', email: '', phone: '', company: '', notes: '', tags: [] })
+    setForm({ name: '', email: '', phone: '', company: '', notes: '', tags: [], accountCategory: 'individual', paymentTerms: 'Due on receipt', creditLimit: '' })
     await refresh()
     toast('Client saved', 'success')
   }
@@ -128,7 +134,10 @@ export default function Clients() {
         portalUrl: data.portalUrl,
         loginHint: data.loginHint,
       })
-      const msg = `Portal login\n${data.email}\nPIN: ${data.pin}\n${data.portalUrl || ''}`
+      const msg = `Portal login
+${data.email}
+PIN: ${data.pin}
+${data.portalUrl || ''}`
       try {
         await navigator.clipboard.writeText(msg)
         toast('Portal login created & copied', 'success')
@@ -202,7 +211,10 @@ export default function Clients() {
           </div>
           <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button type="button" className="btn btn-outline btn-sm" onClick={() => {
-              const msg = `Portal login\n${portalCreds.email}\nPIN: ${portalCreds.pin}\n${portalCreds.portalUrl || ''}`
+              const msg = `Portal login
+${portalCreds.email}
+PIN: ${portalCreds.pin}
+${portalCreds.portalUrl || ''}`
               navigator.clipboard?.writeText(msg)
               toast('Copied', 'success')
             }}>Copy again</button>
@@ -228,6 +240,22 @@ export default function Clients() {
           <label className="label">Company</label>
           <input className="input" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
         </div>
+        <div>
+          <label className="label">Customer account category</label>
+          <select className="select" value={form.accountCategory} onChange={(e) => { const category = CUSTOMER_ACCOUNT_CATEGORIES.find((x) => x.id === e.target.value); setForm({ ...form, accountCategory: e.target.value, paymentTerms: category?.defaultTerms || form.paymentTerms }) }}>
+            {CUSTOMER_ACCOUNT_CATEGORIES.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="label">Account payment terms</label>
+          <select className="select" value={form.paymentTerms} onChange={(e) => setForm({ ...form, paymentTerms: e.target.value })}>
+            {CUSTOMER_PAYMENT_TERMS.map((term) => <option key={term}>{term}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="label">Credit limit (R)</label>
+          <input className="input" type="number" min="0" step="0.01" value={form.creditLimit} onChange={(e) => setForm({ ...form, creditLimit: e.target.value })} placeholder="0.00 — no credit limit set" />
+        </div>
         <div style={{ gridColumn: '1 / -1' }}>
           <label className="label">Notes</label>
           <input className="input" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
@@ -237,6 +265,10 @@ export default function Clients() {
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
         <SearchInput value={q} onChange={setQ} placeholder="Search clients…" />
+        <select className="input" style={{ maxWidth: 200 }} value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+          <option value="all">All account categories</option>
+          {CUSTOMER_ACCOUNT_CATEGORIES.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
+        </select>
         <select className="input" style={{ maxWidth: 160 }} value={tagFilter} onChange={(e) => setTagFilter(e.target.value)}>
           <option value="all">All tags</option>
           {CLIENT_TAG_PRESETS.map((t) => (
@@ -254,6 +286,8 @@ export default function Clients() {
               <th>Name</th>
               <th>Email</th>
               <th>Phone</th>
+              <th>Account category</th>
+              <th>Payment terms</th>
               <th>Tags</th>
               <th />
             </tr>
@@ -264,6 +298,8 @@ export default function Clients() {
                 <td><strong>{c.name}</strong>{c.company ? <div className="muted" style={{ fontSize: 12 }}>{c.company}</div> : null}</td>
                 <td>{c.email || '—'}</td>
                 <td>{c.phone || '—'}</td>
+                <td>{CUSTOMER_ACCOUNT_CATEGORIES.find((x) => x.id === c.accountCategory)?.label || 'Individual'}{Number(c.creditLimit) > 0 ? <div className="muted" style={{ fontSize: 11 }}>Credit limit {formatMoney(c.creditLimit)}</div> : null}</td>
+                <td>{c.paymentTerms || 'Due on receipt'}</td>
                 <td>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                     {CLIENT_TAG_PRESETS.slice(0, 4).map((t) => (
