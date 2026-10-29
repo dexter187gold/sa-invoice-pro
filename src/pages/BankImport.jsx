@@ -58,64 +58,106 @@ export default function BankImport() {
     }
   }, [matches, txns])
 
+  const classifyDescription = (txn) => {
+    const d = String(txn?.description || '').toLowerCase()
+    if (/\b(bank fee|service fee|monthly fee|transaction fee|sms fee|cash deposit fee)\b/.test(d)) return 'Bank fees'
+    if (/\b(fuel|petrol|diesel|engen|shell|bp |totalenergies|sasol)\b/.test(d)) return 'Fuel & travel'
+    if (/\b(microsoft|google workspace|adobe|hosting|domain|subscription|github|cloudflare|vercel)\b/.test(d)) return 'Software & subscriptions'
+    if (/\b(electricity|water|municipal|rates|utility)\b/.test(d)) return 'Utilities'
+    if (/\b(salary|payroll|wages|staff pay)\b/.test(d)) return 'Salaries'
+    if (/\b(office|stationery|printer|toner|paper)\b/.test(d)) return 'Office supplies'
+    if (/\b(transfer|own account|inter.?account)\b/.test(d)) return 'Inter-account transfer'
+    if (/\b(vat|sars|tax payment)\b/.test(d)) return 'Tax / VAT'
+    if (/\b(payment received|eft credit|invoice|customer payment|deposit from|paid by)\b/.test(d) && Number(txn?.amount) > 0) return 'Customer payment'
+    if (Number(txn?.amount) > 0) return 'Sales income'
+    return 'Supplier expense'
+  }
+
   const onFile = async (e) => {
-    const f = e.target.files?.[0]
-    if (!f) return
-    setStatementName(f.name)
+    const files = Array.from(e.target.files || [])
+    if (!files.length) return
+    setStatementName(files.map((f) => f.name).join(', '))
+    setBusy(true)
     try {
-      if (/\.pdf$/i.test(f.name)) {
-        const pdf = await pdfjsLib.getDocument({ data: await f.arrayBuffer() }).promise
-        const lines = []
-        for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
-          const page = await pdf.getPage(pageNo)
-          const content = await page.getTextContent()
-          const items = content.items.filter((item) => typeof item.str === 'string' && item.str.trim())
-          const grouped = new Map()
-          for (const item of items) {
-            const y = Math.round(item.transform?.[5] || 0)
-            if (!grouped.has(y)) grouped.set(y, [])
-            grouped.get(y).push({ x: item.transform?.[4] || 0, text: item.str.trim() })
+      const imported = []
+      for (const f of files) {
+        let text = ''
+        if (/\.(xlsx|xls)$/i.test(f.name)) {
+          const workbook = XLSX.read(await f.arrayBuffer(), { type: 'array', cellDates: true })
+          const matrix = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1, defval: '', raw: false })
+          text = matrix.map((row) => row.map((cell) => '"' + String(cell ?? '').replace(/"/g, '""') + '"').join(',')).join('\n')
+        } else if (/\.pdf$/i.test(f.name)) {
+          const pdf = await pdfjsLib.getDocument({ data: await f.arrayBuffer() }).promise
+          const lines = []
+          for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
+            const page = await pdf.getPage(pageNo)
+            const content = await page.getTextContent()
+            const items = content.items.filter((item) => typeof item.str === 'string' && item.str.trim())
+            const grouped = new Map()
+            for (const item of items) {
+              const y = Math.round(item.transform?.[5] || 0)
+              if (!grouped.has(y)) grouped.set(y, [])
+              grouped.get(y).push({ x: item.transform?.[4] || 0, text: item.str.trim() })
+            }
+            for (const [, parts] of [...grouped.entries()].sort((a,b) => b[0]-a[0])) {
+              lines.push(parts.sort((a,b) => a.x-b.x).map((p) => p.text).join(' ').replace(/\s+/g, ' ').trim())
+            }
           }
-          for (const [, parts] of [...grouped.entries()].sort((a,b) => b[0]-a[0])) {
-            lines.push(parts.sort((a,b) => a.x-b.x).map((p) => p.text).join(' ').replace(/\s+/g, ' ').trim())
+          const csvRows = []
+          for (const line of lines) {
+            const dm = line.match(/(?:^|\s)(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}|\d{4}-\d{2}-\d{2})(?:\s+)(.*)/)
+            if (!dm) continue
+            const tail = dm[2].match(/(?:R\s*)?(-?\d[\d ,.]*[.,]\d{2})(?:\s*(CR|DR))?\s*$/i)
+            if (!tail) continue
+            let amountText = tail[1].replace(/\s/g, '')
+            if (/^\d{1,3}(?:\.\d{3})*,\d{2}$/.test(amountText)) amountText = amountText.replace(/\./g, '').replace(',', '.')
+            else amountText = amountText.replace(/,/g, '')
+            let amount = Number(amountText)
+            if (!Number.isFinite(amount)) continue
+            if (tail[2]?.toUpperCase() === 'DR') amount = -Math.abs(amount)
+            const description = dm[2].slice(0, tail.index).trim().replace(/[;,]+$/g, '')
+            csvRows.push([dm[1], description || 'Bank transaction', String(amount), ''])
           }
+          if (!csvRows.length) throw new Error('Could not detect transaction rows in ' + f.name + '. Scanned PDFs need OCR; export CSV/Excel from the bank.')
+          text = ['Date,Description,Amount,Reference', ...csvRows.map((r) => r.map((v) => '"' + String(v).replace(/"/g, '""') + '"').join(','))].join('\n')
+        } else {
+          text = await f.text()
         }
-        const csvRows = []
-        for (const line of lines) {
-          const dm = line.match(/(?:^|\s)(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}|\d{4}-\d{2}-\d{2})(?:\s+)(.*)/)
-          if (!dm) continue
-          const tail = dm[2].match(/(?:R\s*)?(-?\d[\d ,.]*[.,]\d{2})(?:\s*(CR|DR))?\s*$/i)
-          if (!tail) continue
-          let amountText = tail[1].replace(/\s/g, '')
-          if (/^\d{1,3}(?:\.\d{3})*,\d{2}$/.test(amountText)) amountText = amountText.replace(/\./g, '').replace(',', '.')
-          else amountText = amountText.replace(/,/g, '')
-          let amount = Number(amountText)
-          if (!Number.isFinite(amount)) continue
-          if (tail[2]?.toUpperCase() === 'DR') amount = -Math.abs(amount)
-          const description = dm[2].slice(0, tail.index).trim().replace(/[;,]+$/g, '')
-          csvRows.push([dm[1], description || 'Bank transaction', String(amount), ''])
-        }
-        if (!csvRows.length) throw new Error('Could not detect transaction rows in this PDF. If it is a scanned/image PDF, export CSV/Excel from your bank or use OCR first.')
-        const text = ['Date,Description,Amount,Reference', ...csvRows.map((r) => r.map((v) => '"' + String(v).replace(/"/g, '""') + '"').join(','))].join('\n')
-        setRaw(text)
-        parseText(text)
-        toast('PDF text extracted. Please check the parsed rows against the statement before importing.', 'info')
-      } else if (/\.(xlsx|xls)$/i.test(f.name)) {
-        const workbook = XLSX.read(await f.arrayBuffer(), { type: 'array', cellDates: true })
-        const matrix = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1, defval: '', raw: false })
-        const text = matrix.map((row) => row.map((cell) => {
-          const value = String(cell ?? '')
-          return '"' + value.replace(/"/g, '""') + '"'
-        }).join(',')).join('\n')
-        setRaw(text)
-        parseText(text)
-      } else {
-        const text = await f.text()
-        setRaw(text)
-        parseText(text)
+        const parsed = parseBankCsv(text)
+        const normalized = normalizeBankRows(parsed).map((txn, index) => ({
+          ...txn,
+          id: 'bank-' + Date.now() + '-' + imported.length + '-' + index,
+          sourceFile: f.name,
+          suggestedCategory: classifyDescription(txn),
+        }))
+        imported.push(...normalized)
       }
+      if (!imported.length) throw new Error('No valid transactions found in the selected files.')
+      const existing = await db.getAll(STORES.bankTxns)
+      const fingerprint = (t) => [String(t.date || '').slice(0, 10), Number(t.amount || 0).toFixed(2), String(t.description || '').trim().toLowerCase(), String(t.reference || '').trim().toLowerCase()].join('|')
+      const seen = new Set(existing.map(fingerprint))
+      const unique = []
+      let duplicateCount = 0
+      for (const txn of imported) {
+        const key = fingerprint(txn)
+        if (seen.has(key)) { duplicateCount++; continue }
+        seen.add(key)
+        unique.push(txn)
+      }
+      setTxns(unique)
+      const matched = matchBankToInvoices(unique, openInvoices, clients)
+      const debits = unique.filter((t) => !t.isCredit).map((txn) => ({ txn, invoice: null, score: 0, reasons: ['Expense — category suggested from description'], suggested: false }))
+      setMatches([...matched, ...debits])
+      setCategories(Object.fromEntries(unique.map((t) => [t.id, t.suggestedCategory || classifyDescription(t)])))
+      setSkipped({})
+      setManualPick({})
+      setRaw(files.length === 1 && /\.(csv|txt)$/i.test(files[0].name) ? await files[0].text() : '')
+      toast(files.length + ' file(s): ' + unique.length + ' unique transactions parsed' + (duplicateCount ? ' · ' + duplicateCount + ' duplicate rows skipped' : ''), 'success')
     } catch (err) {
-      toast(err.message || 'Could not read this statement file', 'error')
+      toast(err.message || 'Could not read these statement files', 'error')
+    } finally {
+      setBusy(false)
+      e.target.value = ''
     }
   }
 
@@ -162,8 +204,8 @@ export default function BankImport() {
         seen.add(key)
         await db.add(STORES.bankTxns, {
           ...txn, amount: Number(txn.amount) || 0, accountLabel, statementId,
-          statementName: statementName || 'Pasted bank statement', source: 'statement-import',
-          reconciled: false, category: '', bookkeepingStatus: 'needs-review',
+          statementName: txn.sourceFile || statementName || 'Pasted bank statement', source: 'statement-import',
+          reconciled: false, category: categories[txn.id] || txn.suggestedCategory || 'Unclassified', bookkeepingStatus: 'needs-review',
           importedAt: new Date().toISOString(),
           openingBalance: openingBalance === '' ? null : Number(openingBalance),
           closingBalance: closingBalance === '' ? null : Number(closingBalance),
@@ -221,6 +263,96 @@ export default function BankImport() {
       toast('Expense created and linked to bank transaction', 'success')
     } catch (err) { toast(err.message || 'Could not create expense', 'error') }
     finally { setBusy(false) }
+  }
+
+  const createAllExpenses = async () => {
+    const debitTxns = txns.filter((t) => Number(t.amount) < 0)
+    if (!debitTxns.length) return toast('No expense/debit transactions found in this import', 'info')
+    const approved = window.confirm('Create expense records for ' + debitTxns.length + ' debit transactions? Description-based categories are suggestions; review them before posting if uncertain.')
+    if (!approved) return
+    setBusy(true)
+    try {
+      const bankRows = await db.getAll(STORES.bankTxns)
+      const fingerprint = (t) => [String(t.date || '').slice(0, 10), Number(t.amount || 0).toFixed(2), String(t.description || '').trim().toLowerCase(), String(t.reference || '').trim().toLowerCase()].join('|')
+      let created = 0
+      let alreadyLinked = 0
+      for (const txn of debitTxns) {
+        const key = fingerprint(txn)
+        const bankRow = bankRows.find((r) => fingerprint(r) === key)
+        if (bankRow?.linkedExpenseId || (await db.getAll(STORES.expenses)).some((e) => e.bankTxnFingerprint === key)) {
+          alreadyLinked++
+          continue
+        }
+        const category = categories[txn.id] || txn.suggestedCategory || 'Supplier expense'
+        const expense = await db.add(STORES.expenses, {
+          date: txn.date,
+          description: txn.description || 'Bank payment',
+          amount: Math.abs(Number(txn.amount) || 0),
+          category,
+          accountCode: '6900',
+          vendor: txn.description || '',
+          source: 'bank-statement',
+          bankTxnFingerprint: key,
+        })
+        if (bankRow) await db.put(STORES.bankTxns, { ...bankRow, linkedExpenseId: expense.id, category, bookkeepingStatus: 'expense-recorded' })
+        else await db.add(STORES.bankTxns, { ...txn, accountLabel, statementName: statementName || 'Pasted bank statement', source: 'statement-import', category, linkedExpenseId: expense.id, reconciled: false, bookkeepingStatus: 'expense-recorded', importedAt: new Date().toISOString() })
+        created++
+      }
+      await refresh()
+      toast('Created ' + created + ' expense records' + (alreadyLinked ? ' · ' + alreadyLinked + ' already linked' : ''), created ? 'success' : 'info')
+    } catch (err) {
+      toast(err.message || 'Could not bulk-create expenses', 'error')
+    } finally { setBusy(false) }
+  }
+
+  const createDraftInvoicesFromCredits = async () => {
+    const credits = txns.filter((t) => Number(t.amount) > 0 && !matches.some((m) => m.txn?.id === t.id && m.invoice))
+    const candidates = credits.map((txn) => {
+      const hay = (String(txn.description || '') + ' ' + String(txn.reference || '')).toLowerCase()
+      const hits = clients.filter((client) => {
+        const name = String(client.name || '').trim().toLowerCase()
+        return name.length > 2 && hay.includes(name)
+      })
+      return { txn, client: hits.length === 1 ? hits[0] : null }
+    }).filter((x) => x.client)
+    if (!candidates.length) return toast('No unmatched income lines clearly identify exactly one existing client. Review descriptions or match them to invoices instead.', 'info')
+    const approved = window.confirm('Create ' + candidates.length + ' DRAFT invoice(s) for unmatched credits that clearly name one existing client? These will remain unpaid drafts for review and will not be marked paid.')
+    if (!approved) return
+    setBusy(true)
+    try {
+      const allInvoices = await db.getAll(STORES.invoices)
+      let created = 0
+      for (const { txn, client } of candidates) {
+        const fp = [String(txn.date || '').slice(0, 10), Number(txn.amount).toFixed(2), String(txn.description || '').trim().toLowerCase(), String(txn.reference || '').trim().toLowerCase()].join('|')
+        if (allInvoices.some((i) => i.bankTxnFingerprint === fp)) continue
+        const number = 'DRAFT-BANK-' + String(txn.date || new Date().toISOString().slice(0, 10)).replace(/-/g, '') + '-' + String(created + 1).padStart(3, '0')
+        const amount = Number(txn.amount)
+        await db.add(STORES.invoices, {
+          clientId: client.id,
+          number,
+          date: txn.date,
+          dueDate: txn.date,
+          status: 'unpaid',
+          notes: 'Draft created from imported bank statement. Verify goods/services and tax treatment before issuing.',
+          templateId: 'standard',
+          lines: [{ description: String(txn.description || 'Bank credit').slice(0, 250), qty: 1, price: amount }],
+          exclusive: amount,
+          vatAmount: 0,
+          total: amount,
+          amountPaid: 0,
+          amountDue: amount,
+          source: 'bank-statement-draft',
+          bankTxnFingerprint: fp,
+          needsReview: true,
+          updatedAt: new Date().toISOString(),
+        })
+        created++
+      }
+      await refresh()
+      toast('Created ' + created + ' review-only draft invoice(s). Confirm the actual sale and VAT before issuing.', created ? 'success' : 'info')
+    } catch (err) {
+      toast(err.message || 'Could not create draft invoices', 'error')
+    } finally { setBusy(false) }
   }
 
   const resolveInvoice = (row, idx) => {
@@ -323,9 +455,9 @@ export default function BankImport() {
 
       <div className="card form-grid" style={{ marginBottom: 16 }}>
         <div>
-          <label className="label">Upload bank statement (PDF, CSV or Excel)</label>
-          <input type="file" accept=".pdf,.csv,.txt,.xlsx,.xls,application/pdf,text/csv" className="input" onChange={onFile} />
-          <p className="muted" style={{ fontSize: 11 }}>PDF text extraction plus CSV/XLSX/XLS exports supported. Scanned/image PDFs need OCR; verify extracted rows before importing.</p>
+          <label className="label">Upload bank statements in bulk (PDF, CSV or Excel)</label>
+          <input type="file" accept=".pdf,.csv,.txt,.xlsx,.xls,application/pdf,text/csv" multiple className="input" onChange={onFile} />
+          <p className="muted" style={{ fontSize: 11 }}>Select multiple files at once. CSV/XLSX/XLS and text PDFs are supported; scanned PDFs need OCR. Duplicate rows are skipped and all rows remain reviewable before saving.</p>
           {statementName ? <p className="muted" style={{ fontSize: 12 }}>Loaded: <strong>{statementName}</strong></p> : null}
         </div>
         <div>
@@ -360,7 +492,13 @@ export default function BankImport() {
             <div><label className="label">Opening balance (optional)</label><input className="input" type="number" step="0.01" value={openingBalance} onChange={(e) => setOpeningBalance(e.target.value)} placeholder="e.g. 12500.00" /></div>
             <div><label className="label">Closing balance (optional)</label><input className="input" type="number" step="0.01" value={closingBalance} onChange={(e) => setClosingBalance(e.target.value)} placeholder="e.g. 14320.50" /></div>
             {statementTotals.calculated != null && <p className="muted" style={{ margin: 0 }}>Calculated closing balance: <strong>{formatMoney(statementTotals.calculated)}</strong>{statementTotals.variance != null ? <> · variance to bank: <strong style={{ color: Math.abs(statementTotals.variance) < 0.01 ? '#059669' : '#b91c1c' }}>{formatMoney(statementTotals.variance)}</strong></> : null}</p>}
-            <div><button type="button" className="btn btn-primary" disabled={busy} onClick={saveStatementToBooks}>{busy ? 'Saving…' : 'Import transactions into books'}</button></div>
+            <div><button type="button" className="btn btn-primary" disabled={busy} onClick={saveStatementToBooks}>{busy ? 'Saving…' : 'Import transactions into books'}</button>
+            <button type="button" className="btn btn-secondary" onClick={createAllExpenses} disabled={busy || !txns.some((t) => Number(t.amount) < 0)}>
+              Create all expenses
+            </button>
+            <button type="button" className="btn btn-outline" onClick={createDraftInvoicesFromCredits} disabled={busy || !txns.some((t) => Number(t.amount) > 0)}>
+              Draft invoices from identifiable income
+            </button></div>
             <p className="muted" style={{ fontSize: 11, margin: 0 }}>Importing statements only saves bank lines for review; it does not change invoice statuses. Matching is a suggestion. Apply a payment one transaction at a time after reviewing and confirming the invoice, amount and customer.</p>
           </div>
         </>
