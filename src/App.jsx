@@ -18,6 +18,7 @@ import Accounting from './pages/Accounting'
 import Settings from './pages/Settings'
 import Products from './pages/Products'
 import Expenses from './pages/Expenses'
+import PettyCash from './pages/PettyCash'
 import Employees from './pages/Employees'
 import Payroll from './pages/Payroll'
 import Reports from './pages/Reports'
@@ -100,6 +101,7 @@ function AppInner() {
                 <Route path="/tickets" element={<Tickets />} />
                 <Route path="/products" element={<Products />} />
                 <Route path="/expenses" element={<Expenses />} />
+                <Route path="/petty-cash" element={<PettyCash />} />
                 <Route path="/employees" element={<Employees />} />
                 <Route path="/payroll" element={<Payroll />} />
                 <Route path="/payments" element={<Payments />} />
