@@ -305,7 +305,7 @@ export async function withTransaction(storeNames, handler) {
         resolve(result)
       }
       transaction.onerror = () => fail(transaction.error)
-      transaction.onabort = () => fail(transaction.error || new Error('IndexedDB transaction aborted'))
+      transaction.onabort = () => fail(transaction.__failure || transaction.error || new Error('IndexedDB transaction aborted'))
       handler(transaction, (value) => { result = value })
     } catch (error) {
       try { transaction?.abort() } catch {}
