@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { parseBankCsv, normalizeBankRows, explainMatchScore, matchBankToInvoices } from '../src/lib/bankImport.js'
+import { parseBankCsv, normalizeBankRows, explainMatchScore, matchBankToInvoices, bankTxnFingerprint, findBankTxnForMatch } from '../src/lib/bankImport.js'
 
 test('parseBankCsv detects comma and headers', () => {
   const csv = 'Date,Description,Amount,Reference\n2026-10-01,Payment INV-1,1500.00,INV-2026-0001\n'
@@ -69,4 +69,22 @@ test('bank matching never suggests a debit as an invoice payment', () => {
   const invoice = { id: 'i-debit', number: 'INV-DEBIT', status: 'unpaid', amountDue: 125, total: 125, clientId: 'c1' }
   const txns = [{ id: 't-debit', isCredit: false, amount: -125, description: 'INV-DEBIT', reference: '', date: '2026-10-02' }]
   assert.deepEqual(matchBankToInvoices(txns, [invoice], [{ id: 'c1', name: 'Acme' }]), [])
+})
+
+
+test('bank matching reuses a previously imported but unmatched statement line', () => {
+  const txn = { date: '2026-10-29', amount: 250, description: 'ACME INV-1', reference: 'REF-1' }
+  const prior = { ...txn, id: 'bank-row-1', reconciled: false, bookkeepingStatus: 'needs-review' }
+  const found = findBankTxnForMatch(txn, [prior])
+  assert.equal(found.row.id, 'bank-row-1')
+  assert.equal(found.alreadyApplied, false)
+  assert.equal(bankTxnFingerprint(txn), bankTxnFingerprint(prior))
+})
+
+test('bank matching blocks a duplicate payment when the statement line was already applied', () => {
+  const txn = { date: '2026-10-29', amount: 250, description: 'ACME INV-1', reference: 'REF-1' }
+  const prior = { ...txn, id: 'bank-row-1', matchedInvoiceId: 'inv-1', paymentId: 'pay-1' }
+  const found = findBankTxnForMatch(txn, [prior])
+  assert.equal(found.row.id, 'bank-row-1')
+  assert.equal(found.alreadyApplied, true)
 })
