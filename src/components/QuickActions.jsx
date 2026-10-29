@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext'
 import { formatMoney } from '../lib/money'
 
 /** Floating quick-actions — expanded control surface Q1–Q5 */
-export default function QuickActions({ open: controlledOpen, onOpenChange, hideTrigger = false }) {
+export default function QuickActions({ open: controlledOpen, onOpenChange, hideTrigger = false, sections = [] }) {
   const { invoices, clients, tickets, quotes, expenses, payments, online } = useApp()
   const [localOpen, setLocalOpen] = useState(false)
   const open = controlledOpen ?? localOpen
@@ -54,18 +54,11 @@ export default function QuickActions({ open: controlledOpen, onOpenChange, hideT
 
   useEffect(() => {
     if (!open) return
-    const onDoc = (e) => {
-      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false)
-    }
     const onKey = (e) => {
       if (e.key === 'Escape') setOpen(false)
     }
-    document.addEventListener('mousedown', onDoc)
     window.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDoc)
-      window.removeEventListener('keydown', onKey)
-    }
+    return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
   return (
@@ -88,7 +81,7 @@ export default function QuickActions({ open: controlledOpen, onOpenChange, hideT
         <div className="quick-actions-panel" role="menu" aria-label="Quick actions">
           <div className="quick-actions-head">
             <strong>Command centre</strong>
-            <button type="button" className="btn btn-outline btn-sm" onClick={() => setOpen(false)}>Close</button>
+            <span className="muted" style={{ fontSize: 11 }}>Tap the Command Centre button again to close</span>
           </div>
           {groups.map((g) => (
             <div key={g.title} className="quick-actions-group">
@@ -112,6 +105,32 @@ export default function QuickActions({ open: controlledOpen, onOpenChange, hideT
               </div>
             </div>
           ))}
+          {sections.length > 0 && (
+            <div className="quick-actions-group">
+              <div className="nav-section" style={{ padding: '6px 10px 2px' }}>All menu sections</div>
+              {sections.map((section) => (
+                <div key={section.title} className="quick-actions-group">
+                  <div className="nav-section" style={{ padding: '6px 10px 2px' }}>{section.title}</div>
+                  <div className="quick-actions-list">
+                    {section.links.map((item) => (
+                      <Link
+                        key={item.to + item.label}
+                        to={item.to}
+                        role="menuitem"
+                        className="quick-actions-item"
+                        onClick={() => setOpen(false)}
+                      >
+                        <span className="quick-actions-text">
+                          <strong>{item.label}</strong>
+                          {item.count != null ? <span className="muted">{item.count} items</span> : null}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
