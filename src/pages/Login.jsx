@@ -180,13 +180,28 @@ export default function Login() {
           <div className="login-splash-inner">
             <AppLogo size={104} />
             <div className="login-splash-title">SA INVOICE PRO</div>
-            <p className="muted" style={{ color: 'rgba(240,230,255,0.85)', margin: '0.35rem 0 0' }}>Professional invoicing, payments & business management</p>
-            <p className="muted" style={{ color: 'rgba(232,121,249,0.75)', margin: '0.35rem 0 0', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>SOUTH AFRICAN BUSINESS WORKSPACE</p>
+            <p className="muted" style={{ color: 'rgba(220,252,231,0.9)', margin: '0.35rem 0 0' }}>Professional invoicing, payments & business management</p>
+            <p className="muted" style={{ color: 'rgba(167,243,208,0.85)', margin: '0.35rem 0 0', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>SOUTH AFRICAN BUSINESS WORKSPACE</p>
             <div className="login-splash-bar" aria-hidden><span /></div>
           </div>
         </div>
       )}
-      <div className="card auth-card auth-card-modern">
+      <div className="auth-layout">
+        <aside className="auth-brand-panel">
+          <div className="auth-brand-lockup"><AppLogo size={58} /><div><strong>SA INVOICE PRO</strong><span>BUSINESS MANAGEMENT SUITE</span></div></div>
+          <div className="auth-brand-copy">
+            <span className="auth-eyebrow">ONE WORKSPACE. COMPLETE CONTROL.</span>
+            <h2>Run your business with confidence.</h2>
+            <p>Professional tools for South African businesses — from quotes and invoices to payments, accounting, payroll and customer management.</p>
+            <div className="auth-feature-list">
+              <span><i>✓</i> Invoicing & customer accounts</span>
+              <span><i>✓</i> Payments & bank reconciliation</span>
+              <span><i>✓</i> Accounting, expenses & payroll</span>
+            </div>
+          </div>
+          <div className="auth-brand-foot">SECURE · OFFLINE-READY · BUILT FOR SOUTH AFRICA</div>
+        </aside>
+        <div className="card auth-card auth-card-modern">
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}><AppLogo size={72} /></div>
         <h1 style={{ margin: '0 0 .25rem', textAlign: 'center', fontSize: '1.35rem', letterSpacing: '0.06em' }}>SA INVOICE PRO</h1>
         <p className="muted" style={{ textAlign: 'center', marginTop: 0 }}>Secure business workspace · South Africa · v{APP_VERSION}</p>
@@ -315,6 +330,7 @@ export default function Login() {
           <p className="muted" style={{ fontSize: 12, margin: '0 0 8px', textAlign: 'center' }}>Moving from another phone/browser? Import your JSON backup here (works before sign-in).</p>
           <input ref={fileRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={onImportBackup} />
           <button type="button" className="btn" style={{ width: '100%' }} disabled={busy} onClick={() => fileRef.current?.click()}>Import backup JSON</button>
+        </div>
         </div>
       </div>
     </div>
