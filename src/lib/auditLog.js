@@ -14,8 +14,10 @@ export async function audit(event, detail = {}) {
       ...detail,
     })
     await db.setSetting(KEY, list.slice(0, MAX))
+    return true
   } catch (e) {
     console.warn('[audit]', e)
+    return false
   }
 }
 
