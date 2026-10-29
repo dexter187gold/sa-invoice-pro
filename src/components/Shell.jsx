@@ -291,7 +291,7 @@ export default function Shell({ children }) {
           aria-expanded={commandOpen}
           title="Menu and command centre"
         >
-          {commandOpen ? 'Close' : 'Menu'}
+          {commandOpen ? 'Close' : 'Command'}
         </button>
         <AppLogo size={28} />
         <strong style={{ fontSize: 13, letterSpacing: '-0.02em', flex: 1 }}>{brandLabel}</strong>
