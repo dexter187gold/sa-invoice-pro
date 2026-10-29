@@ -27,6 +27,8 @@ export default function RoleGate({ children }) {
         <strong>Access restricted</strong>
         <p className="muted">Your seat role cannot open this page. Switch seat under Team or ask the owner.</p>
         <a className="btn btn-outline" href="/">Home</a>
+        <p className="muted" style={{ marginTop: 12 }}>If you are the workspace owner and have been locked out by a seat role, use the server-verified recovery screen.</p>
+        <a className="btn btn-outline" href="/owner-recovery">Owner account recovery</a>
       </div>
     )
   }
