@@ -32,3 +32,18 @@ test('flags duplicate bank fingerprints but does not delete either row', () => {
   assert.ok(result.findings.some((f) => f.code === 'duplicate_bank_fingerprint'))
   assert.equal(rows.length, 2)
 })
+
+
+test('only offers historical Paid-status repair when linked payments exactly support the invoice total', () => {
+  const result = analyzeFinancialIntegrity({
+    invoices: [{ id: 'i-paid', number: 'INV-1', total: 100, amountDue: 100, amountPaid: 0, status: 'paid' }],
+    payments: [{ id: 'p1', invoiceId: 'i-paid', amount: 60 }, { id: 'p2', invoiceId: 'i-paid', amount: 40 }],
+  })
+  assert.equal(result.repairCandidates.length, 1)
+  assert.equal(result.repairCandidates[0].invoiceId, 'i-paid')
+  const uncertain = analyzeFinancialIntegrity({
+    invoices: [{ id: 'i-unknown', total: 100, amountDue: 100, amountPaid: 0, status: 'paid' }],
+    payments: [],
+  })
+  assert.equal(uncertain.repairCandidates.length, 0)
+})

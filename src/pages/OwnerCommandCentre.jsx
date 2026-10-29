@@ -6,6 +6,7 @@ import * as db from '../lib/db'
 import { STORES } from '../lib/db'
 import { formatMoney } from '../lib/money'
 import { analyzeFinancialIntegrity } from '../lib/financialIntegrity'
+import { audit } from '../lib/auditLog'
 import { PageFade } from '../components/ui'
 
 function Stat({ label, value, hint, to }) {
@@ -18,7 +19,7 @@ function Stat({ label, value, hint, to }) {
 }
 
 export default function OwnerCommandCentre() {
-  const { invoices, quotes, tickets, clients, expenses, payments, company, online, syncNow, toast } = useApp()
+  const { invoices, quotes, tickets, clients, expenses, payments, company, online, syncNow, toast, refresh } = useApp()
   const [access, setAccess] = useState('checking')
   const [team, setTeam] = useState(null)
   const [bankRows, setBankRows] = useState([])
@@ -71,6 +72,47 @@ export default function OwnerCommandCentre() {
     finally { setScanning(false) }
   }
 
+  async function repairInvoiceFromEvidence(candidate) {
+    const ok = window.confirm(
+      'Repair ' + candidate.invoiceNumber + ' to Paid only because linked payment rows total exactly ' +
+      formatMoney(candidate.total) + '? This will be recorded in the audit log. No payments or journal entries will be created or deleted.'
+    )
+    if (!ok) return
+    try {
+      const invoice = await db.get(STORES.invoices, candidate.invoiceId)
+      const allPayments = await db.getAll(STORES.payments)
+      const linked = allPayments.filter((p) => String(p.invoiceId) === String(candidate.invoiceId) && Number(p.amount) > 0)
+      const total = Number(invoice?.total) || 0
+      const paid = linked.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+      if (!invoice || String(invoice.status || '').toLowerCase() !== 'paid' || linked.length === 0 || Math.abs(paid - total) > 0.01) {
+        throw new Error('The invoice changed or linked payment evidence no longer exactly matches. Run the scan again; no changes were made.')
+      }
+      const before = { status: invoice.status, amountPaid: invoice.amountPaid ?? null, amountDue: invoice.amountDue ?? null, paidAt: invoice.paidAt ?? null }
+      const now = new Date().toISOString()
+      const updated = { ...invoice, status: 'paid', amountPaid: paid, amountDue: 0, paidAt: invoice.paidAt || now, paidDate: (invoice.paidDate || invoice.paidAt || now).slice(0, 10) }
+      const auditReady = await audit('invoice.historical_paid_status_repair_started', {
+        invoiceId: invoice.id, invoiceNumber: invoice.number || null, before,
+        proposedAfter: { status: updated.status, amountPaid: updated.amountPaid, amountDue: updated.amountDue, paidAt: updated.paidAt },
+        evidencePaymentIds: linked.map((p) => p.id), evidenceAmount: paid,
+        rule: 'linked payments equal invoice total within one cent',
+      })
+      if (!auditReady) throw new Error('Audit storage is unavailable. No invoice changes were made.')
+      await db.put(STORES.invoices, updated)
+      const auditCompleted = await audit('invoice.historical_paid_status_repaired', {
+        invoiceId: invoice.id, invoiceNumber: invoice.number || null, before,
+        after: { status: updated.status, amountPaid: updated.amountPaid, amountDue: updated.amountDue, paidAt: updated.paidAt },
+        evidencePaymentIds: linked.map((p) => p.id), evidenceAmount: paid,
+        rule: 'linked payments equal invoice total within one cent',
+      })
+      if (!auditCompleted) toast?.('Invoice updated, but the completion audit could not be confirmed. Preserve the repair-started audit and review the local audit store.', 'error')
+      else toast?.('Invoice status corrected using exact linked payment evidence. Audit entries recorded.', 'success')
+      await refresh?.()
+      await runIntegrityScan()
+    } catch (e) {
+      toast?.(e?.message || 'Historical repair failed; no automatic fallback was attempted.', 'error')
+    }
+  }
+
   async function runSync() {
     setSyncing(true)
     try {
@@ -105,7 +147,7 @@ export default function OwnerCommandCentre() {
     </section>
     <section style={{ marginTop: 20 }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}><div><h2>Financial integrity scan</h2><p className="muted">Read-only checks for payment/status mismatches, duplicate bank lines and journal source keys. It never edits records.</p></div><button className="btn btn-outline" disabled={scanning} onClick={runIntegrityScan}>{scanning ? 'Scanning…' : 'Run read-only scan'}</button></div>
-      {integrity && <div className="card"><strong>Scan complete</strong><p>{integrity.scanned.invoices} invoices · {integrity.scanned.payments} payments · {integrity.scanned.bankTransactions} bank lines · {integrity.scanned.journalEntries} journal entries checked.</p><p><strong>{integrity.counts.high}</strong> high-priority findings · <strong>{integrity.counts.review}</strong> review findings.</p>{integrity.findings.length ? integrity.findings.slice(0, 30).map((finding, index) => <div key={finding.code + '-' + finding.recordId + '-' + index} style={{ borderTop: '1px solid var(--border)', padding: '10px 0' }}><strong>{finding.title}</strong><div className="muted" style={{ fontSize: 12 }}>{finding.code} · {finding.recordId}</div><p style={{ marginBottom: 0 }}>{finding.detail}</p></div>) : <p>No obvious integrity issues were found by these checks. This is not a formal audit.</p>}</div>}
+      {integrity && <div className="card"><strong>Scan complete</strong><p>{integrity.scanned.invoices} invoices · {integrity.scanned.payments} payments · {integrity.scanned.bankTransactions} bank lines · {integrity.scanned.journalEntries} journal entries checked.</p><p><strong>{integrity.counts.high}</strong> high-priority findings · <strong>{integrity.counts.review}</strong> review findings.</p>{integrity.repairCandidates?.length > 0 && <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 12, marginBottom: 12 }}><strong>Evidence-complete repair candidates</strong><p className="muted">Only invoices with linked payment rows totalling the exact invoice total appear here. Each repair requires confirmation and writes an audit entry.</p>{integrity.repairCandidates.map((candidate) => <div key={candidate.invoiceId} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between', padding: '8px 0' }}><span>{candidate.invoiceNumber} · {formatMoney(candidate.linkedPaid)}</span><button className="btn btn-outline" onClick={() => repairInvoiceFromEvidence(candidate)}>Review and repair</button></div>)}</div>}{integrity.findings.length ? integrity.findings.slice(0, 30).map((finding, index) => <div key={finding.code + '-' + finding.recordId + '-' + index} style={{ borderTop: '1px solid var(--border)', padding: '10px 0' }}><strong>{finding.title}</strong><div className="muted" style={{ fontSize: 12 }}>{finding.code} · {finding.recordId}</div><p style={{ marginBottom: 0 }}>{finding.detail}</p></div>) : <p>No obvious integrity issues were found by these checks. This is not a formal audit.</p>}</div>}
     </section>
     <section style={{ marginTop: 20 }}>
       <h2>Owner tools</h2>
