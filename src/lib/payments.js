@@ -12,6 +12,35 @@ export function sumPaymentsForInvoice(payments, invoiceId) {
     .reduce((s, p) => s + (Number(p.amount) || 0), 0)
 }
 
+/**
+ * Validate a payment against the remaining invoice balance before any writes.
+ * When payment rows are supplied they are authoritative; otherwise use the
+ * invoice's stored amountDue/amountPaid fields.
+ */
+export function validatePaymentAmount(invoice, amount, existingPayments = null) {
+  if (!invoice?.id) throw new Error('Invoice required')
+  const amt = Number(amount)
+  if (!Number.isFinite(amt) || !(amt > 0)) throw new Error('Amount required')
+
+  const total = Number(invoice.total)
+  let due
+  if (Number.isFinite(total) && Array.isArray(existingPayments)) {
+    const paid = sumPaymentsForInvoice(existingPayments, invoice.id)
+    due = Math.max(0, Math.round((total - paid) * 100) / 100)
+  } else if (invoice.amountDue != null && Number.isFinite(Number(invoice.amountDue))) {
+    due = Math.max(0, Number(invoice.amountDue))
+  } else if (Number.isFinite(total)) {
+    due = Math.max(0, total - (Number(invoice.amountPaid) || 0))
+  } else {
+    throw new Error('Invoice balance unavailable')
+  }
+
+  if (amt - due > 0.009) {
+    throw new Error(`Payment exceeds the remaining invoice balance of R${due.toFixed(2)}. Record the excess separately as an unapplied customer credit.`)
+  }
+  return { amount: Math.round(amt * 100) / 100, due }
+}
+
 export function applyPaidToInvoice(inv, amountPaid) {
   const total = Number(inv.total) || 0
   const paid = Math.max(0, Number(amountPaid) || 0)
@@ -52,9 +81,7 @@ export async function recordPayment({
   reference = '',
   existingPayments = null,
 }) {
-  if (!invoice?.id) throw new Error('Invoice required')
-  const amt = Number(amount) || 0
-  if (!(amt > 0)) throw new Error('Amount required')
+  const { amount: amt } = validatePaymentAmount(invoice, amount, existingPayments)
 
   const payment = await db.add(STORES.payments, {
     invoiceId: invoice.id,
