@@ -58,64 +58,106 @@ export default function BankImport() {
     }
   }, [matches, txns])
 
+  const classifyDescription = (txn) => {
+    const d = String(txn?.description || '').toLowerCase()
+    if (/\b(bank fee|service fee|monthly fee|transaction fee|sms fee|cash deposit fee)\b/.test(d)) return 'Bank fees'
+    if (/\b(fuel|petrol|diesel|engen|shell|bp |totalenergies|sasol)\b/.test(d)) return 'Fuel & travel'
+    if (/\b(microsoft|google workspace|adobe|hosting|domain|subscription|github|cloudflare|vercel)\b/.test(d)) return 'Software & subscriptions'
+    if (/\b(electricity|water|municipal|rates|utility)\b/.test(d)) return 'Utilities'
+    if (/\b(salary|payroll|wages|staff pay)\b/.test(d)) return 'Salaries'
+    if (/\b(office|stationery|printer|toner|paper)\b/.test(d)) return 'Office supplies'
+    if (/\b(transfer|own account|inter.?account)\b/.test(d)) return 'Inter-account transfer'
+    if (/\b(vat|sars|tax payment)\b/.test(d)) return 'Tax / VAT'
+    if (/\b(payment received|eft credit|invoice|customer payment|deposit from|paid by)\b/.test(d) && Number(txn?.amount) > 0) return 'Customer payment'
+    if (Number(txn?.amount) > 0) return 'Sales income'
+    return 'Supplier expense'
+  }
+
   const onFile = async (e) => {
-    const f = e.target.files?.[0]
-    if (!f) return
-    setStatementName(f.name)
+    const files = Array.from(e.target.files || [])
+    if (!files.length) return
+    setStatementName(files.map((f) => f.name).join(', '))
+    setBusy(true)
     try {
-      if (/\.pdf$/i.test(f.name)) {
-        const pdf = await pdfjsLib.getDocument({ data: await f.arrayBuffer() }).promise
-        const lines = []
-        for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
-          const page = await pdf.getPage(pageNo)
-          const content = await page.getTextContent()
-          const items = content.items.filter((item) => typeof item.str === 'string' && item.str.trim())
-          const grouped = new Map()
-          for (const item of items) {
-            const y = Math.round(item.transform?.[5] || 0)
-            if (!grouped.has(y)) grouped.set(y, [])
-            grouped.get(y).push({ x: item.transform?.[4] || 0, text: item.str.trim() })
+      const imported = []
+      for (const f of files) {
+        let text = ''
+        if (/\.(xlsx|xls)$/i.test(f.name)) {
+          const workbook = XLSX.read(await f.arrayBuffer(), { type: 'array', cellDates: true })
+          const matrix = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1, defval: '', raw: false })
+          text = matrix.map((row) => row.map((cell) => '"' + String(cell ?? '').replace(/"/g, '""') + '"').join(',')).join('\n')
+        } else if (/\.pdf$/i.test(f.name)) {
+          const pdf = await pdfjsLib.getDocument({ data: await f.arrayBuffer() }).promise
+          const lines = []
+          for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
+            const page = await pdf.getPage(pageNo)
+            const content = await page.getTextContent()
+            const items = content.items.filter((item) => typeof item.str === 'string' && item.str.trim())
+            const grouped = new Map()
+            for (const item of items) {
+              const y = Math.round(item.transform?.[5] || 0)
+              if (!grouped.has(y)) grouped.set(y, [])
+              grouped.get(y).push({ x: item.transform?.[4] || 0, text: item.str.trim() })
+            }
+            for (const [, parts] of [...grouped.entries()].sort((a,b) => b[0]-a[0])) {
+              lines.push(parts.sort((a,b) => a.x-b.x).map((p) => p.text).join(' ').replace(/\s+/g, ' ').trim())
+            }
           }
-          for (const [, parts] of [...grouped.entries()].sort((a,b) => b[0]-a[0])) {
-            lines.push(parts.sort((a,b) => a.x-b.x).map((p) => p.text).join(' ').replace(/\s+/g, ' ').trim())
+          const csvRows = []
+          for (const line of lines) {
+            const dm = line.match(/(?:^|\s)(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}|\d{4}-\d{2}-\d{2})(?:\s+)(.*)/)
+            if (!dm) continue
+            const tail = dm[2].match(/(?:R\s*)?(-?\d[\d ,.]*[.,]\d{2})(?:\s*(CR|DR))?\s*$/i)
+            if (!tail) continue
+            let amountText = tail[1].replace(/\s/g, '')
+            if (/^\d{1,3}(?:\.\d{3})*,\d{2}$/.test(amountText)) amountText = amountText.replace(/\./g, '').replace(',', '.')
+            else amountText = amountText.replace(/,/g, '')
+            let amount = Number(amountText)
+            if (!Number.isFinite(amount)) continue
+            if (tail[2]?.toUpperCase() === 'DR') amount = -Math.abs(amount)
+            const description = dm[2].slice(0, tail.index).trim().replace(/[;,]+$/g, '')
+            csvRows.push([dm[1], description || 'Bank transaction', String(amount), ''])
           }
+          if (!csvRows.length) throw new Error('Could not detect transaction rows in ' + f.name + '. Scanned PDFs need OCR; export CSV/Excel from the bank.')
+          text = ['Date,Description,Amount,Reference', ...csvRows.map((r) => r.map((v) => '"' + String(v).replace(/"/g, '""') + '"').join(','))].join('\n')
+        } else {
+          text = await f.text()
         }
-        const csvRows = []
-        for (const line of lines) {
-          const dm = line.match(/(?:^|\s)(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}|\d{4}-\d{2}-\d{2})(?:\s+)(.*)/)
-          if (!dm) continue
-          const tail = dm[2].match(/(?:R\s*)?(-?\d[\d ,.]*[.,]\d{2})(?:\s*(CR|DR))?\s*$/i)
-          if (!tail) continue
-          let amountText = tail[1].replace(/\s/g, '')
-          if (/^\d{1,3}(?:\.\d{3})*,\d{2}$/.test(amountText)) amountText = amountText.replace(/\./g, '').replace(',', '.')
-          else amountText = amountText.replace(/,/g, '')
-          let amount = Number(amountText)
-          if (!Number.isFinite(amount)) continue
-          if (tail[2]?.toUpperCase() === 'DR') amount = -Math.abs(amount)
-          const description = dm[2].slice(0, tail.index).trim().replace(/[;,]+$/g, '')
-          csvRows.push([dm[1], description || 'Bank transaction', String(amount), ''])
-        }
-        if (!csvRows.length) throw new Error('Could not detect transaction rows in this PDF. If it is a scanned/image PDF, export CSV/Excel from your bank or use OCR first.')
-        const text = ['Date,Description,Amount,Reference', ...csvRows.map((r) => r.map((v) => '"' + String(v).replace(/"/g, '""') + '"').join(','))].join('\n')
-        setRaw(text)
-        parseText(text)
-        toast('PDF text extracted. Please check the parsed rows against the statement before importing.', 'info')
-      } else if (/\.(xlsx|xls)$/i.test(f.name)) {
-        const workbook = XLSX.read(await f.arrayBuffer(), { type: 'array', cellDates: true })
-        const matrix = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1, defval: '', raw: false })
-        const text = matrix.map((row) => row.map((cell) => {
-          const value = String(cell ?? '')
-          return '"' + value.replace(/"/g, '""') + '"'
-        }).join(',')).join('\n')
-        setRaw(text)
-        parseText(text)
-      } else {
-        const text = await f.text()
-        setRaw(text)
-        parseText(text)
+        const parsed = parseBankCsv(text)
+        const normalized = normalizeBankRows(parsed).map((txn, index) => ({
+          ...txn,
+          id: 'bank-' + Date.now() + '-' + imported.length + '-' + index,
+          sourceFile: f.name,
+          suggestedCategory: classifyDescription(txn),
+        }))
+        imported.push(...normalized)
       }
+      if (!imported.length) throw new Error('No valid transactions found in the selected files.')
+      const existing = await db.getAll(STORES.bankTxns)
+      const fingerprint = (t) => [String(t.date || '').slice(0, 10), Number(t.amount || 0).toFixed(2), String(t.description || '').trim().toLowerCase(), String(t.reference || '').trim().toLowerCase()].join('|')
+      const seen = new Set(existing.map(fingerprint))
+      const unique = []
+      let duplicateCount = 0
+      for (const txn of imported) {
+        const key = fingerprint(txn)
+        if (seen.has(key)) { duplicateCount++; continue }
+        seen.add(key)
+        unique.push(txn)
+      }
+      setTxns(unique)
+      const matched = matchBankToInvoices(unique, openInvoices, clients)
+      const debits = unique.filter((t) => !t.isCredit).map((txn) => ({ txn, invoice: null, score: 0, reasons: ['Expense — category suggested from description'], suggested: false }))
+      setMatches([...matched, ...debits])
+      setCategories(Object.fromEntries(unique.map((t) => [t.id, t.suggestedCategory || classifyDescription(t)])))
+      setSkipped({})
+      setManualPick({})
+      setRaw(files.length === 1 && /\.(csv|txt)$/i.test(files[0].name) ? await files[0].text() : '')
+      toast(files.length + ' file(s): ' + unique.length + ' unique transactions parsed' + (duplicateCount ? ' · ' + duplicateCount + ' duplicate rows skipped' : ''), 'success')
     } catch (err) {
-      toast(err.message || 'Could not read this statement file', 'error')
+      toast(err.message || 'Could not read these statement files', 'error')
+    } finally {
+      setBusy(false)
+      e.target.value = ''
     }
   }
 
@@ -323,9 +365,9 @@ export default function BankImport() {
 
       <div className="card form-grid" style={{ marginBottom: 16 }}>
         <div>
-          <label className="label">Upload bank statement (PDF, CSV or Excel)</label>
-          <input type="file" accept=".pdf,.csv,.txt,.xlsx,.xls,application/pdf,text/csv" className="input" onChange={onFile} />
-          <p className="muted" style={{ fontSize: 11 }}>PDF text extraction plus CSV/XLSX/XLS exports supported. Scanned/image PDFs need OCR; verify extracted rows before importing.</p>
+          <label className="label">Upload bank statements in bulk (PDF, CSV or Excel)</label>
+          <input type="file" accept=".pdf,.csv,.txt,.xlsx,.xls,application/pdf,text/csv" multiple className="input" onChange={onFile} />
+          <p className="muted" style={{ fontSize: 11 }}>Select multiple files at once. CSV/XLSX/XLS and text PDFs are supported; scanned PDFs need OCR. Duplicate rows are skipped and all rows remain reviewable before saving.</p>
           {statementName ? <p className="muted" style={{ fontSize: 12 }}>Loaded: <strong>{statementName}</strong></p> : null}
         </div>
         <div>
