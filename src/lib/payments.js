@@ -151,8 +151,9 @@ export async function recordPayment({
           outcome = { payment, invoice: updatedInvoice, duplicate: false }
           setResult(outcome)
         } catch (error) {
+          transaction.__failure = error
           try { transaction.abort() } catch {}
-          throw error
+          return
         }
       }
 
