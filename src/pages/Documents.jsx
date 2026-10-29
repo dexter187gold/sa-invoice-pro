@@ -10,6 +10,18 @@ import { IT_DOCUMENT_TEMPLATES, searchITDocumentTemplates, getITDocumentTemplate
 const GREEN = [0, 122, 77]
 const SLATE = [30, 41, 59]
 const MUTED = [100, 116, 139]
+
+const DOCUMENT_THEMES = [
+  { id: 'forest', label: 'Forest Corporate', description: 'SA green, premium and finance-ready', primary: [0, 122, 77], dark: [8, 48, 37], accent: [167, 243, 208], ink: [30, 41, 59], muted: [100, 116, 139], soft: [235, 247, 241], stripe: [244, 248, 247] },
+  { id: 'navy', label: 'Navy Executive', description: 'Formal blue for proposals and policies', primary: [29, 78, 137], dark: [15, 35, 65], accent: [191, 219, 254], ink: [30, 41, 59], muted: [91, 105, 124], soft: [235, 243, 252], stripe: [245, 248, 252] },
+  { id: 'mono', label: 'Monochrome', description: 'Ink-saving, clean black and white', primary: [45, 55, 65], dark: [30, 35, 40], accent: [220, 225, 230], ink: [35, 40, 45], muted: [95, 100, 105], soft: [240, 242, 244], stripe: [250, 250, 250] },
+  { id: 'sand', label: 'Warm Sand', description: 'Warm neutral for client-facing reports', primary: [146, 84, 35], dark: [66, 43, 26], accent: [253, 230, 190], ink: [68, 53, 39], muted: [130, 105, 80], soft: [250, 242, 229], stripe: [253, 249, 242] },
+  { id: 'violet', label: 'Modern Violet', description: 'Contemporary creative and technology style', primary: [109, 40, 217], dark: [38, 20, 68], accent: [221, 214, 254], ink: [39, 39, 55], muted: [107, 100, 130], soft: [245, 240, 255], stripe: [250, 248, 255] },
+]
+function getDocumentTheme(id) {
+  return DOCUMENT_THEMES.find((theme) => theme.id === id) || DOCUMENT_THEMES[0]
+}
+
 const CATEGORIES = ['all', ...new Set(IT_DOCUMENT_TEMPLATES.map((item) => item.category))]
 
 function safeText(value, fallback = 'To be completed') {
@@ -20,6 +32,9 @@ function safeText(value, fallback = 'To be completed') {
 export default function Documents() {
   const { clients = [], company, toast, invoices = [], quotes = [], tickets = [], products = [], services = [], employees = [], timeEntries = [] } = useApp()
   const [type, setType] = useState('it_assessment')
+  const [documentThemeId, setDocumentThemeId] = useState(() => {
+    try { return localStorage.getItem('sa_document_theme') || 'forest' } catch { return 'forest' }
+  })
   const [clientId, setClientId] = useState('')
   const [docRef, setDocRef] = useState(() => 'IT-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-5))
   const [notes, setNotes] = useState('')
@@ -50,6 +65,11 @@ export default function Documents() {
   useEffect(() => { refreshHistory().catch(() => {}) }, [])
 
   const selected = getITDocumentTemplate(type)
+  const documentTheme = getDocumentTheme(documentThemeId)
+  const chooseDocumentTheme = (id) => {
+    setDocumentThemeId(id)
+    try { localStorage.setItem('sa_document_theme', id) } catch {}
+  }
   const client = clients.find((c) => String(c.id) === String(clientId)) || { name: 'Client / business owner' }
   const filtered = useMemo(() => searchITDocumentTemplates(search, category), [search, category])
   const fillDemo = () => {
@@ -62,6 +82,14 @@ export default function Documents() {
   const buildPdf = async () => {
     const co = company || {}
     const template = getITDocumentTemplate(type)
+    const palette = getDocumentTheme(documentThemeId)
+    const primary = palette.primary
+    const dark = palette.dark
+    const accent = palette.accent
+    const ink = palette.ink
+    const muted = palette.muted
+    const soft = palette.soft
+    const stripe = palette.stripe
     const source = linkedSource
     const jsPDF = await loadJsPdf()
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
@@ -79,7 +107,7 @@ export default function Documents() {
       y = 19
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(8)
-      doc.setTextColor(...GREEN)
+      doc.setTextColor(...primary)
       doc.text(String(co.name || APP_NAME).toUpperCase(), left, 12)
       doc.setDrawColor(220, 228, 232)
       doc.line(left, 15, pageW - right, 15)
@@ -101,14 +129,14 @@ export default function Documents() {
       const lines = doc.splitTextToSize(String(body), width)
       const estimated = 5.5 + Math.min(lines.length, 2) * 4 + 5
       ensureSpace(estimated)
-      doc.setFillColor(235, 247, 241)
+      doc.setFillColor(...soft)
       doc.roundedRect(left - 1, y - 3.5, width + 2, 7, 1.2, 1.2, 'F')
       drawWrapped(heading, 10, 4.5, 'bold', GREEN, 2)
       drawWrapped(body, 9.2, 4.6, 'normal', SLATE, 5)
     }
 
     // Branded cover/metadata header.
-    doc.setFillColor(8, 48, 37)
+    doc.setFillColor(...dark)
     doc.rect(0, 0, pageW, 42, 'F')
     doc.setTextColor(255, 255, 255)
     doc.setFont('helvetica', 'bold')
@@ -118,7 +146,7 @@ export default function Documents() {
     doc.setFontSize(8)
     const contact = [co.address, co.phone, co.email, co.vatNumber ? 'VAT ' + co.vatNumber : ''].filter(Boolean).join('  •  ')
     if (contact) doc.text(doc.splitTextToSize(contact, width), left, 22)
-    doc.setDrawColor(65, 130, 102)
+    doc.setDrawColor(...primary)
     doc.line(left, 28, pageW - right, 28)
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(13)
@@ -127,7 +155,7 @@ export default function Documents() {
 
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8.5)
-    doc.setTextColor(...MUTED)
+    doc.setTextColor(...muted)
     const metaRows = [
       ['Document reference', safeText(docRef)],
       ['Prepared for', safeText(client.name, 'Client / business owner')],
@@ -143,15 +171,15 @@ export default function Documents() {
       const row = Math.floor(index / 2)
       const x = left + col * colW
       const yy = y + row * 13
-      doc.setFillColor(row % 2 ? 249 : 244, row % 2 ? 251 : 248, row % 2 ? 250 : 247)
+      doc.setFillColor(...(row % 2 ? stripe : soft))
       doc.roundedRect(x, yy - 4.5, colW - 2, 11, 1.2, 1.2, 'F')
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(7)
-      doc.setTextColor(...MUTED)
+      doc.setTextColor(...muted)
       doc.text(label.toUpperCase(), x + 3, yy - 0.5)
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(8.2)
-      doc.setTextColor(...SLATE)
+      doc.setTextColor(...ink)
       doc.text(doc.splitTextToSize(value, colW - 8).slice(0, 2), x + 3, yy + 3.5)
     })
     y += Math.ceil(metaRows.length / 2) * 13 + 4
@@ -185,7 +213,7 @@ export default function Documents() {
     doc.line(left + 92, signY + 12, pageW - right, signY + 12)
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(7.5)
-    doc.setTextColor(...MUTED)
+    doc.setTextColor(...muted)
     doc.text('Prepared / reviewed by · name, role, date', left, signY + 17)
     doc.text('Approved by · name, role, date', left + 92, signY + 17)
     y = signY + 23
@@ -198,7 +226,7 @@ export default function Documents() {
       doc.line(left, pageH - 15, pageW - right, pageH - 15)
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(7)
-      doc.setTextColor(...MUTED)
+      doc.setTextColor(...muted)
       doc.text(String(co.name || APP_NAME) + ' · IT Document Studio · v' + APP_VERSION, left, pageH - 9)
       doc.text('Confidential business record · ' + i + ' / ' + totalPages, pageW - right, pageH - 9, { align: 'right' })
     }
@@ -217,6 +245,7 @@ export default function Documents() {
       } else {
         await downloadJsPdf(doc, name)
         const record = {
+          documentThemeId,
           documentRef: safeText(docRef), templateId: selected.id, templateTitle: selected.title,
           category: selected.category, clientId: clientId || null, clientName: safeText(client.name),
           sourceType: linkedSource?.kind || null, sourceId: linkedSource?.row?.id ?? null,
@@ -302,6 +331,16 @@ export default function Documents() {
             <p>{selected.purpose}</p>
           </div>
           <div className="it-doc-form">
+            <div className="it-doc-theme-picker" aria-labelledby="it-doc-theme-label">
+              <div className="it-doc-theme-heading"><div><span className="label" id="it-doc-theme-label">Document design</span><p>Independent of the app theme · applies to the exported PDF</p></div><span className="it-doc-theme-current">{documentTheme.label}</span></div>
+              <div className="it-doc-theme-options" role="group" aria-label="PDF document themes">
+                {DOCUMENT_THEMES.map((theme) => <button key={theme.id} type="button" className={theme.id === documentThemeId ? 'it-doc-theme-option is-selected' : 'it-doc-theme-option'} onClick={() => chooseDocumentTheme(theme.id)} aria-pressed={theme.id === documentThemeId} title={theme.description}>
+                  <span className="it-doc-theme-swatch" style={{ '--theme-primary': `rgb(${theme.primary.join(',')})`, '--theme-dark': `rgb(${theme.dark.join(',')})`, '--theme-soft': `rgb(${theme.soft.join(',')})` }}><i /><i /><i /></span>
+                  <span className="it-doc-theme-name">{theme.label}</span>
+                  <span className="it-doc-theme-description">{theme.description}</span>
+                </button>)}
+              </div>
+            </div>
             <label className="label" htmlFor="it-doc-client">Client / recipient</label>
             <select id="it-doc-client" className="select" value={clientId} onChange={(e) => setClientId(e.target.value)}>
               <option value="">General / not linked to a client</option>
@@ -346,7 +385,7 @@ export default function Documents() {
           </div>}
           <div className="it-doc-disclaimer"><strong>Review before issuing</strong><p>Templates are detailed operational drafts. Legal, privacy, contractual and regulatory requirements vary by context; adapt the document and obtain qualified review where needed.</p></div>
           <div className="it-doc-history"><div className="it-doc-history-head"><h3>Recently generated</h3><button type="button" className="it-doc-text-button" onClick={() => refreshHistory()}>Refresh</button></div>
-            {history.length ? history.map((item) => <div className="it-doc-history-item" key={item.id}><div><strong>{item.templateTitle || item.templateId}</strong><span>{item.documentRef} · {item.clientName || 'General'}</span><small>{item.generatedAt ? new Date(item.generatedAt).toLocaleString('en-ZA') : 'Date unavailable'}{item.sourceLabel ? ` · ${item.sourceLabel}` : ''}</small></div><button type="button" className="btn btn-outline btn-sm" onClick={() => { setType(item.templateId || 'it_assessment'); setDocRef(item.documentRef || ''); setClientId(item.clientId ? String(item.clientId) : ''); setNotes(item.notes || ''); const match = sourceOptions.find((source) => source.kind === item.sourceType && String(source.row.id) === String(item.sourceId)); setSourceKey(match?.key || ''); toast?.('Loaded saved document details. Generate again to create a fresh PDF.', 'info') }}>Reuse</button></div>) : <p className="muted">Generated PDFs are not uploaded. This list stores local metadata so you can reuse a document setup on this device.</p>}
+            {history.length ? history.map((item) => <div className="it-doc-history-item" key={item.id}><div><strong>{item.templateTitle || item.templateId}</strong><span>{item.documentRef} · {item.clientName || 'General'}</span><small>{item.generatedAt ? new Date(item.generatedAt).toLocaleString('en-ZA') : 'Date unavailable'}{item.sourceLabel ? ` · ${item.sourceLabel}` : ''}</small></div><button type="button" className="btn btn-outline btn-sm" onClick={() => { setType(item.templateId || 'it_assessment'); if (item.documentThemeId) chooseDocumentTheme(item.documentThemeId); setDocRef(item.documentRef || ''); setClientId(item.clientId ? String(item.clientId) : ''); setNotes(item.notes || ''); const match = sourceOptions.find((source) => source.kind === item.sourceType && String(source.row.id) === String(item.sourceId)); setSourceKey(match?.key || ''); toast?.('Loaded saved document details. Generate again to create a fresh PDF.', 'info') }}>Reuse</button></div>) : <p className="muted">Generated PDFs are not uploaded. This list stores local metadata so you can reuse a document setup on this device.</p>}
           </div>
         </aside>
       </div>
