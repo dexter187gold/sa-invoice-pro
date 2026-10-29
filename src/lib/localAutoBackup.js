@@ -52,7 +52,7 @@ export async function saveAutoBackup({ reason = 'manual', label = 'Snapshot' } =
       all.sort((a, b) => String(b.at || b.createdAt).localeCompare(String(a.at || a.createdAt)))
       for (const old of all.slice(MAX_SNAPS)) {
         try {
-          await db.del(db.STORES.autoBackups, old.id)
+          await db.remove(db.STORES.autoBackups, old.id)
         } catch {}
       }
     } else {
