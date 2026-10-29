@@ -233,8 +233,21 @@ export default function BankImport() {
   const applyOne = async (row, idx) => {
     const inv = resolveInvoice(row, idx)
     if (!inv || !row?.txn) return toast('Pick an invoice first', 'info')
+    if (!(Number(row.txn.amount) > 0) || row.txn.isCredit === false) {
+      return toast('Only a positive customer-payment credit can be applied to an invoice', 'error')
+    }
+    const approved = window.confirm(
+      `Record ${formatMoney(row.txn.amount)} from "${row.txn.description || 'Bank transaction'}" against invoice ${inv.number || inv.id} for ${clients.find((c) => String(c.id) === String(inv.clientId))?.name || 'this client'}? This will create a payment and update the invoice balance.`
+    )
+    if (!approved) return
     setBusy(true)
     try {
+      const fingerprint = (t) => [String(t.date || '').slice(0, 10), Number(t.amount || 0).toFixed(2), String(t.description || '').trim().toLowerCase(), String(t.reference || '').trim().toLowerCase()].join('|')
+      const prior = await db.getAll(STORES.bankTxns)
+      const alreadyApplied = prior.some((t) => t.matchedInvoiceId && fingerprint(t) === fingerprint(row.txn))
+      if (alreadyApplied) {
+        return toast('This bank transaction has already been applied to an invoice', 'error')
+      }
       await applyBankMatch({ txn: row.txn, invoice: inv, existingPayments: payments })
       await audit('bank.match', { invoiceId: inv.id, amount: row.txn.amount })
       fireWebhook('payment.recorded', {
@@ -248,29 +261,6 @@ export default function BankImport() {
       await refresh()
     } catch (err) {
       toast(err.message || 'Apply failed', 'error')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const applyAllSuggested = async () => {
-    const list = matches
-      .map((m, idx) => ({ m, idx, inv: resolveInvoice(m, idx) }))
-      .filter(({ m, inv, idx }) => inv && (m.score || 0) >= 40 && !skipped[m.txn?.id || idx])
-    if (!list.length) return toast('No high-confidence matches left', 'info')
-    setBusy(true)
-    let n = 0
-    try {
-      for (const { m, inv } of list) {
-        try {
-          await applyBankMatch({ txn: m.txn, invoice: inv, existingPayments: payments })
-          n++
-        } catch {}
-      }
-      setApplied((a) => a + n)
-      await audit('bank.match.bulk', { count: n })
-      toast(`Applied ${n} payments from bank CSV`, 'success')
-      await refresh()
     } finally {
       setBusy(false)
     }
@@ -300,14 +290,7 @@ export default function BankImport() {
             {applied ? ` · ${applied} payments applied` : ''}{savedCount ? ` · ${savedCount} lines added to books` : ''}
           </p>
         </div>
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={busy || !matches.some((m) => m.invoice && (m.score || 0) >= 40)}
-          onClick={applyAllSuggested}
-        >
-          Apply high-confidence (≥40)
-        </button>
+
       </div>
 
       {txns.length > 0 && (
@@ -378,7 +361,7 @@ export default function BankImport() {
             <div><label className="label">Closing balance (optional)</label><input className="input" type="number" step="0.01" value={closingBalance} onChange={(e) => setClosingBalance(e.target.value)} placeholder="e.g. 14320.50" /></div>
             {statementTotals.calculated != null && <p className="muted" style={{ margin: 0 }}>Calculated closing balance: <strong>{formatMoney(statementTotals.calculated)}</strong>{statementTotals.variance != null ? <> · variance to bank: <strong style={{ color: Math.abs(statementTotals.variance) < 0.01 ? '#059669' : '#b91c1c' }}>{formatMoney(statementTotals.variance)}</strong></> : null}</p>}
             <div><button type="button" className="btn btn-primary" disabled={busy} onClick={saveStatementToBooks}>{busy ? 'Saving…' : 'Import transactions into books'}</button></div>
-            <p className="muted" style={{ fontSize: 11, margin: 0 }}>Imported lines are saved for reconciliation and review. Importing does not automatically declare every debit as an expense or every credit as income.</p>
+            <p className="muted" style={{ fontSize: 11, margin: 0 }}>Importing statements only saves bank lines for review; it does not change invoice statuses. Matching is a suggestion. Apply a payment one transaction at a time after reviewing and confirming the invoice, amount and customer.</p>
           </div>
         </>
       )}

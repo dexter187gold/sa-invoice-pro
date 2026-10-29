@@ -53,3 +53,20 @@ test('matchBankToInvoices suggests high confidence', () => {
   assert.equal(matches[0].suggested, true)
   assert.ok(matches[0].score >= 40)
 })
+
+
+test('bank matching is read-only and does not change invoice status', () => {
+  const invoice = { id: 'i-readonly', number: 'INV-READONLY', status: 'unpaid', amountDue: 125, total: 125, clientId: 'c1', date: '2026-10-01' }
+  const before = structuredClone(invoice)
+  const txns = [{ id: 't-readonly', isCredit: true, amount: 125, description: 'INV-READONLY ACME', reference: '', date: '2026-10-02' }]
+  const result = matchBankToInvoices(txns, [invoice], [{ id: 'c1', name: 'Acme' }])
+  assert.equal(result[0].invoice.id, 'i-readonly')
+  assert.deepEqual(invoice, before)
+  assert.equal(invoice.status, 'unpaid')
+})
+
+test('bank matching never suggests a debit as an invoice payment', () => {
+  const invoice = { id: 'i-debit', number: 'INV-DEBIT', status: 'unpaid', amountDue: 125, total: 125, clientId: 'c1' }
+  const txns = [{ id: 't-debit', isCredit: false, amount: -125, description: 'INV-DEBIT', reference: '', date: '2026-10-02' }]
+  assert.deepEqual(matchBankToInvoices(txns, [invoice], [{ id: 'c1', name: 'Acme' }]), [])
+})

@@ -288,6 +288,22 @@ export function matchBankToInvoices(txns, invoices, clients) {
 
 export async function applyBankMatch({ txn, invoice, existingPayments }) {
   if (!txn || !invoice) throw new Error('Match requires txn and invoice')
+  if (!(Number(txn.amount) > 0) || txn.isCredit === false) {
+    throw new Error('Only a positive customer-payment credit can be applied to an invoice')
+  }
+
+  // Idempotency guard: one bank statement line must not create multiple payments.
+  const fingerprint = (t) => [
+    String(t.date || '').slice(0, 10),
+    Number(t.amount || 0).toFixed(2),
+    String(t.description || '').trim().toLowerCase(),
+    String(t.reference || '').trim().toLowerCase(),
+  ].join('|')
+  const priorBankRows = await db.getAll(STORES.bankTxns)
+  if (priorBankRows.some((t) => t.matchedInvoiceId && fingerprint(t) === fingerprint(txn))) {
+    throw new Error('This bank transaction has already been applied to an invoice')
+  }
+
   const amount = Math.min(Number(txn.amount) || 0, Number(invoice.amountDue ?? invoice.total) || 0)
   if (!(amount > 0)) throw new Error('Nothing to apply')
 
