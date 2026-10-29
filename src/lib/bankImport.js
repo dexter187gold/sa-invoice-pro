@@ -317,7 +317,9 @@ export async function applyBankMatch({ txn, invoice, existingPayments }) {
     throw new Error('This bank transaction has already been applied to an invoice')
   }
 
-  const amount = Math.min(Number(txn.amount) || 0, Number(invoice.amountDue ?? invoice.total) || 0)
+  // Never silently truncate an overpayment: that would mark the full bank line
+  // as matched while discarding the excess. Require explicit credit allocation.
+  const amount = Number(txn.amount) || 0
   if (!(amount > 0)) throw new Error('Nothing to apply')
 
   const { payment } = await recordPayment({
