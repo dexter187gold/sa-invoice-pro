@@ -290,7 +290,7 @@ export default function Payments() {
 
   const methodChips = [
     { id: 'all', label: 'All', count: methodCounts.all },
-    ...['EFT', 'Cash', 'Card', 'PayFast', 'Other'].map((m) => ({
+    ...['EFT', 'Bank transfer', 'Cash', 'Debit card', 'Credit card', 'Cheque', 'PayFast', 'Mobile payment', 'Other'].map((m) => ({
       id: m, label: m, count: methodCounts[m] || 0,
     })),
   ]
@@ -379,7 +379,7 @@ export default function Payments() {
         <div>
           <label className="label">Method</label>
           <select className="select" value={method} onChange={(e) => setMethod(e.target.value)}>
-            {['EFT', 'Cash', 'Card', 'PayFast', 'Other'].map((m) => <option key={m}>{m}</option>)}
+            {['EFT', 'Bank transfer', 'Cash', 'Debit card', 'Credit card', 'Cheque', 'PayFast', 'Mobile payment', 'Other'].map((m) => <option key={m}>{m}</option>)}
           </select>
         </div>
         <div>
