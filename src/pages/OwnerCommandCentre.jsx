@@ -5,6 +5,7 @@ import { Sync } from '../lib/sync'
 import * as db from '../lib/db'
 import { STORES } from '../lib/db'
 import { formatMoney } from '../lib/money'
+import { analyzeFinancialIntegrity } from '../lib/financialIntegrity'
 import { PageFade } from '../components/ui'
 
 function Stat({ label, value, hint, to }) {
@@ -23,6 +24,8 @@ export default function OwnerCommandCentre() {
   const [bankRows, setBankRows] = useState([])
   const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState('')
+  const [integrity, setIntegrity] = useState(null)
+  const [scanning, setScanning] = useState(false)
 
   useEffect(() => {
     let live = true
@@ -57,6 +60,17 @@ export default function OwnerCommandCentre() {
     return { open: open.length, overdue: overdue.length, balance, expenseTotal, paidThisMonth, uncategorized: uncategorized.length, suggestions, jobsOpen: tickets.filter(t => !['closed','resolved','cancelled'].includes(String(t.status || '').toLowerCase())).length }
   }, [invoices, quotes, tickets, expenses, payments, bankRows, online])
 
+  async function runIntegrityScan() {
+    setScanning(true); setError('')
+    try {
+      const [allInvoices, allPayments, allBankRows, allJournal] = await Promise.all([
+        db.getAll(STORES.invoices), db.getAll(STORES.payments), db.getAll(STORES.bankTxns), db.getAll(STORES.journal),
+      ])
+      setIntegrity(analyzeFinancialIntegrity({ invoices: allInvoices, payments: allPayments, bankTxns: allBankRows, journal: allJournal }))
+    } catch (e) { setError(e?.message || 'Financial integrity scan failed') }
+    finally { setScanning(false) }
+  }
+
   async function runSync() {
     setSyncing(true)
     try {
@@ -88,6 +102,10 @@ export default function OwnerCommandCentre() {
       {metrics.suggestions.map((s, i) => <div className="card" key={s.title} style={{ borderLeft: '4px solid ' + (s.level === 'warning' ? '#d97706' : s.level === 'success' ? '#059669' : '#64748b') }}>
         <strong>{s.title}</strong><p>{s.detail}</p><Link to={s.to}>Review →</Link>
       </div>)}
+    </section>
+    <section style={{ marginTop: 20 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}><div><h2>Financial integrity scan</h2><p className="muted">Read-only checks for payment/status mismatches, duplicate bank lines and journal source keys. It never edits records.</p></div><button className="btn btn-outline" disabled={scanning} onClick={runIntegrityScan}>{scanning ? 'Scanning…' : 'Run read-only scan'}</button></div>
+      {integrity && <div className="card"><strong>Scan complete</strong><p>{integrity.scanned.invoices} invoices · {integrity.scanned.payments} payments · {integrity.scanned.bankTransactions} bank lines · {integrity.scanned.journalEntries} journal entries checked.</p><p><strong>{integrity.counts.high}</strong> high-priority findings · <strong>{integrity.counts.review}</strong> review findings.</p>{integrity.findings.length ? integrity.findings.slice(0, 30).map((finding, index) => <div key={finding.code + '-' + finding.recordId + '-' + index} style={{ borderTop: '1px solid var(--border)', padding: '10px 0' }}><strong>{finding.title}</strong><div className="muted" style={{ fontSize: 12 }}>{finding.code} · {finding.recordId}</div><p style={{ marginBottom: 0 }}>{finding.detail}</p></div>) : <p>No obvious integrity issues were found by these checks. This is not a formal audit.</p>}</div>}
     </section>
     <section style={{ marginTop: 20 }}>
       <h2>Owner tools</h2>
