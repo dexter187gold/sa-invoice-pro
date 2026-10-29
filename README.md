@@ -1,4 +1,4 @@
-# SA Invoice Pro 6.36.0
+# SA Invoice Pro 6.37.0
 
 WhatsApp responder helpers (suggested ZA-tone replies) · Payroll + bank statement import + 69-template IT Document Studio · P1 desk CRUD · PWA cache refresh.
 
