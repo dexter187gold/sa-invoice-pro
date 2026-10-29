@@ -19,5 +19,8 @@ export default defineConfig({
         reuseExistingServer: !process.env.CI,
         timeout: 180000,
       },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', testIgnore: '**/mobile.spec.js', use: { ...devices['Desktop Chrome'] } },
+    { name: 'android-mobile', testMatch: '**/mobile.spec.js', use: { ...devices['Pixel 5'] } },
+  ],
 })
