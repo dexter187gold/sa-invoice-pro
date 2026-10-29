@@ -278,3 +278,38 @@ export async function addManyAtomic(operations = []) {
     }
   })
 }
+
+
+/**
+ * Run coordinated IndexedDB reads and writes in one transaction.
+ * The handler must enqueue its initial requests synchronously; follow-up
+ * requests may be queued from IndexedDB request callbacks while the
+ * transaction is active. Resolves only after the transaction commits.
+ */
+export async function withTransaction(storeNames, handler) {
+  const database = await openDB()
+  return new Promise((resolve, reject) => {
+    let result
+    let settled = false
+    let transaction
+    const fail = (error) => {
+      if (settled) return
+      settled = true
+      reject(error || new Error('IndexedDB transaction failed'))
+    }
+    try {
+      transaction = database.transaction([...new Set(storeNames)], 'readwrite')
+      transaction.oncomplete = () => {
+        if (settled) return
+        settled = true
+        resolve(result)
+      }
+      transaction.onerror = () => fail(transaction.error)
+      transaction.onabort = () => fail(transaction.__failure || transaction.error || new Error('IndexedDB transaction aborted'))
+      handler(transaction, (value) => { result = value })
+    } catch (error) {
+      try { transaction?.abort() } catch {}
+      fail(error)
+    }
+  })
+}

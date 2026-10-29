@@ -70,8 +70,12 @@ export function applyPaidToInvoice(inv, amountPaid) {
 }
 
 /**
- * Record a payment against an invoice.
- * @returns {{ payment, invoice }}
+ * Record a payment and its journal entry atomically. The invoice and its
+ * linked payments are re-read inside the same readwrite transaction so stale
+ * UI state cannot authorize an overpayment.
+ *
+ * idempotencyKey is optional for manual payments and should be a stable
+ * external transaction identity for imports/webhooks.
  */
 export async function recordPayment({
   invoice,
@@ -79,71 +83,164 @@ export async function recordPayment({
   method = 'EFT',
   date = new Date().toISOString().slice(0, 10),
   reference = '',
-  existingPayments = null,
+  idempotencyKey = '',
 }) {
-  const { amount: amt } = validatePaymentAmount(invoice, amount, existingPayments)
+  if (!invoice?.id) throw new Error('Invoice required')
+  const requestedAmount = Number(amount)
+  if (!Number.isFinite(requestedAmount) || !(requestedAmount > 0)) throw new Error('Amount required')
 
-  const payment = await db.add(STORES.payments, {
-    invoiceId: invoice.id,
-    clientId: invoice.clientId,
-    amount: amt,
-    method,
-    date: String(date || '').slice(0, 10),
-    reference: reference || '',
-  })
+  let outcome
+  await db.withTransaction(
+    [STORES.invoices, STORES.payments, STORES.journal],
+    (transaction, setResult) => {
+      const invoicesStore = transaction.objectStore(STORES.invoices)
+      const paymentsStore = transaction.objectStore(STORES.payments)
+      const journalStore = transaction.objectStore(STORES.journal)
+      const invoiceRequest = invoicesStore.get(invoice.id)
+      const paymentsRequest = paymentsStore.getAll()
+      let currentInvoice
+      let linkedPayments
+      let invoiceReady = false
+      let paymentsReady = false
 
-  let paidSoFar
-  if (Array.isArray(existingPayments)) {
-    paidSoFar = sumPaymentsForInvoice([...existingPayments, payment], invoice.id)
-  } else {
-    paidSoFar = (Number(invoice.amountPaid) || 0) + amt
-  }
-  const updatedInv = applyPaidToInvoice(invoice, paidSoFar)
-  await db.put(STORES.invoices, updatedInv)
+      const commit = () => {
+        if (!invoiceReady || !paymentsReady) return
+        try {
+          if (!currentInvoice) throw new Error('Invoice no longer exists')
+          if (idempotencyKey) {
+            const prior = linkedPayments.find((p) => p.idempotencyKey === idempotencyKey)
+            if (prior) {
+              outcome = { payment: prior, invoice: currentInvoice, duplicate: true }
+              setResult(outcome)
+              return
+            }
+          }
+          const { amount: amt } = validatePaymentAmount(currentInvoice, requestedAmount, linkedPayments)
+          const payment = {
+            id: crypto.randomUUID(),
+            invoiceId: currentInvoice.id,
+            clientId: currentInvoice.clientId,
+            amount: amt,
+            method,
+            date: String(date || '').slice(0, 10),
+            reference: reference || '',
+            ...(idempotencyKey ? { idempotencyKey } : {}),
+            createdAt: new Date().toISOString(),
+          }
+          const paidSoFar = sumPaymentsForInvoice([...linkedPayments, payment], currentInvoice.id)
+          const updatedInvoice = applyPaidToInvoice(currentInvoice, paidSoFar)
+          const journal = {
+            id: crypto.randomUUID(),
+            date: payment.date,
+            memo: `Payment ${method}${reference ? ` · ${reference}` : ''} · ${currentInvoice.number || currentInvoice.id}`,
+            debitCode: '1000',
+            creditCode: '1100',
+            debit: amt,
+            credit: amt,
+            amount: amt,
+            autoPost: true,
+            sourceKey: `pay-${payment.id}`,
+            paymentId: payment.id,
+            invoiceId: currentInvoice.id,
+            clientId: currentInvoice.clientId,
+            createdAt: new Date().toISOString(),
+          }
+          paymentsStore.add(payment)
+          invoicesStore.put(updatedInvoice)
+          journalStore.add(journal)
+          outcome = { payment, invoice: updatedInvoice, duplicate: false }
+          setResult(outcome)
+        } catch (error) {
+          transaction.__failure = error
+          try { transaction.abort() } catch {}
+          return
+        }
+      }
 
-  // Accounting: cash in bank, reduce AR
-  await db.add(STORES.journal, {
-    date: String(date || '').slice(0, 10),
-    memo: `Payment ${method}${reference ? ` · ${reference}` : ''} · ${invoice.number || invoice.id}`,
-    debitCode: '1000',
-    creditCode: '1100',
-    debit: amt,
-    credit: amt,
-    amount: amt,
-    autoPost: true,
-    sourceKey: `pay-${payment.id}`,
-    paymentId: payment.id,
-    invoiceId: invoice.id,
-    clientId: invoice.clientId,
-  })
-
-  return { payment, invoice: updatedInv }
+      invoiceRequest.onsuccess = () => {
+        currentInvoice = invoiceRequest.result
+        invoiceReady = true
+        commit()
+      }
+      paymentsRequest.onsuccess = () => {
+        linkedPayments = (paymentsRequest.result || []).filter(
+          (p) => String(p.invoiceId) === String(invoice.id)
+        )
+        paymentsReady = true
+        commit()
+      }
+      invoiceRequest.onerror = () => { try { transaction.abort() } catch {} }
+      paymentsRequest.onerror = () => { try { transaction.abort() } catch {} }
+    }
+  )
+  return outcome
 }
 
-/** Delete a payment and reverse invoice + matching journal entry. */
-export async function deletePayment(payment, { invoice, allPaymentsForInvoice = [] } = {}) {
-  if (!payment?.id) return
+/** Delete a payment and reverse its invoice + journal entry atomically. */
+export async function deletePayment(payment) {
+  if (!payment?.id) return null
 
-  await db.remove(STORES.payments, payment.id)
+  let updatedInvoice = null
+  await db.withTransaction(
+    [STORES.invoices, STORES.payments, STORES.journal],
+    (transaction, setResult) => {
+      const invoicesStore = transaction.objectStore(STORES.invoices)
+      const paymentsStore = transaction.objectStore(STORES.payments)
+      const journalStore = transaction.objectStore(STORES.journal)
+      const paymentRequest = paymentsStore.get(payment.id)
+      const paymentsRequest = paymentsStore.getAll()
+      const journalsRequest = journalStore.getAll()
+      let currentPayment
+      let allPayments
+      let journals
+      let ready = 0
 
-  // Reverse journal if present
-  const journals = await db.getAll(STORES.journal)
-  const related = journals.filter(
-    (j) => j.sourceKey === `pay-${payment.id}` || String(j.paymentId) === String(payment.id)
+      const commit = () => {
+        if (ready !== 3) return
+        try {
+          if (!currentPayment) {
+            setResult(null)
+            return
+          }
+          const invoiceRequest = invoicesStore.get(currentPayment.invoiceId)
+          invoiceRequest.onsuccess = () => {
+            try {
+              const currentInvoice = invoiceRequest.result
+              paymentsStore.delete(currentPayment.id)
+              for (const entry of journals) {
+                if (entry.sourceKey === `pay-${currentPayment.id}` ||
+                    String(entry.paymentId) === String(currentPayment.id)) {
+                  journalStore.delete(entry.id)
+                }
+              }
+              if (currentInvoice) {
+                const remaining = allPayments
+                  .filter((p) => String(p.id) !== String(currentPayment.id) &&
+                    String(p.invoiceId) === String(currentPayment.invoiceId))
+                  .reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+                updatedInvoice = applyPaidToInvoice(currentInvoice, remaining)
+                invoicesStore.put(updatedInvoice)
+              }
+              setResult(updatedInvoice)
+            } catch (error) {
+              try { transaction.abort() } catch {}
+            }
+          }
+          invoiceRequest.onerror = () => { try { transaction.abort() } catch {} }
+        } catch {
+          try { transaction.abort() } catch {}
+        }
+      }
+
+      paymentRequest.onsuccess = () => { currentPayment = paymentRequest.result; ready++; commit() }
+      paymentsRequest.onsuccess = () => { allPayments = paymentsRequest.result || []; ready++; commit() }
+      journalsRequest.onsuccess = () => { journals = journalsRequest.result || []; ready++; commit() }
+      paymentRequest.onerror = () => { try { transaction.abort() } catch {} }
+      paymentsRequest.onerror = () => { try { transaction.abort() } catch {} }
+      journalsRequest.onerror = () => { try { transaction.abort() } catch {} }
+    }
   )
-  for (const j of related) {
-    await db.remove(STORES.journal, j.id)
-  }
-
-  if (invoice) {
-    const remaining = (allPaymentsForInvoice || [])
-      .filter((p) => String(p.id) !== String(payment.id))
-      .reduce((s, p) => s + (Number(p.amount) || 0), 0)
-    const updatedInv = applyPaidToInvoice(invoice, remaining)
-    await db.put(STORES.invoices, updatedInv)
-    return updatedInv
-  }
-  return null
+  return updatedInvoice
 }
 
 /**
