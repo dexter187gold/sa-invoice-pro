@@ -328,7 +328,7 @@ export async function applyBankMatch({ txn, invoice, existingPayments }) {
     method: 'EFT',
     date: txn.date,
     reference: txn.reference || txn.description?.slice(0, 60) || 'Bank import',
-    existingPayments,
+    idempotencyKey: `bank:${bankTxnFingerprint(txn)}`,
   })
 
   const bankRow = {
