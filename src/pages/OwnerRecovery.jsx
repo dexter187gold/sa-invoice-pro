@@ -12,6 +12,7 @@ export default function OwnerRecovery() {
   const [password, setPassword] = useState('')
   const [owner, setOwner] = useState(null)
   const [seats, setSeats] = useState([])
+  const [activeId, setActiveId] = useState('')
   const [pinDrafts, setPinDrafts] = useState({})
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
@@ -33,6 +34,7 @@ export default function OwnerRecovery() {
       }
       setOwner({ email: team.owner?.email || email.trim().toLowerCase() })
       setSeats(await listSeats())
+      setActiveId(await getActiveSeatId())
       setPassword('')
       setMessage('Owner verified by the cloud server. You can now repair local desk-seat roles or set new PINs.')
     } catch (err) {
@@ -45,6 +47,7 @@ export default function OwnerRecovery() {
   }
 
   async function saveSeat(seat, nextRole) {
+    if (nextRole && nextRole !== seat.role && !window.confirm('Change ' + (seat.name || seat.email || 'this seat') + ' to ' + nextRole.replace('_', ' ') + '?')) return
     setBusy(true)
     setError('')
     setMessage('')
@@ -99,7 +102,7 @@ export default function OwnerRecovery() {
             <div className="card stack" key={seat.id} style={{ gap: 10 }}>
               <div>
                 <strong>{seat.name || 'Unnamed seat'}</strong>
-                <div className="muted" style={{ fontSize: 13 }}>{seat.email || 'No email'} · {seat.active === false ? 'Inactive' : 'Active'}{String(seat.id) === String(getActiveSeatId()) ? ' · Current seat' : ''}</div>
+                <div className="muted" style={{ fontSize: 13 }}>{seat.email || 'No email'} · {seat.active === false ? 'Inactive' : 'Active'}{String(seat.id) === String(activeId) ? ' · Current seat' : ''}</div>
               </div>
               <label>Role
                 <select className="input" value={seat.role || 'tech'} disabled={busy} onChange={(e) => saveSeat(seat, e.target.value)}>
@@ -112,7 +115,7 @@ export default function OwnerRecovery() {
               <button className="btn btn-outline" type="button" disabled={busy || !String(pinDrafts[seat.id] || '').trim()} onClick={() => saveSeat(seat, seat.role)}>Save new PIN</button>
             </div>
           ))}
-          <button className="btn btn-outline" type="button" onClick={() => { setOwner(null); setSeats([]); setPinDrafts({}); setMessage(''); }}>Lock recovery screen</button>
+          <button className="btn btn-outline" type="button" onClick={() => { setOwner(null); setSeats([]); setActiveId(''); setPinDrafts({}); setMessage(''); }}>Lock recovery screen</button>
         </div>
       )}
       {message && <p role="status" className="muted">{message}</p>}
