@@ -24,14 +24,14 @@ export default function Clients() {
   const [portalBusyId, setPortalBusyId] = useState(null)
   const [portalCreds, setPortalCreds] = useState(null)
   const [lastPortal, setLastPortal] = useState(null)
-  const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', notes: '', tags: [] })
+  const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', notes: '', tags: [], accountCategory: 'individual', paymentTerms: 'Due on receipt', creditLimit: '' })
 
   const filtered = useMemo(() => {
     let rows = filterClientsByTag(clients, tagFilter)
     rows = rows.filter((c) => matchesQuery(
       { ...c, tagsJoined: normalizeTags(c.tags).join(' ') },
       q,
-      ['name', 'email', 'phone', 'company', 'notes', 'tagsJoined'],
+      ['name', 'email', 'phone', 'company', 'notes', 'tagsJoined', 'accountCategory', 'paymentTerms'],
     ))
     return rows
   }, [clients, q, tagFilter])
@@ -45,9 +45,9 @@ export default function Clients() {
       phone: form.phone || '',
       company: form.company || '',
       notes: form.notes || '',
-      tags: normalizeTags(form.tags),
+      tags: normalizeTags(form.tags),\n      accountCategory: form.accountCategory || 'individual',\n      paymentTerms: form.paymentTerms || 'Due on receipt',\n      creditLimit: Math.max(0, Number(form.creditLimit) || 0),
     })
-    setForm({ name: '', email: '', phone: '', company: '', notes: '', tags: [] })
+    setForm({ name: '', email: '', phone: '', company: '', notes: '', tags: [], accountCategory: 'individual', paymentTerms: 'Due on receipt', creditLimit: '' })
     await refresh()
     toast('Client saved', 'success')
   }
@@ -228,6 +228,22 @@ export default function Clients() {
           <label className="label">Company</label>
           <input className="input" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
         </div>
+        <div>
+          <label className="label">Customer account category</label>
+          <select className="select" value={form.accountCategory} onChange={(e) => { const category = CUSTOMER_ACCOUNT_CATEGORIES.find((x) => x.id === e.target.value); setForm({ ...form, accountCategory: e.target.value, paymentTerms: category?.defaultTerms || form.paymentTerms }) }}>
+            {CUSTOMER_ACCOUNT_CATEGORIES.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="label">Account payment terms</label>
+          <select className="select" value={form.paymentTerms} onChange={(e) => setForm({ ...form, paymentTerms: e.target.value })}>
+            {CUSTOMER_PAYMENT_TERMS.map((term) => <option key={term}>{term}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="label">Credit limit (R)</label>
+          <input className="input" type="number" min="0" step="0.01" value={form.creditLimit} onChange={(e) => setForm({ ...form, creditLimit: e.target.value })} placeholder="0.00 — no credit limit set" />
+        </div>
         <div style={{ gridColumn: '1 / -1' }}>
           <label className="label">Notes</label>
           <input className="input" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
@@ -254,7 +270,7 @@ export default function Clients() {
               <th>Name</th>
               <th>Email</th>
               <th>Phone</th>
-              <th>Tags</th>
+              <th>Account category</th>\n              <th>Payment terms</th>\n              <th>Tags</th>
               <th />
             </tr>
           </thead>
@@ -264,6 +280,8 @@ export default function Clients() {
                 <td><strong>{c.name}</strong>{c.company ? <div className="muted" style={{ fontSize: 12 }}>{c.company}</div> : null}</td>
                 <td>{c.email || '—'}</td>
                 <td>{c.phone || '—'}</td>
+                <td>{CUSTOMER_ACCOUNT_CATEGORIES.find((x) => x.id === c.accountCategory)?.label || 'Individual'}{Number(c.creditLimit) > 0 ? <div className="muted" style={{ fontSize: 11 }}>Credit limit {formatMoney(c.creditLimit)}</div> : null}</td>
+                <td>{c.paymentTerms || 'Due on receipt'}</td>
                 <td>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                     {CLIENT_TAG_PRESETS.slice(0, 4).map((t) => (
