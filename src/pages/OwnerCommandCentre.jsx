@@ -90,14 +90,22 @@ export default function OwnerCommandCentre() {
       const before = { status: invoice.status, amountPaid: invoice.amountPaid ?? null, amountDue: invoice.amountDue ?? null, paidAt: invoice.paidAt ?? null }
       const now = new Date().toISOString()
       const updated = { ...invoice, status: 'paid', amountPaid: paid, amountDue: 0, paidAt: invoice.paidAt || now, paidDate: (invoice.paidDate || invoice.paidAt || now).slice(0, 10) }
+      const auditReady = await audit('invoice.historical_paid_status_repair_started', {
+        invoiceId: invoice.id, invoiceNumber: invoice.number || null, before,
+        proposedAfter: { status: updated.status, amountPaid: updated.amountPaid, amountDue: updated.amountDue, paidAt: updated.paidAt },
+        evidencePaymentIds: linked.map((p) => p.id), evidenceAmount: paid,
+        rule: 'linked payments equal invoice total within one cent',
+      })
+      if (!auditReady) throw new Error('Audit storage is unavailable. No invoice changes were made.')
       await db.put(STORES.invoices, updated)
-      await audit('invoice.historical_paid_status_repaired', {
+      const auditCompleted = await audit('invoice.historical_paid_status_repaired', {
         invoiceId: invoice.id, invoiceNumber: invoice.number || null, before,
         after: { status: updated.status, amountPaid: updated.amountPaid, amountDue: updated.amountDue, paidAt: updated.paidAt },
         evidencePaymentIds: linked.map((p) => p.id), evidenceAmount: paid,
         rule: 'linked payments equal invoice total within one cent',
       })
-      toast?.('Invoice status corrected using exact linked payment evidence. Audit entry saved.', 'success')
+      if (!auditCompleted) toast?.('Invoice updated, but the completion audit could not be confirmed. Preserve the repair-started audit and review the local audit store.', 'error')
+      else toast?.('Invoice status corrected using exact linked payment evidence. Audit entries recorded.', 'success')
       await refresh?.()
       await runIntegrityScan()
     } catch (e) {
