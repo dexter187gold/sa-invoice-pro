@@ -25,6 +25,8 @@ import Documents from './pages/Documents'
 import License from './pages/License'
 import Team from './pages/Team'
 import OwnerRecovery from './pages/OwnerRecovery'
+import OwnerCommandCentre from './pages/OwnerCommandCentre'
+import PortalAdmin from './pages/PortalAdmin'
 import Webhooks from './pages/Webhooks'
 import BankImport from './pages/BankImport'
 import Branches from './pages/Branches'
@@ -117,6 +119,8 @@ function AppInner() {
                 <Route path="/license" element={<License />} />
                 <Route path="/team" element={<Team />} />
                 <Route path="/owner-recovery" element={<OwnerRecovery />} />
+                <Route path="/owner-console" element={<OwnerCommandCentre />} />
+                <Route path="/portal-admin" element={<PortalAdmin />} />
                 <Route path="/webhooks" element={<Webhooks />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="*" element={<Navigate to="/" replace />} />

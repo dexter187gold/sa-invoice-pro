@@ -12,6 +12,8 @@ const ROOT_NAV = [
   { to: '/inbox', label: 'Inbox', icon: '💬', section: 'home' },
   { to: '/accounting', label: 'Books', icon: '📒', section: 'books' },
   { to: '/settings', label: 'Settings', icon: '⚙️', section: 'settings' },
+  { to: '/owner-console', label: 'Owner centre', icon: '🛡️', section: 'settings' },
+  { to: '/portal-admin', label: 'Client portal admin', icon: '👥', section: 'settings' },
 ]
 
 const SECTION_NAV = {

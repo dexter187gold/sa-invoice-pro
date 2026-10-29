@@ -24,6 +24,8 @@ const STATIC_ACTIONS = [
   { id: 'nav-sync', label: 'Sync health panel', path: '/sync', group: 'Navigate' },
   { id: 'nav-inbox', label: 'WhatsApp inbox', path: '/inbox', group: 'Navigate' },
   { id: 'nav-settings', label: 'Go to Settings', path: '/settings', group: 'Navigate' },
+  { id: 'nav-owner-console', label: 'Owner command centre', path: '/owner-console', group: 'Owner tools' },
+  { id: 'nav-portal-admin', label: 'Client portal administration', path: '/portal-admin', group: 'Owner tools' },
   { id: 'nav-license', label: 'Go to License', path: '/license', group: 'Navigate' },
   { id: 'act-collect', label: 'Collect payments / mark paid', path: '/payments', group: 'Actions' },
   { id: 'act-reports', label: 'Open reports & aging', path: '/reports', group: 'Actions' },
