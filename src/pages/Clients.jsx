@@ -21,6 +21,7 @@ export default function Clients() {
   const { clients, invoices, payments, quotes, tickets, products, services, expenses, company, refresh, toast } = useApp()
   const [q, setQ] = useState('')
   const [tagFilter, setTagFilter] = useState('all')
+  const [categoryFilter, setCategoryFilter] = useState('all')
   const [confirm, setConfirm] = useState(null)
   const [portalBusyId, setPortalBusyId] = useState(null)
   const [portalCreds, setPortalCreds] = useState(null)
@@ -29,13 +30,14 @@ export default function Clients() {
 
   const filtered = useMemo(() => {
     let rows = filterClientsByTag(clients, tagFilter)
+    if (categoryFilter !== 'all') rows = rows.filter((client) => (client.accountCategory || 'individual') === categoryFilter)
     rows = rows.filter((c) => matchesQuery(
       { ...c, tagsJoined: normalizeTags(c.tags).join(' ') },
       q,
       ['name', 'email', 'phone', 'company', 'notes', 'tagsJoined', 'accountCategory', 'paymentTerms'],
     ))
     return rows
-  }, [clients, q, tagFilter])
+  }, [clients, q, tagFilter, categoryFilter])
 
   const save = async (e) => {
     e.preventDefault()
@@ -263,6 +265,10 @@ ${portalCreds.portalUrl || ''}`
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
         <SearchInput value={q} onChange={setQ} placeholder="Search clients…" />
+        <select className="input" style={{ maxWidth: 200 }} value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+          <option value="all">All account categories</option>
+          {CUSTOMER_ACCOUNT_CATEGORIES.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
+        </select>
         <select className="input" style={{ maxWidth: 160 }} value={tagFilter} onChange={(e) => setTagFilter(e.target.value)}>
           <option value="all">All tags</option>
           {CLIENT_TAG_PRESETS.map((t) => (
