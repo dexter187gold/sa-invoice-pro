@@ -204,8 +204,8 @@ export default function BankImport() {
         seen.add(key)
         await db.add(STORES.bankTxns, {
           ...txn, amount: Number(txn.amount) || 0, accountLabel, statementId,
-          statementName: statementName || 'Pasted bank statement', source: 'statement-import',
-          reconciled: false, category: '', bookkeepingStatus: 'needs-review',
+          statementName: txn.sourceFile || statementName || 'Pasted bank statement', source: 'statement-import',
+          reconciled: false, category: categories[txn.id] || txn.suggestedCategory || 'Unclassified', bookkeepingStatus: 'needs-review',
           importedAt: new Date().toISOString(),
           openingBalance: openingBalance === '' ? null : Number(openingBalance),
           closingBalance: closingBalance === '' ? null : Number(closingBalance),
@@ -263,6 +263,46 @@ export default function BankImport() {
       toast('Expense created and linked to bank transaction', 'success')
     } catch (err) { toast(err.message || 'Could not create expense', 'error') }
     finally { setBusy(false) }
+  }
+
+  const createAllExpenses = async () => {
+    const debitTxns = txns.filter((t) => Number(t.amount) < 0)
+    if (!debitTxns.length) return toast('No expense/debit transactions found in this import', 'info')
+    const approved = window.confirm('Create expense records for ' + debitTxns.length + ' debit transactions? Description-based categories are suggestions; review them before posting if uncertain.')
+    if (!approved) return
+    setBusy(true)
+    try {
+      const bankRows = await db.getAll(STORES.bankTxns)
+      const fingerprint = (t) => [String(t.date || '').slice(0, 10), Number(t.amount || 0).toFixed(2), String(t.description || '').trim().toLowerCase(), String(t.reference || '').trim().toLowerCase()].join('|')
+      let created = 0
+      let alreadyLinked = 0
+      for (const txn of debitTxns) {
+        const key = fingerprint(txn)
+        const bankRow = bankRows.find((r) => fingerprint(r) === key)
+        if (bankRow?.linkedExpenseId || (await db.getAll(STORES.expenses)).some((e) => e.bankTxnFingerprint === key)) {
+          alreadyLinked++
+          continue
+        }
+        const category = categories[txn.id] || txn.suggestedCategory || 'Supplier expense'
+        const expense = await db.add(STORES.expenses, {
+          date: txn.date,
+          description: txn.description || 'Bank payment',
+          amount: Math.abs(Number(txn.amount) || 0),
+          category,
+          accountCode: '6900',
+          vendor: txn.description || '',
+          source: 'bank-statement',
+          bankTxnFingerprint: key,
+        })
+        if (bankRow) await db.put(STORES.bankTxns, { ...bankRow, linkedExpenseId: expense.id, category, bookkeepingStatus: 'expense-recorded' })
+        else await db.add(STORES.bankTxns, { ...txn, accountLabel, statementName: statementName || 'Pasted bank statement', source: 'statement-import', category, linkedExpenseId: expense.id, reconciled: false, bookkeepingStatus: 'expense-recorded', importedAt: new Date().toISOString() })
+        created++
+      }
+      await refresh()
+      toast('Created ' + created + ' expense records' + (alreadyLinked ? ' · ' + alreadyLinked + ' already linked' : ''), created ? 'success' : 'info')
+    } catch (err) {
+      toast(err.message || 'Could not bulk-create expenses', 'error')
+    } finally { setBusy(false) }
   }
 
   const resolveInvoice = (row, idx) => {
@@ -402,7 +442,10 @@ export default function BankImport() {
             <div><label className="label">Opening balance (optional)</label><input className="input" type="number" step="0.01" value={openingBalance} onChange={(e) => setOpeningBalance(e.target.value)} placeholder="e.g. 12500.00" /></div>
             <div><label className="label">Closing balance (optional)</label><input className="input" type="number" step="0.01" value={closingBalance} onChange={(e) => setClosingBalance(e.target.value)} placeholder="e.g. 14320.50" /></div>
             {statementTotals.calculated != null && <p className="muted" style={{ margin: 0 }}>Calculated closing balance: <strong>{formatMoney(statementTotals.calculated)}</strong>{statementTotals.variance != null ? <> · variance to bank: <strong style={{ color: Math.abs(statementTotals.variance) < 0.01 ? '#059669' : '#b91c1c' }}>{formatMoney(statementTotals.variance)}</strong></> : null}</p>}
-            <div><button type="button" className="btn btn-primary" disabled={busy} onClick={saveStatementToBooks}>{busy ? 'Saving…' : 'Import transactions into books'}</button></div>
+            <div><button type="button" className="btn btn-primary" disabled={busy} onClick={saveStatementToBooks}>{busy ? 'Saving…' : 'Import transactions into books'}</button>
+            <button type="button" className="btn btn-secondary" onClick={createAllExpenses} disabled={busy || !txns.some((t) => Number(t.amount) < 0)}>
+              Create all expenses
+            </button></div>
             <p className="muted" style={{ fontSize: 11, margin: 0 }}>Importing statements only saves bank lines for review; it does not change invoice statuses. Matching is a suggestion. Apply a payment one transaction at a time after reviewing and confirming the invoice, amount and customer.</p>
           </div>
         </>
