@@ -612,3 +612,23 @@ html.dark .btn-danger { border-color: rgba(185, 28, 28, 0.35); }
 .settings-shortcut-row strong{font-size:.82rem}
 .settings-shortcut-row span{font-size:.74rem;line-height:1.5;color:var(--muted)}
 @media(max-width:520px){.settings-shortcut-row{align-items:flex-start;flex-direction:column}.settings-shortcut-row .btn{align-self:flex-start}}
+
+
+/* Document-only theme picker: deliberately independent from the global app theme. */
+.it-doc-theme-picker{padding:.85rem .9rem;margin:0 0 1rem;border:1px solid var(--border);border-radius:12px;background:var(--bg-elevated)}
+.it-doc-theme-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:.6rem;margin-bottom:.7rem}
+.it-doc-theme-heading .label{display:block;margin:0;font-weight:800;font-size:.78rem}
+.it-doc-theme-heading p{margin:.18rem 0 0;font-size:.67rem;color:var(--muted);line-height:1.4}
+.it-doc-theme-current{font-size:.65rem;font-weight:800;color:var(--green);background:var(--green-soft);padding:.3rem .5rem;border-radius:999px;white-space:nowrap}
+.it-doc-theme-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem}
+.it-doc-theme-option{display:flex;flex-direction:column;align-items:stretch;gap:.35rem;min-width:0;padding:.45rem;border:1px solid var(--border);border-radius:9px;background:var(--card);color:var(--text);text-align:left;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s}
+.it-doc-theme-option:hover{transform:translateY(-1px);border-color:var(--green)}
+.it-doc-theme-option:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.it-doc-theme-option.is-selected{border-color:var(--green);box-shadow:0 0 0 2px var(--green-soft)}
+.it-doc-theme-swatch{height:36px;display:flex;gap:4px;align-items:flex-end;padding:6px;border-radius:5px;background:linear-gradient(135deg,var(--theme-dark),var(--theme-primary))}
+.it-doc-theme-swatch i{display:block;height:7px;flex:1;border-radius:2px;background:#fff;opacity:.88}
+.it-doc-theme-swatch i:nth-child(2){height:13px;background:var(--theme-soft)}
+.it-doc-theme-swatch i:nth-child(3){height:19px;background:var(--theme-primary);border:1px solid #ffffff88}
+.it-doc-theme-name{font-size:.72rem;font-weight:800;line-height:1.25}
+.it-doc-theme-description{font-size:.63rem;line-height:1.35;color:var(--muted)}
+@media(max-width:560px){.it-doc-theme-options{grid-template-columns:repeat(2,minmax(0,1fr))}.it-doc-theme-picker{padding:.7rem}}
