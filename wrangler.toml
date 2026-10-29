@@ -11,3 +11,6 @@ not_found_handling = "single-page-application"
 
 [ai]
 binding = "AI"
+
+[previews.ai]
+binding = "AI"
