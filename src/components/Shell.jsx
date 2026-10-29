@@ -293,7 +293,7 @@ export default function Shell({ children }) {
         >
           {commandOpen ? 'Close' : 'Command'}
         </button>
-        <button type="button" className="brand-logo-trigger" onClick={() => { setCommandOpen((v) => !v); setOpen(false); setMoreOpen(false) }} aria-label="Open pages menu" aria-expanded={commandOpen} title="Open pages menu"><AppLogo size={28} /></button>
+        <button type="button" className="brand-logo-trigger" style={{ border: 0, background: "transparent", padding: 0, margin: 0, display: "inline-flex", alignItems: "center", cursor: "pointer", flexShrink: 0 }} onClick={() => { setCommandOpen((v) => !v); setOpen(false); setMoreOpen(false) }} aria-label="Open pages menu" aria-expanded={commandOpen} title="Open pages menu"><AppLogo size={28} /></button>
         <strong style={{ fontSize: 13, letterSpacing: '-0.02em', flex: 1 }}>{brandLabel}</strong>
         <div className="mobile-top-tools" aria-label="Workspace controls">
           <ActiveSeatChip compact />
