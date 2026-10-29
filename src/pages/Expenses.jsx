@@ -220,15 +220,7 @@ export default function Expenses() {
               </div>
               <div className="list-card-actions" style={{ alignItems: 'center' }}>
                 <strong>{formatMoney(e.amount)}</strong>
-                <button type="button" className="btn btn-outline btn-sm" onClick={() => startEdit(e)}>Edit</button>
-                <ActionMenu
-                  label="Actions"
-                  items={[
-                    { id: 'edit', label: 'Edit', onClick: () => startEdit(e) },
-                    { id: 'dup', label: 'Duplicate', onClick: () => duplicate(e) },
-                    { id: 'del', label: 'Delete', danger: true, onClick: () => del(e) },
-                  ]}
-                />
+                {e.source === 'petty-cash' ? <span className="muted" style={{ fontSize: 11 }}>Controlled in petty-cash register</span> : <><button type="button" className="btn btn-outline btn-sm" onClick={() => startEdit(e)}>Edit</button><ActionMenu label="Actions" items={[{ id: 'edit', label: 'Edit', onClick: () => startEdit(e) }, { id: 'dup', label: 'Duplicate', onClick: () => duplicate(e) }, { id: 'del', label: 'Delete', danger: true, onClick: () => del(e) }]} /></>}
               </div>
             </div>
           ))
