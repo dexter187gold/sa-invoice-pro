@@ -2,7 +2,7 @@
 import versionInfo from '../../version.json' with { type: 'json' }
 
 const DB_NAME = 'SAInvoicePro_v2'
-const DB_VERSION = 3
+const DB_VERSION = 4
 
 export const STORES = {
   users: 'users',
