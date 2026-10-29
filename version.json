@@ -1,5 +1,5 @@
 {
-  "version": "6.35.0",
-  "codename": "Payroll · Bank Import · Document Studio",
-  "message": "Three payslip layouts and expanded South African payroll details; bank statement import and reconciliation; 69-template IT Document Studio; E2E visibility recovery and versioned PWA cache."
+  "version": "6.36.0",
+  "codename": "WhatsApp responder helpers",
+  "message": "Pure helpers for suggested ZA-tone WhatsApp replies on jobs, invoices and quotes. wa.me links ready. Advances P7 messaging."
 }
