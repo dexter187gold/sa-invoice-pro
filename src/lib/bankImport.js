@@ -286,21 +286,34 @@ export function matchBankToInvoices(txns, invoices, clients) {
   return results
 }
 
+/** Stable identity for a bank statement line across imports. */
+export function bankTxnFingerprint(t) {
+  return [
+    String(t?.date || '').slice(0, 10),
+    Number(t?.amount || 0).toFixed(2),
+    String(t?.description || '').trim().toLowerCase(),
+    String(t?.reference || '').trim().toLowerCase(),
+  ].join('|')
+}
+
+/** Find an existing line and whether it has already posted a payment. */
+export function findBankTxnForMatch(txn, priorRows = []) {
+  const row = (priorRows || []).find((t) => bankTxnFingerprint(t) === bankTxnFingerprint(txn)) || null
+  return { row, alreadyApplied: !!(row && (row.matchedInvoiceId || row.paymentId)) }
+}
+
 export async function applyBankMatch({ txn, invoice, existingPayments }) {
   if (!txn || !invoice) throw new Error('Match requires txn and invoice')
   if (!(Number(txn.amount) > 0) || txn.isCredit === false) {
     throw new Error('Only a positive customer-payment credit can be applied to an invoice')
   }
 
-  // Idempotency guard: one bank statement line must not create multiple payments.
-  const fingerprint = (t) => [
-    String(t.date || '').slice(0, 10),
-    Number(t.amount || 0).toFixed(2),
-    String(t.description || '').trim().toLowerCase(),
-    String(t.reference || '').trim().toLowerCase(),
-  ].join('|')
+  // A previously imported but still-unmatched statement line is reused. This
+  // prevents the bookkeeping import and payment-matching flows from creating
+  // two bank rows for the same transaction.
   const priorBankRows = await db.getAll(STORES.bankTxns)
-  if (priorBankRows.some((t) => t.matchedInvoiceId && fingerprint(t) === fingerprint(txn))) {
+  const prior = findBankTxnForMatch(txn, priorBankRows)
+  if (prior.alreadyApplied) {
     throw new Error('This bank transaction has already been applied to an invoice')
   }
 
@@ -316,15 +329,19 @@ export async function applyBankMatch({ txn, invoice, existingPayments }) {
     existingPayments,
   })
 
-  await db.add(STORES.bankTxns, {
+  const bankRow = {
+    ...(prior.row || {}),
     date: txn.date,
     amount: txn.amount,
     description: txn.description,
     reference: txn.reference,
     matchedInvoiceId: invoice.id,
     paymentId: payment?.id,
-    importedAt: new Date().toISOString(),
-  })
+    importedAt: prior.row?.importedAt || new Date().toISOString(),
+    matchedAt: new Date().toISOString(),
+  }
+  if (prior.row?.id != null) await db.put(STORES.bankTxns, bankRow)
+  else await db.add(STORES.bankTxns, bankRow)
 
   return { payment, amount }
 }
