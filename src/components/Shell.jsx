@@ -130,6 +130,7 @@ export default function Shell({ children }) {
         title: 'Money out & books',
         links: [
           { to: '/expenses', label: 'Expenses' },
+          { to: '/petty-cash', label: 'Petty cash' },
           { to: '/accounting', label: 'Accounting' },
           { to: '/employees', label: 'Employees' },
           { to: '/payroll', label: 'Payroll' },
