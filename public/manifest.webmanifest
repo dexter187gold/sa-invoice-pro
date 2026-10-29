@@ -5,11 +5,19 @@
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "orientation": "any",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "launch_handler": { "client_mode": "focus-existing" },
+  "prefer_related_applications": false,
   "background_color": "#0c0a14",
   "theme_color": "#0c0a14",
   "categories": ["business", "finance", "productivity"],
   "lang": "en-ZA",
+  "shortcuts": [
+    { "name": "New invoice", "short_name": "Invoice", "description": "Create an invoice", "url": "/invoices/new", "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
+    { "name": "Clients", "short_name": "Clients", "description": "Open client records", "url": "/clients", "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
+    { "name": "Bank import", "short_name": "Bank", "description": "Review bank transactions", "url": "/bank", "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }] }
+  ],
   "icons": [
     {
       "src": "/icon.svg",
