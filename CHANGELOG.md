@@ -1,5 +1,16 @@
 # Changelog
 
+## 6.36.0 — WhatsApp responder helpers (2026-10-29)
+
+### Messaging (P7)
+- New `src/lib/whatsappResponder.js` pure helpers.
+- `suggestReplies()` generates ZA-tone (EN + short AF) messages for job status, invoices, quotes, and general replies.
+- Re-uses existing chase message for payment reminders.
+- Returns ready `wa.me` links. No UI wiring yet — next slice can surface buttons on job/invoice cards.
+
+### Version
+- Aligned package.json, config.js, and changelog.
+
 ## 6.35.0 — Payroll, books and document studio (2026-10-28)
 
 ### Payroll and South African payslips
