@@ -24,6 +24,7 @@ export const STORES = {
   journal: 'journal',
   accounts: 'accounts',
   reconciliations: 'reconciliations',
+  pettyCash: 'pettyCash',
   popiaRequests: 'popiaRequests',
   documentTemplates: 'documentTemplates',
   documentRenders: 'documentRenders',
@@ -236,5 +237,44 @@ export async function addTicketComment(ticketId, { text, internal = false, autho
     internal: !!internal,
     author: author || 'staff',
     createdAt: new Date().toISOString(),
+  })
+}
+
+
+/**
+ * Enqueue related IndexedDB writes in one transaction. Every request is
+ * scheduled synchronously before the transaction can auto-commit.
+ * operations: [{ store, type: 'add'|'put'|'delete', value }]
+ */
+export async function addManyAtomic(operations = []) {
+  if (!Array.isArray(operations) || !operations.length) return []
+  const dbi = await openDB()
+  const names = [...new Set(operations.map((op) => op.store))]
+  return new Promise((resolve, reject) => {
+    const transaction = dbi.transaction(names, 'readwrite')
+    const results = []
+    transaction.oncomplete = () => resolve(results)
+    transaction.onerror = () => reject(transaction.error || new Error('Transaction failed'))
+    transaction.onabort = () => reject(transaction.error || new Error('Transaction aborted'))
+    try {
+      for (const operation of operations) {
+        const store = transaction.objectStore(operation.store)
+        let request
+        if (operation.type === 'delete') request = store.delete(operation.value)
+        else {
+          const row = { ...(operation.value || {}) }
+          if (operation.type === 'add') {
+            if (row.id == null) row.id = crypto.randomUUID()
+            if (!row.createdAt) row.createdAt = new Date().toISOString()
+          }
+          request = operation.type === 'put' ? store.put(row) : store.add(row)
+        }
+        request.onsuccess = () => results.push(request.result)
+        request.onerror = () => { /* transaction aborts automatically */ }
+      }
+    } catch (error) {
+      try { transaction.abort() } catch {}
+      reject(error)
+    }
   })
 }
