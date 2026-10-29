@@ -341,6 +341,24 @@ export const Sync = {
     })
   },
 
+  async listClientPortalAccounts() {
+    return request('/api/client-portal/accounts')
+  },
+
+  async setClientPortalAccountActive(email, active) {
+    return request('/api/client-portal/accounts/' + encodeURIComponent(email) + '/status', {
+      method: 'PATCH',
+      body: JSON.stringify({ active: !!active }),
+    })
+  },
+
+  async resetClientPortalPin(email) {
+    return request('/api/client-portal/accounts/' + encodeURIComponent(email) + '/reset-pin', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    })
+  },
+
   async askAssistant(messages) {
     return request('/api/assistant', {
       method: 'POST',
