@@ -1,5 +1,15 @@
 # Changelog
 
+## 6.41.0 — WA inbox replies (2026-10-30)
+
+### WhatsApp
+- Quick replies library (greeting, ask more info, after-hours) in `waTemplates.js`
+- Inbox: Reply button on pending WhatsApp clients — pick template or edit, open wa.me with pre-filled ZA-tone message
+- Link to templates page from inbox
+
+### Ops
+- Version gate aligned at **6.41.0**
+
 ## 6.40.0 — Nav + gestures (2026-10-30)
 
 ### Critical
