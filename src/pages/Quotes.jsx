@@ -24,6 +24,7 @@ import {
 } from '../lib/portalQuote'
 import { convertQuoteToInvoice, canConvertQuote } from '../lib/quoteConvert'
 import { SA_CONFIG } from '../config'
+import PageInsightsBar from '../components/PageInsightsBar'
 
 export default function Quotes() {
   const nav = useNavigate()
@@ -269,6 +270,8 @@ export default function Quotes() {
           </button>
         </div>
       </div>
+
+      <PageInsightsBar page="quotes" />
 
       {queue.length > 0 && (
         <div
