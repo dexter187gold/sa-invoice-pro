@@ -1,6 +1,6 @@
-# SA Invoice Pro 6.40.0
+# SA Invoice Pro 6.41.0
 
-Navigation restored (bottom bar + icons) · swipe / multi-finger gestures · Dev portal · profile restore.
+WhatsApp Inbox quick replies · respond to business messages from the desk.
 
 ```bash
 npm install && npm run dev
