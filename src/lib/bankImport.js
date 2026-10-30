@@ -41,7 +41,6 @@ export function parseBankCsv(text) {
   for (let i = 0; i < Math.min(8, matrix.length); i++) {
     const row = matrix[i]
     const joined = row.join(' ').toLowerCase()
-    // Skip bank statement title rows
     if (/statement|account number|opening balance|closing balance|period from/i.test(joined) && !/date/i.test(joined)) continue
     const nums = row.filter((c) => /^-?[\d\s,.]+$/.test(c) && /\d/.test(c)).length
     if (nums < row.length / 2) {
@@ -56,8 +55,6 @@ export function parseBankCsv(text) {
 
 function findCol(headers, candidates) {
   for (const c of candidates) {
-    // Short bank abbreviations such as CR/DR must match a whole header token;
-    // substring matching made "description" look like a credit column.
     const i = headers.findIndex((raw) => {
       const h = String(raw || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
       if (c.length <= 3) return h.split(/\s+/).includes(c)
@@ -71,9 +68,7 @@ function findCol(headers, candidates) {
 function parseAmount(s) {
   if (s == null || s === '') return null
   let t = String(s).replace(/\s/g, '').replace(/R/gi, '').replace(/ZAR/gi, '')
-  // SA style 1.234,56 → 1234.56
-  if (/\d\.\d{3},\d{2}$/.test(t)) t = t.replace(/\./g, '').replace(',', '.')
-  else if (/\d,\d{2}$/.test(t) && !t.includes('.')) t = t.replace(/\./g, '').replace(',', '.')
+  if (/^\d{1,3}(?:\.\d{3})*,\d{2}$/.test(t)) t = t.replace(/\./g, '').replace(',', '.')
   else t = t.replace(/,/g, '')
   const n = Number(t)
   return Number.isFinite(n) ? n : null
@@ -83,12 +78,10 @@ function parseDate(s) {
   if (!s) return null
   const t = String(s).trim()
   if (/^\d{4}-\d{2}-\d{2}/.test(t)) return t.slice(0, 10)
-  // DD/MM/YYYY or DD-MM-YYYY (ZA)
   const m = t.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/)
   if (m) {
     let y = m[3]
     if (y.length === 2) y = `20${y}`
-    // Prefer DMY for SA banks
     const day = m[1].padStart(2, '0')
     const mon = m[2].padStart(2, '0')
     return `${y}-${mon}-${day}`
@@ -142,6 +135,7 @@ export function normalizeBankRows({ headers, rows }) {
       description: String(description).slice(0, 200),
       reference: String(reference).slice(0, 80),
       isCredit: amount > 0,
+      direction: amount >= 0 ? 'in' : 'out',
     })
   }
   return out
@@ -150,200 +144,260 @@ export function normalizeBankRows({ headers, rows }) {
 function daysBetween(a, b) {
   try {
     const da = new Date(String(a).slice(0, 10) + 'T12:00:00').getTime()
-    const db = new Date(String(b).slice(0, 10) + 'T12:00:00').getTime()
-    if (!Number.isFinite(da) || !Number.isFinite(db)) return null
-    return Math.abs(da - db) / 86400000
+    const db_ = new Date(String(b).slice(0, 10) + 'T12:00:00').getTime()
+    return Math.abs(Math.round((da - db_) / 86400000))
   } catch {
-    return null
+    return 999
   }
 }
 
-/** Explain why a score was awarded (for bank match UX tooltips). */
-export function explainMatchScore(txn, inv, client) {
-  const reasons = []
-  if (!txn?.isCredit || !(txn.amount > 0)) return { score: 0, reasons: ['Not a credit'] }
-  const due = Number(inv.amountDue ?? inv.total) || 0
-  if (due <= 0) return { score: 0, reasons: ['Invoice has no balance'] }
-
-  let score = 0
-  const amtDiff = Math.abs(txn.amount - due)
-  if (amtDiff < 0.02) {
-    score += 50
-    reasons.push('Exact amount')
-  } else if (amtDiff < 1) {
-    score += 38
-    reasons.push('Amount within R1')
-  } else if (amtDiff < due * 0.03) {
-    score += 25
-    reasons.push('Amount within 3%')
-  } else if (amtDiff < due * 0.08) {
-    score += 12
-    reasons.push('Amount close')
-  } else if (txn.amount > due * 1.08) {
-    return { score: 0, reasons: ['Payment larger than balance'] }
-  }
-
-  const hay = `${txn.description} ${txn.reference}`.toLowerCase()
-  const num = String(inv.number || '').toLowerCase()
-  if (num && hay.includes(num)) {
-    score += 40
-    reasons.push('Invoice number in description')
-  } else if (num) {
-    const digits = num.replace(/[^0-9]/g, '')
-    const tail = digits.slice(-4)
-    if (tail && hay.includes(tail)) {
-      score += 18
-      reasons.push('Invoice number tail')
+export function matchBankToInvoices(txns = [], invoices = [], clients = []) {
+  const open = invoices.filter((i) => ['unpaid', 'partial', 'overdue'].includes(i.status || 'unpaid'))
+  const clientName = (id) => clients.find((c) => String(c.id) === String(id))?.name || ''
+  return txns.map((txn) => {
+    if (!(Number(txn.amount) > 0)) {
+      return { txn, invoice: null, score: 0, reasons: ['Debit — not matched to invoices'], suggested: false }
     }
-    // Partial like INV-26 or 2026-0001
-    const parts = num.split(/[-_/]/).filter((p) => p.length >= 3)
-    for (const p of parts) {
-      if (hay.includes(p.toLowerCase())) {
-        score += 8
-        reasons.push('Invoice fragment')
-        break
-      }
-    }
-  }
-
-  const name = String(client?.name || '').toLowerCase()
-  if (name && name.length > 2) {
-    const parts = name.split(/\s+/).filter((p) => p.length > 2)
-    let hits = 0
-    for (const p of parts) {
-      if (hay.includes(p)) {
-        score += 10
-        hits++
-      }
-    }
-    if (hits) reasons.push(`Client name token${hits > 1 ? 's' : ''}`)
-  }
-  const phone = String(client?.phone || client?.whatsapp || '').replace(/\D/g, '')
-  if (phone.length >= 7 && hay.includes(phone.slice(-7))) {
-    score += 12
-    reasons.push('Phone match')
-  }
-
-  // Date proximity: payment near invoice date or due date
-  const invDate = inv.date || inv.issueDate
-  const dueDate = inv.dueDate
-  const d1 = daysBetween(txn.date, invDate)
-  const d2 = daysBetween(txn.date, dueDate)
-  const bestDays = [d1, d2].filter((x) => x != null).sort((a, b) => a - b)[0]
-  if (bestDays != null) {
-    if (bestDays <= 3) {
-      score += 12
-      reasons.push('Within 3 days of inv/due')
-    } else if (bestDays <= 14) {
-      score += 6
-      reasons.push('Within 2 weeks of inv/due')
-    } else if (bestDays > 90) {
-      score -= 8
-      reasons.push('Date far from invoice')
-    }
-  }
-
-  return { score: Math.max(0, Math.min(100, score)), reasons: reasons.length ? reasons : ['Weak signals only'] }
-}
-
-export function scoreMatch(txn, inv, client) {
-  return explainMatchScore(txn, inv, client).score
-}
-
-export function matchBankToInvoices(txns, invoices, clients) {
-  const open = (invoices || []).filter(
-    (i) => !i.isCredit && ['unpaid', 'partial', 'overdue'].includes(i.status || 'unpaid'),
-  )
-  const used = new Set()
-  const results = []
-  const credits = (txns || []).filter((t) => t.isCredit && t.amount > 0)
-
-  for (const txn of credits) {
     let best = null
     let bestScore = 0
-    let bestReasons = []
+    let reasons = []
     for (const inv of open) {
-      if (used.has(String(inv.id))) continue
-      const client = (clients || []).find((c) => String(c.id) === String(inv.clientId))
-      const { score: s, reasons } = explainMatchScore(txn, inv, client)
-      if (s > bestScore) {
-        bestScore = s
-        best = { inv, client }
-        bestReasons = reasons
+      const due = Number(inv.amountDue != null ? inv.amountDue : inv.total) || 0
+      if (due <= 0) continue
+      let score = 0
+      const rs = []
+      const amt = Number(txn.amount) || 0
+      if (Math.abs(amt - due) < 0.05) {
+        score += 50
+        rs.push('Exact amount')
+      } else if (Math.abs(amt - due) / Math.max(due, 1) < 0.02) {
+        score += 35
+        rs.push('Amount close')
+      }
+      const d = daysBetween(txn.date, inv.dueDate || inv.date)
+      if (d <= 3) {
+        score += 20
+        rs.push('Date near due')
+      } else if (d <= 14) {
+        score += 10
+        rs.push('Date within 2 weeks')
+      }
+      const desc = String(txn.description || '').toLowerCase()
+      const ref = String(txn.reference || '').toLowerCase()
+      const num = String(inv.number || '').toLowerCase()
+      const name = String(clientName(inv.clientId) || '').toLowerCase()
+      if (num && (desc.includes(num) || ref.includes(num))) {
+        score += 25
+        rs.push('Invoice number in description')
+      }
+      if (name && name.length > 3 && desc.includes(name.slice(0, Math.min(12, name.length)))) {
+        score += 15
+        rs.push('Client name hinted')
+      }
+      if (score > bestScore) {
+        bestScore = score
+        best = inv
+        reasons = rs
       }
     }
-    const suggested = bestScore >= 40
-    if (suggested && best) used.add(String(best.inv.id))
-    results.push({
+    return {
       txn,
-      invoice: best?.inv || null,
-      client: best?.client || null,
+      invoice: bestScore >= 40 ? best : null,
       score: bestScore,
-      reasons: bestReasons,
-      suggested,
-    })
-  }
-  return results
+      reasons,
+      suggested: bestScore >= 40,
+    }
+  })
 }
 
-/** Stable identity for a bank statement line across imports. */
-export function bankTxnFingerprint(t) {
+export async function applyBankMatch(txn, invoice, opts = {}) {
+  if (!invoice) throw new Error('No invoice selected')
+  const amount = Number(opts.amount != null ? opts.amount : txn.amount) || 0
+  if (!(amount > 0)) throw new Error('Payment amount must be positive')
+  const payment = await recordPayment({
+    invoiceId: invoice.id,
+    amount,
+    date: txn.date || new Date().toISOString().slice(0, 10),
+    method: opts.method || 'EFT',
+    reference: txn.reference || txn.description || '',
+    notes: opts.notes || `Bank statement · ${txn.description || ''}`.trim(),
+  })
+  return payment
+}
+
+export function txnFingerprint(t) {
   return [
     String(t?.date || '').slice(0, 10),
     Number(t?.amount || 0).toFixed(2),
-    String(t?.description || '').trim().toLowerCase(),
+    String(t?.description || '').trim().toLowerCase().replace(/\s+/g, ' '),
     String(t?.reference || '').trim().toLowerCase(),
   ].join('|')
 }
 
-/** Find an existing line and whether it has already posted a payment. */
-export function findBankTxnForMatch(txn, priorRows = []) {
-  const row = (priorRows || []).find((t) => bankTxnFingerprint(t) === bankTxnFingerprint(txn)) || null
-  return { row, alreadyApplied: !!(row && (row.matchedInvoiceId || row.paymentId)) }
+export function softFingerprint(t) {
+  return [String(t?.date || '').slice(0, 10), Number(t?.amount || 0).toFixed(2)].join('|')
 }
 
-export async function applyBankMatch({ txn, invoice, existingPayments }) {
-  if (!txn || !invoice) throw new Error('Match requires txn and invoice')
-  if (!(Number(txn.amount) > 0) || txn.isCredit === false) {
-    throw new Error('Only a positive customer-payment credit can be applied to an invoice')
+function normDesc(s) {
+  return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 80)
+}
+
+function descSimilar(a, b) {
+  const x = normDesc(a)
+  const y = normDesc(b)
+  if (!x || !y) return false
+  if (x === y) return true
+  if (x.includes(y) || y.includes(x)) return true
+  const xs = new Set(x.split(/\s+/).filter((w) => w.length > 2))
+  const ys = y.split(/\s+/).filter((w) => w.length > 2)
+  if (!ys.length) return false
+  let hit = 0
+  for (const w of ys) if (xs.has(w)) hit++
+  return hit / ys.length >= 0.55
+}
+
+/**
+ * Compare parsed statement rows against existing bankTxns. Does not write.
+ * status: new | exact_duplicate | same_date_amount | amount_mismatch
+ */
+export function compareImportBatch(incoming = [], existing = []) {
+  const byExact = new Map()
+  const bySoft = new Map()
+  for (const e of existing || []) {
+    const fp = txnFingerprint(e)
+    const soft = softFingerprint(e)
+    if (!byExact.has(fp)) byExact.set(fp, [])
+    byExact.get(fp).push(e)
+    if (!bySoft.has(soft)) bySoft.set(soft, [])
+    bySoft.get(soft).push(e)
   }
 
-  // A previously imported but still-unmatched statement line is reused. This
-  // prevents the bookkeeping import and payment-matching flows from creating
-  // two bank rows for the same transaction.
-  const priorBankRows = await db.getAll(STORES.bankTxns)
-  const prior = findBankTxnForMatch(txn, priorBankRows)
-  if (prior.alreadyApplied) {
-    throw new Error('This bank transaction has already been applied to an invoice')
+  const rows = []
+  for (const txn of incoming || []) {
+    const fp = txnFingerprint(txn)
+    const soft = softFingerprint(txn)
+    const exactHits = byExact.get(fp) || []
+    if (exactHits.length) {
+      rows.push({
+        txn,
+        status: 'exact_duplicate',
+        action: 'skip',
+        existing: exactHits[0],
+        message: 'Duplicate found — same date, amount and description already in books.',
+        options: ['skip', 'import_anyway'],
+      })
+      continue
+    }
+
+    const sameDay = (existing || []).filter(
+      (e) => String(e.date || '').slice(0, 10) === String(txn.date || '').slice(0, 10) && descSimilar(e.description, txn.description),
+    )
+    const amountDiff = sameDay.filter((e) => Number(e.amount).toFixed(2) !== Number(txn.amount).toFixed(2))
+    if (amountDiff.length) {
+      rows.push({
+        txn,
+        status: 'amount_mismatch',
+        action: 'review',
+        existing: amountDiff[0],
+        message: `Amount may be incorrect — existing ${Number(amountDiff[0].amount).toFixed(2)} vs statement ${Number(txn.amount).toFixed(2)}.`,
+        options: ['skip', 'import_as_new', 'use_existing_amount', 'fix_amount'],
+      })
+      continue
+    }
+
+    const softHits = bySoft.get(soft) || []
+    if (softHits.length) {
+      rows.push({
+        txn,
+        status: 'same_date_amount',
+        action: 'review',
+        existing: softHits[0],
+        message: 'Same date and amount already exist (description differs). Possible duplicate.',
+        options: ['skip', 'import_as_new', 'update_description'],
+      })
+      continue
+    }
+
+    rows.push({
+      txn,
+      status: 'new',
+      action: 'import',
+      existing: null,
+      message: 'New line — will be added when you save.',
+      options: ['import', 'skip'],
+    })
   }
 
-  // Never silently truncate an overpayment: that would mark the full bank line
-  // as matched while discarding the excess. Require explicit credit allocation.
-  const amount = Number(txn.amount) || 0
-  if (!(amount > 0)) throw new Error('Nothing to apply')
-
-  const { payment } = await recordPayment({
-    invoice,
-    amount,
-    method: 'EFT',
-    date: txn.date,
-    reference: txn.reference || txn.description?.slice(0, 60) || 'Bank import',
-    idempotencyKey: `bank:${bankTxnFingerprint(txn)}`,
-  })
-
-  const bankRow = {
-    ...(prior.row || {}),
-    date: txn.date,
-    amount: txn.amount,
-    description: txn.description,
-    reference: txn.reference,
-    matchedInvoiceId: invoice.id,
-    paymentId: payment?.id,
-    importedAt: prior.row?.importedAt || new Date().toISOString(),
-    matchedAt: new Date().toISOString(),
+  return {
+    rows,
+    summary: {
+      total: rows.length,
+      neu: rows.filter((r) => r.status === 'new').length,
+      exact: rows.filter((r) => r.status === 'exact_duplicate').length,
+      soft: rows.filter((r) => r.status === 'same_date_amount').length,
+      amount: rows.filter((r) => r.status === 'amount_mismatch').length,
+    },
   }
-  if (prior.row?.id != null) await db.put(STORES.bankTxns, bankRow)
-  else await db.add(STORES.bankTxns, bankRow)
+}
 
-  return { payment, amount }
+/** Build inserts/updates from user decisions — never silent overwrite. */
+export function planImportWrites(decisionRows = []) {
+  const toAdd = []
+  const toUpdate = []
+  const skipped = []
+
+  for (const row of decisionRows) {
+    const action = row.action || (row.status === 'new' ? 'import' : 'skip')
+    const txn = { ...row.txn }
+    if (action === 'skip' || action === 'use_existing_amount') {
+      skipped.push(row)
+      continue
+    }
+    if (action === 'import' || action === 'import_as_new' || action === 'import_anyway' || action === 'fix_amount') {
+      toAdd.push({
+        ...txn,
+        amount: Number(txn.amount) || 0,
+        date: String(txn.date || '').slice(0, 10),
+        description: String(txn.description || '').slice(0, 200),
+        reference: String(txn.reference || '').slice(0, 80),
+        direction: Number(txn.amount) >= 0 ? 'in' : 'out',
+        reconciled: false,
+        source: 'statement-import',
+        amountCorrected: action === 'fix_amount' || undefined,
+      })
+      continue
+    }
+    if (action === 'update_description' && row.existing) {
+      toUpdate.push({
+        ...row.existing,
+        description: String(txn.description || row.existing.description || '').slice(0, 200),
+        reference: txn.reference || row.existing.reference,
+        statementNote: 'Description updated from statement import',
+        updatedAt: new Date().toISOString(),
+      })
+      continue
+    }
+    skipped.push(row)
+  }
+  return { toAdd, toUpdate, skipped }
+}
+
+export async function commitImportPlan(plan, meta = {}) {
+  let added = 0
+  let updated = 0
+  for (const row of plan.toAdd || []) {
+    await db.add(STORES.bankTxns, {
+      ...row,
+      accountLabel: meta.accountLabel || 'Company bank account',
+      statementName: meta.statementName || 'Bank statement',
+      importedAt: new Date().toISOString(),
+      bookkeepingStatus: 'needs-review',
+    })
+    added++
+  }
+  for (const row of plan.toUpdate || []) {
+    await db.put(STORES.bankTxns, row)
+    updated++
+  }
+  return { added, updated, skipped: (plan.skipped || []).length }
 }
