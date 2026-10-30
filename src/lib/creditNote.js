@@ -74,7 +74,7 @@ export async function issueCreditNote(invoice, opts = {}) {
   await db.put(STORES.invoices, updatedInv)
 
   const cnDoc = {
-    id: cn.id,
+    id:n    id: cn.id,
     number: cn.number,
     type: 'credit_note',
     isCredit: true,
@@ -99,7 +99,7 @@ export async function issueCreditNote(invoice, opts = {}) {
     createdAt: cn.createdAt,
     updatedAt: cn.updatedAt,
   }
-  await db.add(STORES.invoices,, cnDoc)
+  await db.add(STORES.invoices, cnDoc)
   return { creditNote: cn, invoice: updatedInv, document: cnDoc }
 }
 
