@@ -1,7 +1,7 @@
-export const APP_VERSION = '6.37.0'
+export const APP_VERSION = '6.39.1'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
-export const APP_CODENAME = '6.37.0 · WhatsApp reply buttons on job desk'
+export const APP_CODENAME = '6.39.1 · Nav restored · Dev portal'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
 export const HELIX_ROUTES = {
@@ -15,7 +15,6 @@ export const SUPPORT_RATES_DEFAULT = { onsite: 450, remote: 300 }
 
 export const APP_LINKS = {
   licenseServer: 'https://sa-invoice-license.onrender.com',
-  licenseAdmin: 'https://sa-invoice-license.onrender.com/admin',
   licenseDashboard: 'https://sa-invoice-license.onrender.com/',
   updatesServer: 'https://sa-invoice-updates.onrender.com',
   syncServer: 'https://saip-sync.onrender.com',
@@ -23,6 +22,7 @@ export const APP_LINKS = {
   productEmail: 'sainvoicepro@gmail.com',
   repo: 'https://github.com/dexter187gold/sa-invoice-pro',
   syncRepo: 'https://github.com/dexter187gold/saip-sync',
+  devPortalPath: '/dev-portal',
 }
 
 export const SA_CONFIG = {
