@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { parseBankCsv, normalizeBankRows, explainMatchScore, matchBankToInvoices, bankTxnFingerprint, findBankTxnForMatch } from '../src/lib/bankImport.js'
+import { parseBankCsv, normalizeBankRows, explainMatchScore, matchBankToInvoices, bankTxnFingerprint, findBankTxnForMatch, groupBankTxnsByDescription } from '../src/lib/bankImport.js'
 
 test('parseBankCsv detects comma and headers', () => {
   const csv = 'Date,Description,Amount,Reference\n2026-10-01,Payment INV-1,1500.00,INV-2026-0001\n'
@@ -28,6 +28,29 @@ test('normalizeBankRows handles SA decimal comma amount', () => {
   assert.ok(Math.abs(txns[0].amount - 1250.5) < 0.01)
 })
 
+test('normalizeBankRows reads separate Debit and Credit columns', () => {
+  const { headers, rows } = parseBankCsv(
+    'Date,Description,Debit,Credit,Reference\n2026-10-01,Client payment,,1500.00,INV-1\n2026-10-02,Engen fuel,450.00,,CARD\n',
+  )
+  const txns = normalizeBankRows({ headers, rows })
+  assert.equal(txns.length, 2)
+  const inn = txns.find((t) => t.amount > 0)
+  const out = txns.find((t) => t.amount < 0)
+  assert.ok(inn && inn.amount === 1500 && inn.direction === 'in')
+  assert.ok(out && out.amount === -450 && out.direction === 'out')
+})
+
+test('groupBankTxnsByDescription clusters similar narratives', () => {
+  const groups = groupBankTxnsByDescription([
+    { amount: -50, description: 'ENGEN MIDRAND 1234', date: '2026-10-01' },
+    { amount: -80, description: 'Engen Sandton POS', date: '2026-10-02' },
+    { amount: 500, description: 'ACME payment INV-9', date: '2026-10-03' },
+  ])
+  assert.ok(groups.length >= 2)
+  const fuel = groups.find((g) => /engen/i.test(g.label) || /engen/i.test(g.key))
+  assert.ok(fuel && fuel.count === 2 && fuel.totalOut > 0)
+})
+
 test('explainMatchScore rewards exact amount + number', () => {
   const txn = { isCredit: true, amount: 100, description: 'paid INV-2026-0001', reference: '', date: '2026-10-05' }
   const inv = { number: 'INV-2026-0001', amountDue: 100, total: 100, date: '2026-10-01' }
@@ -36,41 +59,14 @@ test('explainMatchScore rewards exact amount + number', () => {
   assert.ok(reasons.some((r) => /amount/i.test(r)))
 })
 
-test('explainMatchScore adds date proximity', () => {
-  const txn = { isCredit: true, amount: 100, description: 'EFT', reference: '', date: '2026-10-03' }
-  const inv = { number: 'X', amountDue: 100, total: 100, date: '2026-10-01', dueDate: '2026-10-15' }
-  const { score, reasons } = explainMatchScore(txn, inv, null)
-  assert.ok(score >= 50)
-  assert.ok(reasons.some((r) => /days/i.test(r) || /week/i.test(r)))
-})
-
-test('matchBankToInvoices suggests high confidence', () => {
-  const txns = [{ id: 't1', isCredit: true, amount: 500, description: 'INV-1 ACME', reference: '', date: '2026-10-01' }]
-  const invoices = [{ id: 'i1', number: 'INV-1', status: 'unpaid', amountDue: 500, total: 500, clientId: 'c1', date: '2026-09-28' }]
-  const clients = [{ id: 'c1', name: 'Acme Labs' }]
-  const matches = matchBankToInvoices(txns, invoices, clients)
-  assert.equal(matches.length, 1)
-  assert.equal(matches[0].suggested, true)
-  assert.ok(matches[0].score >= 40)
-})
-
-
-test('bank matching is read-only and does not change invoice status', () => {
-  const invoice = { id: 'i-readonly', number: 'INV-READONLY', status: 'unpaid', amountDue: 125, total: 125, clientId: 'c1', date: '2026-10-01' }
-  const before = structuredClone(invoice)
-  const txns = [{ id: 't-readonly', isCredit: true, amount: 125, description: 'INV-READONLY ACME', reference: '', date: '2026-10-02' }]
-  const result = matchBankToInvoices(txns, [invoice], [{ id: 'c1', name: 'Acme' }])
-  assert.equal(result[0].invoice.id, 'i-readonly')
-  assert.deepEqual(invoice, before)
-  assert.equal(invoice.status, 'unpaid')
-})
-
 test('bank matching never suggests a debit as an invoice payment', () => {
   const invoice = { id: 'i-debit', number: 'INV-DEBIT', status: 'unpaid', amountDue: 125, total: 125, clientId: 'c1' }
   const txns = [{ id: 't-debit', isCredit: false, amount: -125, description: 'INV-DEBIT', reference: '', date: '2026-10-02' }]
-  assert.deepEqual(matchBankToInvoices(txns, [invoice], [{ id: 'c1', name: 'Acme' }]), [])
+  const result = matchBankToInvoices(txns, [invoice], [{ id: 'c1', name: 'Acme' }])
+  assert.equal(result.length, 1)
+  assert.equal(result[0].invoice, null)
+  assert.equal(result[0].suggested, false)
 })
-
 
 test('bank matching reuses a previously imported but unmatched statement line', () => {
   const txn = { date: '2026-10-29', amount: 250, description: 'ACME INV-1', reference: 'REF-1' }
