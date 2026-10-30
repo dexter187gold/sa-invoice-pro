@@ -11,6 +11,7 @@ import AppLogo from './AppLogo'
 import { ROOT_NAV, SECTION_NAV, sectionFromPath } from './shellNav'
 import { displayAppName } from '../lib/whiteLabel'
 import GestureLayer from './GestureLayer'
+import { loadGesturePrefs } from '../lib/deviceAccess'
 
 export default function Shell({ children, sections: sectionsProp }) {
   const { user, online, logout, syncNow, toast } = useApp() || {}
@@ -21,10 +22,11 @@ export default function Shell({ children, sections: sectionsProp }) {
   const [commandOpen, setCommandOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [gesturesOn, setGesturesOn] = useState(() => !!loadGesturePrefs().enabled)
   const [navPrefs, setNavPrefs] = useState(() => {
     try {
       const raw = JSON.parse(localStorage.getItem('sa_nav_prefs') || '{}')
-      return { layout: 'bottom', ...raw, layout: raw.layout || 'bottom' }
+      return { layout: raw.layout || 'bottom', ...raw }
     } catch {
       return { layout: 'bottom' }
     }
@@ -32,7 +34,6 @@ export default function Shell({ children, sections: sectionsProp }) {
 
   const useBottom = (navPrefs?.layout || 'bottom') !== 'side'
 
-  // CRITICAL: styles.ux.css only shows .bottom-nav when html.nav-bottom is set
   useEffect(() => {
     const root = document.documentElement
     root.classList.toggle('nav-bottom', useBottom)
@@ -46,6 +47,12 @@ export default function Shell({ children, sections: sectionsProp }) {
     const onPrefs = (e) => setNavPrefs({ layout: 'bottom', ...(e.detail || {}) })
     window.addEventListener('sa-nav-prefs', onPrefs)
     return () => window.removeEventListener('sa-nav-prefs', onPrefs)
+  }, [])
+
+  useEffect(() => {
+    const onG = (e) => setGesturesOn(!!(e.detail?.enabled ?? loadGesturePrefs().enabled))
+    window.addEventListener('sa-gesture-prefs', onG)
+    return () => window.removeEventListener('sa-gesture-prefs', onG)
   }, [])
 
   useEffect(() => {
@@ -99,26 +106,28 @@ export default function Shell({ children, sections: sectionsProp }) {
   return (
     <>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-      <GestureLayer
-        onOpenMenu={() => {
-          setMoreOpen(true)
-          setCommandOpen(false)
-        }}
-        onCloseMenu={() => {
-          setMoreOpen(false)
-          setCommandOpen(false)
-          setOpen(false)
-        }}
-        onOpenCommand={() => {
-          setCommandOpen(true)
-          setMoreOpen(false)
-        }}
-        onCreate={(path) => {
-          setMoreOpen(false)
-          setCommandOpen(false)
-          nav(path)
-        }}
-      />
+      {gesturesOn ? (
+        <GestureLayer
+          onOpenMenu={() => {
+            setMoreOpen(true)
+            setCommandOpen(false)
+          }}
+          onCloseMenu={() => {
+            setMoreOpen(false)
+            setCommandOpen(false)
+            setOpen(false)
+          }}
+          onOpenCommand={() => {
+            setCommandOpen(true)
+            setMoreOpen(false)
+          }}
+          onCreate={(path) => {
+            setMoreOpen(false)
+            setCommandOpen(false)
+            nav(path)
+          }}
+        />
+      ) : null}
       <AppAssistant />
       <QuickActions open={commandOpen} onOpenChange={setCommandOpen} hideTrigger={true} sections={sections} />
 
@@ -174,9 +183,7 @@ export default function Shell({ children, sections: sectionsProp }) {
             aria-label={syncing ? 'Syncing now' : 'Sync'}
             title={syncing ? 'Syncing…' : 'Sync now'}
           >
-            <span />
-            <span />
-            <span />
+            <span /><span /><span />
           </button>
         </div>
         <NotificationBell />
@@ -203,9 +210,7 @@ export default function Shell({ children, sections: sectionsProp }) {
                 className={({ isActive }) => `side-link ${isActive ? 'active' : ''}`}
                 onClick={() => setOpen(false)}
               >
-                <span className="ico" aria-hidden>
-                  {item.icon}
-                </span>
+                <span className="ico" aria-hidden>{item.icon}</span>
                 <span className="nav-label">{item.label}</span>
               </NavLink>
             ))}
@@ -234,9 +239,7 @@ export default function Shell({ children, sections: sectionsProp }) {
               aria-expanded={moreOpen}
               title="Main menu"
             >
-              <span className="ico" aria-hidden>
-                ☰
-              </span>
+              <span className="ico" aria-hidden>☰</span>
               Menu
             </button>
             <div className="bottom-nav-scroll" aria-label="Section shortcuts">
@@ -253,9 +256,7 @@ export default function Shell({ children, sections: sectionsProp }) {
                       setOpen(false)
                     }}
                   >
-                    <span className="ico" aria-hidden>
-                      {item.icon}
-                    </span>
+                    <span className="ico" aria-hidden>{item.icon}</span>
                     {item.label}
                   </NavLink>
                 ))}
@@ -271,9 +272,7 @@ export default function Shell({ children, sections: sectionsProp }) {
               aria-label={commandOpen ? 'Close command centre' : 'Open command centre'}
               aria-expanded={commandOpen}
             >
-              <span className="ico" aria-hidden>
-                ▦
-              </span>
+              <span className="ico" aria-hidden>▦</span>
               {commandOpen ? 'Close' : 'Command'}
             </button>
           </nav>
@@ -287,15 +286,9 @@ export default function Shell({ children, sections: sectionsProp }) {
             <div className="drawer-handle" />
             <h3>All sections</h3>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => { setMoreOpen(false); nav('/invoices/new') }}>
-                + Invoice
-              </button>
-              <button type="button" className="btn btn-outline btn-sm" onClick={() => { setMoreOpen(false); nav('/quotes') }}>
-                + Quote
-              </button>
-              <button type="button" className="btn btn-outline btn-sm" onClick={() => { setMoreOpen(false); nav('/tickets') }}>
-                + Job
-              </button>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => { setMoreOpen(false); nav('/invoices/new') }}>+ Invoice</button>
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => { setMoreOpen(false); nav('/quotes') }}>+ Quote</button>
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => { setMoreOpen(false); nav('/tickets') }}>+ Job</button>
             </div>
             {user ? (
               <button type="button" className="btn btn-outline btn-sm" style={{ width: '100%', marginBottom: 12 }} onClick={handleSignOut}>
