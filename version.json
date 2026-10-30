@@ -1,5 +1,5 @@
 {
-  "version": "6.37.2",
-  "codename": "Profile restore hardened",
-  "message": "Restore DB v5 + pettyCash; robust backup import; register password policy; CI-safe Login"
+  "version": "6.38.0",
+  "codename": "Dev portal · cleaner chrome",
+  "message": "Remove top-left Command; Dev Portal for public endpoints; docs links pack"
 }
