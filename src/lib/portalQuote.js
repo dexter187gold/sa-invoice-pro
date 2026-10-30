@@ -3,7 +3,12 @@
  * Tries SPA paths first, then saip-sync native paths.
  */
 
-const PORTAL_BASE = 'https://saip-sync.onrender.com'
+import { getEndpoint } from './devConfig.js'
+
+function portalBase() {
+  return getEndpoint('syncServer', 'https://saip-sync.onrender.com')
+}
+const PORTAL_BASE = 'https://saip-sync.onrender.com' // fallback constant for tests
 const LS_DECISIONS = 'saip_portal_decisions_v1'
 
 export const QUOTE_PORTAL_STATUSES = ['draft', 'sent', 'accepted', 'rejected', 'converted', 'expired']
@@ -28,23 +33,24 @@ export function buildQuoteDecision(quote, action, note = '') {
   const accepted = a === 'approve' || a === 'accept'
   const now = new Date().toISOString()
   return {
-    ...quote,
+    quoteId: quote?.id,
+    action: accepted ? 'approve' : 'reject',
     status: accepted ? 'accepted' : 'rejected',
-    portalDecision: accepted ? 'accepted' : 'rejected',
-    portalDecisionAt: now,
-    portalNote: String(note || '').slice(0, 500),
-    updatedAt: now,
+    note: String(note || '').slice(0, 500),
+    decidedAt: now,
   }
 }
 
 export function extractPortalToken(search = '', pathname = '') {
   try {
-    const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search)
-    const q = params.get('t') || params.get('token') || params.get('portal')
-    if (q) return String(q).trim()
+    const sp = new URLSearchParams(search || '')
+    const q = sp.get('token') || sp.get('t')
+    if (q) return q
   } catch {}
-  const m = String(pathname || '').match(/\/portal\/([^/?#]+)/i)
-  return m ? decodeURIComponent(m[1]) : ''
+  const parts = String(pathname || '').split('/').filter(Boolean)
+  const idx = parts.indexOf('portal')
+  if (idx >= 0 && parts[idx + 1] && parts[idx + 1] !== 'admin') return parts[idx + 1]
+  return ''
 }
 
 function readDecisionQueue() {
@@ -57,19 +63,15 @@ function readDecisionQueue() {
 
 function writeDecisionQueue(rows) {
   try {
-    localStorage.setItem(LS_DECISIONS, JSON.stringify(rows.slice(-100)))
+    localStorage.setItem(LS_DECISIONS, JSON.stringify(rows || []))
   } catch {}
 }
 
 export function queuePortalDecision(entry) {
   const rows = readDecisionQueue()
-  rows.push({
-    ...entry,
-    queuedAt: new Date().toISOString(),
-    id: 'pd_' + Date.now().toString(36),
-  })
-  writeDecisionQueue(rows)
-  return rows
+  rows.unshift({ ...entry, queuedAt: new Date().toISOString() })
+  writeDecisionQueue(rows.slice(0, 100))
+  return entry
 }
 
 export function listQueuedPortalDecisions() {
@@ -81,28 +83,28 @@ export function clearQueuedPortalDecisions() {
 }
 
 async function parseJson(res) {
-  return res.json().catch(() => ({}))
+  try {
+    return await res.json()
+  } catch {
+    return {}
+  }
 }
 
-export async function fetchPortalView(token, { base = PORTAL_BASE } = {}) {
+export async function fetchPortalView(token, { base = portalBase() } = {}) {
   const t = String(token || '').trim()
   if (!t) throw new Error('Missing portal link')
-  const paths = [
+  const urls = [
     `${base}/api/portal/view/${encodeURIComponent(t)}`,
     `${base}/api/portal/${encodeURIComponent(t)}`,
   ]
-  let lastErr = 'Portal link invalid or expired'
-  for (const url of paths) {
+  let lastErr = 'Portal not found'
+  for (const url of urls) {
     try {
       const res = await fetch(url, { headers: { Accept: 'application/json' } })
       const data = await parseJson(res)
-      if (res.ok) return data
-      lastErr = data.error || data.message || lastErr
-      // 404 on alias → try next
-      if (res.status === 404 || res.status === 405) continue
-      throw new Error(lastErr)
+      if (res.ok && data) return data
+      lastErr = data?.error || data?.message || res.statusText || lastErr
     } catch (e) {
-      if (e?.message && !/Failed to fetch|NetworkError|fetch/i.test(e.message)) throw e
       lastErr = e?.message || lastErr
     }
   }
@@ -114,7 +116,7 @@ export async function submitPortalQuoteDecision(
   quoteId,
   action,
   note = '',
-  { base = PORTAL_BASE, quote } = {},
+  { base = portalBase(), quote } = {},
 ) {
   const t = String(token || '').trim()
   if (!t) throw new Error('Missing portal link')
@@ -153,60 +155,49 @@ export async function submitPortalQuoteDecision(
         body: JSON.stringify(attempt.body),
       })
       const data = await parseJson(res)
-      if (res.ok) return { ...data, ok: true, offline: false }
-      lastErr = data.error || data.message || lastErr
-      if (res.status === 404 || res.status === 405) continue
-      // Business errors (409 already decided) should not go offline-queue as success path
-      if (res.status >= 400 && res.status < 500 && res.status !== 404) {
-        throw new Error(lastErr)
-      }
+      if (res.ok) return { ok: true, online: true, data }
+      lastErr = data?.error || data?.message || res.statusText || lastErr
     } catch (e) {
-      if (e?.message && !/Failed to fetch|NetworkError|fetch/i.test(e.message)) {
-        // rethrow client errors after queue? only queue network failures
-        if (!/already decided|not found|required/i.test(e.message)) {
-          /* fall through */
-        } else {
-          throw e
-        }
-      }
+      if (e?.message && !/Failed to fetch|NetworkError|fetch/i.test(e.message)) throw e
       lastErr = e?.message || lastErr
     }
   }
+  // Offline queue
   const decision = quote ? buildQuoteDecision(quote, act, noteStr) : null
   queuePortalDecision({
     token: t,
     quoteId,
     action: act,
     note: noteStr,
-    error: lastErr,
+    decision,
   })
   return {
     ok: true,
-    offline: true,
+    online: false,
+    queued: true,
     decision,
     message: 'Saved offline — shop will see this when sync is available',
   }
 }
 
 export function applyPortalDecisionLocally(quotes, quoteId, action, note = '') {
-  const list = Array.isArray(quotes) ? quotes : []
-  const idx = list.findIndex((q) => String(q.id) === String(quoteId))
-  if (idx < 0) return { quotes: list, updated: null }
-  const updated = buildQuoteDecision(list[idx], action, note)
-  const next = list.slice()
-  next[idx] = updated
-  return { quotes: next, updated }
+  const act = String(action).toLowerCase()
+  const status =
+    act === 'reject' || act === 'decline' ? 'rejected' : 'accepted'
+  return (quotes || []).map((q) =>
+    String(q.id) === String(quoteId)
+      ? { ...q, status, portalNote: note, decidedAt: new Date().toISOString() }
+      : q,
+  )
 }
 
 export function portalQuoteSummary(quotes = []) {
-  const out = { total: 0, open: 0, accepted: 0, rejected: 0, converted: 0 }
-  for (const q of quotes || []) {
-    out.total++
-    const s = normalizeQuoteStatus(q.status)
-    if (s === 'accepted') out.accepted++
-    else if (s === 'rejected') out.rejected++
-    else if (s === 'converted') out.converted++
-    else if (canDecideQuote(q)) out.open++
+  const s = { total: quotes.length, accepted: 0, rejected: 0, pending: 0 }
+  for (const q of quotes) {
+    const st = normalizeQuoteStatus(q.status)
+    if (st === 'accepted' || st === 'converted') s.accepted++
+    else if (st === 'rejected') s.rejected++
+    else s.pending++
   }
-  return out
+  return s
 }

@@ -1,9 +1,11 @@
-# SA Invoice Pro 6.38.1
+# SA Invoice Pro 6.39.0
 
-Gated **Developer portal** at `/dev-portal` (separate login) · secrets vault on-device · cleaner chrome.
+Mega-90 foundations: credit notes · EMP201 · WhatsApp Cloud API · portal write-back · gated dev portal.
 
 ```bash
 npm install && npm run dev
 ```
 
 Product: **sainvoicepro@gmail.com**
+
+Docs: `docs/MEGA_ROADMAP_90.md` · `docs/WHATSAPP_BUSINESS_API.md` · `docs/APP_LINKS.md`
