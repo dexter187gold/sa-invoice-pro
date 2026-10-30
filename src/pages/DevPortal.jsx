@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useApp } from '../context/AppContext'
 import { PageFade, StatCard } from '../components/ui'
 import {
   loadDevConfig, saveDevConfig, resetDevConfig, DEFAULT_ENDPOINTS, RENDER_SECRET_CHECKLIST, getEndpoint,
 } from '../lib/devConfig'
+import { loadSecrets, saveSecrets, clearSecrets, SECRET_FIELDS, secretsToEnvSnippet } from '../lib/devSecrets'
+import { isDevPortalAuthed, loginDevPortal, logoutDevPortal, getDevUsername } from '../lib/devAuth'
 import { APP_VERSION, APP_LINKS } from '../config'
 
-const FIELDS = [
+const URL_FIELDS = [
   { key: 'syncServer', label: 'Sync / cloud API (saip-sync)', hint: 'Auth, workspace, portal write-back' },
   { key: 'licenseServer', label: 'License server', hint: 'Handshake · activate · admin' },
   { key: 'updatesServer', label: 'Updates server', hint: 'Desktop / APK update channel' },
@@ -16,15 +17,82 @@ const FIELDS = [
   { key: 'websiteUrl', label: 'Marketing website', hint: 'Pricing / PayFast return pages' },
 ]
 
+function DevLogin({ onOk }) {
+  const [username, setUsername] = useState(getDevUsername())
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+
+  const submit = async (e) => {
+    e.preventDefault()
+    setBusy(true)
+    setErr('')
+    try {
+      await loginDevPortal(username, password)
+      onOk()
+    } catch (ex) {
+      setErr(ex?.message || 'Login failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="auth-page" style={{ minHeight: '100vh' }}>
+      <div className="auth-card" style={{ maxWidth: 420, margin: '10vh auto' }}>
+        <h1 style={{ marginTop: 0 }}>Developer portal</h1>
+        <p className="muted" style={{ fontSize: 13 }}>
+          Restricted. Product ops for SA Invoice Pro — not for shop staff.
+        </p>
+        <form className="stack" style={{ gap: 12 }} onSubmit={submit}>
+          <label className="stack" style={{ gap: 4 }}>
+            <span className="muted" style={{ fontSize: 12 }}>Developer username</span>
+            <input className="input" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} required />
+          </label>
+          <label className="stack" style={{ gap: 4 }}>
+            <span className="muted" style={{ fontSize: 12 }}>Password</span>
+            <input className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          </label>
+          {err ? <p style={{ color: 'var(--danger, #b91c1c)', margin: 0, fontSize: 13 }}>{err}</p> : null}
+          <button className="btn btn-primary" type="submit" disabled={busy} style={{ width: '100%' }}>
+            {busy ? 'Checking…' : 'Unlock developer portal'}
+          </button>
+        </form>
+        <p className="muted" style={{ fontSize: 12, marginTop: 16 }}>
+          <Link to="/login">← Back to shop login</Link>
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export default function DevPortal() {
-  const { toast } = useApp() || {}
+  const [authed, setAuthed] = useState(() => isDevPortalAuthed())
   const [form, setForm] = useState(() => loadDevConfig())
+  const [secrets, setSecrets] = useState(() => loadSecrets())
+  const [showSecrets, setShowSecrets] = useState(false)
   const [health, setHealth] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
 
   useEffect(() => {
-    setForm(loadDevConfig())
+    if (authed) {
+      setForm(loadDevConfig())
+      setSecrets(loadSecrets())
+    }
+  }, [authed])
+
+  const groups = useMemo(() => {
+    const g = {}
+    for (const f of SECRET_FIELDS) {
+      ;(g[f.group] || (g[f.group] = [])).push(f)
+    }
+    return g
   }, [])
+
+  if (!authed) return <DevLogin onOk={() => setAuthed(true)} />
+
+  const toast = (t) => setMsg(t)
 
   const probeSync = async () => {
     setBusy(true)
@@ -33,24 +101,52 @@ export default function DevPortal() {
       const res = await fetch(`${base}/health`, { signal: AbortSignal.timeout?.(12000) })
       const data = await res.json().catch(() => ({}))
       setHealth({ ok: res.ok, status: res.status, data, base })
-      toast?.(res.ok ? 'Sync health OK' : 'Sync health failed', res.ok ? 'success' : 'error')
+      toast(res.ok ? 'Sync health OK' : 'Sync health failed')
     } catch (e) {
       setHealth({ ok: false, error: e?.message || String(e), base: getEndpoint('syncServer') })
-      toast?.(e?.message || 'Health probe failed', 'error')
+      toast(e?.message || 'Health probe failed')
     } finally {
       setBusy(false)
     }
   }
 
-  const save = (e) => {
+  const saveUrls = (e) => {
     e?.preventDefault?.()
     try {
-      const next = saveDevConfig(form)
-      setForm(next)
-      toast?.('Developer endpoints saved on this device', 'success')
+      setForm(saveDevConfig(form))
+      toast('Public endpoints saved on this device')
     } catch (err) {
-      toast?.(err?.message || 'Save failed', 'error')
+      toast(err?.message || 'Save failed')
     }
+  }
+
+  const saveVault = (e) => {
+    e?.preventDefault?.()
+    try {
+      setSecrets(saveSecrets(secrets))
+      toast('Secrets vault saved on this device only')
+    } catch (err) {
+      toast(err?.message || 'Vault save failed')
+    }
+  }
+
+  const copyEnv = async () => {
+    const snip = secretsToEnvSnippet(secrets)
+    if (!snip) {
+      toast('No secret values to export')
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(snip)
+      toast('Env snippet copied — paste into Render dashboard')
+    } catch {
+      toast('Could not copy — select and copy manually')
+    }
+  }
+
+  const lock = () => {
+    logoutDevPortal()
+    setAuthed(false)
   }
 
   return (
@@ -58,55 +154,102 @@ export default function DevPortal() {
       <div className="page-header">
         <div>
           <h1>Developer portal</h1>
-          <p className="subtitle">Endpoints · health · ops checklist · v{APP_VERSION}</p>
+          <p className="subtitle">Endpoints · secrets vault · health · v{APP_VERSION}</p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" className="btn btn-outline" disabled={busy} onClick={probeSync}>Probe sync health</button>
-          <Link className="btn btn-outline" to="/owner-console">Owner centre</Link>
-          <Link className="btn btn-outline" to="/settings">Settings</Link>
+          <button type="button" className="btn btn-outline" disabled={busy} onClick={probeSync}>Probe sync</button>
+          <button type="button" className="btn btn-outline" onClick={lock}>Lock portal</button>
+          <Link className="btn btn-outline" to="/">Desk home</Link>
         </div>
       </div>
 
+      {msg ? <p className="muted" style={{ fontSize: 13 }}>{msg}</p> : null}
+
+      <div className="card" style={{ marginBottom: 16, borderColor: 'var(--warning, #ca8a04)' }}>
+        <strong>Security note</strong>
+        <p className="muted" style={{ fontSize: 13, marginBottom: 0 }}>
+          Secrets are stored <strong>only in this browser</strong> (obfuscated). They are not uploaded to GitHub.
+          Production services still need the same values set in <strong>Render → Environment</strong>.
+          Use <em>Copy env snippet</em> then paste into Render. Client-side storage is a convenience vault for you — not a replacement for server env.
+        </p>
+      </div>
+
       <div className="grid-stats" style={{ marginBottom: 16 }}>
-        <StatCard label="Sync base" value={form.syncServer?.replace(/^https?:\/\//, '') || '—'} />
+        <StatCard label="Sync base" value={(form.syncServer || '').replace(/^https?:\/\//, '') || '—'} />
         <StatCard label="Health" value={health ? (health.ok ? 'OK' : 'Fail') : '—'} hint={health?.status ? `HTTP ${health.status}` : health?.error} />
         <StatCard label="Product email" value={APP_LINKS.productEmail || 'sainvoicepro@gmail.com'} />
       </div>
 
-      <form className="card form-grid" onSubmit={save} style={{ marginBottom: 16 }}>
+      <form className="card form-grid" onSubmit={saveUrls} style={{ marginBottom: 16 }}>
         <h3 style={{ marginTop: 0 }}>Public service URLs</h3>
-        <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
-          These overrides are stored in <strong>this browser only</strong> and used by the desk for API base URLs.
-          Do <strong>not</strong> paste merchant keys, JWT secrets, or Meta tokens here — set those on Render.
-        </p>
-        {FIELDS.map((f) => (
+        {URL_FIELDS.map((f) => (
           <div key={f.key}>
             <label className="label">{f.label}</label>
-            <input
-              className="input"
-              value={form[f.key] || ''}
-              onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
-              placeholder={DEFAULT_ENDPOINTS[f.key] || 'https://…'}
-            />
+            <input className="input" value={form[f.key] || ''} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} placeholder={DEFAULT_ENDPOINTS[f.key] || 'https://…'} />
             <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>{f.hint}</p>
           </div>
         ))}
         <div>
           <label className="label">Operator notes</label>
-          <textarea className="input" rows={3} value={form.notes || ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Staging slot, beta cohort, …" />
+          <textarea className="input" rows={2} value={form.notes || ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button type="submit" className="btn btn-primary">Save endpoints</button>
-          <button type="button" className="btn btn-outline" onClick={() => { setForm(resetDevConfig()); toast?.('Reset to defaults', 'info') }}>Reset defaults</button>
+          <button type="submit" className="btn btn-primary">Save URLs</button>
+          <button type="button" className="btn btn-outline" onClick={() => setForm(resetDevConfig())}>Reset URL defaults</button>
+        </div>
+      </form>
+
+      <form className="card form-grid" onSubmit={saveVault} style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <h3 style={{ margin: 0 }}>Secrets vault</h3>
+          <button type="button" className="btn btn-outline btn-sm" onClick={() => setShowSecrets((v) => !v)}>
+            {showSecrets ? 'Hide values' : 'Show values'}
+          </button>
+        </div>
+        <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
+          PayFast · JWT · Meta/WhatsApp · Google · Render API · more. Device-local only.
+        </p>
+        {Object.entries(groups).map(([group, fields]) => (
+          <div key={group} style={{ gridColumn: '1 / -1' }}>
+            <h4 style={{ margin: '8px 0' }}>{group}</h4>
+            <div className="form-grid">
+              {fields.map((f) => (
+                <div key={f.key}>
+                  <label className="label">{f.label}</label>
+                  <input
+                    className="input"
+                    type={showSecrets || !f.secret ? 'text' : 'password'}
+                    autoComplete="off"
+                    value={secrets[f.key] || ''}
+                    onChange={(e) => setSecrets({ ...secrets, [f.key]: e.target.value })}
+                    placeholder={f.secret ? '••••••••' : ''}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button type="submit" className="btn btn-primary">Save secrets vault</button>
+          <button type="button" className="btn btn-outline" onClick={copyEnv}>Copy env snippet</button>
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={() => {
+              if (window.confirm('Clear all secrets from this browser?')) {
+                clearSecrets()
+                setSecrets(loadSecrets())
+                toast('Secrets cleared on this device')
+              }
+            }}
+          >
+            Clear vault
+          </button>
         </div>
       </form>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginTop: 0 }}>Secrets live on Render (not in the app)</h3>
-        <p className="muted" style={{ fontSize: 13 }}>
-          Controlling secrets from a public SPA would expose them. Use the Render dashboard (or API) for env vars.
-          Checklist:
-        </p>
+        <h3 style={{ marginTop: 0 }}>Render services checklist</h3>
         <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
           {RENDER_SECRET_CHECKLIST.map((row) => (
             <li key={row.service} style={{ marginBottom: 8 }}>
@@ -114,9 +257,6 @@ export default function DevPortal() {
             </li>
           ))}
         </ul>
-        <p className="muted" style={{ fontSize: 12 }}>
-          Product email only: <strong>sainvoicepro@gmail.com</strong>
-        </p>
       </div>
 
       <div className="card">
@@ -126,9 +266,8 @@ export default function DevPortal() {
           <a href={getEndpoint('licenseServer')} target="_blank" rel="noreferrer">License dashboard</a>
           <a href={getEndpoint('licenseServer') + '/admin'} target="_blank" rel="noreferrer">License admin</a>
           <a href={getEndpoint('updatesServer')} target="_blank" rel="noreferrer">Updates server</a>
+          <a href="https://dashboard.render.com/" target="_blank" rel="noreferrer">Render dashboard</a>
           <a href="https://github.com/dexter187gold/sa-invoice-pro" target="_blank" rel="noreferrer">Desk repo</a>
-          <a href="https://github.com/dexter187gold/saip-sync" target="_blank" rel="noreferrer">Sync repo</a>
-          <Link to="/docs-links">In-app links doc</Link>
         </div>
       </div>
     </PageFade>
