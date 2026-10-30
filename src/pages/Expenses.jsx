@@ -6,6 +6,7 @@ import { formatMoney } from '../lib/money'
 import {
   SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, formatDateZA, StatCard, downloadCsv, FilterChips, ActionMenu,
 } from '../components/ui'
+import PageInsightsBar from '../components/PageInsightsBar'
 
 const CATEGORIES = ['Stock', 'Fuel', 'Rent', 'Utilities', 'Tools', 'Marketing', 'Salaries', 'Bank fees', 'Other']
 
@@ -149,6 +150,8 @@ export default function Expenses() {
           Export CSV
         </button>
       </div>
+
+      <PageInsightsBar page="expenses" />
 
       <div className="grid-stats" style={{ marginBottom: '1rem' }}>
         <StatCard label="This month" value={formatMoney(monthTotal)} />
