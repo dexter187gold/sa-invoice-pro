@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { THEMES, applyTheme } from '../lib/themes'
+import FontPicker from './FontPicker'
 
 export default function ThemePicker({ setTheme, toast }) {
   const [themeId, setThemeId] = useState(() => {
@@ -29,6 +30,7 @@ export default function ThemePicker({ setTheme, toast }) {
           </button>
         ))}
       </div>
+      <FontPicker toast={toast} />
     </div>
   )
 }

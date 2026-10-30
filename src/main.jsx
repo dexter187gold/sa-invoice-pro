@@ -1,3 +1,4 @@
+import { initFont } from './lib/fonts'
 import { loadSavedTheme } from './lib/themes'
 import { applyWhiteLabel, loadWhiteLabel } from './lib/whiteLabel'
 try { loadSavedTheme() } catch {}
@@ -43,6 +44,7 @@ try {
 } catch {}
 
 const root = document.getElementById('root')
+initFont()
 createRoot(root).render(
   <React.StrictMode>
     <BrowserRouter>
