@@ -1,7 +1,9 @@
 /**
- * Credit notes (P2) — pure helpers for partial refunds / invoice corrections.
+ * Credit notes (P2) — partial refunds / invoice corrections.
  * A credit note reduces amount due; never invents cash without a payment row.
  */
+import * as db from './db.js'
+import { STORES } from './db.js'
 
 export function remainingBalance(invoice = {}) {
   const total = Number(invoice.total ?? invoice.grandTotal ?? 0) || 0
@@ -17,16 +19,15 @@ export function canIssueCreditNote(invoice = {}) {
   return remainingBalance(invoice) > 0 || Number(invoice.amountPaid || 0) > 0
 }
 
-/**
- * Build a credit note document linked to an invoice.
- * @param {object} invoice
- * @param {{ amount: number, reason?: string, lines?: array, number?: string }} opts
- */
+export function maxCreditAmount(invoice = {}) {
+  return Math.max(remainingBalance(invoice), Number(invoice.amountPaid || 0) || 0)
+}
+
 export function buildCreditNote(invoice, opts = {}) {
   if (!canIssueCreditNote(invoice)) {
     throw new Error('Cannot issue a credit note on this invoice')
   }
-  const max = Math.max(remainingBalance(invoice), Number(invoice.amountPaid || 0))
+  const max = maxCreditAmount(invoice)
   const amount = Math.round(Number(opts.amount || 0) * 100) / 100
   if (!(amount > 0)) throw new Error('Credit amount must be greater than zero')
   if (amount > max + 0.001) {
@@ -49,7 +50,6 @@ export function buildCreditNote(invoice, opts = {}) {
   }
 }
 
-/** Apply credit onto invoice fields (immutable-style return). */
 export function applyCreditToInvoice(invoice, creditNote) {
   const amount = Number(creditNote?.amount || 0) || 0
   const amountCredited = Math.round(((Number(invoice.amountCredited || 0) || 0) + amount) * 100) / 100
@@ -66,6 +66,41 @@ export function applyCreditToInvoice(invoice, creditNote) {
     updatedAt: new Date().toISOString(),
     lastCreditNoteId: creditNote?.id,
   }
+}
+
+export async function issueCreditNote(invoice, opts = {}) {
+  const cn = buildCreditNote(invoice, opts)
+  const updatedInv = applyCreditToInvoice(invoice, cn)
+  await db.put(STORES.invoices, updatedInv)
+
+  const cnDoc = {
+    id: cn.id,
+    number: cn.number,
+    type: 'credit_note',
+    isCredit: true,
+    creditFor: invoice.id,
+    clientId: invoice.clientId,
+    date: new Date().toISOString().slice(0, 10),
+    dueDate: new Date().toISOString().slice(0, 10),
+    status: 'paid',
+    total: -Math.abs(cn.amount),
+    exclusive: -Math.abs(cn.amount),
+    vatAmount: 0,
+    amountPaid: -Math.abs(cn.amount),
+    amountDue: 0,
+    amountCredited: 0,
+    lines: cn.lines.map((l) => ({
+      description: l.description || cn.reason,
+      qty: 1,
+      price: -Math.abs(Number(l.amount) || cn.amount),
+    })),
+    notes: `Credit note against ${invoice.number || invoice.id}: ${cn.reason}`,
+    reason: cn.reason,
+    createdAt: cn.createdAt,
+    updatedAt: cn.updatedAt,
+  }
+  await db.add(STORES.invoices,, cnDoc)
+  return { creditNote: cn, invoice: updatedInv, document: cnDoc }
 }
 
 export function partialPaymentClarity(invoice = {}, paymentAmount = 0) {
