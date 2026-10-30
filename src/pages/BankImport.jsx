@@ -10,6 +10,7 @@ import {
   parseBankCsv, normalizeBankRows, matchBankToInvoices, applyBankMatch,
 } from '../lib/bankImport'
 import BankImportCompare, { loadExistingBankTxns } from '../components/BankImportCompare'
+import BankImportGroups from '../components/BankImportGroups'
 import { fireWebhook } from '../lib/webhooks'
 import { audit } from '../lib/auditLog'
 
@@ -228,11 +229,15 @@ export default function BankImport() {
         />
       ) : null}
 
+      {txns.length ? (
+        <BankImportGroups txns={txns} toast={toast} refresh={refresh} />
+      ) : null}
+
       {!txns.length ? (
         <EmptyState title="No transactions yet" hint="Export CSV or Excel from your bank app, then upload it here. You will review duplicates before anything is saved." />
       ) : (
         <div className="card" style={{ marginTop: 12 }}>
-          <h3 style={{ marginTop: 0 }}>Invoice match suggestions (credits only)</h3>
+          <h3 style={{ marginTop: 0 }}>Statement lines & invoice match suggestions</h3>
           <p className="muted" style={{ fontSize: 13 }}>Matching is a suggestion only. Apply payments one at a time after review. Statement import itself does not change invoice statuses.</p>
           <div style={{ overflowX: 'auto' }}>
             <table className="data-table" style={{ width: '100%', fontSize: 13 }}>
