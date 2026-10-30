@@ -39,8 +39,8 @@ export default function BankImportCompare({
   const compared = useMemo(() => compareImportBatch(incoming, existing), [incoming, existing])
   const [rows, setRows] = useState(() => compared.rows)
   const [filter, setFilter] = useState('all')
+  const [localBusy, setLocalBusy] = useState(false)
 
-  // Re-sync when incoming/existing change
   React.useEffect(() => {
     setRows(compared.rows)
   }, [compared])
@@ -76,21 +76,40 @@ export default function BankImportCompare({
   }
 
   const commit = async () => {
+    if (localBusy || busy) return
+    setLocalBusy(true)
     setBusy?.(true)
     try {
-      const plan = planImportWrites(rows)
+      const prepared = rows.map((r) => {
+        let action = r.action
+        if (!action || action === 'review') {
+          action = r.status === 'new' ? 'import' : 'skip'
+        }
+        return { ...r, action }
+      })
+      const plan = planImportWrites(prepared)
+      if (!(plan.toAdd?.length || plan.toUpdate?.length)) {
+        toast?.(
+          plan.skipped?.length
+            ? `Nothing to save — ${plan.skipped.length} line(s) skipped. Change actions to Import, then try again.`
+            : 'Nothing to save — no importable lines.',
+          'info',
+        )
+        return
+      }
       const result = await commitImportPlan(plan, { accountLabel, statementName })
-      toast?.(
+      const msg =
         `Saved ${result.added} new · updated ${result.updated} · skipped ${result.skipped}` +
-          (summary.exact || summary.soft || summary.amount
-            ? ' (review decisions applied — nothing overwritten silently)'
-            : ''),
-        result.added || result.updated ? 'success' : 'info',
-      )
+        (summary.exact || summary.soft || summary.amount
+          ? ' (review decisions applied — nothing overwritten silently)'
+          : '')
+      toast?.(msg, result.added || result.updated ? 'success' : 'info')
       onCommitted?.(result)
     } catch (e) {
+      console.error('Bank import commit failed', e)
       toast?.(e?.message || 'Import commit failed', 'error')
     } finally {
+      setLocalBusy(false)
       setBusy?.(false)
     }
   }
@@ -201,8 +220,11 @@ export default function BankImportCompare({
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14, alignItems: 'center' }}>
-        <button type="button" className="btn btn-primary" disabled={busy} onClick={commit}>
-          {busy ? 'Saving…' : 'Apply decisions to books'}
+        <button type="button" className="btn btn-primary" disabled={busy || localBusy} onClick={(e) => { e.preventDefault(); e.stopPropagation(); commit() }}>
+          {busy || localBusy ? 'Saving…' : 'Apply decisions to books'}
+        </button>
+        <button type="button" className="btn btn-outline btn-sm" disabled={busy || localBusy} onClick={() => bulk('new', 'import')}>
+          Mark all new → Import
         </button>
         <span className="muted" style={{ fontSize: 12 }}>
           Only lines marked import / update will change data. Skip leaves existing books untouched.
