@@ -246,10 +246,10 @@ export const Sync = {
   async leaveTeam() {
     return request('/api/team/leave', { method: 'POST', body: JSON.stringify({}) })
   },
-  async setWorkspaceResetPin(pin, confirmPin) {
+  async setWorkspaceResetPin(pin, confirmPin, currentPassword) {
     return request('/api/workspace/reset-pin', {
       method: 'POST',
-      body: JSON.stringify({ pin: String(pin || ''), confirmPin: String(confirmPin || '') }),
+      body: JSON.stringify({ pin: String(pin || ''), confirmPin: String(confirmPin || ''), currentPassword: String(currentPassword || '') }),
     })
   },
 
