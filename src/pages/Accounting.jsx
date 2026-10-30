@@ -1,1 +1,1 @@
-PLACEHOLDER_TOO_LARGE
+export { default } from './AccountingFull.jsx'
