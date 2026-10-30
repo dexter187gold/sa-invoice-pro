@@ -9,6 +9,13 @@ import {
   ticketPageInsights,
   paymentPageInsights,
   expensePageInsights,
+  productPageInsights,
+  employeePageInsights,
+  payrollPageInsights,
+  bankPageInsights,
+  reportPageInsights,
+  recurringPageInsights,
+  documentPageInsights,
 } from '../lib/pageInsights'
 
 const BUILDERS = {
@@ -18,11 +25,18 @@ const BUILDERS = {
   tickets: ticketPageInsights,
   payments: paymentPageInsights,
   expenses: expensePageInsights,
+  products: productPageInsights,
+  employees: employeePageInsights,
+  payroll: payrollPageInsights,
+  bank: bankPageInsights,
+  reports: reportPageInsights,
+  recurring: recurringPageInsights,
+  documents: documentPageInsights,
 }
 
 /**
  * Compact owner radar for list pages.
- * @param {'invoices'|'quotes'|'clients'|'tickets'|'payments'|'expenses'} page
+ * @param {'invoices'|'quotes'|'clients'|'tickets'|'payments'|'expenses'|'products'|'employees'|'payroll'|'bank'|'reports'|'recurring'|'documents'} page
  */
 export default function PageInsightsBar({ page, extra }) {
   const ctx = useApp()
@@ -36,9 +50,12 @@ export default function PageInsightsBar({ page, extra }) {
       tickets: ctx.tickets || [],
       payments: ctx.payments || [],
       expenses: ctx.expenses || [],
+      products: ctx.products || [],
+      services: ctx.services || [],
+      employees: ctx.employees || [],
       ...extra,
     })
-  }, [page, ctx.invoices, ctx.quotes, ctx.clients, ctx.tickets, ctx.payments, ctx.expenses, extra])
+  }, [page, ctx.invoices, ctx.quotes, ctx.clients, ctx.tickets, ctx.payments, ctx.expenses, ctx.products, ctx.services, ctx.employees, extra])
 
   if (!data.items?.length) return null
 
@@ -80,24 +97,20 @@ export default function PageInsightsBar({ page, extra }) {
                 borderRadius: 10,
                 border: '1px solid var(--border, #334155)',
                 background: 'var(--bg, transparent)',
-                minHeight: 56,
               }}
             >
-              <div className="muted" style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                {it.label}
-              </div>
-              <div style={{ fontSize: 15, fontWeight: 800, color, marginTop: 2 }}>{display}</div>
-              {it.hint ? <div className="muted" style={{ fontSize: 10 }}>{it.hint}</div> : null}
+              <div className="muted" style={{ fontSize: 11 }}>{it.label}</div>
+              <div style={{ fontWeight: 700, fontSize: 15, color, marginTop: 2 }}>{display}</div>
+              {it.hint ? <div className="muted" style={{ fontSize: 10, marginTop: 2 }}>{it.hint}</div> : null}
             </div>
           )
-          if (it.href) {
-            return (
-              <Link key={it.label} to={it.href.startsWith('/') ? it.href : `.${it.href}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                {inner}
-              </Link>
-            )
-          }
-          return <div key={it.label}>{inner}</div>
+          return it.href ? (
+            <Link key={it.label} to={it.href} style={{ textDecoration: 'none', color: 'inherit' }}>
+              {inner}
+            </Link>
+          ) : (
+            <div key={it.label}>{inner}</div>
+          )
         })}
       </div>
     </div>
