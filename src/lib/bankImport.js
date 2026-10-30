@@ -67,11 +67,21 @@ function findCol(headers, candidates) {
 
 function parseAmount(s) {
   if (s == null || s === '') return null
-  let t = String(s).replace(/\s/g, '').replace(/R/gi, '').replace(/ZAR/gi, '')
+  let t = String(s).trim()
+  if (!t) return null
+  let neg = false
+  if (/^\(.*\)$/.test(t)) {
+    neg = true
+    t = t.slice(1, -1)
+  }
+  if (/\bDR\b/i.test(t) || /-$/.test(t)) neg = true
+  if (/\bCR\b/i.test(t)) neg = false
+  t = t.replace(/\s/g, '').replace(/R/gi, '').replace(/ZAR/gi, '').replace(/DR|CR/gi, '')
   if (/^\d{1,3}(?:\.\d{3})*,\d{2}$/.test(t)) t = t.replace(/\./g, '').replace(',', '.')
   else t = t.replace(/,/g, '')
   const n = Number(t)
-  return Number.isFinite(n) ? n : null
+  if (!Number.isFinite(n)) return null
+  return neg ? -Math.abs(n) : n
 }
 
 function parseDate(s) {
@@ -96,38 +106,69 @@ export function normalizeBankRows({ headers, rows }) {
     'date', 'trans date', 'transaction date', 'posting date', 'value date', 'txn date', 'effective date',
   ])
   const iDesc = findCol(headers, [
-    'description', 'narrative', 'particulars', 'details', 'transaction', 'description 1', 'memo', 'payee',
+    'description', 'narrative', 'particulars', 'details', 'transaction', 'description 1', 'memo', 'payee', 'beneficiary',
   ])
-  const iRef = findCol(headers, ['reference', 'ref', 'cheque', 'stmt', 'beneficiary reference', 'your reference'])
-  const iAmount = findCol(headers, ['amount', 'value', 'transaction amount', 'txn amount'])
-  const iCredit = findCol(headers, ['credit', 'deposit', 'money in', 'cr', 'credit amount', 'paid in'])
-  const iDebit = findCol(headers, ['debit', 'withdrawal', 'money out', 'dr', 'debit amount', 'paid out'])
+  const iRef = findCol(headers, ['reference', 'ref', 'cheque', 'stmt', 'beneficiary reference', 'your reference', 'bank reference'])
+  const iAmount = findCol(headers, ['amount', 'value', 'transaction amount', 'txn amount', 'trand amount'])
+  const iCredit = findCol(headers, [
+    'credit', 'deposit', 'money in', 'cr', 'credit amount', 'paid in', 'receipts', 'credits', 'money in (r)',
+  ])
+  const iDebit = findCol(headers, [
+    'debit', 'withdrawal', 'money out', 'dr', 'debit amount', 'paid out', 'payments', 'debits', 'money out (r)', 'charge',
+  ])
+  const iType = findCol(headers, ['type', 'dr/cr', 'd/c', 'transaction type', 'trn type', 'c/d'])
+  const iBalance = findCol(headers, ['balance', 'running balance', 'available balance', 'ledger balance'])
 
   const out = []
+  let prevBalance = null
   for (let ri = 0; ri < rows.length; ri++) {
     const r = rows[ri]
     const date = parseDate(iDate >= 0 ? r[iDate] : r[0])
     const description = (iDesc >= 0 ? r[iDesc] : r[1] || '') || ''
     const reference = (iRef >= 0 ? r[iRef] : '') || ''
+    const typeRaw = iType >= 0 ? String(r[iType] || '').toLowerCase() : ''
 
     let amount = null
     if (iCredit >= 0 || iDebit >= 0) {
       const cr = iCredit >= 0 ? parseAmount(r[iCredit]) : null
       const dr = iDebit >= 0 ? parseAmount(r[iDebit]) : null
-      if (cr && cr > 0) amount = cr
-      else if (dr && dr > 0) amount = -dr
+      const crAbs = cr != null ? Math.abs(cr) : 0
+      const drAbs = dr != null ? Math.abs(dr) : 0
+      if (crAbs > 0 && drAbs === 0) amount = crAbs
+      else if (drAbs > 0 && crAbs === 0) amount = -drAbs
+      else if (crAbs > 0 && drAbs > 0) amount = crAbs >= drAbs ? crAbs : -drAbs
     } else if (iAmount >= 0) {
       amount = parseAmount(r[iAmount])
+      if (amount != null && amount > 0 && typeRaw) {
+        if (/^(dr|d|debit|withdrawal|payment|out)/i.test(typeRaw)) amount = -Math.abs(amount)
+        else if (/^(cr|c|credit|deposit|receipt|in)/i.test(typeRaw)) amount = Math.abs(amount)
+      }
     } else {
       for (let c = r.length - 1; c >= 0; c--) {
+        if (c === iBalance || c === iDate) continue
         const n = parseAmount(r[c])
-        if (n != null) {
+        if (n != null && n !== 0) {
           amount = n
           break
         }
       }
     }
-    if (amount == null || !date) continue
+
+    if (amount != null && amount > 0 && iBalance >= 0 && typeRaw === '') {
+      const bal = parseAmount(r[iBalance])
+      if (bal != null && prevBalance != null) {
+        const delta = bal - prevBalance
+        if (delta < -0.005 && Math.abs(Math.abs(delta) - Math.abs(amount)) < 0.05) {
+          amount = -Math.abs(amount)
+        }
+      }
+      if (bal != null) prevBalance = bal
+    } else if (iBalance >= 0) {
+      const bal = parseAmount(r[iBalance])
+      if (bal != null) prevBalance = bal
+    }
+
+    if (amount == null || amount === 0 || !date) continue
     out.push({
       id: `bank-${date}-${ri}-${Math.abs(amount)}`,
       date,
@@ -135,10 +176,88 @@ export function normalizeBankRows({ headers, rows }) {
       description: String(description).slice(0, 200),
       reference: String(reference).slice(0, 80),
       isCredit: amount > 0,
-      direction: amount >= 0 ? 'in' : 'out',
+      direction: amount > 0 ? 'in' : 'out',
     })
   }
   return out
+}
+
+/** Collapse noisy bank narratives into a stable group key. */
+export function normalizeDescriptionKey(desc) {
+  return String(desc || '')
+    .toLowerCase()
+    .replace(/\b\d{2,}[-\/]?\d*\b/g, ' ')
+    .replace(/\b(inv|invoice|ref|eft|pos|purchase|payment|card|debit|credit|fnb|absa|nedbank|standard|capitec)\b/g, ' ')
+    .replace(/[^a-z\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 48) || 'other'
+}
+
+/** Group statement lines by similar description for bulk review / expense creation. */
+export function groupBankTxnsByDescription(txns = []) {
+  const map = new Map()
+  for (const t of txns) {
+    const key = normalizeDescriptionKey(t.description)
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        label: String(t.description || key).slice(0, 80),
+        direction: Number(t.amount) >= 0 ? 'in' : 'out',
+        items: [],
+        totalIn: 0,
+        totalOut: 0,
+        count: 0,
+      })
+    }
+    const g = map.get(key)
+    g.items.push(t)
+    g.count++
+    const amt = Number(t.amount) || 0
+    if (amt >= 0) g.totalIn += amt
+    else g.totalOut += Math.abs(amt)
+    if (g.totalOut > g.totalIn) g.direction = 'out'
+    else if (g.totalIn > g.totalOut) g.direction = 'in'
+  }
+  return [...map.values()].sort((a, b) => b.count - a.count || (b.totalIn + b.totalOut) - (a.totalIn + a.totalOut))
+}
+
+/**
+ * Create missing expense rows for money-out groups that have no matching expense yet.
+ * Does not touch invoices. Idempotent by date+amount+description fingerprint.
+ */
+export async function createMissingEntriesFromGroups(groups = [], existingExpenses = [], opts = {}) {
+  const { categoryFor = () => '6900' } = opts
+  const fingerprints = new Set(
+    (existingExpenses || []).map(
+      (e) => `${String(e.date || '').slice(0, 10)}|${Number(e.amount) || 0}|${normalizeDescriptionKey(e.description)}`,
+    ),
+  )
+  const created = []
+  for (const g of groups) {
+    if (g.direction !== 'out' && !(g.totalOut > 0)) continue
+    for (const t of g.items) {
+      const amt = Math.abs(Number(t.amount) || 0)
+      if (!(amt > 0) || Number(t.amount) > 0) continue
+      const fp = `${String(t.date || '').slice(0, 10)}|${amt}|${normalizeDescriptionKey(t.description)}`
+      if (fingerprints.has(fp)) continue
+      fingerprints.add(fp)
+      const row = {
+        date: String(t.date || '').slice(0, 10),
+        amount: amt,
+        description: String(t.description || g.label || 'Bank debit').slice(0, 200),
+        category: categoryFor(t),
+        vendor: String(t.description || '').slice(0, 80),
+        reference: t.reference || '',
+        source: 'bank-import',
+        bankTxnId: t.id,
+        createdAt: new Date().toISOString(),
+      }
+      const saved = await db.add(STORES.expenses, row)
+      created.push(saved)
+    }
+  }
+  return { created: created.length, rows: created }
 }
 
 function daysBetween(a, b) {
@@ -256,10 +375,6 @@ function descSimilar(a, b) {
   return hit / ys.length >= 0.55
 }
 
-/**
- * Compare parsed statement rows against existing bankTxns. Does not write.
- * status: new | exact_duplicate | same_date_amount | amount_mismatch
- */
 export function compareImportBatch(incoming = [], existing = []) {
   const byExact = new Map()
   const bySoft = new Map()
@@ -340,7 +455,6 @@ export function compareImportBatch(incoming = [], existing = []) {
   }
 }
 
-/** Build inserts/updates from user decisions — never silent overwrite. */
 export function planImportWrites(decisionRows = []) {
   const toAdd = []
   const toUpdate = []
@@ -400,4 +514,28 @@ export async function commitImportPlan(plan, meta = {}) {
     updated++
   }
   return { added, updated, skipped: (plan.skipped || []).length }
+}
+
+/** @deprecated alias — prefer txnFingerprint */
+export function bankTxnFingerprint(t) {
+  return txnFingerprint(t)
+}
+
+export function explainMatchScore(txn, inv, client) {
+  const matches = matchBankToInvoices([txn], [inv], client ? [client] : [])
+  const m = matches[0] || { score: 0, reasons: [] }
+  return { score: m.score || 0, reasons: m.reasons || [] }
+}
+
+export function findBankTxnForMatch(txn, existing = []) {
+  const fp = txnFingerprint(txn)
+  for (const row of existing || []) {
+    if (txnFingerprint(row) === fp) {
+      return {
+        row,
+        alreadyApplied: !!(row.matchedInvoiceId || row.paymentId || row.reconciled),
+      }
+    }
+  }
+  return { row: null, alreadyApplied: false }
 }
