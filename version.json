@@ -1,5 +1,5 @@
 {
-  "version": "6.39.1",
-  "codename": "Nav restored",
-  "message": "Full Shell navigation restored; license admin links removed in favour of Dev portal"
+  "version": "6.40.0",
+  "codename": "Nav + gestures",
+  "message": "html.nav-bottom restored; swipe/multi-touch gestures; version gate aligned"
 }

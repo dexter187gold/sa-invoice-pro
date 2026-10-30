@@ -1,13 +1,23 @@
 # Changelog
 
-## 6.39.1 — Nav restored (2026-10-30)
+## 6.40.0 — Nav + gestures (2026-10-30)
 
-- **Navigation fixed:** bottom bar defaults on; mobile ☰ opens sidebar
-- License **/admin** links removed from desk — use **`/dev-portal`** for ops
-- Shop license activation remains at `/license`
+### Critical
+- **Bottom navigation visible again** — Shell applies `html.nav-bottom` (CSS was hiding `.bottom-nav` without it)
+- Icons + Menu / section shortcuts / Command restored
+- Top bar decluttered (sign-out lives in Main Menu drawer)
 
-## 6.39.0 — Mega-90 foundations (2026-10-30)
+### Gestures
+- Swipe right (edge) → Main menu
+- Swipe left → close menus
+- Swipe up → new invoice
+- Swipe down → home
+- 2-finger tap → Main menu
+- 3-finger tap → Command centre
 
-## 6.38.1 — Gated developer portal
+### Ops
+- Version gate aligned at **6.40.0** (package · version.json · README · CHANGELOG)
 
-## 6.38.0 — Dev portal · cleaner chrome
+## 6.39.1 — Nav restored attempt
+
+## 6.39.0 — Mega-90 foundations

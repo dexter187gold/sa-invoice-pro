@@ -1,9 +1,9 @@
-# SA Invoice Pro 6.39.1
+# SA Invoice Pro 6.40.0
 
-Full navigation restored · gated Dev portal · license activation stays at `/license` (no separate license admin UI).
+Navigation restored (bottom bar + icons) · swipe / multi-finger gestures · Dev portal · profile restore.
 
 ```bash
 npm install && npm run dev
 ```
 
-Product: **sainvoicepro@gmail.com** · Ops: `/dev-portal`
+Product: **sainvoicepro@gmail.com**
