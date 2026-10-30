@@ -1,5 +1,6 @@
 /**
  * Cloud auth bridge — login / register against saip-sync, then mirror session locally.
+ * After server resets, registration falls back to a local device account so beta testers are not blocked.
  */
 import { Sync } from './sync.js'
 import { canUseCloudSync } from './soloMode.js'
@@ -12,6 +13,71 @@ function isEmail(s) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || '').trim())
 }
 
+/** Match saip-sync rule: min 6 chars, at least one letter and one number. */
+export function passwordMeetsPolicy(password) {
+  const s = String(password || '')
+  return s.length >= 6 && /[A-Za-z]/.test(s) && /\d/.test(s)
+}
+
+export function passwordPolicyMessage() {
+  return 'Password must be at least 6 characters and include letters and numbers (e.g. Shop123)'
+}
+
+async function mirrorLocalUser(session, password, extra = {}) {
+  const hashed = await hashPassword(password)
+  const email = String(session.email || '').trim().toLowerCase()
+  const users = (await db.getAll(STORES.users)) || []
+  const existing = users.find((x) => {
+    const em = String(x.email || '').trim().toLowerCase()
+    const un = String(x.username || '').trim().toLowerCase()
+    return em === email || un === email.split('@')[0]
+  })
+  const row = {
+    ...(existing || {}),
+    id: existing?.id || session.id || (crypto.randomUUID?.() || 'u_' + Date.now()),
+    username: extra.username || existing?.username || email.split('@')[0],
+    email,
+    name: session.name || email.split('@')[0],
+    password: hashed,
+    teamRole: session.teamRole || existing?.teamRole,
+    linkedWorkspaceOwnerId: session.linkedWorkspaceOwnerId || existing?.linkedWorkspaceOwnerId,
+    updatedAt: new Date().toISOString(),
+  }
+  await db.put(STORES.users, row)
+  return row
+}
+
+async function localRegister(form, ctx = {}) {
+  const { setSession, setUser, refresh, toast } = ctx
+  const email = String(form?.email || '').trim().toLowerCase()
+  const password = form?.password
+  const name = form?.name || form?.username || email.split('@')[0]
+  const username = String(form?.username || email.split('@')[0]).trim()
+  if (!email || !password) throw new Error('Email and password required')
+  if (!passwordMeetsPolicy(password)) throw new Error(passwordPolicyMessage())
+
+  const users = (await db.getAll(STORES.users)) || []
+  const taken = users.find((x) => {
+    const em = String(x.email || '').trim().toLowerCase()
+    const un = String(x.username || '').trim().toLowerCase()
+    return em === email || un === username.toLowerCase()
+  })
+  if (taken) throw new Error('An account with this email or username already exists on this device — sign in instead')
+
+  const session = {
+    id: crypto.randomUUID?.() || 'u_' + Date.now(),
+    email,
+    name,
+    cloud: false,
+  }
+  await mirrorLocalUser(session, password, { username })
+  setSession?.(session)
+  setUser?.(session)
+  if (refresh) await refresh()
+  if (toast) toast('Account created on this device (cloud will link when available)', 'success')
+  return { cloud: false, user: session }
+}
+
 /**
  * Cloud-first login. Falls back to local-only if cloud is off or unreachable
  * and a matching local user exists.
@@ -19,46 +85,25 @@ function isEmail(s) {
 export async function cloudLogin(username, password, ctx = {}) {
   const { online = true, toast, setSession, setUser, refresh, skipAutoPush } = ctx
   const raw = String(username || '').trim()
-  const email = raw.toLowerCase()
+  const email = isEmail(raw) ? raw.toLowerCase() : raw
   if (!raw || !password) throw new Error('Email and password required')
 
   if (canUseCloudSync() && online !== false) {
     try {
       const data = await Sync.login(isEmail(email) ? email : raw, password)
-      const u = data.user || { email, name: email.split('@')[0] }
-      let profile = null
-      try { profile = await Sync.me() } catch {}
-      const cloudUser = profile?.user || {}
+      const u = data.user || { email: isEmail(email) ? email : raw }
       const session = {
         id: u.id,
         email: u.email || email,
-        name: u.name || (u.email || email).split('@')[0],
+        name: u.name || u.email || email,
+        teamRole: u.teamRole,
+        linkedWorkspaceOwnerId: u.linkedWorkspaceOwnerId,
         cloud: true,
-        teamRole: cloudUser.teamRole || null,
-        linkedWorkspaceOwnerId: cloudUser.linkedWorkspaceOwnerId || null,
       }
       setSession?.(session)
       setUser?.(session)
-
       try {
-        const users = (await db.getAll(STORES.users)) || []
-        let local = users.find(
-          (x) => String(x.email || '').toLowerCase() === String(session.email).toLowerCase()
-        )
-        const hashed = await hashPassword(password)
-        if (local) {
-          await db.put(STORES.users, { ...local, password: hashed, name: session.name, email: session.email, teamRole: session.teamRole, linkedWorkspaceOwnerId: session.linkedWorkspaceOwnerId })
-        } else {
-          await db.put(STORES.users, {
-            id: session.id || (crypto.randomUUID?.() || 'u_' + Date.now()),
-            username: session.email.split('@')[0],
-            email: session.email,
-            name: session.name,
-            password: hashed,
-            teamRole: session.teamRole,
-            linkedWorkspaceOwnerId: session.linkedWorkspaceOwnerId,
-          })
-        }
+        await mirrorLocalUser(session, password)
       } catch (e) {
         console.warn('[cloudLogin] local mirror', e?.message || e)
       }
@@ -84,26 +129,29 @@ export async function cloudLogin(username, password, ctx = {}) {
       return { cloud: true, user: session }
     } catch (e) {
       const msg = String(e?.message || e)
-      if (/Invalid email or password/i.test(msg)) throw e
-      console.warn('[cloudLogin] cloud failed, trying local', msg)
-      if (toast && /waking|offline|Network|502|503/i.test(msg)) {
-        toast('Cloud waking up — trying local login…', 'info')
+      if (/Invalid email or password/i.test(msg)) {
+        // Still try local — backup import may have local password only after cloud reset
+      } else {
+        console.warn('[cloudLogin] cloud failed, trying local', msg)
+        if (toast && /waking|offline|Network|502|503/i.test(msg)) {
+          toast('Cloud waking up — trying local login…', 'info')
+        }
       }
     }
   }
 
   const users = (await db.getAll(STORES.users)) || []
-  const needle = email
+  const needle = String(email || '').trim().toLowerCase()
   const local = users.find((x) => {
     const un = String(x.username || '').trim().toLowerCase()
     const em = String(x.email || '').trim().toLowerCase()
-    return un === needle || em === needle || un === raw.toLowerCase()
+    return un === needle || em === needle || un === raw.toLowerCase() || em === raw.toLowerCase()
   })
   if (!local) {
     if (!canUseCloudSync()) {
-      throw new Error('No local account. Turn Solo mode off and sign in with your cloud email.')
+      throw new Error('No local account. Create an account or import a backup JSON first.')
     }
-    throw new Error('Invalid email or password')
+    throw new Error('Invalid email or password. After a cloud reset, create a new account or import your backup JSON.')
   }
   const { verifyPassword } = await import('./hash.js')
   const ok = await verifyPassword(password, local.password)
@@ -125,41 +173,43 @@ export async function cloudRegister(form, ctx = {}) {
   const { online = true, toast, setSession, setUser, refresh } = ctx
   const email = String(form?.email || '').trim().toLowerCase()
   const password = form?.password
-  const name = form?.name || email.split('@')[0]
+  const name = form?.name || form?.username || email.split('@')[0]
   if (!email || !password) throw new Error('Email and password required')
-  if (!canUseCloudSync()) {
-    throw new Error('Solo offline mode is on — turn it off in Settings to create a cloud account')
-  }
-  if (online === false) throw new Error('You are offline — connect to register a cloud account')
+  if (!passwordMeetsPolicy(password)) throw new Error(passwordPolicyMessage())
 
-  const data = await Sync.register(email, password, name)
-  const u = data.user || { email, name }
-  const session = {
-    id: u.id,
-    email: u.email || email,
-    name: u.name || name,
-    cloud: true,
+  if (canUseCloudSync() && online !== false) {
+    try {
+      const data = await Sync.register(email, password, name)
+      const u = data.user || { email, name }
+      const session = {
+        id: u.id,
+        email: u.email || email,
+        name: u.name || name,
+        cloud: true,
+      }
+      setSession?.(session)
+      setUser?.(session)
+      try {
+        await mirrorLocalUser(session, password, { username: form?.username })
+      } catch (e) {
+        console.warn('[cloudRegister] local mirror', e?.message || e)
+      }
+      try {
+        await ensureWorkspaceSynced({ forcePush: true })
+      } catch {}
+      if (refresh) await refresh()
+      if (toast) toast('Account created — cloud sync enabled', 'success')
+      return { cloud: true, user: session }
+    } catch (e) {
+      const msg = String(e?.message || e)
+      if (/letters and numbers|Password must/i.test(msg)) throw new Error(passwordPolicyMessage())
+      if (/already|exists|taken|in use/i.test(msg)) {
+        throw new Error('Account already exists on cloud — sign in instead (or use Forgot password)')
+      }
+      console.warn('[cloudRegister] cloud failed, local fallback', msg)
+      if (toast) toast('Cloud unavailable after reset — creating local account…', 'info')
+    }
   }
-  setSession?.(session)
-  setUser?.(session)
 
-  try {
-    const hashed = await hashPassword(password)
-    await db.put(STORES.users, {
-      id: session.id || (crypto.randomUUID?.() || 'u_' + Date.now()),
-      username: email.split('@')[0],
-      email,
-      name: session.name,
-      password: hashed,
-    })
-  } catch (e) {
-    console.warn('[cloudRegister] local mirror', e?.message || e)
-  }
-
-  try {
-    await ensureWorkspaceSynced({ forcePush: true })
-  } catch {}
-  if (refresh) await refresh()
-  if (toast) toast('Account created — cloud sync enabled', 'success')
-  return { cloud: true, user: session }
+  return localRegister(form, { setSession, setUser, refresh, toast })
 }

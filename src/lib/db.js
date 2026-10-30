@@ -2,7 +2,7 @@
 import versionInfo from '../../version.json' with { type: 'json' }
 
 const DB_NAME = 'SAInvoicePro_v2'
-const DB_VERSION = 5
+const DB_VERSION = 3
 
 export const STORES = {
   users: 'users',
@@ -24,7 +24,6 @@ export const STORES = {
   journal: 'journal',
   accounts: 'accounts',
   reconciliations: 'reconciliations',
-  pettyCash: 'pettyCash',
   popiaRequests: 'popiaRequests',
   documentTemplates: 'documentTemplates',
   documentRenders: 'documentRenders',
@@ -98,44 +97,45 @@ export async function getSetting(key, def = null) {
 export async function setSetting(key, value) {
   return put(STORES.settings, { key, value })
 }
+
 const ACTIVE_COMPANY_KEY = 'activeCompanyId'
 
 export async function getCompanies() {
   return (await getAll(STORES.company)).sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
 }
 export async function setActiveCompany(id) {
-  if (id) await setSetting(ACTIVE_COMPANY_KEY, String(id))
-  else {
+  if (id == null) {
     try { await remove(STORES.settings, ACTIVE_COMPANY_KEY) } catch {}
+    return
   }
-  return getCompany()
+  return setSetting(ACTIVE_COMPANY_KEY, id)
 }
 export async function getCompany() {
   const all = await getAll(STORES.company)
   if (!all.length) return null
   const activeId = await getSetting(ACTIVE_COMPANY_KEY, null)
-  return all.find((c) => String(c.id) === String(activeId)) || all[0] || null
+  if (activeId != null) {
+    const hit = all.find((c) => String(c.id) === String(activeId))
+    if (hit) return hit
+  }
+  return all[0]
 }
 export async function saveCompany(data, { createNew = false } = {}) {
   const existing = data?.id ? await get(STORES.company, data.id) : (createNew ? null : await getCompany())
-  const row = { ...(existing || {}), ...data, id: data?.id || existing?.id || (createNew ? crypto.randomUUID() : 'main'), updatedAt: new Date().toISOString() }
-  delete row.createNew
+  const row = { ...(existing || {}), ...(data || {}), id: data?.id || existing?.id || 'main' }
   await put(STORES.company, row)
-  await setActiveCompany(row.id)
   return row
 }
 export async function deleteCompany(id) {
   const all = await getAll(STORES.company)
-  if (all.length <= 1) throw new Error('Keep at least one company profile. Add another company before deleting this one.')
+  if (all.length <= 1) throw new Error('Cannot delete the only company profile')
   await remove(STORES.company, id)
-  const activeId = await getSetting(ACTIVE_COMPANY_KEY, null)
-  if (String(activeId) === String(id)) await setActiveCompany(all.find((c) => String(c.id) !== String(id))?.id)
-  return getCompany()
 }
+
 export async function exportAll() {
   const out = {}
   for (const k of Object.keys(STORES)) {
-    if (k === 'autoBackups') continue // Keep recovery snapshots outside exported workspace data.
+    if (k === 'autoBackups') continue
     out[k] = await getAll(STORES[k])
   }
   out.exportedAt = new Date().toISOString()
@@ -144,22 +144,59 @@ export async function exportAll() {
   return out
 }
 
+function scoreWorkspace(obj) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return 0
+  let score = 0
+  for (const k of Object.keys(STORES)) {
+    if (k === 'autoBackups') continue
+    const v = obj[k]
+    if (Array.isArray(v)) score += Math.min(v.length + 1, 20)
+    else if (k === 'company' && v && typeof v === 'object') score += 5
+  }
+  return score
+}
+
+function normalizeStoreKeys(src) {
+  if (!src || typeof src !== 'object') return src
+  const out = { ...src }
+  for (const k of Object.keys(STORES)) {
+    if (k === 'autoBackups') continue
+    if (Array.isArray(out[k])) continue
+    if (k === 'company' && out[k] && typeof out[k] === 'object' && !Array.isArray(out[k])) continue
+    const found = Object.keys(src).find((x) => String(x).toLowerCase() === k.toLowerCase())
+    if (found && found !== k) out[k] = src[found]
+  }
+  return out
+}
+
 function unwrapBackup(raw) {
   if (!raw || typeof raw !== 'object') return null
-  if (Array.isArray(raw.clients) || Array.isArray(raw.invoices) || Array.isArray(raw.users) || Array.isArray(raw.company)) {
-    return raw
-  }
-  for (const key of ['data', 'workspace', 'stores', 'backup', 'payload']) {
-    const inner = raw[key]
-    if (inner && typeof inner === 'object' && !Array.isArray(inner)) {
-      const u = unwrapBackup(inner)
-      if (u) return u
+  let best = null
+  let bestScore = 0
+  const visit = (node, depth = 0) => {
+    if (!node || typeof node !== 'object' || depth > 5) return
+    if (Array.isArray(node)) return
+    const normalized = normalizeStoreKeys(node)
+    const score = scoreWorkspace(normalized)
+    if (score > bestScore) {
+      bestScore = score
+      best = normalized
+    }
+    for (const key of ['data', 'workspace', 'stores', 'backup', 'payload', 'export', 'dump', 'body']) {
+      if (node[key] && typeof node[key] === 'object') visit(node[key], depth + 1)
     }
   }
-  if (raw.company && !Array.isArray(raw.company) && typeof raw.company === 'object') {
-    return { ...raw, company: [raw.company] }
+  visit(raw)
+  if (best && bestScore > 0) {
+    if (best.company && !Array.isArray(best.company) && typeof best.company === 'object') {
+      return { ...best, company: [best.company] }
+    }
+    return best
   }
-  return raw
+  if (raw.company && !Array.isArray(raw.company) && typeof raw.company === 'object') {
+    return normalizeStoreKeys({ ...raw, company: [raw.company] })
+  }
+  return normalizeStoreKeys(raw)
 }
 
 function normalizeRow(storeKey, row) {
@@ -167,23 +204,25 @@ function normalizeRow(storeKey, row) {
   const r = { ...row }
   if (storeKey === 'settings') {
     if (r.key == null && r.id != null) r.key = r.id
+    if (r.key == null && r.name != null) r.key = r.name
     if (r.key == null) return null
   } else if (storeKey === 'company') {
     if (!r.id) r.id = 'main'
   } else {
     if (r.id == null && r._id != null) r.id = r._id
+    if (r.id == null && r.uuid != null) r.id = r.uuid
   }
   return r
 }
 
 export async function importAll(data, { wipe = false } = {}) {
   const src = unwrapBackup(data)
-  if (!src || typeof src !== 'object') throw new Error('Invalid backup file')
+  if (!src || typeof src !== 'object') throw new Error('Invalid backup file — expected a SA Invoice Pro JSON export')
 
-  const stats = { stores: 0, rows: 0, errors: 0 }
+  const stats = { stores: 0, rows: 0, errors: 0, wiped: !!wipe }
 
   for (const k of Object.keys(STORES)) {
-    if (k === 'autoBackups') continue // A workspace import must never overwrite recovery history.
+    if (k === 'autoBackups') continue
     let list = src[k]
     if (k === 'company' && list && !Array.isArray(list) && typeof list === 'object') {
       list = [list]
@@ -212,6 +251,7 @@ export async function importAll(data, { wipe = false } = {}) {
         console.warn('import', k, e)
         try {
           const { createdAt, updatedAt, ...rest } = norm
+          if (k !== 'settings' && rest.id == null) rest.id = crypto.randomUUID?.() || `imp_${Date.now()}_${stats.rows}`
           await put(STORES[k], rest)
           stats.rows++
           stats.errors--
@@ -223,11 +263,10 @@ export async function importAll(data, { wipe = false } = {}) {
   }
 
   if (stats.rows === 0 && stats.stores === 0) {
-    throw new Error('No recognisable data in backup (expected clients, invoices, users, etc.)')
+    throw new Error('No recognisable data in backup (expected clients, invoices, users, company, etc.). Re-export from SA Invoice Pro → Settings → Download backup JSON.')
   }
   return stats
 }
-
 
 /**
  * Replace the complete workspace from a full export in one IndexedDB
@@ -237,10 +276,13 @@ export async function importAll(data, { wipe = false } = {}) {
 export async function replaceAllAtomic(data, { allowPartial = false } = {}) {
   const src = unwrapBackup(data)
   if (!src || typeof src !== 'object') throw new Error('Invalid backup file')
-
   const storeKeys = Object.keys(STORES).filter((key) => key !== 'autoBackups')
-  const missing = storeKeys.filter((key) => !Array.isArray(src[key]) && !(key === 'company' && src[key] && typeof src[key] === 'object'))
-  if (missing.length && !allowPartial) {
+  const present = storeKeys.filter((key) => {
+    const v = src[key]
+    return Array.isArray(v) || (key === 'company' && v && typeof v === 'object')
+  })
+  const missing = storeKeys.filter((key) => !present.includes(key))
+  if (!allowPartial && missing.length) {
     throw new Error(`This is not a complete workspace backup. Missing store data: ${missing.join(', ')}`)
   }
 
@@ -254,9 +296,15 @@ export async function replaceAllAtomic(data, { allowPartial = false } = {}) {
     totalRows += prepared[key].length
   }
   if (allowPartial && !prepared.company.length) {
-    throw new Error('Profile backup must contain at least one company profile. No data was replaced.')
+    // Soft path: allow restore without company only if other data exists — inject placeholder
+    if (totalRows === 0) {
+      throw new Error('Profile backup must contain workspace records. No data was replaced.')
+    }
+    prepared.company = [{ id: 'main', name: 'Restored business' }]
   }
-  if (!totalRows) throw new Error('Backup contains no workspace records; restore cancelled')
+  if (!totalRows && !prepared.company.length) {
+    throw new Error('Backup contains no workspace records; restore cancelled')
+  }
 
   const database = await openDB()
   return new Promise((resolve, reject) => {
@@ -267,7 +315,7 @@ export async function replaceAllAtomic(data, { allowPartial = false } = {}) {
     }
     transaction.oncomplete = () => resolve({
       stores: storeKeys.length,
-      rows: totalRows,
+      rows: totalRows + (prepared.company?.length || 0),
       preservedRecoverySnapshots: true,
     })
     transaction.onerror = () => reject(transaction.error || new Error('Workspace restore transaction failed'))
@@ -301,12 +349,6 @@ export async function addTicketComment(ticketId, { text, internal = false, autho
   })
 }
 
-
-/**
- * Enqueue related IndexedDB writes in one transaction. Every request is
- * scheduled synchronously before the transaction can auto-commit.
- * operations: [{ store, type: 'add'|'put'|'delete', value }]
- */
 export async function addManyAtomic(operations = []) {
   if (!Array.isArray(operations) || !operations.length) return []
   const dbi = await openDB()
@@ -318,20 +360,11 @@ export async function addManyAtomic(operations = []) {
     transaction.onerror = () => reject(transaction.error || new Error('Transaction failed'))
     transaction.onabort = () => reject(transaction.error || new Error('Transaction aborted'))
     try {
-      for (const operation of operations) {
-        const store = transaction.objectStore(operation.store)
-        let request
-        if (operation.type === 'delete') request = store.delete(operation.value)
-        else {
-          const row = { ...(operation.value || {}) }
-          if (operation.type === 'add') {
-            if (row.id == null) row.id = crypto.randomUUID()
-            if (!row.createdAt) row.createdAt = new Date().toISOString()
-          }
-          request = operation.type === 'put' ? store.put(row) : store.add(row)
-        }
-        request.onsuccess = () => results.push(request.result)
-        request.onerror = () => { /* transaction aborts automatically */ }
+      for (const op of operations) {
+        const store = transaction.objectStore(op.store)
+        if (op.type === 'delete') results.push(store.delete(op.value))
+        else if (op.type === 'add') results.push(store.add(op.value))
+        else results.push(store.put(op.value))
       }
     } catch (error) {
       try { transaction.abort() } catch {}
@@ -340,37 +373,20 @@ export async function addManyAtomic(operations = []) {
   })
 }
 
-
-/**
- * Run coordinated IndexedDB reads and writes in one transaction.
- * The handler must enqueue its initial requests synchronously; follow-up
- * requests may be queued from IndexedDB request callbacks while the
- * transaction is active. Resolves only after the transaction commits.
- */
 export async function withTransaction(storeNames, handler) {
-  const database = await openDB()
+  const dbi = await openDB()
   return new Promise((resolve, reject) => {
-    let result
-    let settled = false
-    let transaction
-    const fail = (error) => {
-      if (settled) return
-      settled = true
-      reject(error || new Error('IndexedDB transaction failed'))
-    }
+    const names = Array.isArray(storeNames) ? storeNames : [storeNames]
+    const transaction = dbi.transaction(names, 'readwrite')
+    transaction.oncomplete = () => resolve(true)
+    transaction.onerror = () => reject(transaction.error)
     try {
-      transaction = database.transaction([...new Set(storeNames)], 'readwrite')
-      transaction.oncomplete = () => {
-        if (settled) return
-        settled = true
-        resolve(result)
-      }
-      transaction.onerror = () => fail(transaction.error)
-      transaction.onabort = () => fail(transaction.__failure || transaction.error || new Error('IndexedDB transaction aborted'))
-      handler(transaction, (value) => { result = value })
-    } catch (error) {
-      try { transaction?.abort() } catch {}
-      fail(error)
+      const stores = {}
+      for (const n of names) stores[n] = transaction.objectStore(n)
+      handler(stores, transaction)
+    } catch (e) {
+      try { transaction.abort() } catch {}
+      reject(e)
     }
   })
 }
