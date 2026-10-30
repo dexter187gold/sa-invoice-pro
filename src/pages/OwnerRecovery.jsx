@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Sync } from '../lib/sync'
-import { ROLES, listSeats, upsertSeat, getActiveSeatId } from '../lib/seats'
+import { ROLES, listSeats, upsertSeat, getActiveSeatId, clearSeats } from '../lib/seats'
 
 /**
  * Break-glass recovery for local desk seats.
@@ -84,6 +84,9 @@ export default function OwnerRecovery() {
     setMessage('')
     try {
       const result = await Sync.resetWorkspace(resetPin, resetConfirm)
+      await clearSeats()
+      setSeats([])
+      setActiveId('')
       setResetResult(result)
       setResetPin('')
       setResetConfirm('')
