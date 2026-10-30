@@ -1,6 +1,6 @@
 /**
  * Credit notes (P2) — partial refunds / invoice corrections.
- * A credit note reduces amount due; never invents cash without a payment row.
+ * A credit note reduces amount rep due; never invents cash without a payment row.
  */
 import * as db from './db.js'
 import { STORES } from './db.js'
@@ -31,13 +31,13 @@ export function buildCreditNote(invoice, opts = {}) {
   const amount = Math.round(Number(opts.amount || 0) * 100) / 100
   if (!(amount > 0)) throw new Error('Credit amount must be greater than zero')
   if (amount > max + 0.001) {
-    throw new Error(`Credit amount cannot exceed R${max.toFixed(2)}`)
+    throw new Error('Credit amount cannot exceed R' + max.toFixed(2))
   }
   const now = new Date().toISOString()
   return {
-    id: opts.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `cn_${Date.now()}`),
+    id: opts.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'cn_' + Date.now()),
     type: 'credit_note',
-    number: opts.number || `CN-${String(invoice.number || invoice.id).replace(/[^A-Za-z0-9]/g, '')}-${Date.now().toString(36).toUpperCase()}`,
+    number: opts.number || ('CN-' + String(invoice.number || invoice.id).replace(/[^A-Za-z0-9]/g, '') + '-' + Date.now().toString(36).toUpperCase()),
     invoiceId: invoice.id,
     invoiceNumber: invoice.number || '',
     clientId: invoice.clientId,
@@ -51,7 +51,7 @@ export function buildCreditNote(invoice, opts = {}) {
 }
 
 export function applyCreditToInvoice(invoice, creditNote) {
-  const amount = Number(creditNote?.amount || 0) || 0
+  const amount = Number(creditNote && creditNote.amount || 0) || 0
   const amountCredited = Math.round(((Number(invoice.amountCredited || 0) || 0) + amount) * 100) / 100
   const bal = remainingBalance({ ...invoice, amountCredited })
   let status = invoice.status
@@ -64,7 +64,7 @@ export function applyCreditToInvoice(invoice, creditNote) {
     balance: bal,
     status,
     updatedAt: new Date().toISOString(),
-    lastCreditNoteId: creditNote?.id,
+    lastCreditNoteId: creditNote && creditNote.id,
   }
 }
 
@@ -74,7 +74,7 @@ export async function issueCreditNote(invoice, opts = {}) {
   await db.put(STORES.invoices, updatedInv)
 
   const cnDoc = {
-    id:n    id: cn.id,
+    id: cn.id,
     number: cn.number,
     type: 'credit_note',
     isCredit: true,
@@ -89,12 +89,14 @@ export async function issueCreditNote(invoice, opts = {}) {
     amountPaid: -Math.abs(cn.amount),
     amountDue: 0,
     amountCredited: 0,
-    lines: cn.lines.map((l) => ({
-      description: l.description || cn.reason,
-      qty: 1,
-      price: -Math.abs(Number(l.amount) || cn.amount),
-    })),
-    notes: `Credit note against ${invoice.number || invoice.id}: ${cn.reason}`,
+    lines: cn.lines.map(function (l) {
+      return {
+        description: l.description || cn.reason,
+        qty: 1,
+        price: -Math.abs(Number(l.amount) || cn.amount),
+      }
+    }),
+    notes: 'Credit note against ' + (invoice.number || invoice.id) + ': ' + cn.reason,
     reason: cn.reason,
     createdAt: cn.createdAt,
     updatedAt: cn.updatedAt,
@@ -115,6 +117,6 @@ export function partialPaymentClarity(invoice = {}, paymentAmount = 0) {
     overpay: pay > before + 0.001,
     label: after <= 0.009
       ? 'This payment settles the invoice in full'
-      : `After this payment, R${after.toFixed(2)} will still be due`,
+      : 'After this payment, R' + after.toFixed(2) + ' will still be due',
   }
 }
