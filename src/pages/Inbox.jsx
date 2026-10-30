@@ -5,6 +5,8 @@ import * as db from '../lib/db'
 import { STORES } from '../lib/db'
 import { Sync } from '../lib/sync'
 import { PageFade, EmptyState } from '../components/ui'
+import { openWhatsApp } from '../lib/share'
+import { QUICK_REPLIES } from '../lib/waTemplates'
 
 function urgencyToPriority(u) {
   const s = String(u || '').toLowerCase()
@@ -14,12 +16,14 @@ function urgencyToPriority(u) {
 }
 
 export default function Inbox() {
-  const { clients, refresh, toast } = useApp()
+  const { clients, company, refresh, toast } = useApp()
   const nav = useNavigate()
   const [pending, setPending] = useState([])
   const [intake, setIntake] = useState([])
   const [notifs, setNotifs] = useState([])
   const [busy, setBusy] = useState(false)
+  const [replyFor, setReplyFor] = useState(null)
+  const [replyText, setReplyText] = useState('')
 
   const load = useCallback(async () => {
     if (!Sync.isLoggedIn()) return
@@ -44,6 +48,27 @@ export default function Inbox() {
   }, [toast])
 
   useEffect(() => { load() }, [load])
+
+  const openReply = (wa) => {
+    setReplyFor(wa)
+    const clientStub = { name: wa.name, phone: wa.phone }
+    const first = QUICK_REPLIES[0]
+    setReplyText(first.build(clientStub, company))
+  }
+
+  const applyQuick = (qr) => {
+    if (!replyFor) return
+    const clientStub = { name: replyFor.name, phone: replyFor.phone }
+    setReplyText(qr.build(clientStub, company))
+  }
+
+  const sendReply = () => {
+    if (!replyFor || !replyText.trim()) return toast?.('Enter a message', 'info')
+    openWhatsApp(replyFor.phone, replyText)
+    toast?.('Opening WhatsApp…', 'success')
+    setReplyFor(null)
+    setReplyText('')
+  }
 
   const importClient = async (wa) => {
     setBusy(true)
@@ -186,28 +211,58 @@ export default function Inbox() {
           </button>
           <Link className="btn btn-outline" to="/clients">Clients</Link>
           <Link className="btn btn-outline" to="/tickets">Job cards</Link>
+          <Link className="btn btn-outline" to="/wa-templates">Templates</Link>
         </div>
       </div>
+
+      {replyFor ? (
+        <div className="card" style={{ marginBottom: '1rem', borderColor: 'var(--accent)' }}>
+          <h3 style={{ marginTop: 0 }}>Reply to {replyFor.name || replyFor.phone}</h3>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+            {QUICK_REPLIES.map((qr) => (
+              <button key={qr.id} type="button" className="btn btn-outline btn-sm" onClick={() => applyQuick(qr)}>
+                {qr.label}
+              </button>
+            ))}
+          </div>
+          <textarea
+            className="input"
+            rows={5}
+            value={replyText}
+            onChange={(e) => setReplyText(e.target.value)}
+            placeholder="Type or pick a quick reply…"
+          />
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <button type="button" className="btn btn-primary" onClick={sendReply}>Open WhatsApp</button>
+            <button type="button" className="btn btn-outline" onClick={() => { setReplyFor(null); setReplyText('') }}>Cancel</button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="card" style={{ marginBottom: '1rem' }}>
         <h3 style={{ marginTop: 0 }}>Pending WhatsApp clients ({pending.length})</h3>
         <p className="muted" style={{ fontSize: 13 }}>
-          Registered on WhatsApp / web form — import adds them to your local Clients list.
+          Registered on WhatsApp / web form — import adds them to your local Clients list. Reply opens WhatsApp with a pre-filled message.
         </p>
         {!pending.length && (
           <p className="muted">None pending. After a customer registers, they appear here.</p>
         )}
         {pending.map((wa) => (
-          <div key={wa.phone || wa.id} className="list-card" style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+          <div key={wa.phone || wa.id} className="list-card" style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <div>
               <strong>{wa.name || 'Unnamed'}</strong>
               <div className="muted" style={{ fontSize: 13 }}>
                 {[wa.phone, wa.email, wa.company].filter(Boolean).join(' · ')}
               </div>
             </div>
-            <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={() => importClient(wa)}>
-              Import to clients
-            </button>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button type="button" className="btn btn-outline btn-sm" disabled={busy} onClick={() => openReply(wa)}>
+                Reply
+              </button>
+              <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={() => importClient(wa)}>
+                Import to clients
+              </button>
+            </div>
           </div>
         ))}
       </div>
