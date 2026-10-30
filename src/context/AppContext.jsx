@@ -47,7 +47,7 @@ export function AppProvider({ children }) {
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4500)
   }, [])
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async ({ skipSync = false } = {}) => {
     const c = await db.getCompany()
     setCompany(c)
     const snap = { company: c, clients: [], invoices: [], quotes: [], tickets: [], payments: [], products: [], services: [], expenses: [] }
@@ -68,7 +68,7 @@ export function AppProvider({ children }) {
     setVatEnabled((await db.getSetting('vatEnabled', true)) !== false)
     setVatRate(Number(await db.getSetting('vatRate', VAT_RATE_DEFAULT)) || VAT_RATE_DEFAULT)
     if (skipAutoPush.current) skipAutoPush.current = false
-    else if (canUseCloudSync() && Sync.isLoggedIn()) Sync.scheduleAutoPush(snap, 2500)
+    else if (!skipSync && canUseCloudSync() && Sync.isLoggedIn()) Sync.scheduleAutoPush(snap, 2500)
   }, [])
 
   useEffect(() => {
