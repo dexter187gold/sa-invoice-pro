@@ -405,7 +405,19 @@ export default function Shell({ children }) {
 
       {useBottom ? (
         <>
-          <nav className="bottom-nav" aria-label={forceRoot ? 'Main navigation shortcuts' : 'Contextual navigation'}>
+          <nav className="bottom-nav" aria-label="Main menu, contextual navigation and command centre">
+            <button
+              type="button"
+              className={`bnav bottom-nav-menu ${moreOpen ? 'on' : ''}`}
+              onClick={() => { setMoreOpen((v) => !v); setCommandOpen(false) }}
+              aria-label={moreOpen ? 'Close main menu' : 'Open main menu'}
+              aria-expanded={moreOpen}
+              aria-controls="more-drawer"
+              title="Main menu"
+            >
+              <span className="ico" aria-hidden>☰</span>
+              Main Menu
+            </button>
             <div className="bottom-nav-scroll" aria-label="Swipe horizontally for more navigation items">
               {bottomItems.filter((item) => !item.isRoot && !item.isMore).map((item) => (
                 <NavLink

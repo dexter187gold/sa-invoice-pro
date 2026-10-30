@@ -252,8 +252,15 @@ html.nav-compact .sidebar .section-title { display: none !important; }
   scroll-snap-align: start;
   -webkit-tap-highlight-color: transparent;
 }
+.bottom-nav-menu {
+  flex: 0 0 68px;
+  border-right: 1px solid var(--border, rgba(255,255,255,.1));
+  border-radius: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
 .bottom-nav-fixed {
-  flex: 0 0 58px;
+  flex: 0 0 68px;
   border-left: 1px solid var(--border, rgba(255,255,255,.1));
   border-radius: 8px;
   padding-left: 5px;
