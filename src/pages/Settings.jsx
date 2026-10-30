@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
 import { APP_VERSION, SA_CONFIG } from '../config'
-import { exportAll } from '../lib/db'
+import { exportAll, replaceAllAtomic } from '../lib/db'
 import { Segmented, PageFade, ConfirmDialog, LoadingButton } from '../components/ui'
 import CloudSettings from '../components/CloudSettings'
 import ThemePicker from '../components/ThemePicker'
@@ -45,6 +45,33 @@ export default function Settings() {
     try { return JSON.parse(localStorage.getItem('sa_nav_prefs') || '{}') } catch { return { layout: 'bottom' } }
   })
   const queueLen = listOutboundQueue().filter((e) => !e.sent).length
+
+
+  const importDeviceBackup = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const confirmed = window.confirm(
+      'Import this device backup and replace the current local workspace? A rollback snapshot will be saved first. Sections missing from a profile-only backup will be empty so you can update them yourself.'
+    )
+    if (!confirmed) {
+      e.target.value = ''
+      return
+    }
+    setBusy(true)
+    try {
+      const raw = JSON.parse(await file.text())
+      await saveAutoBackup({ reason: 'pre-device-backup-import' })
+      const stats = await replaceAllAtomic(raw, { allowPartial: true })
+      await refresh?.({ skipSync: true })
+      await refreshAutoBackups()
+      toast('Device backup imported: ' + stats.rows + ' records across ' + stats.stores + ' sections. Review your company profile before signing in and syncing.', 'success')
+    } catch (error) {
+      toast(error?.message || 'Backup import failed; the current workspace was not replaced.', 'error')
+    } finally {
+      setBusy(false)
+      e.target.value = ''
+    }
+  }
 
   const refreshAutoBackups = async () => {
     try { setAutoBackups(await listAutoBackups()) } catch (error) { console.warn('[settings] backups', error) }
@@ -310,6 +337,14 @@ export default function Settings() {
             a.click()
             toast('Backup downloaded', 'success')
           }}>Download backup JSON</button>
+
+          <label className="label">Import profile backup JSON from this device</label>
+          <input className="input" type="file" accept=".json,application/json" disabled={busy} onChange={importDeviceBackup} />
+          <p className="muted" style={{ fontSize: 12 }}>
+            Imports your saved profile using an atomic local replacement. A rollback snapshot is saved first.
+            Any sections not present in the backup are left empty for you to update. After checking the profile,
+            sign in to your cloud account again and run Sync Now to publish the restored profile.
+          </p>
           <button type="button" className="btn btn-outline" onClick={async () => {
             try {
               await saveAutoBackup({ reason: 'manual' })
