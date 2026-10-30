@@ -45,25 +45,12 @@ async function exportSnapshot(label, reason) {
 
 export async function saveAutoBackup({ reason = 'manual', label = 'Snapshot' } = {}) {
   const snap = await exportSnapshot(label, reason)
-  try {
-    if (db.STORES?.autoBackups) {
-      await db.add(db.STORES.autoBackups, snap)
-      const all = (await db.getAll(db.STORES.autoBackups)) || []
-      all.sort((a, b) => String(b.at || b.createdAt).localeCompare(String(a.at || a.createdAt)))
-      for (const old of all.slice(MAX_SNAPS)) {
-        try {
-          await db.remove(db.STORES.autoBackups, old.id)
-        } catch {}
-      }
-    } else {
-      const list = (await db.getSetting('autoBackups', [])) || []
-      const next = [snap, ...list].slice(0, MAX_SNAPS)
-      await db.setSetting('autoBackups', next)
-    }
-  } catch (e) {
-    console.warn('[autoBackup]', e)
-    const list = (await db.getSetting('autoBackups', [])) || []
-    await db.setSetting('autoBackups', [snap, ...list].slice(0, MAX_SNAPS))
+  if (!db.STORES?.autoBackups) throw new Error('Recovery snapshot storage is unavailable. Refresh the app to complete the storage upgrade.')
+  await db.add(db.STORES.autoBackups, snap)
+  const all = (await db.getAll(db.STORES.autoBackups)) || []
+  all.sort((a, b) => String(b.at || b.createdAt).localeCompare(String(a.at || a.createdAt)))
+  for (const old of all.slice(MAX_SNAPS)) {
+    try { await db.remove(db.STORES.autoBackups, old.id) } catch {}
   }
   saveMeta({ lastAt: snap.at, lastReason: reason, lastCounts: snap.counts })
   return snap
@@ -77,14 +64,19 @@ export async function saveAutoBackupThrottled(opts = {}) {
 }
 
 export async function listAutoBackups() {
+  let current = []
   try {
-    if (db.STORES?.autoBackups) {
-      const all = (await db.getAll(db.STORES.autoBackups)) || []
-      return all.sort((a, b) => String(b.at || b.createdAt).localeCompare(String(a.at || a.createdAt))).slice(0, MAX_SNAPS)
-    }
-  } catch {}
-  const list = (await db.getSetting('autoBackups', [])) || []
-  return list.slice(0, MAX_SNAPS)
+    if (db.STORES?.autoBackups) current = (await db.getAll(db.STORES.autoBackups)) || []
+  } catch (error) {
+    console.warn('[autoBackup] snapshot listing failed', error)
+  }
+  // Include legacy settings-based snapshots until the rolling window expires.
+  const legacy = (await db.getSetting('autoBackups', [])) || []
+  const unique = new Map()
+  for (const snap of [...current, ...legacy]) if (snap?.id && snap?.data) unique.set(snap.id, snap)
+  return [...unique.values()]
+    .sort((a, b) => String(b.at || b.createdAt).localeCompare(String(a.at || a.createdAt)))
+    .slice(0, MAX_SNAPS)
 }
 
 export async function getAutoBackup(id) {
@@ -92,12 +84,19 @@ export async function getAutoBackup(id) {
   return list.find((s) => s.id === id) || null
 }
 
-export async function restoreAutoBackup(id) {
-  const list = await listAutoBackups()
-  const snap = id ? list.find((s) => s.id === id) : list[0]
+export async function restoreAutoBackup(id, { confirmed = false } = {}) {
+  if (confirmed !== true) throw new Error('Restore requires explicit confirmation')
+  const snap = await getAutoBackup(id)
   if (!snap?.data) throw new Error('Snapshot not found')
-  await db.importAll(snap.data, { wipe: false })
-  return snap
+
+  // Capture the current workspace first. replaceAllAtomic commits all store
+  // changes together, so a failed restore leaves the live workspace unchanged.
+  const rollbackSnapshot = await saveAutoBackup({
+    reason: 'pre-restore-rollback',
+    label: 'Automatic rollback before restore',
+  })
+  const stats = await db.replaceAllAtomic(snap.data)
+  return { snapshot: snap, rollbackSnapshot, stats }
 }
 
 /** Download a snapshot as a JSON file the user can keep offline / email. */

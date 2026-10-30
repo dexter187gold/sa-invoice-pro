@@ -2,7 +2,7 @@
 import versionInfo from '../../version.json' with { type: 'json' }
 
 const DB_NAME = 'SAInvoicePro_v2'
-const DB_VERSION = 4
+const DB_VERSION = 5
 
 export const STORES = {
   users: 'users',
@@ -29,6 +29,7 @@ export const STORES = {
   documentTemplates: 'documentTemplates',
   documentRenders: 'documentRenders',
   reminders: 'reminders',
+  autoBackups: 'autoBackups',
 }
 
 let dbp = null
@@ -133,7 +134,10 @@ export async function deleteCompany(id) {
 }
 export async function exportAll() {
   const out = {}
-  for (const k of Object.keys(STORES)) out[k] = await getAll(STORES[k])
+  for (const k of Object.keys(STORES)) {
+    if (k === 'autoBackups') continue // Keep recovery snapshots outside exported workspace data.
+    out[k] = await getAll(STORES[k])
+  }
   out.exportedAt = new Date().toISOString()
   out.version = versionInfo.version
   out.app = 'SA Invoice Pro Lab'
@@ -179,6 +183,7 @@ export async function importAll(data, { wipe = false } = {}) {
   const stats = { stores: 0, rows: 0, errors: 0 }
 
   for (const k of Object.keys(STORES)) {
+    if (k === 'autoBackups') continue // A workspace import must never overwrite recovery history.
     let list = src[k]
     if (k === 'company' && list && !Array.isArray(list) && typeof list === 'object') {
       list = [list]
@@ -221,6 +226,56 @@ export async function importAll(data, { wipe = false } = {}) {
     throw new Error('No recognisable data in backup (expected clients, invoices, users, etc.)')
   }
   return stats
+}
+
+
+/**
+ * Replace the complete workspace from a full export in one IndexedDB
+ * transaction. The dedicated autoBackups store is deliberately excluded so
+ * the pre-restore rollback snapshot survives the replacement.
+ */
+export async function replaceAllAtomic(data) {
+  const src = unwrapBackup(data)
+  if (!src || typeof src !== 'object') throw new Error('Invalid backup file')
+
+  const storeKeys = Object.keys(STORES).filter((key) => key !== 'autoBackups')
+  const missing = storeKeys.filter((key) => !Array.isArray(src[key]))
+  if (missing.length) {
+    throw new Error(`This is not a complete workspace backup. Missing store data: ${missing.join(', ')}`)
+  }
+
+  const prepared = {}
+  let totalRows = 0
+  for (const key of storeKeys) {
+    prepared[key] = src[key].map((row) => normalizeRow(key, row)).filter(Boolean)
+    totalRows += prepared[key].length
+  }
+  if (!totalRows) throw new Error('Backup contains no workspace records; restore cancelled')
+
+  const database = await openDB()
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(storeKeys.map((key) => STORES[key]), 'readwrite')
+    const fail = (error) => {
+      try { transaction.abort() } catch {}
+      reject(error || new Error('Workspace restore failed'))
+    }
+    transaction.oncomplete = () => resolve({
+      stores: storeKeys.length,
+      rows: totalRows,
+      preservedRecoverySnapshots: true,
+    })
+    transaction.onerror = () => reject(transaction.error || new Error('Workspace restore transaction failed'))
+    transaction.onabort = () => reject(transaction.error || new Error('Workspace restore was rolled back'))
+    try {
+      for (const key of storeKeys) {
+        const store = transaction.objectStore(STORES[key])
+        store.clear()
+        for (const row of prepared[key]) store.put(row)
+      }
+    } catch (error) {
+      fail(error)
+    }
+  })
 }
 
 export async function listTicketComments(ticketId) {

@@ -36,6 +36,7 @@ export default function Settings() {
   })
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState(null)
+  const [autoBackups, setAutoBackups] = useState([])
   const [shedding, setShedding] = useState(() => isLoadSheddingMode())
   const [comms, setComms] = useState(() => loadCommsPrefs())
   const [optPhone, setOptPhone] = useState('')
@@ -44,6 +45,12 @@ export default function Settings() {
     try { return JSON.parse(localStorage.getItem('sa_nav_prefs') || '{}') } catch { return { layout: 'bottom' } }
   })
   const queueLen = listOutboundQueue().filter((e) => !e.sent).length
+
+  const refreshAutoBackups = async () => {
+    try { setAutoBackups(await listAutoBackups()) } catch (error) { console.warn('[settings] backups', error) }
+  }
+
+  useEffect(() => { refreshAutoBackups() }, [])
 
   useEffect(() => {
     setForm({
@@ -306,6 +313,7 @@ export default function Settings() {
           <button type="button" className="btn btn-outline" onClick={async () => {
             try {
               await saveAutoBackup({ reason: 'manual' })
+              await refreshAutoBackups()
               toast('Local snapshot saved', 'success')
             } catch (e) { toast(e?.message || 'Backup failed', 'error') }
           }}>Save local auto-backup</button>
@@ -315,6 +323,34 @@ export default function Settings() {
               toast('Auto-backup downloaded', 'success')
             } catch (e) { toast(e?.message || 'Nothing to download', 'error') }
           }}>Download last auto-backup</button>
+          <div className="settings-control-card" style={{ marginTop: 8, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+            <h4 style={{ margin: '0 0 6px' }}>Local recovery snapshots</h4>
+            <p className="muted" style={{ fontSize: 12 }}>Restore replaces the entire local workspace with the selected snapshot. A separate rollback snapshot is saved first. Cloud-synced data may sync again after restore; verify the cloud workspace before proceeding.</p>
+            {autoBackups.length ? autoBackups.map((snap) => (
+              <div key={snap.id} className="settings-shortcut-row" style={{ alignItems: 'center', gap: 10 }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <strong>{snap.label || 'Local snapshot'}</strong>
+                  <span>{new Date(snap.at || snap.createdAt).toLocaleString()} · {(snap.counts?.invoices || 0)} invoices · {(snap.counts?.clients || 0)} clients</span>
+                </div>
+                <button type="button" className="btn btn-outline btn-sm" onClick={() => downloadAutoBackup(snap.id).catch((e) => toast(e?.message || 'Download failed', 'error'))}>Download</button>
+                <button type="button" className="btn btn-outline btn-sm" onClick={() => setConfirm({
+                  title: 'Replace this workspace with the selected snapshot?',
+                  message: 'This replaces all local workspace records, including invoices, payments, clients, bank transactions and settings. A rollback snapshot of the current workspace will be saved first. Only continue if this is the intended recovery point.',
+                  action: async () => {
+                    try {
+                      const result = await restoreAutoBackup(snap.id, { confirmed: true })
+                      await refresh?.({ skipSync: true })
+                      await refreshAutoBackups()
+                      toast(`Workspace restored. ${result.stats.rows} records restored; rollback snapshot saved.`, 'success')
+                    } catch (error) {
+                      toast(error?.message || 'Restore failed; current workspace was not replaced.', 'error')
+                    }
+                  },
+                })}>Restore</button>
+              </div>
+            )) : <p className="muted" style={{ fontSize: 12 }}>No local recovery snapshots are available on this device yet.</p>}
+            <button type="button" className="btn btn-outline btn-sm" onClick={refreshAutoBackups}>Refresh snapshots</button>
+          </div>
           <p className="muted" style={{ fontSize: 12 }}>Cloud profiles restore on sign-in when sync is configured.</p>
           <p className="muted" style={{ fontSize: 11 }}>Sync: {SA_CONFIG.syncServerUrl}</p>
         </div>
