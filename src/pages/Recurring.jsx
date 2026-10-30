@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useApp } from '../context/AppContext'
-import { PageFade, EmptyState, Modal } from '../components/ui'
+import { PageFade, EmptyState } from '../components/ui'
+import Modal from '../components/Modal'
 import PageInsightsBar from '../components/PageInsightsBar'
 import {
   listRecurring, upsertRecurring, removeRecurring, runDueRecurring, nextRunDate,
