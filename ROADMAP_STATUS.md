@@ -146,3 +146,49 @@ Not all will ship; owner prioritizes by revenue and daily pain.
 | 6.33.0 | Employees full CRUD |
 | 6.32.0 | FAB / chrome cleanup |
 | 6.31.x | License / PayFast direction |
+
+
+---
+
+## Verified delivery checkpoint — 2026-10-30 (v6.37.0)
+
+This checkpoint supersedes the older ship/version figures above for current delivery tracking. Historical percentages above are retained as a record and must not be treated as current verified readiness.
+
+### Confirmed merged on main
+
+- [x] Bank import cannot bulk-post suggested invoice payments; positive customer credits require individual review and confirmation.
+- [x] Bank-line fingerprint protection prevents duplicate application of an imported transaction.
+- [x] Invoice payment posting/deletion and related invoice/journal updates are atomic and retry-safe (PR #24).
+- [x] Overpayment guards reject invoice overpayments and preserve excess bank credits for explicit review.
+- [x] Read-only financial integrity scan and evidence-based historical Paid-status repair are available; repair remains owner-confirmed and evidence-gated.
+- [x] Owner command centre and tenant-scoped client portal administration UI are present.
+- [x] Android PWA launch improvements and Pixel-sized mobile smoke coverage are present.
+- [x] Petty-cash register/ledger, modern forest-green sign-in, and customer account categories are present (PR #23).
+- [x] Version-driven GitHub release automation merged (PR #25).
+- [x] Application package version is 6.37.0.
+
+### In progress / not yet accepted as complete
+
+- [ ] **Mobile navigation:** PR #27 separates the bottom-left Main Menu from the bottom-right Command Centre. Merge only after CI, build and mobile E2E pass; verify no duplicate/confusing top-bar controls.
+- [ ] **Backup and disaster recovery:** local auto-backup restore currently calls import with `wipe: false`, so it merges rather than replacing the workspace with a point-in-time snapshot. Implement validated preview, pre-restore rollback snapshot, explicit destructive confirmation, safe restore semantics and isolated restore verification. Never test destructive restore against production.
+- [ ] **Financial recovery:** complete statement reconciliation for partial payments, overpayments, transfers, refunds, fees and reversals; verify audit/reversal behaviour and repair the user's affected historical invoice data only from trustworthy evidence.
+- [ ] **Manual payment integrity:** verify duplicate-submit/retry behaviour for every manual payment entry path, not only bank imports.
+- [ ] **PayFast:** verify server-side ITN signature, merchant/amount/currency/status checks, replay protection, idempotency and licence activation against PayFast sandbox and production-safe test cases. A code path alone is not proof of a successful live settlement.
+- [ ] **Passkeys / Android biometrics:** issue #18 remains a delivery gate. Complete WebAuthn registration/authentication, challenge expiry/replay/origin/RP validation, account isolation, recovery and real Android device/browser tests. Never store biometric templates.
+- [ ] **Owner and client access:** verify owner/staff boundaries and cross-client tenant isolation against real cloud-backed test accounts, including direct API attempts.
+- [ ] **Payroll layouts:** finish and verify reference, simplified and detailed payslip layouts against the supplied template, with deterministic totals, South African formatting, print pagination and Playwright coverage.
+- [ ] **Release/production verification:** verify clean-checkout unit tests, build, Playwright E2E (including Android viewport), Cloudflare preview, production deployment of the exact tested commit, production smoke checks and rollback instructions.
+- [ ] **Operational hardening:** close remaining sync/offline queue visibility, schema migration, backup checksum/retention, dependency/secret scanning and disaster-recovery runbook gates.
+
+### 100% completion rule
+
+A roadmap item is complete only when all applicable evidence exists:
+1. implementation is merged to `main`;
+2. unit tests and relevant Playwright E2E pass from CI;
+3. server-side authorization and tenant-isolation tests pass for privileged/data-scoped features;
+4. preview deployment is healthy;
+5. the exact tested commit is deployed to the intended production target;
+6. production smoke checks pass without data loss or regression; and
+7. recovery/rollback steps are documented for changes that can affect business or financial data.
+
+Do not inflate the overall percentage from merged code alone. The remaining gates above must be closed with test and deployment evidence. The 100+ idea backlog is a product expansion list, not a requirement to ship every speculative feature before the core product is dependable.
