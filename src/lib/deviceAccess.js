@@ -1,5 +1,6 @@
 /**
  * Device access prefs — biometrics + gestures are OFF until the user enables them.
+ * Gestures are intentional (edge / multi-finger) so they do not fight scrolling.
  */
 const GESTURE_KEY = 'sa_gesture_prefs_v1'
 const BIO_KEY = 'sa_biometric_prefs_v1'
@@ -13,6 +14,9 @@ export const DEFAULT_GESTURE_PREFS = {
   swipeDownHome: false,
   twoFingerMenu: false,
   threeFingerCommand: false,
+  threeFingerSwipeDownCommand: false,
+  edgeOnly: true,
+  hapticHint: true,
 }
 
 export const DEFAULT_BIO_PREFS = {
@@ -24,7 +28,6 @@ export const DEFAULT_BIO_PREFS = {
 function forceOffLegacyGesturesOnce() {
   try {
     if (localStorage.getItem(GESTURE_MIGRATION) === '1') return
-    // Previous builds enabled gestures globally and interfered with navigation
     localStorage.setItem(GESTURE_KEY, JSON.stringify({ ...DEFAULT_GESTURE_PREFS }))
     localStorage.setItem(GESTURE_MIGRATION, '1')
   } catch {}
@@ -88,7 +91,6 @@ function b64ToBuf(b64) {
   return bytes.buffer
 }
 
-/** Register platform authenticator (Face ID / fingerprint / Windows Hello). */
 export async function setupBiometric(userLabel = 'SA Invoice Pro user') {
   if (!(await biometricSupported())) {
     throw new Error('Biometrics are not available on this device or browser')
@@ -99,11 +101,7 @@ export async function setupBiometric(userLabel = 'SA Invoice Pro user') {
     publicKey: {
       challenge,
       rp: { name: 'SA Invoice Pro', id: location.hostname },
-      user: {
-        id: userId,
-        name: userLabel,
-        displayName: userLabel,
-      },
+      user: { id: userId, name: userLabel, displayName: userLabel },
       pubKeyCredParams: [
         { type: 'public-key', alg: -7 },
         { type: 'public-key', alg: -257 },
@@ -118,15 +116,13 @@ export async function setupBiometric(userLabel = 'SA Invoice Pro user') {
     },
   })
   if (!cred) throw new Error('Biometric setup was cancelled')
-  const id = bufToB64(cred.rawId)
   return saveBioPrefs({
     enabled: true,
-    credentialId: id,
+    credentialId: bufToB64(cred.rawId),
     setupAt: new Date().toISOString(),
   })
 }
 
-/** Prompt biometric to unlock (verify local credential). */
 export async function verifyBiometric() {
   const prefs = loadBioPrefs()
   if (!prefs.enabled || !prefs.credentialId) {
@@ -138,13 +134,11 @@ export async function verifyBiometric() {
       challenge,
       timeout: 60000,
       userVerification: 'required',
-      allowCredentials: [
-        {
-          type: 'public-key',
-          id: b64ToBuf(prefs.credentialId),
-          transports: ['internal'],
-        },
-      ],
+      allowCredentials: [{
+        type: 'public-key',
+        id: b64ToBuf(prefs.credentialId),
+        transports: ['internal'],
+      }],
     },
   })
   if (!assertion) throw new Error('Biometric check cancelled')

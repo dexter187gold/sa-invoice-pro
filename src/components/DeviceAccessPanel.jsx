@@ -11,12 +11,13 @@ import {
 } from '../lib/deviceAccess'
 
 const GESTURE_OPTIONS = [
-  ['swipeMenu', 'Swipe right from left edge → main menu'],
-  ['swipeClose', 'Swipe left → close menus'],
-  ['swipeUpCreate', 'Swipe up → new invoice'],
-  ['swipeDownHome', 'Swipe down → home'],
+  ['swipeMenu', 'Edge swipe right (left edge) → main menu'],
+  ['swipeClose', 'Edge swipe left → close menus'],
+  ['swipeUpCreate', 'Top-edge swipe up → new invoice'],
+  ['swipeDownHome', 'Top-edge swipe down → home'],
   ['twoFingerMenu', 'Two-finger tap → main menu'],
   ['threeFingerCommand', 'Three-finger tap → command centre'],
+  ['threeFingerSwipeDownCommand', 'Three-finger swipe down → command centre'],
 ]
 
 export default function DeviceAccessPanel({ toast, userLabel }) {
@@ -100,9 +101,10 @@ export default function DeviceAccessPanel({ toast, userLabel }) {
         ) : null}
       </div>
 
-      <h3 style={{ marginTop: 20 }}>Gestures (opt-in)</h3>
+      <h3 style={{ marginTop: 20 }}>Gestures (opt-in, intentional)</h3>
       <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
-        All gestures stay <strong>off</strong> until you enable them. Nothing intercepts navigation by default.
+        Off by default. Single-finger swipes only start from the <strong>screen edge</strong> so normal scrolling is not interrupted.
+        Multi-finger gestures work anywhere on the content area (not on buttons or the bottom bar).
       </p>
       <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <input
@@ -111,6 +113,15 @@ export default function DeviceAccessPanel({ toast, userLabel }) {
           onChange={(e) => setGesturePrefs(saveGesturePrefs({ ...gesturePrefs, enabled: e.target.checked }))}
         />
         Enable gesture controls on this device
+      </label>
+      <label style={{ display: 'flex', gap: 8, alignItems: 'center', opacity: gesturePrefs.enabled ? 1 : 0.55 }}>
+        <input
+          type="checkbox"
+          disabled={!gesturePrefs.enabled}
+          checked={gesturePrefs.edgeOnly !== false}
+          onChange={(e) => setGesturePrefs(saveGesturePrefs({ ...gesturePrefs, edgeOnly: e.target.checked }))}
+        />
+        Edge-only single-finger swipes (recommended)
       </label>
       {GESTURE_OPTIONS.map(([key, label]) => (
         <label key={key} style={{ display: 'flex', gap: 8, alignItems: 'center', opacity: gesturePrefs.enabled ? 1 : 0.55 }}>
