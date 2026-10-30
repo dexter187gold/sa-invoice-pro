@@ -1,3 +1,14 @@
+// Node test polyfill for portal offline queue
+if (typeof globalThis.localStorage === 'undefined') {
+  const store = new Map()
+  globalThis.localStorage = {
+    getItem: (k) => (store.has(k) ? store.get(k) : null),
+    setItem: (k, v) => { store.set(String(k), String(v)) },
+    removeItem: (k) => { store.delete(k) },
+    clear: () => { store.clear() },
+  }
+}
+
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
@@ -21,7 +32,7 @@ test('P4 simulate portal Accept updates quote status locally', () => {
   assert.equal(decision.status, 'accepted')
   assert.equal(decision.action, 'approve')
 
-  const next = applyPortalDecisionLocally(quotes, 'q1', 'approve', 'Looks good')
+  const { quotes: next } = applyPortalDecisionLocally(quotes, 'q1', 'approve', 'Looks good')
   assert.equal(normalizeQuoteStatus(next[0].status), 'accepted')
   assert.equal(next[0].portalNote, 'Looks good')
   assert.equal(next[1].status, 'sent')
@@ -29,7 +40,7 @@ test('P4 simulate portal Accept updates quote status locally', () => {
 
 test('P4 simulate portal Reject', () => {
   const quotes = [{ id: 'q1', status: 'sent' }]
-  const next = applyPortalDecisionLocally(quotes, 'q1', 'reject', 'Too expensive')
+  const { quotes: next } = applyPortalDecisionLocally(quotes, 'q1', 'reject', 'Too expensive')
   assert.equal(normalizeQuoteStatus(next[0].status), 'rejected')
 })
 
@@ -58,7 +69,8 @@ test('P4 portalQuoteSummary counts', () => {
     { status: 'converted' },
   ])
   assert.equal(s.total, 4)
-  assert.equal(s.accepted, 2)
+  assert.equal(s.accepted, 1)
+  assert.equal(s.converted, 1)
   assert.equal(s.rejected, 1)
   assert.equal(s.pending, 1)
 })
