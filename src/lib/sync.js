@@ -246,7 +246,7 @@ export const Sync = {
   async leaveTeam() {
     return request('/api/team/leave', { method: 'POST', body: JSON.stringify({}) })
   },
-  async updateTeamMemberRole(userId, role) {
+  async setWorkspaceResetPin(pin, confirmPin) {\n    return request('/api/workspace/reset-pin', {\n      method: 'POST', body: JSON.stringify({ pin: String(pin || ''), confirmPin: String(confirmPin || '') }),\n    })\n  },\n\n  async resetWorkspace(pin, confirmation) {\n    return request('/api/workspace/reset', {\n      method: 'POST', body: JSON.stringify({ pin: String(pin || ''), confirmation: String(confirmation || '') }),\n      _maxAttempts: 1,\n    })\n  },\n\n  async updateTeamMemberRole(userId, role) {
     return request('/api/team/member-role', { method: 'POST', body: JSON.stringify({ userId, role }) })
   },
 
