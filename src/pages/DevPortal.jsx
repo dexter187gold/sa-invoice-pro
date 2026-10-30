@@ -18,7 +18,7 @@ const URL_FIELDS = [
 ]
 
 function DevLogin({ onOk }) {
-  const [username, setUsername] = useState(getDevUsername())
+  const [username, setUsername] = useState(() => getDevUsername())
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -168,9 +168,9 @@ export default function DevPortal() {
       <div className="card" style={{ marginBottom: 16, borderColor: 'var(--warning, #ca8a04)' }}>
         <strong>Security note</strong>
         <p className="muted" style={{ fontSize: 13, marginBottom: 0 }}>
-          Secrets are stored <strong>only in this browser</strong> (obfuscated). They are not uploaded to GitHub.
-          Production services still need the same values set in <strong>Render → Environment</strong>.
-          Use <em>Copy env snippet</em> then paste into Render. Client-side storage is a convenience vault for you — not a replacement for server env.
+          Secrets stay in <strong>this browser only</strong> (obfuscated). Not uploaded to GitHub.
+          Production still needs the same values in <strong>Render → Environment</strong>.
+          Use <em>Copy env snippet</em> then paste into Render.
         </p>
       </div>
 
@@ -207,7 +207,7 @@ export default function DevPortal() {
           </button>
         </div>
         <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
-          PayFast · JWT · Meta/WhatsApp · Google · Render API · more. Device-local only.
+          PayFast · JWT · Meta/WhatsApp · Google · Render API · more.
         </p>
         {Object.entries(groups).map(([group, fields]) => (
           <div key={group} style={{ gridColumn: '1 / -1' }}>
