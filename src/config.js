@@ -1,7 +1,7 @@
-export const APP_VERSION = '6.43.0'
+export const APP_VERSION = '6.43.1'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
-export const APP_CODENAME = '6.43.0 · Popups + owner radar'
+export const APP_CODENAME = '6.43.1 · Fonts + bank import harden'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
 export const DEFAULT_VAT_RATE = 0.15
@@ -37,4 +37,14 @@ export function publicLinks() {
     licenseApi: LICENSE_API_URL,
     supportEmail: SUPPORT_EMAIL,
   }
+}
+
+/** Canonical public endpoints (also used by devConfig / tests). */
+export const APP_LINKS = {
+  syncServer: SYNC_API_URL,
+  licenseServer: LICENSE_API_URL,
+  updatesServer: LICENSE_API_URL,
+  clientPortal: CLIENT_PORTAL_URL,
+  website: 'https://sa-invoice-pro-website.pages.dev',
+  supportEmail: SUPPORT_EMAIL,
 }
