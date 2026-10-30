@@ -5,8 +5,8 @@ import * as db from '../lib/db'
 import { STORES } from '../lib/db'
 import { Sync } from '../lib/sync'
 import { PageFade, EmptyState } from '../components/ui'
-import { openWhatsApp } from '../lib/share'
 import { QUICK_REPLIES } from '../lib/waTemplates'
+import { sendWhatsAppText, getWhatsAppConfigStatus } from '../lib/waBusiness'
 
 function urgencyToPriority(u) {
   const s = String(u || '').toLowerCase()
@@ -24,6 +24,7 @@ export default function Inbox() {
   const [busy, setBusy] = useState(false)
   const [replyFor, setReplyFor] = useState(null)
   const [replyText, setReplyText] = useState('')
+  const [waStatus, setWaStatus] = useState(null)
 
   const load = useCallback(async () => {
     if (!Sync.isLoggedIn()) return
@@ -47,7 +48,10 @@ export default function Inbox() {
     }
   }, [toast])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+    getWhatsAppConfigStatus().then(setWaStatus).catch(() => setWaStatus({ configured: false, mode: 'wa.me fallback' }))
+  }, [load])
 
   const openReply = (wa) => {
     setReplyFor(wa)
@@ -62,12 +66,23 @@ export default function Inbox() {
     setReplyText(qr.build(clientStub, company))
   }
 
-  const sendReply = () => {
+  const sendReply = async () => {
     if (!replyFor || !replyText.trim()) return toast?.('Enter a message', 'info')
-    openWhatsApp(replyFor.phone, replyText)
-    toast?.('Opening WhatsApp…', 'success')
-    setReplyFor(null)
-    setReplyText('')
+    setBusy(true)
+    try {
+      const result = await sendWhatsAppText({ to: replyFor.phone, body: replyText })
+      if (result.channel === 'cloud') {
+        toast?.('Sent via WhatsApp Cloud API', 'success')
+      } else {
+        toast?.('Opening WhatsApp…', 'success')
+      }
+      setReplyFor(null)
+      setReplyText('')
+    } catch (e) {
+      toast?.(e.message || 'Could not send', 'error')
+    } finally {
+      setBusy(false)
+    }
   }
 
   const importClient = async (wa) => {
@@ -192,6 +207,8 @@ export default function Inbox() {
     )
   }
 
+  const sendLabel = waStatus?.configured ? 'Send (Cloud)' : 'Open WhatsApp'
+
   return (
     <PageFade>
       <div className="page-header">
@@ -199,6 +216,7 @@ export default function Inbox() {
           <h1>WhatsApp inbox</h1>
           <p className="subtitle">
             Pending clients ({pending.length}) · Job cards ({intake.length}) · Notifications
+            {waStatus ? ` · ${waStatus.mode}` : ''}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -233,16 +251,21 @@ export default function Inbox() {
             placeholder="Type or pick a quick reply…"
           />
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <button type="button" className="btn btn-primary" onClick={sendReply}>Open WhatsApp</button>
+            <button type="button" className="btn btn-primary" disabled={busy} onClick={sendReply}>{sendLabel}</button>
             <button type="button" className="btn btn-outline" onClick={() => { setReplyFor(null); setReplyText('') }}>Cancel</button>
           </div>
+          {waStatus && !waStatus.configured ? (
+            <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>
+              Cloud API not configured — opens wa.me. Add Meta token + phone ID in Dev portal to send from the desk.
+            </p>
+          ) : null}
         </div>
       ) : null}
 
       <div className="card" style={{ marginBottom: '1rem' }}>
         <h3 style={{ marginTop: 0 }}>Pending WhatsApp clients ({pending.length})</h3>
         <p className="muted" style={{ fontSize: 13 }}>
-          Registered on WhatsApp / web form — import adds them to your local Clients list. Reply opens WhatsApp with a pre-filled message.
+          Registered on WhatsApp / web form — import adds them to your local Clients list. Reply sends via Cloud when configured, else opens WhatsApp.
         </p>
         {!pending.length && (
           <p className="muted">None pending. After a customer registers, they appear here.</p>

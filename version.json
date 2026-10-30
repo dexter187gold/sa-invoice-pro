@@ -1,5 +1,5 @@
 {
-  "version": "6.41.0",
-  "codename": "WA inbox replies",
-  "message": "Quick replies in WhatsApp Inbox — respond to business messages with ZA tone templates"
+  "version": "6.42.0",
+  "codename": "Cloud Inbox replies",
+  "message": "WhatsApp Inbox replies prefer Meta Cloud API when configured — respond from the desk without opening the phone"
 }

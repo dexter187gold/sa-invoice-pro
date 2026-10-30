@@ -1,5 +1,16 @@
 # Changelog
 
+## 6.42.0 — Cloud Inbox replies (2026-10-30)
+
+### WhatsApp
+- Inbox Reply now prefers Meta Cloud API (`sendWhatsAppText`) when token + phone number ID are set in Dev portal / secrets
+- Falls back to wa.me deep link if Cloud is not configured
+- Status chip shows current mode (cloud / wa.me)
+- Button label reflects send method
+
+### Ops
+- Version gate aligned at **6.42.0**
+
 ## 6.41.0 — WA inbox replies (2026-10-30)
 
 ### WhatsApp
