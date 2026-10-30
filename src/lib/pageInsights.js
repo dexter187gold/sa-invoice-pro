@@ -93,7 +93,6 @@ export function ticketPageInsights({ tickets = [] }) {
   const urgent = open.filter((t) => t.priority === 'urgent' || t.priority === 'high').length
   const waiting = open.filter((t) => (t.status || '') === 'waiting').length
   const billable = open.filter((t) => t.billable || t.status === 'resolved' || t.status === 'done').length
-  // rough SLA: open > 24h without resolved
   let slaRisk = 0
   for (const t of open) {
     const start = t.createdAt || t.date
@@ -157,5 +156,108 @@ export function expensePageInsights({ expenses = [] }) {
       { label: 'Top category', value: top ? String(top[0]).slice(0, 14) : '—', hint: top ? 'R' : '' },
     ],
     tip: 'Tag VAT on supplier slips so Accounting VAT201 estimate stays useful.',
+  }
+}
+
+export function productPageInsights({ products = [], services = [] }) {
+  const low = products.filter((p) => {
+    const s = Number(p.stock)
+    return Number.isFinite(s) && s <= 5
+  })
+  const value = products.reduce((s, p) => s + (Number(p.price) || 0) * (Number(p.stock) || 0), 0)
+  return {
+    items: [
+      { label: 'Products', value: products.length },
+      { label: 'Services', value: services.length },
+      { label: 'Low stock', value: low.length, tone: low.length ? 'warn' : 'good' },
+      { label: 'Stock value', value: value, money: true },
+    ],
+    tip: low.length
+      ? `${low.length} item(s) at or below 5 units — reorder or transfer from another branch.`
+      : 'Catalog healthy — use Install IT pack for a starter service menu.',
+  }
+}
+
+export function employeePageInsights({ employees = [] }) {
+  const active = employees.filter((e) => (e.status || 'active') === 'active')
+  const archived = employees.filter((e) => e.status === 'archived')
+  const bill = active.reduce((s, e) => s + (Number(e.salary) || 0), 0)
+  const uif = active.filter((e) => e.uif !== false).length
+  return {
+    items: [
+      { label: 'Active', value: active.length, tone: 'good' },
+      { label: 'Archived', value: archived.length },
+      { label: 'Salary bill', value: bill, money: true },
+      { label: 'UIF on', value: uif },
+    ],
+    tip: 'Keep SA ID + tax numbers current so EMP201 / payroll packs stay accurate.',
+  }
+}
+
+export function payrollPageInsights({ employees = [], payrollRuns = [] }) {
+  const active = (employees || []).filter((e) => (e.status || 'active') === 'active')
+  const bill = active.reduce((s, e) => s + (Number(e.salary) || 0), 0)
+  const runs = payrollRuns || []
+  return {
+    items: [
+      { label: 'Headcount', value: active.length },
+      { label: 'Gross bill', value: bill, money: true },
+      { label: 'Runs saved', value: runs.length },
+    ],
+    tip: 'Run a dry payroll before payday, then export EMP201 pack for SARS.',
+  }
+}
+
+export function bankPageInsights({ payments = [], expenses = [] }) {
+  const month = new Date().toISOString().slice(0, 7)
+  const pin = payments.filter((p) => String(p.date || '').startsWith(month)).reduce((s, p) => s + (Number(p.amount) || 0), 0)
+  const pout = expenses.filter((e) => String(e.date || '').startsWith(month)).reduce((s, e) => s + (Number(e.amount) || 0), 0)
+  return {
+    items: [
+      { label: 'In (month)', value: pin, money: true, tone: 'good' },
+      { label: 'Out (month)', value: pout, money: true, tone: 'warn' },
+      { label: 'Net', value: pin - pout, money: true, tone: pin - pout >= 0 ? 'good' : 'bad' },
+    ],
+    tip: 'Import bank CSV → review matches → apply only rows you approve (no silent overwrite).',
+  }
+}
+
+export function reportPageInsights({ invoices = [], expenses = [], payments = [] }) {
+  const month = new Date().toISOString().slice(0, 7)
+  const sales = invoices
+    .filter((i) => !i.isCredit && String(i.date || '').startsWith(month) && i.status !== 'cancelled')
+    .reduce((s, i) => s + (Number(i.total) || 0), 0)
+  const exp = expenses.filter((e) => String(e.date || '').startsWith(month)).reduce((s, e) => s + (Number(e.amount) || 0), 0)
+  const cash = payments.filter((p) => String(p.date || '').startsWith(month)).reduce((s, p) => s + (Number(p.amount) || 0), 0)
+  return {
+    items: [
+      { label: 'Sales MTD', value: sales, money: true, tone: 'good' },
+      { label: 'Expenses MTD', value: exp, money: true, tone: 'warn' },
+      { label: 'Cash in MTD', value: cash, money: true, tone: 'good' },
+      { label: 'Est. margin', value: sales - exp, money: true, tone: sales - exp >= 0 ? 'good' : 'bad' },
+    ],
+    tip: 'Cross-check Reports vs Accounting P&L before month-end close.',
+  }
+}
+
+export function recurringPageInsights({ recurring = [], invoices = [] }) {
+  const active = (recurring || []).filter((r) => r.active !== false)
+  return {
+    items: [
+      { label: 'Templates', value: (recurring || []).length },
+      { label: 'Active', value: active.length, tone: 'good' },
+      { label: 'Invoices', value: (invoices || []).length },
+    ],
+    tip: 'Generate due retainers from Invoices → Generate recurring before month-end.',
+  }
+}
+
+export function documentPageInsights({ documents = [] }) {
+  const docs = documents || []
+  return {
+    items: [
+      { label: 'Files', value: docs.length },
+    ],
+    tip: 'Store signed quotes, POPIA consents, and supplier slips here for audits.',
   }
 }
