@@ -1,3 +1,9 @@
+## 6.45.0 — Credit modal UI + portal sync fix
+
+- **Invoices**: CN button opens CreditNoteModal (amount + reason; partial/full)
+- **Quotes**: replace broken `SA_CONFIG` with `SYNC_API_URL` / `APP_LINKS` so Apply queue + Pull cloud decisions work
+- Version aligned to 6.45.0
+
 ## 6.44.0 — Meta WhatsApp Cloud API + credit modal
 
 - **src/lib/whatsapp.js** — `sendWhatsAppText`, `notifyJobStatus`, credential detection from Dev Portal secrets + settings

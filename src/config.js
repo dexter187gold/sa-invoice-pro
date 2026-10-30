@@ -1,7 +1,7 @@
-export const APP_VERSION = '6.44.0'
+export const APP_VERSION = '6.45.0'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
-export const APP_CODENAME = '6.44.0 · Credit modal · WA · Team · Stock'
+export const APP_CODENAME = '6.45.0 · Credit modal UI · portal sync'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
 export const DEFAULT_VAT_RATE = 0.15
