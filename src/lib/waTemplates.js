@@ -79,6 +79,40 @@ export function paymentThanks(inv, client, company, amount) {
   return `Hi ${name}, *${co}* confirms payment of R${amt.toFixed(2)} on invoice *${inv?.number || ''}*. Thank you!`
 }
 
+/** Quick replies for inbound WhatsApp / inbox responses (ZA tone) */
+export function greetingReply(client, company, lang = 'en') {
+  const name = (client?.name || '').split(' ')[0] || (lang === 'af' ? 'daar' : 'there')
+  const co = company?.name || 'SA Invoice Pro'
+  if (lang === 'af') {
+    return `Hallo ${name}, dankie dat jy *${co}* kontak. Hoe kan ons jou help vandag?`
+  }
+  return `Hi ${name}, thanks for messaging *${co}*. How can we help you today?`
+}
+
+export function askMoreInfo(client, company, lang = 'en') {
+  const name = (client?.name || '').split(' ')[0] || (lang === 'af' ? 'daar' : 'there')
+  const co = company?.name || 'us'
+  if (lang === 'af') {
+    return `Hallo ${name}, van *${co}*: kan jy asseblief meer besonderhede gee (toestel model, probleem, of foto's) sodat ons kan help? Dankie!`
+  }
+  return `Hi ${name}, from *${co}*: could you please share more details (device model, issue, or photos) so we can assist? Thank you!`
+}
+
+export function afterHoursReply(client, company, lang = 'en') {
+  const name = (client?.name || '').split(' ')[0] || (lang === 'af' ? 'daar' : 'there')
+  const co = company?.name || 'SA Invoice Pro'
+  if (lang === 'af') {
+    return `Hallo ${name}, ons is tans buite ure by *${co}*. Ons antwoord in die oggend. Vir dringende sake, los 'n boodskap. Dankie!`
+  }
+  return `Hi ${name}, we are currently outside business hours at *${co}*. We'll reply in the morning. For urgent matters, leave a message. Thank you!`
+}
+
+export const QUICK_REPLIES = [
+  { id: 'greeting', label: 'Greeting', build: greetingReply },
+  { id: 'ask_more', label: 'Ask for more info', build: askMoreInfo },
+  { id: 'after_hours', label: 'After hours', build: afterHoursReply },
+]
+
 export const WA_TEMPLATE_CATALOG = [
   { id: 'invoice_reminder', label: 'Invoice reminder', build: 'invoiceReminder' },
   { id: 'job_update', label: 'Job status update', build: 'jobUpdate' },
