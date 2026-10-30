@@ -13,6 +13,7 @@ const ROOT_NAV = [
   { to: '/accounting', label: 'Books', icon: '📒', section: 'books' },
   { to: '/settings', label: 'Settings', icon: '⚙️', section: 'settings' },
   { to: '/owner-console', label: 'Owner centre', icon: '🛡️', section: 'settings' },
+  { to: '/dev-portal', label: 'Dev portal', icon: '🛠️', section: 'settings' },
   { to: '/portal-admin', label: 'Client portal admin', icon: '👥', section: 'settings' },
 ]
 
@@ -33,13 +34,12 @@ const SECTION_NAV = {
   ],
   clients: [
     { to: '/clients', label: 'Clients', icon: '👤', end: true },
-    { to: '/invoices', label: 'Invoices', icon: '📄' },
-    { to: '/tickets', label: 'Jobs', icon: '🎫' },
-    { to: '/inbox', label: 'WhatsApp', icon: '💬' },
+    { to: '/inbox', label: 'Inbox', icon: '💬' },
+    { to: '/quotes', label: 'Quotes', icon: '📝' },
     { to: '__root__', label: 'Main', icon: '☰', isRoot: true },
   ],
   jobs: [
-    { to: '/tickets', label: 'Board', icon: '🎫', end: true },
+    { to: '/tickets', label: 'Jobs', icon: '🎫', end: true },
     { to: '/inbox', label: 'Inbox', icon: '💬' },
     { to: '/products', label: 'Stock', icon: '📦' },
     { to: '/invoices', label: 'Bill', icon: '📄' },
@@ -64,6 +64,7 @@ const SECTION_NAV = {
     { to: '/team', label: 'Team', icon: '👥' },
     { to: '/branches', label: 'Branches', icon: '🏬' },
     { to: '/license', label: 'License', icon: '🔑' },
+    { to: '/dev-portal', label: 'Dev', icon: '🛠️' },
     { to: '__root__', label: 'Main', icon: '☰', isRoot: true },
   ],
 }
@@ -76,7 +77,7 @@ function sectionFromPath(pathname) {
   if (p.startsWith('/tickets') || p.startsWith('/products')) return 'jobs'
   if (p.startsWith('/expenses') || p.startsWith('/accounting') || p.startsWith('/employees') || p.startsWith('/payroll')) return 'books'
   if (p.startsWith('/documents') || p.startsWith('/excel') || p.startsWith('/sync') || p.startsWith('/changelog')) return 'tools'
-  if (p.startsWith('/settings') || p.startsWith('/license') || p.startsWith('/team') || p.startsWith('/branches')) return 'settings'
+  if (p.startsWith('/settings') || p.startsWith('/license') || p.startsWith('/team') || p.startsWith('/branches') || p.startsWith('/dev-portal') || p.startsWith('/owner')) return 'settings'
   return 'home'
 }
 
