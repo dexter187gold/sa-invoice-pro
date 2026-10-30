@@ -42,16 +42,15 @@
 .auth-card-modern section.card{background:#f7faf8;border-color:#e5eee8;border-radius:12px}
 .auth-card-modern a{color:#08794e}
 .login-splash{
- position:fixed;inset:0;z-index:2000;display:grid;place-items:center;padding:24px;
- background:radial-gradient(ellipse at 50% 42%,rgba(16,185,129,.24),transparent 42%),linear-gradient(145deg,#061a13,#064b34 72%,#08794e);
- opacity:1;transition:opacity .48s ease,visibility .48s ease
+ position:fixed;inset:0;z-index:2000;display:grid;place-items:center;
+ background:linear-gradient(145deg,#071a14 0%,#0b2e22 48%,#073b2a 100%);
+ transition:opacity .4s ease,visibility .4s ease;
 }
 .login-splash.fade-out{opacity:0;visibility:hidden;pointer-events:none}
 .login-splash-inner{width:min(100%,460px);text-align:center;color:#fff;animation:sa-auth-rise .65s cubic-bezier(.2,.8,.2,1) both}
 .login-splash-inner>div:first-child{display:grid;place-items:center;margin:0 auto 22px;width:116px;height:116px;border:1px solid rgba(209,250,229,.32);border-radius:28px;background:rgba(255,255,255,.08);box-shadow:0 20px 60px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.15)}
 .login-splash-title{font-size:clamp(1.4rem,4vw,2rem);font-weight:850;letter-spacing:.08em;color:#fff}
 .login-splash-inner p{color:#cde9d9!important}
-.login-splash-inner p:last-of-type{display:none}
 .login-splash-bar{width:170px;height:3px;margin:28px auto 0;background:rgba(255,255,255,.2);border-radius:9px;overflow:hidden}
 .login-splash-bar span{display:block;width:42%;height:100%;border-radius:9px;background:#a7f3d0;animation:sa-auth-progress 2.4s ease-in-out infinite}
 @keyframes sa-auth-rise{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
@@ -81,3 +80,54 @@
 .auth-layout .auth-card-modern{align-self:center;width:100%;max-height:calc(100svh - 48px)}
 @media(max-width:900px){.auth-layout{grid-template-columns:minmax(0,500px);justify-content:center}.auth-brand-panel{display:none}}
 @media(max-width:560px){.auth-layout{width:100%;}.auth-layout .auth-card-modern{max-height:calc(100svh - 24px)}}
+
+/* Compatibility aliases — Login historically used auth-card / auth-tabs */
+.auth-layout .auth-card,
+.auth-page > .auth-card {
+  width: min(100%, 500px);
+  max-height: calc(100svh - 32px);
+  overflow-y: auto;
+  padding: clamp(22px, 4vw, 36px);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.32), 0 4px 14px rgba(0, 0, 0, 0.12);
+  color: #10251c;
+  backdrop-filter: blur(18px);
+}
+.auth-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  padding: 5px;
+  background: #eef5f0;
+  border: 1px solid #e1ebe4;
+  border-radius: 12px;
+  margin: 18px 0 12px;
+}
+.auth-tabs .tab {
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 6px;
+  color: #52645a;
+  font-size: 0.82rem;
+  background: transparent;
+}
+.auth-tabs .tab.active {
+  background: #08794e;
+  color: white;
+  box-shadow: 0 2px 7px rgba(0, 80, 48, 0.2);
+}
+.auth-page .auth-card-modern .input,
+.auth-page .auth-card .input {
+  color: #10251c;
+  background: #fff;
+}
+.auth-page .auth-card-modern .muted,
+.auth-page .auth-card .muted {
+  color: #64766d;
+}
+.auth-page .auth-card-modern .btn:not(.btn-primary):not(.tab),
+.auth-page .auth-card .btn:not(.btn-primary):not(.tab) {
+  color: #214a36;
+}
