@@ -1,5 +1,5 @@
 {
-  "version": "6.37.1",
-  "codename": "Beta restore & register fix",
-  "message": "Robust backup import, cloud password policy, local register fallback after reset"
+  "version": "6.37.2",
+  "codename": "Profile restore hardened",
+  "message": "Restore DB v5 + pettyCash; robust backup import; register password policy; CI-safe Login"
 }

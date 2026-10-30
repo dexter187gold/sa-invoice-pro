@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
-import * as db from '../lib/db'
 import { APP_VERSION } from '../config'
-import { AppLogo } from '../components/AppLogo'
-import { Sync } from '../lib/sync.js'
+import AppLogo from '../components/AppLogo'
+import * as db from '../lib/db'
+import { Sync } from '../lib/sync'
 
 const SPLASH_MS = 1600
 
@@ -162,6 +162,7 @@ export default function Login() {
         </aside>
 
         <div className="auth-card">
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}><AppLogo size={72} /></div>
           <div className="auth-tabs">
             <button type="button" className={`tab ${mode === 'in' ? 'active' : ''}`} onClick={() => setMode('in')}>Sign in</button>
             <button type="button" className={`tab ${mode === 'up' ? 'active' : ''}`} onClick={() => setMode('up')}>Create account</button>
@@ -239,7 +240,7 @@ export default function Login() {
 
           <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
             <p className="muted" style={{ fontSize: 12, margin: '0 0 8px', textAlign: 'center' }}>Device reset or new phone? Import your SA Invoice Pro backup JSON here (before sign-in). Use the password from that backup.</p>
-            <input ref={fileRef} type="file" accept=".json,application/json" hidden onChange={onImportBackup} />
+            <input ref={fileRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={onImportBackup} />
             <button type="button" className="btn" style={{ width: '100%' }} disabled={busy} onClick={() => fileRef.current?.click()}>Import backup JSON</button>
           </div>
         </div>
