@@ -16,6 +16,7 @@ import { CUSTOMER_ACCOUNT_CATEGORIES, CUSTOMER_PAYMENT_TERMS } from '../lib/cust
 import {
   CLIENT_TAG_PRESETS, normalizeTags, filterClientsByTag, toggleClientTag, clientHasTag,
 } from '../lib/clientTags'
+import PageInsightsBar from '../components/PageInsightsBar'
 
 export default function Clients() {
   const { clients, invoices, payments, quotes, tickets, products, services, expenses, company, refresh, toast } = useApp()
@@ -134,10 +135,7 @@ export default function Clients() {
         portalUrl: data.portalUrl,
         loginHint: data.loginHint,
       })
-      const msg = `Portal login
-${data.email}
-PIN: ${data.pin}
-${data.portalUrl || ''}`
+      const msg = `Portal login\n${data.email}\nPIN: ${data.pin}\n${data.portalUrl || ''}`
       try {
         await navigator.clipboard.writeText(msg)
         toast('Portal login created & copied', 'success')
@@ -198,6 +196,8 @@ ${data.portalUrl || ''}`
         </div>
       </div>
 
+      <PageInsightsBar page="clients" />
+
       {portalCreds && (
         <div className="card" style={{ marginBottom: 12, borderLeft: '4px solid var(--green, #22c55e)' }}>
           <strong>Portal login for {portalCreds.name}</strong>
@@ -211,10 +211,7 @@ ${data.portalUrl || ''}`
           </div>
           <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button type="button" className="btn btn-outline btn-sm" onClick={() => {
-              const msg = `Portal login
-${portalCreds.email}
-PIN: ${portalCreds.pin}
-${portalCreds.portalUrl || ''}`
+              const msg = `Portal login\n${portalCreds.email}\nPIN: ${portalCreds.pin}\n${portalCreds.portalUrl || ''}`
               navigator.clipboard?.writeText(msg)
               toast('Copied', 'success')
             }}>Copy again</button>
