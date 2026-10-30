@@ -9,7 +9,6 @@ import { AppProvider } from './context/AppContext'
 import App from './App'
 
 try {
-  // Default bottom navigation until Shell applies prefs (required by styles.ux.css)
   const prefs = JSON.parse(localStorage.getItem('sa_nav_prefs') || '{}')
   const layout = prefs.layout || 'bottom'
   if (layout !== 'side') document.documentElement.classList.add('nav-bottom')
@@ -27,6 +26,7 @@ import './styles.modern.css'
 import './styles.brain.css'
 import './styles.modern-ux.css'
 import './styles.pulse.css'
+import './styles.nav-comfort.css'
 
 try {
   const saved = localStorage.getItem('sa_theme')
@@ -36,7 +36,6 @@ try {
   }
 } catch {}
 
-// Never leave the document stuck invisible (stale splash / transition / CI).
 try {
   document.documentElement.style.visibility = 'visible'
   document.body && (document.body.style.visibility = 'visible')
