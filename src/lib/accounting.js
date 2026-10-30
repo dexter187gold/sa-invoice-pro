@@ -74,7 +74,6 @@ function guessType(code) {
   return 'expense'
 }
 
-/** Normal balance sign: assets/expenses debit-positive; liability/equity/income credit-positive */
 export function netBalance(row) {
   const dr = Number(row.debit) || 0
   const cr = Number(row.credit) || 0
@@ -118,7 +117,6 @@ export function buildBalanceSheet(journal = [], accounts = []) {
     else if (t === 'liability') liabilities.push({ ...r, net })
     else if (t === 'equity') equity.push({ ...r, net })
   }
-  // Roll current P&L into equity so BS can balance when ops are posted
   const pl = buildProfitAndLoss(journal, accounts)
   if (pl.netProfit) {
     equity.push({
@@ -167,7 +165,6 @@ export function agedBuckets(invoices = []) {
   return { buckets, rows, total: rows.reduce((s, r) => s + r.due, 0) }
 }
 
-/** Simple AP from unpaid expenses tagged payable */
 export function expensePayables(expenses = []) {
   const rows = []
   let total = 0
@@ -182,7 +179,6 @@ export function expensePayables(expenses = []) {
   return { rows, total }
 }
 
-/** VAT estimate from invoices (output) and expenses (input) when VAT fields exist */
 export function vatSummary(invoices = [], expenses = [], period = '') {
   const inP = (d) => !period || String(d || '').startsWith(period)
   let output = 0
@@ -206,7 +202,6 @@ export function vatSummary(invoices = [], expenses = [], period = '') {
     const vat = Number(e.vatAmount != null ? e.vatAmount : e.tax) || 0
     if (vat > 0) input += vat
     else if (e.vatInclusive && e.amount) {
-      // reverse-calc 15% if flagged inclusive and no explicit vat
       const gross = Number(e.amount) || 0
       input += gross - gross / 1.15
     }
@@ -260,7 +255,6 @@ export function monthlyExpenseTrend(expenses = [], months = 6) {
 
 export function cashPosition(bankTxns = [], journal = []) {
   const bankNet = (bankTxns || []).reduce((s, t) => s + (Number(t.amount) || 0), 0)
-  // Journal cash/bank 1000 net
   let jCash = 0
   for (const j of journal || []) {
     const amt = Number(j.amount) || Number(j.debit) || Number(j.credit) || 0
@@ -317,4 +311,87 @@ export function periodLabel(period) {
     return `${names[Number(m) - 1] || m} ${y}`
   }
   return period
+}
+
+export function previousPeriod(period) {
+  if (!period || !/^\d{4}-\d{2}$/.test(period)) return ''
+  const [y, m] = period.split('-').map(Number)
+  const d = new Date(y, m - 2, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+export function comparePeriods({ invoices = [], expenses = [], payments = [], period }) {
+  const prev = previousPeriod(period)
+  const slice = (p) => {
+    const inP = (d) => !p || String(d || '').startsWith(p)
+    const paid = invoices.filter((i) => i.status === 'paid' && !i.isCredit && inP(i.date))
+    const rev = paid.reduce((s, i) => s + (Number(i.total) || 0), 0)
+    const exp = expenses.filter((e) => inP(e.date)).reduce((s, e) => s + (Number(e.amount) || 0), 0)
+    const pay = payments.filter((x) => inP(x.date)).reduce((s, x) => s + (Number(x.amount) || 0), 0)
+    const invCount = invoices.filter((i) => inP(i.date) && !i.isCredit && i.status !== 'cancelled').length
+    return { period: p || 'all', revenue: rev, expenses: exp, collections: pay, invoices: invCount, net: rev - exp }
+  }
+  const cur = slice(period)
+  const last = slice(prev)
+  const pct = (a, b) => (b === 0 ? (a === 0 ? 0 : 100) : ((a - b) / Math.abs(b)) * 100)
+  return {
+    current: cur,
+    previous: last,
+    delta: {
+      revenuePct: pct(cur.revenue, last.revenue),
+      expensesPct: pct(cur.expenses, last.expenses),
+      collectionsPct: pct(cur.collections, last.collections),
+      netPct: pct(cur.net, last.net),
+    },
+  }
+}
+
+export function debtorConcentration(invoices = [], limit = 8) {
+  const map = {}
+  for (const inv of invoices) {
+    if (inv.isCredit || inv.status === 'paid' || inv.status === 'cancelled') continue
+    const due = Number(inv.amountDue != null ? inv.amountDue : inv.total) || 0
+    if (due <= 0) continue
+    const key = inv.clientName || inv.clientId || 'Unknown'
+    map[key] = (map[key] || 0) + due
+  }
+  const rows = Object.entries(map).map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total)
+  const all = rows.reduce((s, r) => s + r.total, 0) || 1
+  return rows.slice(0, limit).map((r) => ({ ...r, sharePct: (r.total / all) * 100 }))
+}
+
+export function monthEndChecklist({ invoices = [], expenses = [], journal = [], bankTxns = [], payments = [], accounts = [], period }) {
+  const inP = (d) => !period || String(d || '').startsWith(period)
+  const items = []
+  const unpostedInv = invoices.filter((i) => inP(i.date) && !i.isCredit && i.status !== 'cancelled' && !(journal || []).some((j) => j.sourceKey === `inv-${i.id}`)).length
+  items.push({ id: 'post-inv', ok: unpostedInv === 0, label: 'Invoices posted to journal', detail: unpostedInv ? `${unpostedInv} missing` : 'OK' })
+  const unpostedPay = payments.filter((p) => inP(p.date) && !(journal || []).some((j) => j.sourceKey === `pay-${p.id}`)).length
+  items.push({ id: 'post-pay', ok: unpostedPay === 0, label: 'Payments posted', detail: unpostedPay ? `${unpostedPay} missing` : 'OK' })
+  const unpostedExp = expenses.filter((e) => inP(e.date) && !(journal || []).some((j) => j.sourceKey === `exp-${e.id}`)).length
+  items.push({ id: 'post-exp', ok: unpostedExp === 0, label: 'Expenses posted', detail: unpostedExp ? `${unpostedExp} missing` : 'OK' })
+  const unrec = (bankTxns || []).filter((t) => !t.reconciled && inP(t.date)).length
+  items.push({ id: 'bank', ok: unrec === 0, label: 'Bank reconciled for period', detail: unrec ? `${unrec} open` : 'OK' })
+  items.push({ id: 'coa', ok: (accounts || []).length >= 8, label: 'CoA present', detail: `${(accounts || []).length} accounts` })
+  const tb = buildTrialBalance((journal || []).filter((j) => inP(j.date)), accounts)
+  const bal = Math.abs((tb.totalDr || 0) - (tb.totalCr || 0)) < 0.05
+  items.push({ id: 'tb', ok: bal, label: 'Trial balance balances', detail: bal ? 'Dr = Cr' : 'Out of balance' })
+  const openAr = agedBuckets(invoices).rows.filter((r) => r.days > 60).length
+  items.push({ id: 'chase', ok: openAr === 0, label: 'No AR over 60 days', detail: openAr ? `${openAr} invoices` : 'OK' })
+  const done = items.filter((i) => i.ok).length
+  return { items, score: Math.round((done / items.length) * 100), done, total: items.length }
+}
+
+export function revenueLedgerVariance(invoices = [], journal = [], period = '') {
+  const inP = (d) => !period || String(d || '').startsWith(period)
+  const invRev = invoices
+    .filter((i) => inP(i.date) && !i.isCredit && i.status !== 'cancelled')
+    .reduce((s, i) => s + (Number(i.total) || 0), 0)
+  let ledRev = 0
+  for (const j of journal) {
+    if (!inP(j.date)) continue
+    if (String(j.creditCode) === '4000' || String(j.creditCode) === '4100') {
+      ledRev += Number(j.amount) || Number(j.credit) || Number(j.debit) || 0
+    }
+  }
+  return { invoiceRevenue: invRev, ledgerRevenue: ledRev, variance: invRev - ledRev }
 }
