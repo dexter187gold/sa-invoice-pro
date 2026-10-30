@@ -64,17 +64,19 @@ export async function saveAutoBackupThrottled(opts = {}) {
 }
 
 export async function listAutoBackups() {
+  let current = []
   try {
-    if (db.STORES?.autoBackups) {
-      const all = (await db.getAll(db.STORES.autoBackups)) || []
-      if (all.length) return all.sort((a, b) => String(b.at || b.createdAt).localeCompare(String(a.at || a.createdAt))).slice(0, MAX_SNAPS)
-    }
+    if (db.STORES?.autoBackups) current = (await db.getAll(db.STORES.autoBackups)) || []
   } catch (error) {
     console.warn('[autoBackup] snapshot listing failed', error)
   }
-  // Read legacy snapshots created before the dedicated recovery store existed.
+  // Include legacy settings-based snapshots until the rolling window expires.
   const legacy = (await db.getSetting('autoBackups', [])) || []
-  return legacy.slice(0, MAX_SNAPS)
+  const unique = new Map()
+  for (const snap of [...current, ...legacy]) if (snap?.id && snap?.data) unique.set(snap.id, snap)
+  return [...unique.values()]
+    .sort((a, b) => String(b.at || b.createdAt).localeCompare(String(a.at || a.createdAt)))
+    .slice(0, MAX_SNAPS)
 }
 
 export async function getAutoBackup(id) {
