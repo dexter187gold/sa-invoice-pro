@@ -7,6 +7,7 @@ import { exportAll, replaceAllAtomic, importAll } from '../lib/db'
 import { Segmented, PageFade, ConfirmDialog, LoadingButton } from '../components/ui'
 import CloudSettings from '../components/CloudSettings'
 import ThemePicker from '../components/ThemePicker'
+import DeviceAccessPanel from '../components/DeviceAccessPanel'
 import {
   listAutoBackups, restoreAutoBackup, downloadAutoBackup, saveAutoBackup,
 } from '../lib/localAutoBackup'
@@ -18,7 +19,7 @@ import { loadWhiteLabel, saveWhiteLabel, applyWhiteLabel, fileToLogoDataUrl } fr
 
 export default function Settings() {
   const {
-    company, setCompany, toast, refresh,
+    user, company, setCompany, toast, refresh,
     vatEnabled, vatRate, setVatEnabled, setVatRate, theme, setTheme,
   } = useApp()
   const [tab, setTab] = useState('company')
@@ -89,6 +90,10 @@ export default function Settings() {
       name: company?.name || '', email: company?.email || '', phone: company?.phone || '',
       vatNumber: company?.vatNumber || '', address: company?.address || '',
       bankName: company?.bankName || '', accountNumber: company?.accountNumber || '', branchCode: company?.branchCode || '',
+      registrationNumber: company?.registrationNumber || '',
+      payeReference: company?.payeReference || '',
+      uifReference: company?.uifReference || '',
+      sdlReference: company?.sdlReference || '',
     })
   }, [company])
 
@@ -215,11 +220,9 @@ export default function Settings() {
       {tab === 'brand' && (
         <form className="card form-grid" onSubmit={saveWl} style={{ marginTop: 12 }}>
           <h3 style={{ marginTop: 0 }}>White-label pilot</h3>
-          <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
-            Brand name, accent, logo (resized to ~128px), portal tagline. Logo appears in the shell mark.
-          </p>
+          <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>Brand name, accent, logo, portal tagline.</p>
           <label className="label">Brand name</label>
-          <input className="input" value={wl.brandName} onChange={(e) => setWl({ ...wl, brandName: e.target.value })} placeholder="e.g. Cape Tech Desk" />
+          <input className="input" value={wl.brandName} onChange={(e) => setWl({ ...wl, brandName: e.target.value })} />
           <label className="label">Logo (PNG/JPG)</label>
           <input type="file" accept="image/*" className="input" onChange={onLogo} />
           {wl.logoDataUrl ? (
@@ -229,22 +232,14 @@ export default function Settings() {
             </div>
           ) : null}
           <label className="label">Accent colour (hex)</label>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <input className="input" value={wl.accent} onChange={(e) => setWl({ ...wl, accent: e.target.value })} placeholder="#0ea5e9" style={{ flex: 1 }} />
-            <input type="color" value={/^#?[0-9a-fA-F]{6}$/.test(String(wl.accent || '').replace('#', '')) ? (wl.accent.startsWith('#') ? wl.accent : `#${wl.accent}`) : '#10b981'} onChange={(e) => setWl({ ...wl, accent: e.target.value })} title="Pick accent" />
-          </div>
+          <input className="input" value={wl.accent} onChange={(e) => setWl({ ...wl, accent: e.target.value })} placeholder="#0ea5e9" />
           <label className="label">Portal tagline</label>
-          <input className="input" value={wl.portalTagline} onChange={(e) => setWl({ ...wl, portalTagline: e.target.value })} placeholder="Secure invoices & quotes" />
+          <input className="input" value={wl.portalTagline} onChange={(e) => setWl({ ...wl, portalTagline: e.target.value })} />
           <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <input type="checkbox" checked={!!wl.hidePoweredBy} onChange={(e) => setWl({ ...wl, hidePoweredBy: e.target.checked })} />
             Hide “Powered by SA Invoice Pro” on client portal
           </label>
           <button type="submit" className="btn btn-primary">Apply white-label</button>
-          <button type="button" className="btn btn-outline" onClick={() => {
-            const cleared = saveWhiteLabel({ brandName: '', accent: '', accentSoft: '', hidePoweredBy: false, portalTagline: '', logoDataUrl: '' })
-            setWl(cleared)
-            toast('White-label cleared — re-pick theme if colours look off', 'info')
-          }}>Reset white-label</button>
         </form>
       )}
 
@@ -257,12 +252,7 @@ export default function Settings() {
             <option value="bottom">Bottom navigation (mobile-friendly)</option>
             <option value="compact">Compact sidebar</option>
           </select>
-          <label className="label">Sections</label>
-          <select className="select input" value={navPrefs.sections || 'grouped'} onChange={(e) => applyNavPrefs({ ...navPrefs, sections: e.target.value })}>
-            <option value="grouped">Grouped</option>
-            <option value="flat">Flat list</option>
-          </select>
-          <p className="muted" style={{ fontSize: 12 }}>Bottom bar changes with the page (invoices, jobs, settings, …).</p>
+          <p className="muted" style={{ fontSize: 12 }}>Gesture shortcuts are under Security & access — off by default.</p>
         </div>
       )}
 
@@ -280,9 +270,9 @@ export default function Settings() {
               const on = e.target.checked
               setLoadSheddingMode(on)
               setShedding(on)
-              toast(on ? 'Load-shedding mode ON — queue outbound' : 'Load-shedding mode off', 'info')
+              toast(on ? 'Load-shedding mode ON' : 'Load-shedding mode off', 'info')
             }} />
-            Load-shedding mode (queue WA/SMS when offline / grid down)
+            Load-shedding mode (queue WA/SMS when offline)
           </label>
           <p className="muted" style={{ fontSize: 12 }}>Queued outbound: {queueLen}</p>
           <button type="button" className="btn btn-outline" onClick={() => { clearSentFromQueue(); toast('Cleared sent queue items', 'success') }}>Clear sent from queue</button>
@@ -295,13 +285,8 @@ export default function Settings() {
             a.click()
             toast('Backup downloaded', 'success')
           }}>Download backup JSON</button>
-
-          <label className="label">Import profile backup JSON from this device</label>
+          <label className="label">Import backup JSON</label>
           <input className="input" type="file" accept=".json,application/json" disabled={busy} onChange={importDeviceBackup} />
-          <p className="muted" style={{ fontSize: 12 }}>
-            Imports your saved profile using atomic replace, with wipe-merge fallback if the file shape is incomplete.
-            A rollback snapshot is saved first. After import, sign in and run Sync Now to publish to cloud.
-          </p>
           <button type="button" className="btn btn-outline" onClick={async () => {
             try {
               await saveAutoBackup({ reason: 'manual' })
@@ -309,46 +294,12 @@ export default function Settings() {
               toast('Local snapshot saved', 'success')
             } catch (e) { toast(e?.message || 'Backup failed', 'error') }
           }}>Save local auto-backup</button>
-          <button type="button" className="btn btn-outline" onClick={async () => {
-            try {
-              await downloadAutoBackup()
-              toast('Auto-backup downloaded', 'success')
-            } catch (e) { toast(e?.message || 'Nothing to download', 'error') }
-          }}>Download last auto-backup</button>
-          <div className="settings-control-card" style={{ marginTop: 8, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-            <h4 style={{ margin: '0 0 6px' }}>Local recovery snapshots</h4>
-            <p className="muted" style={{ fontSize: 12 }}>Restore replaces the entire local workspace with the selected snapshot.</p>
-            {autoBackups.length ? autoBackups.map((snap) => (
-              <div key={snap.id} className="settings-shortcut-row" style={{ alignItems: 'center', gap: 10 }}>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <strong>{snap.label || 'Local snapshot'}</strong>
-                  <span>{new Date(snap.at || snap.createdAt).toLocaleString()} · {(snap.counts?.invoices || 0)} invoices · {(snap.counts?.clients || 0)} clients</span>
-                </div>
-                <button type="button" className="btn btn-outline btn-sm" onClick={() => downloadAutoBackup(snap.id).catch((e) => toast(e?.message || 'Download failed', 'error'))}>Download</button>
-                <button type="button" className="btn btn-outline btn-sm" onClick={() => setConfirm({
-                  title: 'Replace this workspace with the selected snapshot?',
-                  message: 'This replaces all local workspace records. A rollback snapshot of the current workspace will be saved first.',
-                  danger: true,
-                  confirmLabel: 'Restore snapshot',
-                  action: async () => {
-                    try {
-                      await restoreAutoBackup(snap.id)
-                      await refresh?.({ skipSync: true })
-                      await refreshAutoBackups()
-                      toast('Snapshot restored', 'success')
-                    } catch (e) {
-                      toast(e?.message || 'Restore failed', 'error')
-                    } finally {
-                      setConfirm(null)
-                    }
-                  },
-                })}>Restore</button>
-              </div>
-            )) : <p className="muted" style={{ fontSize: 13 }}>No local snapshots yet.</p>}
-          </div>
-          <p className="muted" style={{ fontSize: 12 }}>
-            Owner recovery: <Link to="/settings">keep off-device backups</Link> as well as cloud sync.
-          </p>
+          {autoBackups.length ? autoBackups.map((snap) => (
+            <div key={snap.id} className="settings-shortcut-row">
+              <div><strong>{snap.label || 'Snapshot'}</strong><span>{new Date(snap.at || snap.createdAt).toLocaleString()}</span></div>
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => downloadAutoBackup(snap.id).catch((e) => toast(e?.message || 'Download failed', 'error'))}>Download</button>
+            </div>
+          )) : <p className="muted" style={{ fontSize: 13 }}>No local snapshots yet.</p>}
         </div>
       )}
 
@@ -377,24 +328,19 @@ export default function Settings() {
           <input className="input" type="number" value={ownerDefaults.quoteValidityDays} onChange={(e) => setOwnerDefaults({ ...ownerDefaults, quoteValidityDays: Number(e.target.value) })} />
           <label className="label">Payment terms (days)</label>
           <input className="input" type="number" value={ownerDefaults.paymentTermsDays} onChange={(e) => setOwnerDefaults({ ...ownerDefaults, paymentTermsDays: Number(e.target.value) })} />
-          <label className="label">Low stock threshold</label>
-          <input className="input" type="number" value={ownerDefaults.lowStockThreshold} onChange={(e) => setOwnerDefaults({ ...ownerDefaults, lowStockThreshold: Number(e.target.value) })} />
-          <button type="button" className="btn btn-primary" onClick={() => { try { localStorage.setItem('sa_owner_defaults', JSON.stringify(ownerDefaults)); toast('Owner defaults saved on this device', 'success') } catch { toast('Could not save defaults on this device', 'error') } }}>Save owner defaults</button>
+          <button type="button" className="btn btn-primary" onClick={() => { try { localStorage.setItem('sa_owner_defaults', JSON.stringify(ownerDefaults)); toast('Owner defaults saved', 'success') } catch { toast('Could not save', 'error') } }}>Save owner defaults</button>
         </div>
       )}
 
       {tab === 'security' && (
         <div className="card form-grid" style={{ marginTop: 12 }}>
           <h3 style={{ marginTop: 0 }}>Security & access</h3>
-          <div className="settings-shortcut-row"><div><strong>Data export & recovery</strong><span>Create a backup before major changes or device replacement.</span></div><button type="button" className="btn btn-outline btn-sm" onClick={() => setTab('data')}>Open data & backup</button></div>
+          <div className="settings-shortcut-row"><div><strong>Data export & recovery</strong><span>Create a backup before major changes.</span></div><button type="button" className="btn btn-outline btn-sm" onClick={() => setTab('data')}>Open data & backup</button></div>
           <div className="settings-shortcut-row"><div><strong>Cloud account</strong><span>Sign-in, team seats and workspace sync.</span></div><button type="button" className="btn btn-outline btn-sm" onClick={() => setTab('cloud')}>Open cloud</button></div>
-          <p className="muted" style={{ fontSize: 11 }}>Recommended owner checks: keep backups off-device as well, limit team access to job duties, review opt-outs before messaging, and never store credentials in document notes.</p>
+          <DeviceAccessPanel toast={toast} userLabel={user?.email || user?.username || company?.name || 'SA Invoice Pro'} />
+          <p className="muted" style={{ fontSize: 11 }}>Recommended: keep backups off-device, limit team access to job duties, never store credentials in notes.</p>
         </div>
       )}
-
-      <p className="muted" style={{ fontSize: 12, marginTop: 16 }}>
-        <span>Review company identity, VAT defaults, backups, communications and cloud sync whenever your business details change.</span>
-      </p>
 
       <ConfirmDialog
         open={!!confirm}
