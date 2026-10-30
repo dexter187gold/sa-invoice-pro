@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useApp } from '../context/AppContext'
-import { PageFade, EmptyState } from '../components/ui'
+import { PageFade, EmptyState, Modal } from '../components/ui'
+import PageInsightsBar from '../components/PageInsightsBar'
 import {
   listRecurring, upsertRecurring, removeRecurring, runDueRecurring, nextRunDate,
 } from '../lib/recurring'
@@ -9,6 +10,7 @@ import { formatMoney } from '../lib/money'
 export default function Recurring() {
   const { clients, invoices, toast, refresh } = useApp()
   const [rows, setRows] = useState([])
+  const [show, setShow] = useState(false)
   const [form, setForm] = useState({
     clientId: '',
     description: 'Monthly retainer',
@@ -36,6 +38,7 @@ export default function Recurring() {
       lines: [{ description: form.description || 'Retainer', qty: 1, price: amount }],
     })
     setForm((f) => ({ ...f, amount: '', description: 'Monthly retainer' }))
+    setShow(false)
     await reload()
     toast?.('Recurring template saved', 'success')
   }
@@ -61,44 +64,67 @@ export default function Recurring() {
           <h1>Recurring invoices</h1>
           <p className="subtitle">Retainers &amp; scheduled drafts — run due templates anytime</p>
         </div>
-        <button type="button" className="btn btn-primary" disabled={busy} onClick={runNow}>
-          Run due now
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" className="btn btn-outline" onClick={() => setShow(true)}>New template</button>
+          <button type="button" className="btn btn-primary" disabled={busy} onClick={runNow}>
+            Run due now
+          </button>
+        </div>
       </div>
 
-      <form className="card form-grid" onSubmit={save} style={{ marginBottom: 16 }}>
-        <label className="stack" style={{ gap: 4 }}>
-          <span className="muted" style={{ fontSize: 12 }}>Client</span>
-          <select className="input" value={form.clientId} onChange={(e) => setForm({ ...form, clientId: e.target.value })}>
-            <option value="">— Select —</option>
-            {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </label>
-        <label className="stack" style={{ gap: 4 }}>
-          <span className="muted" style={{ fontSize: 12 }}>Description</span>
-          <input className="input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-        </label>
-        <label className="stack" style={{ gap: 4 }}>
-          <span className="muted" style={{ fontSize: 12 }}>Amount (R)</span>
-          <input className="input" type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
-        </label>
-        <label className="stack" style={{ gap: 4 }}>
-          <span className="muted" style={{ fontSize: 12 }}>Cadence</span>
-          <select className="input" value={form.cadence} onChange={(e) => setForm({ ...form, cadence: e.target.value })}>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-            <option value="quarterly">Quarterly</option>
-          </select>
-        </label>
-        <label className="stack" style={{ gap: 4 }}>
-          <span className="muted" style={{ fontSize: 12 }}>Day of month</span>
-          <input className="input" type="number" min={1} max={28} value={form.dayOfMonth} onChange={(e) => setForm({ ...form, dayOfMonth: e.target.value })} />
-        </label>
-        <button type="submit" className="btn btn-primary">Add template</button>
-      </form>
+      <PageInsightsBar page="recurring" />
+
+      <Modal
+        open={show}
+        title="New recurring template"
+        onClose={() => setShow(false)}
+        size="md"
+        footer={(
+          <>
+            <button type="button" className="btn btn-outline" onClick={() => setShow(false)}>Cancel</button>
+            <button type="submit" form="recurring-form" className="btn btn-primary">Add template</button>
+          </>
+        )}
+      >
+        <form id="recurring-form" className="form-grid cols-2" onSubmit={save}>
+          <label className="stack" style={{ gap: 4 }}>
+            <span className="muted" style={{ fontSize: 12 }}>Client</span>
+            <select className="input" value={form.clientId} onChange={(e) => setForm({ ...form, clientId: e.target.value })} required>
+              <option value="">Select…</option>
+              {(clients || []).map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="stack" style={{ gap: 4 }}>
+            <span className="muted" style={{ fontSize: 12 }}>Amount (R)</span>
+            <input className="input" type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required />
+          </label>
+          <label className="stack" style={{ gap: 4, gridColumn: '1 / -1' }}>
+            <span className="muted" style={{ fontSize: 12 }}>Description</span>
+            <input className="input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          </label>
+          <label className="stack" style={{ gap: 4 }}>
+            <span className="muted" style={{ fontSize: 12 }}>Cadence</span>
+            <select className="input" value={form.cadence} onChange={(e) => setForm({ ...form, cadence: e.target.value })}>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="quarterly">Quarterly</option>
+            </select>
+          </label>
+          <label className="stack" style={{ gap: 4 }}>
+            <span className="muted" style={{ fontSize: 12 }}>Day of month</span>
+            <input className="input" type="number" min={1} max={28} value={form.dayOfMonth} onChange={(e) => setForm({ ...form, dayOfMonth: e.target.value })} />
+          </label>
+        </form>
+      </Modal>
 
       {!rows.length ? (
-        <EmptyState title="No recurring templates" hint="Add a monthly retainer or support contract." />
+        <EmptyState
+          title="No recurring templates"
+          hint="Add a monthly retainer or support contract."
+          action={<button type="button" className="btn btn-primary" onClick={() => setShow(true)}>New template</button>}
+        />
       ) : (
         rows.map((r) => {
           const c = clients.find((x) => String(x.id) === String(r.clientId))
@@ -114,16 +140,28 @@ export default function Recurring() {
                 <div style={{ fontSize: 13 }}>{(r.lines || [])[0]?.description || r.notes}</div>
               </div>
               <div className="list-card-actions">
-                <button type="button" className="btn btn-outline btn-sm" onClick={async () => {
-                  await upsertRecurring({ ...r, active: r.active === false })
-                  await reload()
-                  toast?.(r.active === false ? 'Resumed' : 'Paused', 'success')
-                }}>{r.active === false ? 'Resume' : 'Pause'}</button>
-                <button type="button" className="btn btn-outline btn-sm" onClick={async () => {
-                  await removeRecurring(r.id)
-                  await reload()
-                  toast?.('Removed', 'success')
-                }}>Delete</button>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  onClick={async () => {
+                    await upsertRecurring({ ...r, active: r.active === false })
+                    await reload()
+                    toast?.(r.active === false ? 'Resumed' : 'Paused', 'success')
+                  }}
+                >
+                  {r.active === false ? 'Resume' : 'Pause'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  onClick={async () => {
+                    await removeRecurring(r.id)
+                    await reload()
+                    toast?.('Removed', 'success')
+                  }}
+                >
+                  Delete
+                </button>
               </div>
             </div>
           )
