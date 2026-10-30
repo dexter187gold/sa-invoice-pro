@@ -40,7 +40,6 @@ export default function OwnerRecovery() {
       setOwner({ email: team.owner?.email || email.trim().toLowerCase() })
       setSeats(await listSeats())
       setActiveId(await getActiveSeatId())
-      setPassword('')
       setMessage('Owner verified by the cloud server. You can now repair local desk-seat roles or set new PINs.')
     } catch (err) {
       setOwner(null)
@@ -58,7 +57,8 @@ export default function OwnerRecovery() {
     setError('')
     setMessage('')
     try {
-      const result = await Sync.setWorkspaceResetPin(resetPin, resetPinConfirm)
+      const result = await Sync.setWorkspaceResetPin(resetPin, resetPinConfirm, password)
+      setPassword('')
       setResetPin('')
       setResetPinConfirm('')
       setMessage(result.message || 'Workspace reset PIN saved. Keep it private.')
@@ -160,6 +160,7 @@ export default function OwnerRecovery() {
             </div>
             <form className="stack" onSubmit={saveWorkspaceResetPin} style={{ gap: 8 }}>
               <strong>Set your private reset PIN</strong>
+              <p className="muted" style={{ margin: 0, fontSize: 12 }}>Your cloud password is rechecked for this step, then cleared from this screen. Neither your password nor PIN is sent to chat.</p>
               <label>New recovery PIN
                 <input className="input" type="password" inputMode="numeric" autoComplete="new-password" pattern="[0-9]{6,12}" minLength={6} maxLength={12} required value={resetPin} onChange={(e) => setResetPin(e.target.value.replace(/\D/g, '').slice(0, 12))} />
               </label>
@@ -202,7 +203,7 @@ export default function OwnerRecovery() {
               <button className="btn btn-outline" type="button" disabled={busy || !String(pinDrafts[seat.id] || '').trim()} onClick={() => saveSeat(seat, seat.role)}>Save new PIN</button>
             </div>
           ))}
-          <button className="btn btn-outline" type="button" onClick={() => { setOwner(null); setSeats([]); setActiveId(''); setPinDrafts({}); setMessage(''); }}>Lock recovery screen</button>
+          <button className="btn btn-outline" type="button" onClick={() => { setOwner(null); setSeats([]); setActiveId(''); setPinDrafts({}); setPassword(''); setResetPin(''); setResetPinConfirm(''); setMessage(''); }}>Lock recovery screen</button>
         </div>
       )}
       {message && <p role="status" className="muted">{message}</p>}
