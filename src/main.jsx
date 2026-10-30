@@ -7,6 +7,16 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { AppProvider } from './context/AppContext'
 import App from './App'
+
+try {
+  // Default bottom navigation until Shell applies prefs (required by styles.ux.css)
+  const prefs = JSON.parse(localStorage.getItem('sa_nav_prefs') || '{}')
+  const layout = prefs.layout || 'bottom'
+  if (layout !== 'side') document.documentElement.classList.add('nav-bottom')
+} catch {
+  document.documentElement.classList.add('nav-bottom')
+}
+
 import './styles.css'
 import './styles.auth.css'
 import './styles.ux.css'
@@ -28,26 +38,18 @@ try {
 
 // Never leave the document stuck invisible (stale splash / transition / CI).
 try {
-  for (const el of [document.documentElement, document.body, document.getElementById('root')]) {
-    if (!el) continue
-    el.style.setProperty('visibility', 'visible', 'important')
-    el.style.setProperty('opacity', '1', 'important')
-    el.removeAttribute('hidden')
-  }
+  document.documentElement.style.visibility = 'visible'
+  document.body && (document.body.style.visibility = 'visible')
+  document.body && (document.body.style.opacity = '1')
 } catch {}
 
-createRoot(document.getElementById('root')).render(
+const root = document.getElementById('root')
+createRoot(root).render(
   <React.StrictMode>
     <BrowserRouter>
       <AppProvider>
         <App />
       </AppProvider>
     </BrowserRouter>
-  </React.StrictMode>
+  </React.StrictMode>,
 )
-
-if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {})
-  })
-}
