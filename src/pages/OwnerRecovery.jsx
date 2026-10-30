@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Sync } from '../lib/sync'
-import { ROLES, listSeats, upsertSeat, getActiveSeatId } from '../lib/seats'
+import { ROLES, listSeats, upsertSeat, getActiveSeatId, clearSeats } from '../lib/seats'
 
 /**
  * Break-glass recovery for local desk seats.
@@ -17,6 +17,11 @@ export default function OwnerRecovery() {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [resetPin, setResetPin] = useState('')
+  const [resetPinConfirm, setResetPinConfirm] = useState('')
+  const [resetConfirm, setResetConfirm] = useState('')
+  const [resetResult, setResetResult] = useState(null)
+  const [resetBusy, setResetBusy] = useState(false)
 
   async function verifyOwner(e) {
     e.preventDefault()
@@ -43,6 +48,53 @@ export default function OwnerRecovery() {
       setError(err?.message || 'Owner verification failed. No local roles or PINs were changed.')
     } finally {
       setBusy(false)
+    }
+  }
+
+
+  async function saveWorkspaceResetPin(e) {
+    e.preventDefault()
+    setResetBusy(true)
+    setError('')
+    setMessage('')
+    try {
+      const result = await Sync.setWorkspaceResetPin(resetPin, resetPinConfirm)
+      setResetPin('')
+      setResetPinConfirm('')
+      setMessage(result.message || 'Workspace reset PIN saved. Keep it private.')
+    } catch (err) {
+      setError(err?.message || 'Could not save the workspace reset PIN.')
+    } finally {
+      setResetBusy(false)
+    }
+  }
+
+  async function resetCloudWorkspace(e) {
+    e.preventDefault()
+    if (resetConfirm !== 'RESET MY WORKSPACE') {
+      setError('Type RESET MY WORKSPACE exactly to confirm.')
+      return
+    }
+    const confirmed = window.confirm(
+      'This clears this owner workspace, linked team logins, branch workspaces, client portal accounts and support tickets. Your owner login is kept. A private server snapshot is saved first. Continue?'
+    )
+    if (!confirmed) return
+    setResetBusy(true)
+    setError('')
+    setMessage('')
+    try {
+      const result = await Sync.resetWorkspace(resetPin, resetConfirm)
+      await clearSeats()
+      setSeats([])
+      setActiveId('')
+      setResetResult(result)
+      setResetPin('')
+      setResetConfirm('')
+      setMessage('Cloud workspace reset. Background cloud sync has been paused to prevent old local data from being uploaded. Import your device backup before signing in and syncing again.')
+    } catch (err) {
+      setError(err?.message || 'Workspace reset failed. No reset success was reported.')
+    } finally {
+      setResetBusy(false)
     }
   }
 
@@ -96,6 +148,41 @@ export default function OwnerRecovery() {
             <strong>Owner verified</strong>
             <p className="muted" style={{ marginBottom: 0 }}>Verified cloud owner: {owner.email}. This screen changes local seats on this device only; it does not reset cloud passwords or change server-side team roles.</p>
           </div>
+
+          <div className="card stack" style={{ gap: 10, border: '1px solid var(--danger, #b91c1c)' }}>
+            <div>
+              <strong>Beta preparation · reset this workspace</strong>
+              <p className="muted" style={{ marginBottom: 0 }}>
+                This owner-only operation clears this workspace's cloud business records, linked team accounts,
+                branch workspaces, client portal accounts, invites and support tickets. Your owner login remains active;
+                unrelated customer workspaces are not touched. A private server snapshot is saved first.
+              </p>
+            </div>
+            <form className="stack" onSubmit={saveWorkspaceResetPin} style={{ gap: 8 }}>
+              <strong>Set your private reset PIN</strong>
+              <label>New recovery PIN
+                <input className="input" type="password" inputMode="numeric" autoComplete="new-password" pattern="[0-9]{6,12}" minLength={6} maxLength={12} required value={resetPin} onChange={(e) => setResetPin(e.target.value.replace(/\D/g, '').slice(0, 12))} />
+              </label>
+              <label>Confirm recovery PIN
+                <input className="input" type="password" inputMode="numeric" autoComplete="new-password" pattern="[0-9]{6,12}" minLength={6} maxLength={12} required value={resetPinConfirm} onChange={(e) => setResetPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 12))} />
+              </label>
+              <button className="btn btn-outline" type="submit" disabled={resetBusy}>{resetBusy ? 'Saving…' : 'Save reset PIN'}</button>
+            </form>
+            <form className="stack" onSubmit={resetCloudWorkspace} style={{ gap: 8 }}>
+              <strong>Run the cloud reset</strong>
+              <label>Enter your saved recovery PIN
+                <input className="input" type="password" inputMode="numeric" autoComplete="current-password" pattern="[0-9]{6,12}" minLength={6} maxLength={12} required value={resetPin} onChange={(e) => setResetPin(e.target.value.replace(/\D/g, '').slice(0, 12))} />
+              </label>
+              <label>Type RESET MY WORKSPACE
+                <input className="input" autoComplete="off" required value={resetConfirm} onChange={(e) => setResetConfirm(e.target.value)} />
+              </label>
+              <button className="btn btn-danger" type="submit" disabled={resetBusy}>{resetBusy ? 'Resetting…' : 'Reset cloud workspace'}</button>
+            </form>
+            {resetResult && <div role="status" className="muted">
+              Reset confirmed · Snapshot {resetResult.snapshotId} · {resetResult.removed?.teamMembers || 0} team logins and {resetResult.removed?.clientPortalAccounts || 0} portal accounts removed. Owner login preserved.
+            </div>}
+          </div>
+
           {seats.length === 0 ? (
             <div className="card">No local seats were found on this device. Cloud team roles are managed separately in Team.</div>
           ) : seats.map((seat) => (

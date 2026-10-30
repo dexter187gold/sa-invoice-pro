@@ -234,21 +234,27 @@ export async function importAll(data, { wipe = false } = {}) {
  * transaction. The dedicated autoBackups store is deliberately excluded so
  * the pre-restore rollback snapshot survives the replacement.
  */
-export async function replaceAllAtomic(data) {
+export async function replaceAllAtomic(data, { allowPartial = false } = {}) {
   const src = unwrapBackup(data)
   if (!src || typeof src !== 'object') throw new Error('Invalid backup file')
 
   const storeKeys = Object.keys(STORES).filter((key) => key !== 'autoBackups')
-  const missing = storeKeys.filter((key) => !Array.isArray(src[key]))
-  if (missing.length) {
+  const missing = storeKeys.filter((key) => !Array.isArray(src[key]) && !(key === 'company' && src[key] && typeof src[key] === 'object'))
+  if (missing.length && !allowPartial) {
     throw new Error(`This is not a complete workspace backup. Missing store data: ${missing.join(', ')}`)
   }
 
   const prepared = {}
   let totalRows = 0
   for (const key of storeKeys) {
-    prepared[key] = src[key].map((row) => normalizeRow(key, row)).filter(Boolean)
+    let rows = src[key]
+    if (key === 'company' && rows && !Array.isArray(rows) && typeof rows === 'object') rows = [rows]
+    if (!Array.isArray(rows)) rows = []
+    prepared[key] = rows.map((row) => normalizeRow(key, row)).filter(Boolean)
     totalRows += prepared[key].length
+  }
+  if (allowPartial && !prepared.company.length) {
+    throw new Error('Profile backup must contain at least one company profile. No data was replaced.')
   }
   if (!totalRows) throw new Error('Backup contains no workspace records; restore cancelled')
 

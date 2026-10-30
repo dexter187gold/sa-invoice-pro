@@ -164,3 +164,21 @@ export function activeSeatSummary(seat) {
     email: seat.email || '',
   }
 }
+
+
+/** Clear local desk-seat identities after an owner-authorized workspace reset. */
+export async function clearSeats() {
+  try {
+    const rows = await readAll()
+    if (STORES?.seats) {
+      for (const row of rows) {
+        if (row?.id != null) await db.remove(STORES.seats, row.id)
+      }
+    }
+  } catch {}
+  try {
+    localStorage.removeItem(LS_SEATS)
+    localStorage.removeItem(LS_ACTIVE)
+  } catch {}
+  return true
+}

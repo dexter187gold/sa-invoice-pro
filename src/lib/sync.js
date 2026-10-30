@@ -246,6 +246,24 @@ export const Sync = {
   async leaveTeam() {
     return request('/api/team/leave', { method: 'POST', body: JSON.stringify({}) })
   },
+  async setWorkspaceResetPin(pin, confirmPin) {
+    return request('/api/workspace/reset-pin', {
+      method: 'POST',
+      body: JSON.stringify({ pin: String(pin || ''), confirmPin: String(confirmPin || '') }),
+    })
+  },
+
+  async resetWorkspace(pin, confirmation) {
+    const result = await request('/api/workspace/reset', {
+      method: 'POST',
+      body: JSON.stringify({ pin: String(pin || ''), confirmation: String(confirmation || '') }),
+      _maxAttempts: 1,
+    })
+    // Stop background sync immediately so pre-reset local data cannot repopulate the empty cloud workspace.
+    setToken(null)
+    return result
+  },
+
   async updateTeamMemberRole(userId, role) {
     return request('/api/team/member-role', { method: 'POST', body: JSON.stringify({ userId, role }) })
   },
