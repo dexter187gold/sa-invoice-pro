@@ -94,7 +94,7 @@ export async function seedIndexedDbCompany(page) {
   await page.evaluate(async () => {
     const company = { id: 'main', name: 'E2E Repair Bench', email: 'bench@test.local' }
     await new Promise((resolve, reject) => {
-      const req = indexedDB.open('SAInvoicePro_v2', 4)
+      const req = indexedDB.open('SAInvoicePro_v2', 5)
       req.onerror = () => reject(req.error)
       req.onupgradeneeded = (e) => {
         const d = e.target.result
