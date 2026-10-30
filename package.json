@@ -1,7 +1,7 @@
 {
   "name": "sa-invoice-pro",
+  "version": "6.43.0",
   "private": true,
-  "version": "6.42.0",
   "type": "module",
   "scripts": {
     "prebuild": "node scripts/check-exports.mjs && node scripts/check-version.mjs",
@@ -14,16 +14,16 @@
     "check:version": "node scripts/check-version.mjs"
   },
   "dependencies": {
+    "jspdf": "^2.5.2",
+    "pdfjs-dist": "^4.10.38",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.1.0",
-    "jspdf": "^2.5.2",
-    "pdfjs-dist": "^4.10.38",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.0",
     "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^6.0.0",
-    "@playwright/test": "^1.49.0"
+    "vite": "^6.0.0"
   }
 }

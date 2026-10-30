@@ -1,5 +1,5 @@
 {
-  "version": "6.42.0",
-  "codename": "Cloud Inbox replies",
-  "message": "WhatsApp Inbox replies prefer Meta Cloud API when configured — respond from the desk without opening the phone"
+  "version": "6.43.0",
+  "codename": "Popups + owner radar",
+  "shipped": "2026-10-30"
 }

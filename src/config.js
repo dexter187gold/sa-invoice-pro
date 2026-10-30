@@ -1,53 +1,40 @@
-export const APP_VERSION = '6.42.0'
+export const APP_VERSION = '6.43.0'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
-export const APP_CODENAME = '6.42.0 · Cloud Inbox replies'
+export const APP_CODENAME = '6.43.0 · Popups + owner radar'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
-export const HELIX_ROUTES = {
-  desk: '/desk', tickets: '/desk/tickets', inbox: '/desk/inbox', clients: '/desk/clients',
-  channels: '/desk/channels', knowledge: '/desk/knowledge', reports: '/desk/reports',
-  portal: '/portal', login: '/login',
+export const DEFAULT_VAT_RATE = 0.15
+export const SUPPORT_EMAIL = 'sainvoicepro@gmail.com'
+export const PRODUCT_EMAIL = 'sainvoicepro@gmail.com'
+
+/** Public marketing / client portal (Cloudflare Worker) */
+export const CLIENT_PORTAL_URL =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CLIENT_PORTAL_URL) ||
+  'https://sa-invoice-pro-client-portal.pcrepairdex.workers.dev'
+
+/** Desk cloud sync (Render free tier) */
+export const SYNC_API_URL =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SYNC_API_URL) ||
+  'https://saip-sync.onrender.com'
+
+/** License / activation server */
+export const LICENSE_API_URL =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_LICENSE_API_URL) ||
+  'https://saip-license.onrender.com'
+
+/** Dev portal (secrets vault) — restricted */
+export const DEV_PORTAL_PATH = '/dev-portal'
+
+export const PAYFAST_SANDBOX =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_PAYFAST_SANDBOX) !== 'false'
+
+export function publicLinks() {
+  return {
+    app: typeof window !== 'undefined' ? window.location.origin : '',
+    clientPortal: CLIENT_PORTAL_URL,
+    syncApi: SYNC_API_URL,
+    licenseApi: LICENSE_API_URL,
+    supportEmail: SUPPORT_EMAIL,
+  }
 }
-
-export const VAT_RATE_DEFAULT = 0.15
-export const SUPPORT_RATES_DEFAULT = { onsite: 450, remote: 300 }
-
-export const APP_LINKS = {
-  licenseServer: 'https://sa-invoice-license.onrender.com',
-  licenseDashboard: 'https://sa-invoice-license.onrender.com/',
-  updatesServer: 'https://sa-invoice-updates.onrender.com',
-  syncServer: 'https://saip-sync.onrender.com',
-  website: 'https://github.com/dexter187gold/sa-invoice-pro-website',
-  productEmail: 'sainvoicepro@gmail.com',
-  repo: 'https://github.com/dexter187gold/sa-invoice-pro',
-  syncRepo: 'https://github.com/dexter187gold/saip-sync',
-  devPortalPath: '/dev-portal',
-}
-
-export const SA_CONFIG = {
-  appVersion: APP_VERSION,
-  defaultLicenseServerUrl: APP_LINKS.licenseServer,
-  syncServerUrl: APP_LINKS.syncServer,
-  syncEnabled: true,
-  helixUrl: '',
-  helixPathDesk: HELIX_ROUTES.tickets,
-  helixEmbedTickets: false,
-  oliveRepo: OLIVE_REPO,
-  helixRoutes: HELIX_ROUTES,
-  vatRateDefault: VAT_RATE_DEFAULT,
-  productEmail: APP_LINKS.productEmail,
-  updatesServerUrl: APP_LINKS.updatesServer,
-}
-
-export const DOC_TYPES = [
-  { id: 'sla', label: 'Service Level Agreement' },
-  { id: 'consulting', label: 'Consulting engagement letter' },
-  { id: 'tax_clearance_support', label: 'Letter of good standing / tax support' },
-  { id: 'quote_letter', label: 'Formal quotation letter' },
-  { id: 'popia_notice', label: 'POPIA privacy notice' },
-  { id: 'invoice_cover', label: 'Tax invoice cover letter' },
-  { id: 'job_card', label: 'Job card summary' },
-  { id: 'nda', label: 'Non-disclosure agreement (lite)' },
-  { id: 'terms', label: 'Standard terms of business' },
-]

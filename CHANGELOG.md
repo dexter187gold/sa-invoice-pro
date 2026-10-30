@@ -1,44 +1,12 @@
-# Changelog
+## 6.43.0 — Popups + owner radar expansion
 
-## 6.42.0 — Cloud Inbox replies (2026-10-30)
+- **Modal component** — reusable popup for create/edit (Escape + backdrop close, sm/md/lg)
+- **Products / Employees / Petty cash** — forms open in popups; full list pages kept
+- **Owner radar** extended to Products, Employees, Payroll, Reports, Bank import, Documents, Recurring
+- Modal CSS scroll + mobile-friendly widths
+- Master stability pass on list-page wiring (Invoices/Tickets restored earlier)
 
-### WhatsApp
-- Inbox Reply now prefers Meta Cloud API (`sendWhatsAppText`) when token + phone number ID are set in Dev portal / secrets
-- Falls back to wa.me deep link if Cloud is not configured
-- Status chip shows current mode (cloud / wa.me)
-- Button label reflects send method
+## 6.42.0
 
-### Ops
-- Version gate aligned at **6.42.0**
-
-## 6.41.0 — WA inbox replies (2026-10-30)
-
-### WhatsApp
-- Quick replies library (greeting, ask more info, after-hours) in `waTemplates.js`
-- Inbox: Reply button on pending WhatsApp clients — pick template or edit, open wa.me with pre-filled ZA-tone message
-- Link to templates page from inbox
-
-### Ops
-- Version gate aligned at **6.41.0**
-
-## 6.40.0 — Nav + gestures (2026-10-30)
-
-### Critical
-- **Bottom navigation visible again** — Shell applies `html.nav-bottom` (CSS was hiding `.bottom-nav` without it)
-- Icons + Menu / section shortcuts / Command restored
-- Top bar decluttered (sign-out lives in Main Menu drawer)
-
-### Gestures
-- Swipe right (edge) → Main menu
-- Swipe left → close menus
-- Swipe up → new invoice
-- Swipe down → home
-- 2-finger tap → Main menu
-- 3-finger tap → Command centre
-
-### Ops
-- Version gate aligned at **6.40.0** (package · version.json · README · CHANGELOG)
-
-## 6.39.1 — Nav restored attempt
-
-## 6.39.0 — Mega-90 foundations
+- Inbox replies prefer Cloud API when Meta credentials are set
+- Fallback to wa.me remains; mode shown in UI
