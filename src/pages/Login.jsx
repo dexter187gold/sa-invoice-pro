@@ -139,8 +139,8 @@ export default function Login() {
           <div className="login-splash-inner">
             <AppLogo size={104} />
             <div className="login-splash-title">SA INVOICE PRO</div>
-            <p className="muted" style={{ color: 'rgba(220,252,231,0.9)', margin: '0.35rem 0 0' }}>Professional invoicing, payments & business management</p>
-            <p className="muted" style={{ color: 'rgba(167,243,208,0.85)', margin: '0.35rem 0 0', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>SOUTH AFRICAN BUSINESS WORKSPACE</p>
+            <p style={{ color: 'rgba(220,252,231,0.95)', margin: '0.35rem 0 0' }}>Professional invoicing, payments & business management</p>
+            <p style={{ color: 'rgba(167,243,208,0.9)', margin: '0.35rem 0 0', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>SOUTH AFRICAN BUSINESS WORKSPACE</p>
             <div className="login-splash-bar" aria-hidden><span /></div>
           </div>
         </div>
@@ -201,7 +201,7 @@ export default function Login() {
                 >
                   Send recovery code
                 </button>
-                {shownCode ? <p className="muted" style={{ fontSize: 12 }}>Dev code: <strong>{shownCode}</strong></p> : null}
+                {shownCode ? <p className="muted" style={{ fontSize: 12 }}>Dev code: <strong style={{ color: '#0d3324' }}>{shownCode}</strong></p> : null}
                 <label className="stack" style={{ gap: 4 }}><span className="muted" style={{ fontSize: 12 }}>Recovery code</span>
                   <input className="input" value={form.recoveryCode} onChange={(e) => setForm({ ...form, recoveryCode: e.target.value })} placeholder="6-digit code" /></label>
                 <label className="stack" style={{ gap: 4 }}><span className="muted" style={{ fontSize: 12 }}>New password (letters + numbers, min 6)</span>
@@ -234,7 +234,7 @@ export default function Login() {
               {busy ? 'Please wait…' : mode === 'in' ? 'Sign in' : mode === 'up' ? 'Create account' : 'Reset password'}
             </button>
             {mode === 'in' && (
-              <button type="button" style={{ background: 'none', border: 0, color: 'var(--green, #08794e)', cursor: 'pointer' }} onClick={() => setMode('forgot')}>Forgot password?</button>
+              <button type="button" style={{ background: 'none', border: 0, color: '#08794e', cursor: 'pointer', fontWeight: 600 }} onClick={() => setMode('forgot')}>Forgot password?</button>
             )}
           </form>
 
