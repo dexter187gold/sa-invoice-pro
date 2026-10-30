@@ -3,6 +3,7 @@
  */
 const GESTURE_KEY = 'sa_gesture_prefs_v1'
 const BIO_KEY = 'sa_biometric_prefs_v1'
+const GESTURE_MIGRATION = 'sa_gesture_force_off_v6401'
 
 export const DEFAULT_GESTURE_PREFS = {
   enabled: false,
@@ -20,7 +21,17 @@ export const DEFAULT_BIO_PREFS = {
   setupAt: null,
 }
 
+function forceOffLegacyGesturesOnce() {
+  try {
+    if (localStorage.getItem(GESTURE_MIGRATION) === '1') return
+    // Previous builds enabled gestures globally and interfered with navigation
+    localStorage.setItem(GESTURE_KEY, JSON.stringify({ ...DEFAULT_GESTURE_PREFS }))
+    localStorage.setItem(GESTURE_MIGRATION, '1')
+  } catch {}
+}
+
 export function loadGesturePrefs() {
+  forceOffLegacyGesturesOnce()
   try {
     return { ...DEFAULT_GESTURE_PREFS, ...JSON.parse(localStorage.getItem(GESTURE_KEY) || '{}') }
   } catch {
