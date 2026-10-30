@@ -106,7 +106,7 @@ export default function Team() {
           {cloudTeam?.error && <p role="alert" className="muted">{cloudTeam.error}</p>}
           {cloudTeam?.owner && <p className="muted" style={{ fontSize: 12 }}>Workspace owner: {cloudTeam.owner.email} · {cloudTeam.isOwner ? 'You can invite members' : 'Only the owner can invite members'}</p>}
           {cloudTeam?.members?.length > 0 && <div className="stack" style={{ gap: 6, marginBottom: 12 }}>
-            {cloudTeam.members.map((member) => <div key={member.id} style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', padding: 8, border: '1px: '1px solid var(--border, #d1d5db)', borderRadius: 8 }}>
+            {cloudTeam.members.map((member) => <div key={member.id} style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', padding: 8, border: '1px solid var(--border, #d1d5db)', borderRadius: 8 }}>
               <span><strong>{member.name || member.email}</strong><br /><span className="muted" style={{ fontSize: 12 }}>{member.email}</span></span>
               {cloudTeam.isOwner && !member.isOwner ? (
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -202,7 +202,7 @@ export default function Team() {
           <strong>PIN for {pinPrompt.name}</strong>
           <p className="muted" style={{ fontSize: 13, margin: '6px 0' }}>This seat is PIN-protected. Enter PIN to switch.</p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <input className="input" type="password" inputMode="numeric" maxLength={8} value={pinInput} onChange={(e) => setPinInput(e.target.value)} placeholder="PIN" style={{ maxWidth: 140 }} />
+            <input className="input" type="password" inputMode="numeric" maxLength={8} value={pinInput} style={{ maxWidth: 140 }} onChange={(e) => setPinInput(e.target.value)} placeholder="PIN" />
             <button type="button" className="btn btn-primary btn-sm" onClick={confirmPin}>Switch</button>
             <button type="button" className="btn btn-outline btn-sm" onClick={() => setPinPrompt(null)}>Cancel</button>
           </div>
