@@ -158,12 +158,12 @@ export default function Login() {
               <span><i>✓</i> Accounting, expenses & payroll</span>
             </div>
           </div>
-          <p className="muted" style={{ fontSize: 12, marginTop: 'auto' }}>v{APP_VERSION}</p>
+          <p className="auth-brand-foot" style={{ fontSize: 12, marginTop: 'auto' }}>v{APP_VERSION}</p>
         </aside>
 
-        <div className="auth-card">
+        <div className="auth-card-modern">
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}><AppLogo size={72} /></div>
-          <div className="auth-tabs">
+          <div className="tabs">
             <button type="button" className={`tab ${mode === 'in' ? 'active' : ''}`} onClick={() => setMode('in')}>Sign in</button>
             <button type="button" className={`tab ${mode === 'up' ? 'active' : ''}`} onClick={() => setMode('up')}>Create account</button>
             <button type="button" className={`tab ${mode === 'forgot' ? 'active' : ''}`} onClick={() => setMode('forgot')}>Forgot password</button>
@@ -234,14 +234,14 @@ export default function Login() {
               {busy ? 'Please wait…' : mode === 'in' ? 'Sign in' : mode === 'up' ? 'Create account' : 'Reset password'}
             </button>
             {mode === 'in' && (
-              <button type="button" style={{ background: 'none', border: 0, color: 'var(--green)', cursor: 'pointer' }} onClick={() => setMode('forgot')}>Forgot password?</button>
+              <button type="button" style={{ background: 'none', border: 0, color: 'var(--green, #08794e)', cursor: 'pointer' }} onClick={() => setMode('forgot')}>Forgot password?</button>
             )}
           </form>
 
-          <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #e5eee8' }}>
             <p className="muted" style={{ fontSize: 12, margin: '0 0 8px', textAlign: 'center' }}>Device reset or new phone? Import your SA Invoice Pro backup JSON here (before sign-in). Use the password from that backup.</p>
             <input ref={fileRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={onImportBackup} />
-            <button type="button" className="btn" style={{ width: '100%' }} disabled={busy} onClick={() => fileRef.current?.click()}>Import backup JSON</button>
+            <button type="button" className="btn btn-outline" style={{ width: '100%' }} disabled={busy} onClick={() => fileRef.current?.click()}>Import backup JSON</button>
           </div>
         </div>
       </div>
