@@ -8,7 +8,7 @@ import { getEndpoint } from './devConfig.js'
 function portalBase() {
   return getEndpoint('syncServer', 'https://saip-sync.onrender.com')
 }
-const PORTAL_BASE = 'https://saip-sync.onrender.com' // fallback constant for tests
+const PORTAL_BASE = 'https://saip-sync.onrender.com'
 const LS_DECISIONS = 'saip_portal_decisions_v1'
 
 export const QUOTE_PORTAL_STATUSES = ['draft', 'sent', 'accepted', 'rejected', 'converted', 'expired']
@@ -32,12 +32,16 @@ export function buildQuoteDecision(quote, action, note = '') {
   }
   const accepted = a === 'approve' || a === 'accept'
   const now = new Date().toISOString()
+  const status = accepted ? 'accepted' : 'rejected'
   return {
     quoteId: quote?.id,
     action: accepted ? 'approve' : 'reject',
-    status: accepted ? 'accepted' : 'rejected',
-    note: String(note || '').slice(0, 500),
+    status,
+    portalDecision: status,
+    portalNote: String(note || '').slice(0, 500),
+    portalDecisionAt: now,
     decidedAt: now,
+    note: String(note || '').slice(0, 500),
   }
 }
 
@@ -129,13 +133,7 @@ export async function submitPortalQuoteDecision(
   const attempts = [
     {
       url: `${base}/api/portal/quote-decision`,
-      body: {
-        token: t,
-        quoteId,
-        quote_id: quoteId,
-        action: act,
-        note: noteStr,
-      },
+      body: { token: t, quoteId, quote_id: quoteId, action: act, note: noteStr },
     },
     {
       url: `${base}/api/portal/${encodeURIComponent(t)}/quote/${encodeURIComponent(quoteId)}/decision`,
@@ -162,15 +160,8 @@ export async function submitPortalQuoteDecision(
       lastErr = e?.message || lastErr
     }
   }
-  // Offline queue
   const decision = quote ? buildQuoteDecision(quote, act, noteStr) : null
-  queuePortalDecision({
-    token: t,
-    quoteId,
-    action: act,
-    note: noteStr,
-    decision,
-  })
+  queuePortalDecision({ token: t, quoteId, action: act, note: noteStr, decision })
   return {
     ok: true,
     online: false,
@@ -181,23 +172,36 @@ export async function submitPortalQuoteDecision(
 }
 
 export function applyPortalDecisionLocally(quotes, quoteId, action, note = '') {
-  const act = String(action).toLowerCase()
-  const status =
-    act === 'reject' || act === 'decline' ? 'rejected' : 'accepted'
-  return (quotes || []).map((q) =>
-    String(q.id) === String(quoteId)
-      ? { ...q, status, portalNote: note, decidedAt: new Date().toISOString() }
-      : q,
-  )
+  const act = String(action || '').toLowerCase()
+  const status = act === 'reject' || act === 'decline' ? 'rejected' : 'accepted'
+  const decidedAt = new Date().toISOString()
+  let updated = null
+  const next = (quotes || []).map((q) => {
+    if (String(q.id) !== String(quoteId)) return q
+    updated = {
+      ...q,
+      status,
+      portalDecision: status,
+      portalNote: note,
+      portalDecisionAt: decidedAt,
+      decidedAt,
+    }
+    return updated
+  })
+  return { updated, quotes: next }
 }
 
 export function portalQuoteSummary(quotes = []) {
-  const s = { total: quotes.length, accepted: 0, rejected: 0, pending: 0 }
+  const s = { total: quotes.length, open: 0, accepted: 0, rejected: 0, converted: 0, pending: 0 }
   for (const q of quotes) {
     const st = normalizeQuoteStatus(q.status)
-    if (st === 'accepted' || st === 'converted') s.accepted++
+    if (st === 'accepted') s.accepted++
     else if (st === 'rejected') s.rejected++
-    else s.pending++
+    else if (st === 'converted') s.converted++
+    else {
+      s.open++
+      s.pending++
+    }
   }
   return s
 }
