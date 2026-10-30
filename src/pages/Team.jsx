@@ -106,40 +106,62 @@ export default function Team() {
           {cloudTeam?.error && <p role="alert" className="muted">{cloudTeam.error}</p>}
           {cloudTeam?.owner && <p className="muted" style={{ fontSize: 12 }}>Workspace owner: {cloudTeam.owner.email} · {cloudTeam.isOwner ? 'You can invite members' : 'Only the owner can invite members'}</p>}
           {cloudTeam?.members?.length > 0 && <div className="stack" style={{ gap: 6, marginBottom: 12 }}>
-            {cloudTeam.members.map((member) => <div key={member.id} style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', padding: 8, border: '1px solid var(--border, #d1d5db)', borderRadius: 8 }}>
+            {cloudTeam.members.map((member) => <div key={member.id} style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', padding: 8, border: '1px: '1px solid var(--border, #d1d5db)', borderRadius: 8 }}>
               <span><strong>{member.name || member.email}</strong><br /><span className="muted" style={{ fontSize: 12 }}>{member.email}</span></span>
               {cloudTeam.isOwner && !member.isOwner ? (
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-                  <span className="muted">Role</span>
-                  <select
-                    className="input"
-                    aria-label={`Role for ${member.email}`}
-                    value={member.role || 'member'}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                    <span className="muted">Role</span>
+                    <select
+                      className="input"
+                      aria-label={`Role for ${member.email}`}
+                      value={member.role || 'member'}
+                      disabled={cloudBusy}
+                      style={{ minWidth: 130 }}
+                      onChange={async (e) => {
+                        const role = e.target.value
+                        if (!role || !window.confirm(`Change ${member.email}'s role to ${role.replace('_', ' ')}?`)) {
+                          await reloadCloudTeam()
+                          return
+                        }
+                        setCloudBusy(true)
+                        try {
+                          await Sync.updateTeamMemberRole(member.id, role)
+                          await reloadCloudTeam()
+                          toast('Team member role updated', 'success')
+                        } catch (err) {
+                          await reloadCloudTeam()
+                          toast(err?.message || 'Could not update team role', 'error')
+                        } finally {
+                          setCloudBusy(false)
+                        }
+                      }}
+                    >
+                      {!ROLES.some((r) => r.id === member.role) && <option value={member.role || 'member'}>{member.role || 'member'} (legacy)</option>}
+                      {ROLES.filter((r) => r.id !== 'owner').map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    className="btn btn-danger btn-sm"
                     disabled={cloudBusy}
-                    style={{ minWidth: 130 }}
-                    onChange={async (e) => {
-                      const role = e.target.value
-                      if (!role || !window.confirm(`Change ${member.email}'s role to ${role.replace('_', ' ')}?`)) {
-                        await reloadCloudTeam()
-                        return
-                      }
+                    onClick={async () => {
+                      if (!window.confirm(`Remove ${member.email} from this workspace? They will lose cloud access.`)) return
                       setCloudBusy(true)
                       try {
-                        await Sync.updateTeamMemberRole(member.id, role)
+                        await Sync.removeTeamMember(member.id)
                         await reloadCloudTeam()
-                        toast('Team member role updated', 'success')
+                        toast('Team member removed', 'success')
                       } catch (err) {
-                        await reloadCloudTeam()
-                        toast(err?.message || 'Could not update team role', 'error')
+                        toast(err?.message || 'Could not remove team member', 'error')
                       } finally {
                         setCloudBusy(false)
                       }
                     }}
                   >
-                    {!ROLES.some((r) => r.id === member.role) && <option value={member.role || 'member'}>{member.role || 'member'} (legacy)</option>}
-                    {ROLES.filter((r) => r.id !== 'owner').map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
-                  </select>
-                </label>
+                    Remove
+                  </button>
+                </div>
               ) : <span className="chip">{member.role || 'member'}{member.isOwner ? ' · owner' : ''}</span>}
             </div>)}
           </div>}
@@ -165,150 +187,52 @@ export default function Team() {
 
       <div className="card" style={{ marginBottom: 16 }}>
         <strong>Usage this month ({usage.month})</strong>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill,minmax(120px,1fr))',
-            gap: 8,
-            marginTop: 8,
-            fontSize: 13,
-          }}
-        >
-          <div>
-            Invoices <strong>{usage.invoicesThisMonth}</strong>
-          </div>
-          <div>
-            Payments <strong>{usage.paymentsThisMonth}</strong>
-          </div>
-          <div>
-            Clients <strong>{usage.clientsTotal}</strong>
-          </div>
-          <div>
-            Open jobs <strong>{usage.openJobs}</strong>
-          </div>
-          <div>
-            Seats <strong style={{ color: activeCount >= limits.users ? '#f59e0b' : 'inherit' }}>
-              {activeCount}/{limits.users}
-            </strong>
-          </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(120px,1fr))', gap: 8, marginTop: 8, fontSize: 13 }}>
+          <div>Invoices <strong>{usage.invoicesThisMonth}</strong></div>
+          <div>Payments <strong>{usage.paymentsThisMonth}</strong></div>
+          <div>Clients <strong>{usage.clientsTotal}</strong></div>
+          <div>Open jobs <strong>{usage.openJobs}</strong></div>
+          <div>Seats <strong style={{ color: activeCount >= limits.users ? '#f59e0b' : 'inherit' }}>{activeCount}/{limits.users}</strong></div>
         </div>
-        <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>
-          Solo ≤1 seat · Shop ≤5 · Multi ≤25 — switch seat applies RoleGate on money/settings pages.
-        </p>
+        <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>Solo ≤1 seat · Shop ≤5 · Multi ≤25 — switch seat applies RoleGate on money/settings pages.</p>
       </div>
 
       {pinPrompt && (
         <div className="card" style={{ marginBottom: 16, borderLeft: '4px solid var(--green, #10b981)' }}>
           <strong>PIN for {pinPrompt.name}</strong>
-          <p className="muted" style={{ fontSize: 13, margin: '6px 0' }}>
-            This seat is PIN-protected. Enter PIN to switch.
-          </p>
+          <p className="muted" style={{ fontSize: 13, margin: '6px 0' }}>This seat is PIN-protected. Enter PIN to switch.</p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <input
-              className="input"
-              type="password"
-              inputMode="numeric"
-              maxLength={8}
-              value={pinInput}
-              onChange={(e) => setPinInput(e.target.value)}
-              placeholder="PIN"
-              style={{ maxWidth: 140 }}
-            />
-            <button type="button" className="btn btn-primary btn-sm" onClick={confirmPin}>
-              Switch
-            </button>
-            <button type="button" className="btn btn-outline btn-sm" onClick={() => setPinPrompt(null)}>
-              Cancel
-            </button>
+            <input className="input" type="password" inputMode="numeric" maxLength={8} value={pinInput} onChange={(e) => setPinInput(e.target.value)} placeholder="PIN" style={{ maxWidth: 140 }} />
+            <button type="button" className="btn btn-primary btn-sm" onClick={confirmPin}>Switch</button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => setPinPrompt(null)}>Cancel</button>
           </div>
         </div>
       )}
 
       <form className="card form-grid cols-2" onSubmit={save} style={{ marginBottom: 16 }}>
-        <div>
-          <label className="label">Name</label>
-          <input
-            className="input"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            required
-          />
-        </div>
-        <div>
-          <label className="label">Email</label>
-          <input
-            className="input"
-            type="email"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-          />
-        </div>
-        <div>
-          <label className="label">Role</label>
-          <select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-            {ROLES.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="label">Optional PIN (switch lock)</label>
-          <input
-            className="input"
-            value={form.pin}
-            onChange={(e) => setForm({ ...form, pin: e.target.value })}
-            maxLength={8}
-            placeholder="Empty = no PIN"
-          />
-        </div>
+        <div><label className="label">Name</label><input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></div>
+        <div><label className="label">Email</label><input className="input" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+        <div><label className="label">Role</label><select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>{ROLES.map((r) => (<option key={r.id} value={r.id}>{r.label}</option>))}</select></div>
+        <div><label className="label">Optional PIN (switch lock)</label><input className="input" value={form.pin} onChange={(e) => setForm({ ...form, pin: e.target.value })} maxLength={8} placeholder="Empty = no PIN" /></div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button type="submit" className="btn btn-primary">
-            {form.id ? 'Update seat' : 'Add seat'}
-          </button>
-          {form.id ? (
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={() => setForm({ name: '', email: '', role: 'tech', pin: '', id: '' })}
-            >
-              Cancel edit
-            </button>
-          ) : null}
+          <button type="submit" className="btn btn-primary">{form.id ? 'Update seat' : 'Add seat'}</button>
+          {form.id ? <button type="button" className="btn btn-outline" onClick={() => setForm({ name: '', email: '', role: 'tech', pin: '', id: '' })}>Cancel edit</button> : null}
         </div>
       </form>
 
       <div className="card" style={{ marginBottom: 16 }}>
         <h3 style={{ marginTop: 0 }}>Roles</h3>
         <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
-          {ROLES.map((r) => (
-            <li key={r.id}>
-              <strong>{r.label}</strong> — {r.description}
-            </li>
-          ))}
+          {ROLES.map((r) => (<li key={r.id}><strong>{r.label}</strong> — {r.description}</li>))}
         </ul>
       </div>
 
       {!seats.length ? (
-        <EmptyState
-          title="No seats yet"
-          hint="Add technicians and front desk as seats for Shop / Multi licenses. PIN optional for switch lock."
-        />
+        <EmptyState title="No seats yet" hint="Add technicians and front desk as seats for Shop / Multi licenses. PIN optional for switch lock." />
       ) : (
         <div className="card">
           {seats.map((s) => (
-            <div
-              key={s.id}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: 8,
-                padding: '10px 0',
-                borderBottom: '1px solid var(--border,rgba(255,255,255,.08))',
-                flexWrap: 'wrap',
-              }}
-            >
+            <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, padding: '10px 0', borderBottom: '1px solid var(--border,rgba(255,255,255,.08))', flexWrap: 'wrap' }}>
               <div>
                 <strong>{s.name}</strong>
                 <div className="muted" style={{ fontSize: 12 }}>
@@ -319,35 +243,9 @@ export default function Team() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
-                <button type="button" className="btn btn-outline btn-sm" onClick={() => requestSwitch(s)}>
-                  Switch
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-outline btn-sm"
-                  onClick={() =>
-                    setForm({
-                      name: s.name,
-                      email: s.email || '',
-                      role: s.role,
-                      pin: s.pin || '',
-                      id: s.id,
-                    })
-                  }
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-outline btn-sm"
-                  onClick={async () => {
-                    await removeSeat(s.id)
-                    await reload()
-                    toast('Removed', 'success')
-                  }}
-                >
-                  Remove
-                </button>
+                <button type="button" className="btn btn-outline btn-sm" onClick={() => requestSwitch(s)}>Switch</button>
+                <button type="button" className="btn btn-outline btn-sm" onClick={() => setForm({ name: s.name, email: s.email || '', role: s.role, pin: s.pin || '', id: s.id })}>Edit</button>
+                <button type="button" className="btn btn-outline btn-sm" onClick={async () => { await removeSeat(s.id); await reload(); toast('Removed', 'success') }}>Remove</button>
               </div>
             </div>
           ))}
