@@ -44,7 +44,7 @@ export async function loginDevPortal(username, password) {
     ok: true,
     user: DEV_USERNAME,
     at: new Date().toISOString(),
-    exp: Date.now() + 12 * 60 * 60 * 1000, // 12h
+    exp: Date.now() + 12 * 60 * 60 * 1000,
   }
   sessionStorage.setItem(SESSION_KEY, JSON.stringify(session))
   return session
@@ -54,6 +54,6 @@ export function logoutDevPortal() {
   try { sessionStorage.removeItem(SESSION_KEY) } catch {}
 }
 
-export function getDevDevUsername() {
+export function getDevUsername() {
   return DEV_USERNAME
 }

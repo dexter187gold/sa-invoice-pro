@@ -1,11 +1,9 @@
-# SA Invoice Pro 6.38.0
+# SA Invoice Pro 6.38.1
 
-Developer portal · cleaner mobile chrome · profile restore · desk CRUD.
+Gated **Developer portal** at `/dev-portal` (separate login) · secrets vault on-device · cleaner chrome.
 
 ```bash
 npm install && npm run dev
 ```
 
 Product: **sainvoicepro@gmail.com**
-
-In-app Dev portal: `/dev-portal` · Links: `docs/APP_LINKS.md`

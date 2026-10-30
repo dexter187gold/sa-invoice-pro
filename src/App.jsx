@@ -74,6 +74,7 @@ export default function App() {
       <LegalConsent />
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/dev-portal" element={<DevPortal />} />
         <Route path="/portal" element={<Portal />} />
         <Route path="/portal/:token" element={<Portal />} />
         <Route path="/portal/:token/:section" element={<Portal />} />
@@ -119,7 +120,6 @@ export default function App() {
                 <Route path="/portal-admin" element={<PortalAdmin />} />
                 <Route path="/webhooks" element={<Webhooks />} />
                 <Route path="/settings" element={<Settings />} />
-                <Route path="/dev-portal" element={<DevPortal />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
               </ErrorBoundary>
