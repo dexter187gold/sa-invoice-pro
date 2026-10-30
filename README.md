@@ -1,6 +1,6 @@
-# SA Invoice Pro 6.37.0
+# SA Invoice Pro 6.37.1
 
-WhatsApp responder helpers (suggested ZA-tone replies) · Payroll + bank statement import + 69-template IT Document Studio · P1 desk CRUD · PWA cache refresh.
+Beta restore & register fix · robust backup JSON import · Command Centre · WhatsApp helpers · P1 desk CRUD.
 
 ```bash
 npm install && npm run dev

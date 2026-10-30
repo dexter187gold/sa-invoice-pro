@@ -1,5 +1,5 @@
 {
-  "version": "6.37.0",
-  "codename": "Command Centre and WhatsApp quick replies",
-  "message": "Restore single-toggle Command Centre navigation and align release metadata for reliable CI builds."
+  "version": "6.37.1",
+  "codename": "Beta restore & register fix",
+  "message": "Robust backup import, cloud password policy, local register fallback after reset"
 }
