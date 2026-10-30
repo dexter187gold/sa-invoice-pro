@@ -60,5 +60,5 @@ test('P4 portalQuoteSummary counts', () => {
   assert.equal(s.total, 4)
   assert.equal(s.accepted, 2)
   assert.equal(s.rejected, 1)
-  assert.equal(s.pending, 1 macro)
+  assert.equal(s.pending, 1)
 })
