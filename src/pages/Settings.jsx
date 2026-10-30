@@ -339,7 +339,7 @@ export default function Settings() {
                   action: async () => {
                     try {
                       const result = await restoreAutoBackup(snap.id, { confirmed: true })
-                      await refresh?.()
+                      await refresh?.({ skipSync: true })
                       await refreshAutoBackups()
                       toast(`Workspace restored. ${result.stats.rows} records restored; rollback snapshot saved.`, 'success')
                     } catch (error) {
