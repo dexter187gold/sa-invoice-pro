@@ -17,7 +17,10 @@ function json(data, status = 200, extra = {}) {
 function allowedOrigin(request) {
   const origin = request.headers.get('Origin')
   if (!origin) return true
-  try { return new URL(origin).origin === new URL(request.url).origin } catch { return false }
+  try {
+    const requestOrigin = new URL(origin).origin
+    return requestOrigin === new URL(request.url).origin || requestOrigin === 'https://sa-invoice-pro.pages.dev'
+  } catch { return false }
 }
 
 function rateLimited(key) {
