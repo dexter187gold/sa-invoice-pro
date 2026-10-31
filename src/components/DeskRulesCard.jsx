@@ -6,6 +6,7 @@ export default function DeskRulesCard({ invoices, tickets, clients }) {
   const [open, setOpen] = useState(false)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const drag = useRef(null)
+  const suppressClick = useRef(false)
   const tips = useMemo(
     () => evaluateDeskRules({ invoices, tickets, clients }),
     [invoices, tickets, clients],
@@ -28,7 +29,7 @@ export default function DeskRulesCard({ invoices, tickets, clients }) {
           </ul>
         </section>
       ) : null}
-      <button type="button" className="desk-rules-fab" style={{ transform: `translate(${offset.x}px, ${offset.y}px)` }} onPointerDown={(e) => { drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, ox: offset.x, oy: offset.y, moved: false }; e.currentTarget.setPointerCapture?.(e.pointerId) }} onPointerMove={(e) => { const d = drag.current; if (!d || d.id !== e.pointerId) return; const dx = e.clientX - d.x, dy = e.clientY - d.y; if (Math.abs(dx) + Math.abs(dy) > 6) d.moved = true; if (d.moved) setOffset({ x: d.ox + dx, y: d.oy + dy }) }} onPointerUp={(e) => { const d = drag.current; if (d?.moved) { e.preventDefault(); e.stopPropagation() }; drag.current = null }} onClick={(e) => { if (drag.current?.moved) return; setOpen((v) => !v) }} aria-expanded={open} aria-label="Open Desk Rules updates" title="Desk Rules">
+      <button type="button" className="desk-rules-fab" style={{ transform: `translate(${offset.x}px, ${offset.y}px)` }} onPointerDown={(e) => { suppressClick.current = false; drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, ox: offset.x, oy: offset.y, moved: false }; e.currentTarget.setPointerCapture?.(e.pointerId) }} onPointerMove={(e) => { const d = drag.current; if (!d || d.id !== e.pointerId) return; const dx = e.clientX - d.x, dy = e.clientY - d.y; if (Math.abs(dx) + Math.abs(dy) > 6) d.moved = true; if (d.moved) setOffset({ x: d.ox + dx, y: d.oy + dy }) }} onPointerUp={(e) => { const d = drag.current; if (d?.moved) { suppressClick.current = true; e.preventDefault(); e.stopPropagation() }; drag.current = null }} onClick={() => { if (suppressClick.current) { suppressClick.current = false; return }; setOpen((v) => !v) }} aria-expanded={open} aria-label="Open Desk Rules updates" title="Desk Rules">
         <span aria-hidden="true">✦</span><small>Desk Rules</small><i>{tips.length}</i>
       </button>
     </div>
