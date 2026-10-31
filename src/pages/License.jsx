@@ -152,7 +152,6 @@ export default function License() {
       <div className="grid-stats" style={{ marginBottom: '1rem' }}>
         <StatCard label="Status" value={(licensed || billingInfo?.licensed) ? 'Licensed' : (billingInfo?.status || 'Soft trial')} tone={(licensed || billingInfo?.licensed) ? 'good' : 'warn'} />
         <StatCard label="Trial days left" value={trialLeft ?? '—'} tone={trialLeft != null && trialLeft <= 7 ? 'bad' : undefined} />
-        <StatCard label="Handshake" value={status?.handshakeOk ? 'OK' : 'Pending'} tone={status?.handshakeOk ? 'good' : 'warn'} />
         <StatCard label="Connectivity" value={online ? 'Online' : 'Offline'} tone={online ? 'good' : 'warn'} />
       </div>
 
