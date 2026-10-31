@@ -368,6 +368,30 @@ def api_request():
     save(db)
     return jsonify({"ok": True, "status": "pending", "message": "Request received – vendor must issue a key on the server"})
 
+@app.post("/api/device-status")
+def api_device_status():
+    """Return the current server-authoritative device licence state."""
+    data = request.get_json(force=True, silent=True) or {}
+    hwid = _valid_hwid(data.get("hwid"))
+    if not hwid:
+        return jsonify({"ok": False, "error": "hwid required"}), 400
+    db = load()
+    user = (db.get("users") or {}).get(hwid) or {}
+    req = (db.get("requests") or {}).get(hwid) or {}
+    mode = str(user.get("mode") or "unknown").lower()
+    return jsonify({
+        "ok": True,
+        "hwid": hwid,
+        "mode": mode,
+        "status": mode,
+        "licensed": mode == "licensed",
+        "allowed": mode not in ("suspended", "blocked", "expired"),
+        "requestStatus": req.get("status"),
+        "hasKey": bool(req.get("key") or user.get("key")),
+        "message": user.get("adminNote") or "",
+    })
+
+
 @app.post("/api/claim")
 def api_claim():
     data = request.get_json(force=True, silent=True) or {}
