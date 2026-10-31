@@ -50,6 +50,9 @@ export default function License() {
               title: 'Licence successfully activated',
               plan: result.activation?.plan || 'Your selected plan',
               seats: result.activation?.seats,
+              reference: result.payment?.reference || reference,
+              amount: result.transaction?.amount || result.payment?.amount,
+              currency: result.transaction?.currency || result.payment?.currency || 'ZAR',
             })
             toast('Payment verified and licence activated', 'success')
           }
@@ -124,7 +127,9 @@ export default function License() {
             <div style={{ width: 68, height: 68, margin: '0 auto 18px', display: 'grid', placeItems: 'center', borderRadius: 22, background: 'rgba(16,185,129,.16)', color: '#34d399', fontSize: 38 }}>✓</div>
             <h2 id="license-activated-title" style={{ margin: '0 0 8px' }}>{activationSplash.title}</h2>
             <p className="muted">Your Paystack payment has been independently verified and your SA Invoice Pro licence is active.</p>
-            <p><strong>{activationSplash.plan}</strong>{activationSplash.seats ? ` · ${activationSplash.seats} seats` : ''}</p>
+            <p><strong>{String(activationSplash.plan).toUpperCase()}</strong>{activationSplash.seats ? ` · ${activationSplash.seats} seats` : ''}</p>
+            {activationSplash.amount ? <p className="muted">Paid: {activationSplash.currency} {activationSplash.amount}</p> : null}
+            {activationSplash.reference ? <p className="muted" style={{ fontSize: 11, overflowWrap: 'anywhere' }}>Payment reference: {activationSplash.reference}</p> : null}
             <button type="button" className="btn btn-primary" style={{ width: '100%', marginTop: 12 }} onClick={() => setActivationSplash(null)}>Close and continue</button>
           </div>
         </div>
@@ -215,8 +220,8 @@ export default function License() {
 
       {licensed && (
         <div className="card" style={{ marginBottom: '1rem', borderLeft: '4px solid var(--green, #10b981)' }}>
-          <strong>Licensed</strong>
-          <p className="muted" style={{ margin: '0.35rem 0 0' }}>This device is activated against a paid/issued key.</p>
+          <strong>Licensed · {String(status?.meta?.plan || 'active').toUpperCase()}</strong>
+          <p className="muted" style={{ margin: '0.35rem 0 0' }}>Your {status?.meta?.plan || 'paid'} plan is active with {status?.meta?.seats || 'the included'} seat allowance. Your plan features are now unlocked.</p>
         </div>
       )}
 
