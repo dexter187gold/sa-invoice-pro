@@ -14,6 +14,7 @@ export default function License() {
   const [status, setStatus] = useState(null)
   const [serverUrl, setServerUrl] = useState('')
   const [email, setEmail] = useState('')
+  const [provider, setProvider] = useState('paystack')
   const [busy, setBusy] = useState(false)
   const [log, setLog] = useState(null)
   const [ping, setPing] = useState(null)
@@ -72,7 +73,7 @@ export default function License() {
   const buy = async (planId) => {
     setBusy(true)
     try {
-      await billing.buyPlan(planId, email)
+      await billing.buyPlan(planId, email, provider)
       // page navigates to PayFast
     } catch (e) {
       toast(e.message || String(e), 'error')
@@ -103,7 +104,7 @@ export default function License() {
       <div className="card" style={{ marginBottom: 12, borderLeft: '4px solid #38bdf8' }}>
         <strong>Self-serve licensing</strong>
         <p className="muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
-          Buy a plan → PayFast → seats attach to your <strong>email</strong> (not IP or MAC).
+          Choose Paystack or PayFast at checkout. Seats attach to your <strong>email</strong> (not IP or MAC).
           Soft device id only counts seats after claim. Admin:{" '"}
           <a href={APP_LINKS.licenseAdmin} target="_blank" rel="noreferrer">/admin</a>
           {" "}(PayFast merchant keys).
@@ -128,6 +129,11 @@ export default function License() {
 
       <div className="card" style={{ marginBottom: 16 }}>
         <h3 style={{ marginTop: 0 }}>Buy a plan</h3>
+        <label className="label" htmlFor="license-payment-provider">Payment provider</label>
+        <select id="license-payment-provider" className="input" value={provider} onChange={(e) => setProvider(e.target.value)} style={{ maxWidth: 320, marginBottom: 12 }}>
+          <option value="paystack">Paystack · Cards, eligible wallets, Capitec Pay & EFT</option>
+          <option value="payfast">PayFast · Cards & Instant EFT</option>
+        </select>
         <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fill,minmax(180px,1fr))' }}>
           {TIERS.map((t) => (
             <div
