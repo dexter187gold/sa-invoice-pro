@@ -14,7 +14,6 @@ const ROOT_NAV = [
   { to: '/accounting', label: 'Books', icon: '📒', section: 'books' },
   { to: '/settings', label: 'Settings', icon: '⚙️', section: 'settings' },
   { to: '/owner-console', label: 'Owner centre', icon: '🛡️', section: 'settings' },
-  { to: '/dev-portal', label: 'Dev portal', icon: '🛠️', section: 'settings' },
   { to: '/portal-admin', label: 'Client portal admin', icon: '👥', section: 'settings' },
 ]
 
@@ -66,7 +65,6 @@ const SECTION_NAV = {
     { to: '/team', label: 'Team', icon: '👥' },
     { to: '/branches', label: 'Branches', icon: '🏬' },
     { to: '/license', label: 'License', icon: '🔑' },
-    { to: '/dev-portal', label: 'Dev', icon: '🛠️' },
     { to: '__root__', label: 'Main', icon: '☰', isRoot: true },
   ],
 }
