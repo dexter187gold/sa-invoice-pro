@@ -5,7 +5,6 @@ import { formatMoney } from '../lib/money'
 import { StatusBadge, PageFade, EmptyState } from '../components/ui'
 import { openWhatsApp, buildQuoteAcceptedFollowUp, buildQuoteDeclinedFollowUp } from '../lib/share'
 import { monthCashSnapshot } from '../lib/documentActions'
-import { APP_VERSION } from '../config'
 import { buildCollectionRing } from '../lib/collectionRing'
 import { cashForecast } from '../lib/forecast'
 import { isLoadSheddingMode } from '../lib/loadShedding'
@@ -19,7 +18,6 @@ import {
 import { convertQuoteToInvoice, canConvertQuote } from '../lib/quoteConvert'
 import { computeTicketSla, sortBySlaUrgency } from '../lib/ticketSla'
 import OnboardingChecklist from '../components/OnboardingChecklist'
-import PhaseBoard from '../components/PhaseBoard'
 import DeskRulesCard from '../components/DeskRulesCard'
 import NpsCard from '../components/NpsCard'
 import SoftLicenseBanner from '../components/SoftLicenseBanner'
@@ -164,7 +162,6 @@ export default function Home() {
       <SoftLicenseBanner />
       <OwnerInsightsStrip />
       <OnboardingChecklist />
-      <PhaseBoard compact />
       <DeskRulesCard invoices={invoices} tickets={tickets} clients={clients} />
       <NpsCard clients={clients} toast={toast} />
 
@@ -200,7 +197,7 @@ export default function Home() {
         <div className="pulse-hero-text">
           <p className="pulse-kicker">{greeting()}</p>
           <h1 className="pulse-title">{company?.name || 'SA Invoice Pro'}</h1>
-          <p className="pulse-sub">Field desk · v{APP_VERSION}</p>
+          <p className="pulse-sub">Business workspace</p>
           <div className="pulse-hero-actions" aria-label="Quick create actions">
             <Link className="pulse-action primary" to="/invoices/new"><span>Invoice</span></Link>
             <Link className="pulse-action" to="/tickets"><span>Job card</span></Link>
