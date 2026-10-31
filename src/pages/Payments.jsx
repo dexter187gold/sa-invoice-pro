@@ -136,7 +136,7 @@ export default function Payments() {
       openWhatsApp(client?.phone, text)
       toast('Opening reminder…', 'success')
     } else {
-      openEmail(client?.email, `Payment reminder — ${inv.number}`, text.replace sup\*/g, ''))
+      openEmail(client?.email, `Payment reminder — ${inv.number}`, text.replace(/\*/g, ''))
       toast('Opening email…', 'success')
     }
   }
@@ -381,7 +381,7 @@ export default function Payments() {
         </div>
         <div>
           <label className="label">Method</label>
-          <select className="select" value={method} onChange={(e) => setMethod(e.target.value)}>
+          <select className="select value={method} onChange={(e) => setMethod(e.target.value)}>
             {['EFT', 'Bank transfer', 'Cash', 'Debit card', 'Credit card', 'Cheque', 'PayFast', 'Mobile payment', 'Other'].map((m) => <option key={m}>{m}</option>)}
           </select>
         </div>
@@ -448,6 +448,7 @@ export default function Payments() {
                 <div className="muted" style={{ fontSize: 13 }}>
                   {formatDateZA(p.date)} · {inv?.number || '—'} · {client?.name || '—'}
                   {p.reference ? ` · ${p.reference}` : ''}
+                  {' · '}{relativeTime(p.date || p.createdAt)}
                 </div>
               </div>
               <div className="list-card-actions">
