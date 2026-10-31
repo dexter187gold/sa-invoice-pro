@@ -1,5 +1,5 @@
 import React from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useApp } from './context/AppContext'
 import Shell from './components/Shell'
 import ToastHost from './components/ToastHost'
@@ -47,6 +47,39 @@ import Inbox from './pages/Inbox'
 import Portal from './pages/Portal'
 import { ErrorBoundary } from './components/ui'
 import RoleGate from './components/RoleGate'
+import { readAccessStatus, canAccessPath, pathFeatureLabel } from './lib/accessControl'
+
+function LicenseAccessGate({ children }) {
+  const { user } = useApp()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [state, setState] = React.useState({ loading: true, status: null })
+
+  React.useEffect(() => {
+    let alive = true
+    const refresh = async () => {
+      const status = await readAccessStatus()
+      if (alive) setState({ loading: false, status })
+    }
+    refresh()
+    window.addEventListener('sa-license-updated', refresh)
+    return () => { alive = false; window.removeEventListener('sa-license-updated', refresh) }
+  }, [location.pathname, user?.email])
+
+  const isOwner = !!(user?.isOwner || user?.role === 'owner' || user?.role === 'Owner')
+  if (state.loading) return <div className="muted" style={{ padding: 24 }}>Checking licence access…</div>
+  if (!canAccessPath(location.pathname, state.status, isOwner)) {
+    const feature = pathFeatureLabel(location.pathname)
+    return (
+      <div className="card" style={{ margin: 24, padding: 24 }}>
+        <h2>Unlock {feature}</h2>
+        <p className="muted">This feature is not included in your current trial or licence. Your business data remains safe. Choose a licence plan to unlock the features and access level included with it.</p>
+        <button type="button" className="btn btn-primary" onClick={() => navigate('/license')}>View licence plans</button>
+      </div>
+    )
+  }
+  return children
+}
 
 function Guard({ children, needCompany }) {
   const { ready, user, company } = useApp()
@@ -81,6 +114,7 @@ export default function App() {
         <Route path="/*" element={
           <Guard>
             <Shell>
+              <LicenseAccessGate>
               <RoleGate>
               <ErrorBoundary>
               <Routes>
@@ -126,6 +160,7 @@ export default function App() {
               </Routes>
               </ErrorBoundary>
               </RoleGate>
+              </LicenseAccessGate>
             </Shell>
           </Guard>
         } />
