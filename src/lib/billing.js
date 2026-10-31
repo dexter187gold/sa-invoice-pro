@@ -59,13 +59,23 @@ export function submitPayFastForm(processUrl, fields) {
   form.submit()
 }
 
-export async function buyPlan(plan, email) {
-  const session = await startCheckout({ plan, email })
-  if (!session.configured || !session.processUrl) {
-    throw new Error(session.error || 'PayFast not configured on license server')
+export async function buyPlan(plan, email, provider = 'paystack') {
+  if (provider === 'payfast') {
+    const session = await startCheckout({ plan, email })
+    if (!session.configured || !session.processUrl) throw new Error(session.error || 'PayFast not configured on license server')
+    submitPayFastForm(session.processUrl, session.fields)
+    return session
   }
-  submitPayFastForm(session.processUrl, session.fields)
-  return session
+  const base = ((await getServerUrl()) || SA_CONFIG.defaultLicenseServerUrl || '').replace(/\/$/, '')
+  const res = await fetch(`${base}/api/billing/paystack/initialize`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ plan, email: (email || '').trim().toLowerCase() }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok || !data.authorizationUrl) throw new Error(data.error || 'Paystack checkout could not be started')
+  await setSetting('licenseEmail', (email || '').trim().toLowerCase())
+  window.location.assign(data.authorizationUrl)
+  return data
 }
 
 export async function claimPaidLicense(email) {
