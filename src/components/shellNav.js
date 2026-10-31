@@ -15,6 +15,9 @@ const ROOT_NAV = [
   { to: '/settings', label: 'Settings', icon: '⚙️', section: 'settings' },
   { to: '/owner-console', label: 'Owner console', icon: '🛡️', section: 'settings' },
   { to: '/portal-admin', label: 'Client portal administration', icon: '👥', section: 'settings' },
+  { to: '/license', label: 'License & plans', icon: '🔑', section: 'settings' },
+  { to: '/support', label: 'Help & support', icon: '🛟', section: 'settings' },
+  { to: '/about', label: 'About SA Invoice Pro', icon: 'ⓘ', section: 'settings' },
 ]
 
 const SECTION_NAV = {
@@ -65,6 +68,8 @@ const SECTION_NAV = {
     { to: '/team', label: 'Team', icon: '👥' },
     { to: '/branches', label: 'Branches', icon: '🏬' },
     { to: '/license', label: 'License', icon: '🔑' },
+    { to: '/support', label: 'Help', icon: '🛟' },
+    { to: '/about', label: 'About', icon: 'ⓘ' },
     { to: '__root__', label: 'Main', icon: '☰', isRoot: true },
   ],
 }
@@ -77,7 +82,7 @@ function sectionFromPath(pathname) {
   if (p.startsWith('/tickets') || p.startsWith('/products')) return 'jobs'
   if (p.startsWith('/expenses') || p.startsWith('/accounting') || p.startsWith('/employees') || p.startsWith('/payroll')) return 'books'
   if (p.startsWith('/documents') || p.startsWith('/excel') || p.startsWith('/sync') || p.startsWith('/changelog')) return 'tools'
-  if (p.startsWith('/settings') || p.startsWith('/license') || p.startsWith('/team') || p.startsWith('/branches') || p.startsWith('/dev-portal') || p.startsWith('/owner')) return 'settings'
+  if (p.startsWith('/settings') || p.startsWith('/license') || p.startsWith('/team') || p.startsWith('/branches') || p.startsWith('/support') || p.startsWith('/about') || p.startsWith('/dev-portal') || p.startsWith('/owner')) return 'settings'
   return 'home'
 }
 
