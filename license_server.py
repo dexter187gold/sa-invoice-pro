@@ -472,6 +472,52 @@ def api_set_status():
     return redirect(url_for("dashboard", msg=f"Status for {hwid} → {status}"))
 
 
+
+@app.post("/owner/reset-for-repurchase")
+def owner_reset_for_repurchase():
+    """Owner-only entitlement reset; retain the payment audit trail."""
+    from hmac import compare_digest
+    token = (request.form.get("token") or "").strip()
+    expected = (os.environ.get("SA_OWNER_TOKEN") or "").strip()
+    if not expected or not token or not compare_digest(token, expected):
+        return ("Owner authentication required", 401)
+    email = (request.form.get("email") or "").strip().lower()
+    if not email or "@" not in email:
+        return ("Valid account email required", 400)
+    db = load()
+    account = (db.get("accounts") or {}).get(email)
+    if account:
+        account["status"] = "reset_for_repurchase"
+        account["resetAt"] = _now()
+        account["resetBy"] = "owner"
+        for hwid in list(account.get("devices") or []):
+            user = db.setdefault("users", {}).get(hwid)
+            if user:
+                user["mode"] = "trial"
+                user["status"] = "trial"
+                user["plan"] = "T"
+                user.pop("key", None)
+                user["adminNote"] = "Owner reset for repurchase; payment history retained."
+                user["statusSetAt"] = _now()
+        account["devices"] = []
+        key = account.get("key")
+        if key and key in db.setdefault("keys", {}):
+            db["keys"][key]["revoked"] = True
+            db["keys"][key]["revokedAt"] = _now()
+    for user in (db.get("users") or {}).values():
+        if str(user.get("email") or "").strip().lower() == email:
+            user["mode"] = "trial"
+            user["status"] = "trial"
+            user["plan"] = "T"
+            user.pop("key", None)
+            user["adminNote"] = "Owner reset for repurchase; payment history retained."
+            user["statusSetAt"] = _now()
+    if not account and not any(str(u.get("email") or "").strip().lower() == email for u in (db.get("users") or {}).values()):
+        return redirect(url_for("dashboard", msg=f"No licence account or device found for {email}."))
+    save(db)
+    return redirect(url_for("dashboard", msg=f"{email} reset for repurchase. Historical transactions retained."))
+
+
 def free_port(port=5055):
     """Kill any process listening on port (Windows / Unix)."""
     import subprocess
