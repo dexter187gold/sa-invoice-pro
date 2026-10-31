@@ -115,3 +115,37 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .card, .list-card, .btn, .tab, .nav-link, .side-link { transition: none !important; }
 }
+
+/* Soft neon graphite glass — neutral silver glow for the orb navigation */
+.sa-orb-grid a span:first-child {
+  background: rgba(190, 198, 207, .19) !important;
+  border: 1px solid rgba(224, 230, 238, .48) !important;
+  color: #f0f3f7;
+  box-shadow:
+    0 0 0 1px rgba(220, 228, 237, .10),
+    0 0 12px rgba(190, 201, 214, .24),
+    0 0 25px rgba(170, 184, 201, .13),
+    inset 0 1px 0 rgba(255, 255, 255, .42),
+    inset 0 -7px 14px rgba(92, 103, 118, .16) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(115%);
+  backdrop-filter: blur(16px) saturate(115%);
+}
+.sa-orb-grid a:hover span:first-child,
+.sa-orb-grid a:focus-visible span:first-child,
+.sa-orb-grid a:active span:first-child {
+  background: rgba(205, 214, 225, .30) !important;
+  border-color: rgba(242, 246, 250, .72) !important;
+  box-shadow: 0 0 16px rgba(205, 215, 228, .38), 0 0 32px rgba(175, 190, 210, .22), inset 0 1px 0 rgba(255,255,255,.58) !important;
+}
+.orb-shortcut {
+  background: rgba(157, 168, 181, .17) !important;
+  border-color: rgba(213, 221, 230, .32) !important;
+  color: var(--text);
+  box-shadow: 0 0 12px rgba(170, 183, 198, .13), inset 0 1px 0 rgba(255,255,255,.30) !important;
+}
+.orb-shortcut.active {
+  background: rgba(190, 202, 216, .27) !important;
+  border-color: rgba(235, 240, 246, .62) !important;
+  color: var(--text) !important;
+  box-shadow: 0 0 14px rgba(195, 207, 222, .30), 0 0 26px rgba(170, 184, 202, .14), inset 0 1px 0 rgba(255,255,255,.46) !important;
+}
