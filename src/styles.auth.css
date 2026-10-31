@@ -468,7 +468,7 @@
 .auth-logo-sequence { display:none; text-align:center; width:100%; color:#eafff1; position:relative; z-index:1; }
 .auth-logo-stage { height:224px; width:min(100%,390px); margin:0 auto; position:relative; display:grid; place-items:center; isolation:isolate; }
 .auth-logo-core { position:relative; z-index:4; display:grid; place-items:center; transform-origin:center; filter:drop-shadow(0 0 24px rgba(71,220,143,.30)); }
-.auth-logo-core img,.auth-logo-core svg { width:174px; height:174px; object-fit:contain; }
+.auth-logo-core img,.auth-logo-core svg { width:174px; height:174px; object-fit:contain; position:relative; z-index:5; opacity:1; filter:drop-shadow(0 5px 14px rgba(0,0,0,.38)); }
 .auth-logo-fill { position:absolute; z-index:-1; width:148px; height:148px; border-radius:50%; background:conic-gradient(from 0deg,rgba(95,255,166,.78) var(--fill,0%),rgba(21,105,72,.05) 0); filter:blur(2px); opacity:0; }
 .auth-binary-rain { position:absolute; inset:0; display:flex; justify-content:space-around; overflow:hidden; opacity:0; }
 .auth-binary-rain span { position:absolute; left:calc(5% + var(--stream)*12.5%); top:-80px; color:rgba(167,255,199,.88); font:700 10px/1.7 monospace; letter-spacing:2px; text-shadow:0 0 12px rgba(75,255,151,.8); animation:authBinaryFall 1s linear infinite; animation-delay:var(--delay); }
@@ -494,7 +494,7 @@
 .phase-3 .auth-invoice-sheet { transform:scale(.12) rotate(0); opacity:.1; }
 .phase-3 .auth-logo-core { opacity:1; animation:authLogoRebuild 1s cubic-bezier(.15,.85,.25,1) both; }
 .phase-4 .auth-logo-core { opacity:1; transform:scale(1); }
-.phase-4 .auth-logo-fill { opacity:.78; animation:authOrbFill 1s ease-out both; }
+.phase-4 .auth-logo-fill { opacity:.78; animation:authOrbFill 3.2s cubic-bezier(.18,.7,.2,1) both; }
 .phase-4 .auth-logo-orbit { animation:authOrbitPulse 1s ease-out both; }
 @keyframes authBinaryFall { from{transform:translateY(0);opacity:0}12%{opacity:1}to{transform:translateY(310px);opacity:0} }
 @keyframes authLogoBreak { 0%{opacity:1;transform:scale(1)}70%{opacity:.6;transform:scale(1.12)}100%{opacity:0;transform:scale(.18);filter:blur(8px)} }
@@ -521,3 +521,6 @@
   .auth-logo-core,.auth-logo-fill { opacity:1!important; transform:none!important; }
   .auth-binary-rain,.auth-invoice-build { display:none!important; }
 }
+
+/* Account controls in the signed-in top bar */
+.shell-account-action{border:1px solid rgba(148,163,184,.28);background:rgba(255,255,255,.08);color:inherit;border-radius:10px;min-width:34px;min-height:34px;padding:5px 8px;font-size:15px;cursor:pointer;display:inline-grid;place-items:center}.shell-account-action:hover{background:rgba(16,185,129,.18);border-color:rgba(16,185,129,.45)}
