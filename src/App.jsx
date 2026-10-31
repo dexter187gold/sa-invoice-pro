@@ -41,6 +41,7 @@ import ExcelViewer from './pages/ExcelViewer'
 import Changelog from './pages/Changelog'
 import SyncHealth from './pages/SyncHealth'
 import Support from './pages/Support'
+import About from './pages/About'
 import Roadmap from './pages/Roadmap'
 import Inbox from './pages/Inbox'
 import Portal from './pages/Portal'
@@ -108,6 +109,7 @@ export default function App() {
                 <Route path="/changelog" element={<Changelog />} />
                 <Route path="/sync" element={<SyncHealth />} />
                 <Route path="/support" element={<Support />} />
+                <Route path="/about" element={<About />} />
                 <Route path="/roadmap" element={<Roadmap />} />
                 <Route path="/accounting" element={<Accounting />} />
                 <Route path="/reports" element={<Reports />} />
