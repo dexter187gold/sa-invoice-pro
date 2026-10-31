@@ -1,32 +1,9 @@
-import React, { useEffect, useState } from 'react'
-import { brandLogoDataUrl } from '../lib/whiteLabel'
+import React from 'react'
 
-/** Lab logo — or white-label logo data URL when set. */
+/** Canonical SA Invoice Pro logo; user-uploaded white-label images cannot hide product branding. */
 export default function AppLogo({ size = 'md', showWordmark = false, className = '' }) {
   const px = typeof size === 'number' ? size : size === 'sm' ? 36 : size === 'lg' ? 88 : 56
-  const [logo, setLogo] = useState(() => {
-    try {
-      return brandLogoDataUrl()
-    } catch {
-      return ''
-    }
-  })
-
-  useEffect(() => {
-    const refresh = () => {
-      try {
-        setLogo(brandLogoDataUrl())
-      } catch {
-        setLogo('')
-      }
-    }
-    refresh()
-    window.addEventListener('sa-white-label', refresh)
-    return () => window.removeEventListener('sa-white-label', refresh)
-  }, [])
-
-  if (logo) {
-    return (
+  return (
       <div className={`app-logo-wrap ${className}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
         <img
           src={logo}
@@ -62,9 +39,10 @@ export default function AppLogo({ size = 'md', showWordmark = false, className =
         <circle cx="64" cy="64" r="60" fill="none" stroke="url(#saLabRing)" strokeWidth="4" opacity="0.95" />
         <circle cx="64" cy="64" r="52" fill="url(#saLabCore)" stroke="url(#saLabOrb)" strokeWidth="2.5" />
         <ellipse cx="48" cy="44" rx="18" ry="10" fill="rgba(232,121,249,0.18)" />
-        <text x="64" y="74" textAnchor="middle" fontFamily="system-ui,Segoe UI,sans-serif" fontWeight="800" fontSize="36" fill="url(#saLabOrb)" letterSpacing="-1">SA</text>
-        <rect x="40" y="88" width="48" height="14" rx="4" fill="rgba(232,121,249,0.15)" stroke="rgba(56,189,248,0.45)" strokeWidth="1" />
-        <text x="64" y="98" textAnchor="middle" fontFamily="system-ui,sans-serif" fontWeight="700" fontSize="9" fill="#e879f9" letterSpacing="1.5">PRO</text>
+        <text x="64" y="67" textAnchor="middle" fontFamily="Arial,system-ui,sans-serif" fontWeight="900" fontSize="53" fill="#f0fff6" letterSpacing="-4">SA</text>
+        <path d="M25 77H103" stroke="#6ee7b7" strokeWidth="1.6" opacity=".9" />
+        <text x="64" y="91" textAnchor="middle" fontFamily="Arial,system-ui,sans-serif" fontWeight="900" fontSize="10" fill="#a7f3d0" letterSpacing="2">INVOICE</text>
+        <text x="64" y="103" textAnchor="middle" fontFamily="Arial,system-ui,sans-serif" fontWeight="800" fontSize="7" fill="#d1fae5" letterSpacing="2.8">PRO</text>
       </svg>
       {showWordmark && (
         <div className="app-logo-wordmark">
