@@ -24,7 +24,7 @@ export const SYNC_API_URL =
 /** License / activation server */
 export const LICENSE_API_URL =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_LICENSE_API_URL) ||
-  'https://saip-license.onrender.com'
+  'https://sa-invoice-license.onrender.com'
 
 /** Dev portal (secrets vault) — restricted */
 export const DEV_PORTAL_PATH = '/dev-portal'
