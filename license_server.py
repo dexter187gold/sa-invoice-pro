@@ -529,28 +529,6 @@ def api_set_status():
         return jsonify({"ok": True, "hwid": hwid, "mode": status})
     return redirect(url_for("dashboard", msg=f"Status for {hwid} → {status}"))
 
-@app.post("/api/device-status")
-def api_device_status():
-    """Client asks: am I suspended/blocked?"""
-    data = request.get_json(force=True, silent=True) or {}
-    hwid = _valid_hwid(data.get("hwid"))
-    if not hwid:
-        return jsonify({"error": "hwid required", "ok": False}), 400
-    db = load()
-    u = db.get("users", {}).get(hwid) or {}
-    mode = u.get("mode") or "unknown"
-    req = (db.get("requests") or {}).get(hwid) or {}
-    return jsonify({
-        "ok": True,
-        "hwid": hwid,
-        "mode": mode,
-        "status": mode,
-        "licensed": mode == "licensed",
-        "allowed": mode not in ("suspended", "blocked", "expired"),
-        "requestStatus": req.get("status"),
-        "message": u.get("adminNote") or ""
-    })
-
 
 def free_port(port=5055):
     """Kill any process listening on port (Windows / Unix)."""
