@@ -441,4 +441,203 @@ def register_billing(app, load_db, save_db, load_owner_config, gen_key_fn=None):
             },
         })
 
-    print("[billing] PayFast checkout + ITN + account claim registered")
+
+    # Paystack hosted checkout: card wallets (Apple Pay / Google Pay where eligible),
+    # Capitec Pay and EFT are presented according to merchant dashboard eligibility.
+    def _paystack_request(method, path, payload=None):
+        secret = (os.environ.get("PAYSTACK_SECRET_KEY") or "").strip()
+        if not secret:
+            raise RuntimeError("Paystack is not configured")
+        body = None if payload is None else __import__("json").dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            "https://api.paystack.co" + path,
+            data=body,
+            headers={
+                "Authorization": "Bearer " + secret,
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": "SA-Invoice-Pro/1.0",
+            },
+            method=method,
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=20) as response:
+                result = __import__("json").loads(response.read().decode("utf-8"))
+        except Exception as exc:
+            raise RuntimeError("Paystack request failed") from exc
+        if not result.get("status"):
+            raise RuntimeError(str(result.get("message") or "Paystack rejected the request"))
+        return result.get("data") or {}
+
+    def _fulfil_paystack(db, payment_id, transaction):
+        pending = db.setdefault("pending_payments", {})
+        rec = pending.get(payment_id)
+        if not rec:
+            return False, "unknown payment"
+        if rec.get("provider") != "paystack":
+            return False, "payment provider mismatch"
+        if rec.get("status") == "paid" and rec.get("key"):
+            return True, "already fulfilled"
+        if rec.get("status") != "pending":
+            return False, "payment is not pending"
+        try:
+            expected_cents = int((Decimal(str(rec.get("amount"))) * 100).quantize(Decimal("1")))
+            actual_cents = int(transaction.get("amount") or 0)
+        except (InvalidOperation, ValueError, TypeError):
+            return False, "invalid amount"
+        if actual_cents != expected_cents or str(transaction.get("currency") or "").upper() != "ZAR":
+            return False, "amount or currency mismatch"
+        if str(transaction.get("reference") or "") != payment_id:
+            return False, "reference mismatch"
+        expected_email = str(rec.get("email") or "").lower()
+        customer_email = str((transaction.get("customer") or {}).get("email") or "").lower()
+        if customer_email and customer_email != expected_email:
+            return False, "email mismatch"
+        if str(transaction.get("status") or "").lower() != "success":
+            return False, "transaction not successful"
+        plan_id = str(rec.get("plan") or "")
+        if plan_id not in PLANS:
+            return False, "unknown plan"
+        plan = PLANS[plan_id]
+        now = _now()
+        key = gen_key(plan["code"])
+        accounts = db.setdefault("accounts", {})
+        existing = accounts.get(expected_email) or {}
+        accounts[expected_email] = {
+            **existing, "email": expected_email, "plan": plan_id,
+            "seats": int(plan["seats"]), "key": key, "status": "active",
+            "paidAt": now, "paymentId": payment_id,
+            "devices": existing.get("devices") or [],
+            "paystackReference": payment_id,
+        }
+        db.setdefault("keys", {})[key] = {
+            "key": key, "plan": plan["code"], "planId": plan_id,
+            "seats": int(plan["seats"]), "email": expected_email,
+            "createdAt": now, "used": False, "source": "paystack",
+            "paymentId": payment_id,
+        }
+        pending[payment_id] = {
+            **rec, "status": "paid", "key": key, "paidAt": now,
+            "paystackReference": payment_id,
+        }
+        save_db(db)
+        return True, "fulfilled"
+
+    @app.route("/api/billing/paystack/initialize", methods=["POST", "OPTIONS"])
+    def billing_paystack_initialize():
+        if request.method == "OPTIONS":
+            return ("", 204)
+        if not (os.environ.get("PAYSTACK_SECRET_KEY") or "").strip():
+            return jsonify({"ok": False, "configured": False, "error": "Paystack test/live secret is not configured on the server"}), 503
+        data = request.get_json(silent=True) or {}
+        plan_id = str(data.get("plan") or "shop").lower().strip()
+        email = str(data.get("email") or "").strip().lower()
+        if plan_id not in PLANS:
+            return jsonify({"ok": False, "error": "Unknown plan"}), 400
+        if not email or "@" not in email or len(email) > 254:
+            return jsonify({"ok": False, "error": "Valid email required"}), 400
+        plan = PLANS[plan_id]
+        amount_cents = int((Decimal(str(plan["amount"])) * 100).quantize(Decimal("1")))
+        payment_id = "saip-" + plan_id + "-" + secrets.token_hex(12)
+        site_url = os.environ.get("SA_WEBSITE_URL", "https://sa-invoice.pages.dev").rstrip("/")
+        callback_url = site_url + "/payment-success.html"
+        metadata = {
+            "order_id": payment_id,
+            "product": "SA Invoice Pro",
+            "plan": plan_id,
+            "seats": int(plan["seats"]),
+        }
+        db = load_db()
+        db.setdefault("pending_payments", {})[payment_id] = {
+            "provider": "paystack", "email": email, "plan": plan_id,
+            "seats": int(plan["seats"]), "amount": str(plan["amount"]),
+            "currency": "ZAR", "status": "pending", "createdAt": _now(),
+        }
+        save_db(db)
+        try:
+            channels = ["card", "apple_pay", "capitec_pay", "eft"]
+            checkout = _paystack_request("POST", "/transaction/initialize", {
+                "email": email, "amount": str(amount_cents), "currency": "ZAR",
+                "reference": payment_id, "callback_url": callback_url,
+                "metadata": metadata, "channels": channels,
+            })
+        except Exception as exc:
+            db = load_db()
+            rec = db.setdefault("pending_payments", {}).get(payment_id)
+            if rec and rec.get("status") == "pending":
+                rec["status"] = "initialization_failed"
+                rec["failureReason"] = str(exc)[:180]
+                save_db(db)
+            return jsonify({"ok": False, "error": str(exc)}), 502
+        db = load_db()
+        rec = db.setdefault("pending_payments", {}).get(payment_id, {})
+        rec["authorizationUrl"] = checkout.get("authorization_url")
+        rec["accessCode"] = checkout.get("access_code")
+        save_db(db)
+        return jsonify({
+            "ok": True, "provider": "paystack", "reference": payment_id,
+            "authorizationUrl": checkout.get("authorization_url"),
+            "accessCode": checkout.get("access_code"),
+            "amount": plan["amount"], "currency": "ZAR", "plan": plan_id,
+            "message": "Complete payment on Paystack Checkout. Licence activation follows server verification.",
+        })
+
+    @app.route("/api/billing/paystack/webhook", methods=["POST"])
+    def billing_paystack_webhook():
+        secret = (os.environ.get("PAYSTACK_SECRET_KEY") or "").strip()
+        signature = str(request.headers.get("x-paystack-signature") or "").strip()
+        raw = request.get_data(cache=True)
+        if not secret or not signature:
+            return "unauthorized", 401
+        expected = hmac.new(secret.encode("utf-8"), raw, hashlib.sha512).hexdigest()
+        if not hmac.compare_digest(expected, signature):
+            return "invalid signature", 401
+        try:
+            event = request.get_json(force=True, silent=False)
+        except Exception:
+            return "invalid json", 400
+        if not isinstance(event, dict) or event.get("event") != "charge.success":
+            return "ignored", 200
+        data = event.get("data") or {}
+        reference = str(data.get("reference") or "").strip()
+        if not reference:
+            return "missing reference", 400
+        # Always verify independently with Paystack before fulfilling the order.
+        try:
+            verified = _paystack_request("GET", "/transaction/verify/" + reference)
+        except Exception:
+            return "verification unavailable", 503
+        if str(verified.get("status") or "").lower() != "success":
+            return "not successful", 200
+        db = load_db()
+        ok, reason = _fulfil_paystack(db, reference, verified)
+        if not ok:
+            return reason, 400
+        return "OK", 200
+
+    @app.route("/api/billing/paystack/status", methods=["GET", "OPTIONS"])
+    def billing_paystack_status():
+        if request.method == "OPTIONS":
+            return ("", 204)
+        reference = str(request.args.get("reference") or "").strip()
+        if not reference or len(reference) > 100:
+            return jsonify({"ok": False, "error": "reference required"}), 400
+        db = load_db()
+        rec = (db.get("pending_payments") or {}).get(reference)
+        if not rec or rec.get("provider") != "paystack":
+            return jsonify({"ok": False, "error": "Payment not found"}), 404
+        if rec.get("status") == "paid":
+            return jsonify({"ok": True, "status": "paid", "licensed": True, "plan": rec.get("plan")})
+        # Verify only this server-stored reference; never trust a browser-supplied amount.
+        try:
+            verified = _paystack_request("GET", "/transaction/verify/" + reference)
+            if str(verified.get("status") or "").lower() == "success":
+                ok, reason = _fulfil_paystack(db, reference, verified)
+                if not ok:
+                    return jsonify({"ok": False, "error": reason}), 400
+                return jsonify({"ok": True, "status": "paid", "licensed": True, "plan": rec.get("plan")})
+            return jsonify({"ok": True, "status": str(verified.get("status") or "pending"), "licensed": False})
+        except Exception:
+            return jsonify({"ok": True, "status": "pending", "licensed": False})
+
+    print("[billing] PayFast + Paystack checkout/webhook + account claim registered")
