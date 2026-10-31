@@ -462,3 +462,62 @@
 .desk-rules-popover { position:absolute; right:0; bottom:54px; width:min(340px,calc(100vw - 28px)); max-height:min(55vh,420px); overflow:auto; padding:14px; background:rgba(9,38,28,.94)!important; border:1px solid rgba(207,238,219,.30)!important; color:#effff4; -webkit-backdrop-filter:blur(22px); backdrop-filter:blur(22px); box-shadow:0 18px 48px rgba(0,0,0,.34)!important; }
 .desk-rules-popover-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }.desk-rules-popover-head p { margin:4px 0 0;font-size:11px; }.desk-rules-popover ul { margin:12px 0 0;padding-left:18px; }.desk-rules-popover li { margin:0 0 10px;font-size:12px; }.desk-rules-popover li [data-severity="warn"] { color:#ffd58a; }
 @media(max-width:520px){.desk-rules-float{right:10px;bottom:calc(88px + env(safe-area-inset-bottom,0px));}.desk-rules-fab{min-height:40px;padding:7px 10px;}}
+
+
+/* Large five-second brand transformation on mobile sign-in */
+.auth-logo-sequence { display:none; text-align:center; width:100%; color:#eafff1; position:relative; z-index:1; }
+.auth-logo-stage { height:224px; width:min(100%,390px); margin:0 auto; position:relative; display:grid; place-items:center; isolation:isolate; }
+.auth-logo-core { position:relative; z-index:4; display:grid; place-items:center; transform-origin:center; filter:drop-shadow(0 0 24px rgba(71,220,143,.30)); }
+.auth-logo-core img,.auth-logo-core svg { width:174px; height:174px; object-fit:contain; }
+.auth-logo-fill { position:absolute; z-index:-1; width:148px; height:148px; border-radius:50%; background:conic-gradient(from 0deg,rgba(95,255,166,.78) var(--fill,0%),rgba(21,105,72,.05) 0); filter:blur(2px); opacity:0; }
+.auth-binary-rain { position:absolute; inset:0; display:flex; justify-content:space-around; overflow:hidden; opacity:0; }
+.auth-binary-rain span { position:absolute; left:calc(5% + var(--stream)*12.5%); top:-80px; color:rgba(167,255,199,.88); font:700 10px/1.7 monospace; letter-spacing:2px; text-shadow:0 0 12px rgba(75,255,151,.8); animation:authBinaryFall 1s linear infinite; animation-delay:var(--delay); }
+.auth-invoice-build { position:absolute; inset:0; display:grid; place-items:center; opacity:0; }
+.auth-invoice-sheet { position:absolute; width:116px; height:150px; padding:13px 10px; border:1px solid rgba(202,255,220,.75); border-radius:8px; background:linear-gradient(145deg,rgba(225,255,237,.94),rgba(165,226,190,.82)); color:#0b4a31; box-shadow:0 0 30px rgba(75,255,151,.26); display:flex; flex-direction:column; gap:9px; }
+.auth-invoice-sheet b { font-size:11px; letter-spacing:1px; }.auth-invoice-sheet i { display:block; height:4px; width:80%; border-radius:4px; background:rgba(13,91,57,.24); }.auth-invoice-sheet i:nth-of-type(2){width:62%}.auth-invoice-sheet i:nth-of-type(3){width:72%}.auth-invoice-sheet strong { margin-top:auto; align-self:flex-end; font-size:16px; }
+.sheet-0 { transform:translate(-25px,8px) rotate(-13deg); }.sheet-1 { transform:translate(25px,8px) rotate(13deg); }.sheet-2 { transform:translateY(-2px); }
+.auth-logo-orbit { position:absolute; width:204px; height:204px; border:1px solid rgba(175,255,205,.18); border-radius:50%; box-shadow:0 0 30px rgba(74,224,142,.08),inset 0 0 30px rgba(74,224,142,.06); }
+.auth-logo-caption { font-size:17px; font-weight:900; letter-spacing:.18em; text-shadow:0 0 18px rgba(91,255,161,.24); }
+.auth-logo-subcaption { margin-top:5px; font-size:9px; font-weight:700; letter-spacing:.22em; color:rgba(193,235,210,.68); }
+.phase-0 .auth-logo-core { animation:authLogoBreak 1s ease-in both; }
+.phase-0 .auth-logo-orbit { animation:authOrbitPulse 1s ease-in both; }
+.phase-1 .auth-logo-core { opacity:0; transform:scale(.35); }
+.phase-1 .auth-binary-rain { opacity:1; }
+.phase-1 .auth-binary-rain span { animation-duration:.9s; }
+.phase-2 .auth-logo-core { opacity:0; }
+.phase-2 .auth-binary-rain { opacity:.24; }
+.phase-2 .auth-binary-rain span { animation-duration:.7s; }
+.phase-2 .auth-invoice-build { opacity:1; }
+.phase-2 .auth-invoice-sheet { animation:authInvoiceCompile .95s cubic-bezier(.18,.8,.24,1) both; }
+.phase-3 .auth-binary-rain { opacity:0; }
+.phase-3 .auth-invoice-build { opacity:1; animation:authInvoiceToOrb 1s ease-in forwards; }
+.phase-3 .auth-invoice-sheet { transform:scale(.12) rotate(0); opacity:.1; }
+.phase-3 .auth-logo-core { opacity:1; animation:authLogoRebuild 1s cubic-bezier(.15,.85,.25,1) both; }
+.phase-4 .auth-logo-core { opacity:1; transform:scale(1); }
+.phase-4 .auth-logo-fill { opacity:.78; animation:authOrbFill 1s ease-out both; }
+.phase-4 .auth-logo-orbit { animation:authOrbitPulse 1s ease-out both; }
+@keyframes authBinaryFall { from{transform:translateY(0);opacity:0}12%{opacity:1}to{transform:translateY(310px);opacity:0} }
+@keyframes authLogoBreak { 0%{opacity:1;transform:scale(1)}70%{opacity:.6;transform:scale(1.12)}100%{opacity:0;transform:scale(.18);filter:blur(8px)} }
+@keyframes authLogoRebuild { 0%{opacity:0;transform:scale(.12);filter:blur(10px)}65%{opacity:1;transform:scale(1.08);filter:blur(0)}100%{opacity:1;transform:scale(1)} }
+@keyframes authInvoiceCompile { 0%{opacity:0;transform:translateY(48px) scale(.5)}30%{opacity:1}100%{opacity:1} }
+@keyframes authInvoiceToOrb { to{opacity:0;transform:scale(.18) rotate(12deg);filter:blur(6px)} }
+@keyframes authOrbFill { from{--fill:0%;opacity:.1;transform:scale(.8)}to{--fill:100%;opacity:.85;transform:scale(1.12)} }
+@keyframes authOrbitPulse { 0%{transform:scale(.65);opacity:0}55%{opacity:1}100%{transform:scale(1.1);opacity:.65} }
+@media(max-width:900px) {
+  .auth-layout { display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:4px; }
+  .auth-logo-sequence { display:block; min-height:250px; padding-top:2px; }
+  .auth-layout .auth-card-modern { align-self:stretch; width:100%; max-height:none; }
+  .auth-page { place-items:start center; padding-top:clamp(8px,2vh,24px); padding-bottom:24px; }
+}
+@media(max-width:560px) {
+  .auth-logo-stage { height:204px; }
+  .auth-logo-core img,.auth-logo-core svg { width:154px;height:154px; }
+  .auth-logo-orbit { width:182px;height:182px; }
+  .auth-logo-sequence { min-height:228px; }
+  .auth-page .auth-card-modern { padding:18px 16px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .auth-logo-sequence * { animation:none!important; transition:none!important; }
+  .auth-logo-core,.auth-logo-fill { opacity:1!important; transform:none!important; }
+  .auth-binary-rain,.auth-invoice-build { display:none!important; }
+}
