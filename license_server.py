@@ -400,6 +400,10 @@ def api_activate_validate():
     if not hwid or not key:
         return jsonify({"valid": False, "error": "hwid and key required", "ok": False}), 400
     db = load()
+    device = (db.get("users") or {}).get(hwid) or {}
+    device_mode = str(device.get("mode") or "").lower()
+    if device_mode in ("suspended", "blocked", "expired"):
+        return jsonify({"valid": False, "ok": False, "error": f"Device licence status is {device_mode}. Contact SA Invoice Pro support.", "mode": device_mode}), 403
     key_rec = db.get("keys", {}).get(key)
     req = db.get("requests", {}).get(hwid)
     # Key must exist on server and match this HWID
@@ -487,13 +491,24 @@ def api_set_status():
         return redirect(url_for("dashboard", msg="Invalid status"))
     db = load()
     users = db.setdefault("users", {})
+    previous = users.get(hwid, {})
     users[hwid] = {
-        **users.get(hwid, {}),
+        **previous,
         "hwid": hwid,
         "mode": status,
+        "status": status,
         "statusSetAt": _now(),
-        "lastSeen": users.get(hwid, {}).get("lastSeen") or _now(),
+        "lastSeen": previous.get("lastSeen") or _now(),
     }
+    # Keep the request/issued-key record in step with the owner status change.
+    req = (db.get("requests") or {}).get(hwid)
+    if req:
+        req["deviceStatus"] = status
+        req["statusUpdatedAt"] = _now()
+        if status in ("suspended", "blocked", "expired"):
+            req["status"] = status
+        elif req.get("status") in ("suspended", "blocked", "expired"):
+            req["status"] = "activated" if previous.get("key") else "pending"
     save(db)
     if request.is_json:
         return jsonify({"ok": True, "hwid": hwid, "mode": status})
@@ -509,11 +524,15 @@ def api_device_status():
     db = load()
     u = db.get("users", {}).get(hwid) or {}
     mode = u.get("mode") or "unknown"
+    req = (db.get("requests") or {}).get(hwid) or {}
     return jsonify({
         "ok": True,
         "hwid": hwid,
         "mode": mode,
-        "allowed": mode not in ("suspended", "blocked"),
+        "status": mode,
+        "licensed": mode == "licensed",
+        "allowed": mode not in ("suspended", "blocked", "expired"),
+        "requestStatus": req.get("status"),
         "message": u.get("adminNote") or ""
     })
 
