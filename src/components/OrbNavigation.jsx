@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import React, { useEffect, useRef, useState } from 'react'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import AppLogo from './AppLogo'
 import { ROOT_NAV } from './shellNav'
 
@@ -24,6 +24,8 @@ export default function OrbNavigation({ onCommand }) {
   const touch = useRef(null)
   const suppressClick = useRef(false)
   const nav = useNavigate()
+  const location = useLocation()
+  useEffect(() => setMenuOpen(false), [location.pathname, location.search])
   const menuItems = ROOT_NAV.filter((item) => item.to !== '/dev-portal')
 
   const start = (event) => {
