@@ -108,26 +108,28 @@ DASH = r'''
 <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>SA Invoice – License Server</title>
 <style>
-:root{--green:#007A4D;--navy:#0f172a;--bg:#f1f5f9;--card:#fff;--border:#e2e8f0}
-*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:#0f172a}
-header{background:var(--navy);color:#fff;padding:1rem 1.5rem;display:flex;justify-content:space-between;align-items:center}
-header h1{margin:0;font-size:1.1rem}main{max-width:1100px;margin:1.25rem auto;padding:0 1rem}
-.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.1rem;margin-bottom:1rem}
-.card h2{margin:0 0 .6rem;font-size:1rem;color:var(--green)}
-table{width:100%;border-collapse:collapse;font-size:.85rem}
-th,td{border-bottom:1px solid var(--border);padding:.45rem;text-align:left;vertical-align:top}
-th{font-size:.7rem;text-transform:uppercase;color:#64748b}
-code{background:#f1f5f9;padding:.1rem .3rem;border-radius:4px;font-size:.78rem}
-.btn{border:none;border-radius:8px;padding:.4rem .7rem;font-weight:600;cursor:pointer;font-size:.78rem;color:#fff;background:var(--green);margin:.12rem}
-.btn.sec{background:#334155}.btn.blue{background:#2563eb}.btn.warn{background:#b45309}
-.badge{display:inline-block;padding:.1rem .4rem;border-radius:999px;font-size:.68rem;font-weight:600}
-.badge.pending{background:#fef3c7;color:#92400e}.badge.issued{background:#d1fae5;color:#065f46}
-.badge.handshake{background:#e0e7ff;color:#3730a3}.badge.licensed{background:#d1fae5;color:#065f46}
-.stats{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem}
-.stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:.85rem 1rem;min-width:110px}
-.stat b{display:block;font-size:1.3rem;color:var(--green)}
-.flash{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;padding:.65rem 1rem;border-radius:8px;margin-bottom:1rem}
-.muted{color:#64748b;font-size:.8rem}form.inline{display:inline}
+:root{color-scheme:dark;--green:#34d399;--mint:#6ee7b7;--navy:#071b16;--bg:#07110f;--panel:#10231d;--panel2:#142b24;--border:rgba(167,243,208,.13);--muted:#9bb7aa}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;background:radial-gradient(ellipse at 12% -8%,rgba(16,185,129,.22),transparent 38%),linear-gradient(145deg,#07110f,#0c1d18 58%,#07110f);color:#e8f5ee;min-height:100vh}
+header{background:rgba(5,20,15,.82);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);color:#f0fdf4;padding:1.15rem clamp(1rem,4vw,3rem);display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap}
+header h1{margin:0;font-size:clamp(1.05rem,2vw,1.45rem);letter-spacing:-.035em}header span{color:var(--muted)}main{max-width:1440px;margin:2rem auto;padding:0 clamp(1rem,3vw,2rem)}
+.card{background:linear-gradient(145deg,rgba(20,43,36,.96),rgba(12,31,25,.96));border:1px solid var(--border);border-radius:20px;padding:clamp(1rem,2vw,1.5rem);margin-bottom:1.1rem;box-shadow:0 18px 55px rgba(0,0,0,.16)}
+.card h2{margin:0 0 .75rem;font-size:1.05rem;letter-spacing:-.02em;color:var(--mint)}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:.86rem;min-width:680px}
+th,td{border-bottom:1px solid var(--border);padding:.8rem .7rem;text-align:left;vertical-align:middle}
+th{font-size:.68rem;text-transform:uppercase;letter-spacing:.09em;color:#8eaa9d;background:rgba(3,15,11,.35)}
+tr:hover td{background:rgba(52,211,153,.045)}
+code{background:rgba(2,12,8,.6);border:1px solid var(--border);padding:.28rem .45rem;border-radius:7px;font-size:.78rem;color:#a7f3d0;overflow-wrap:anywhere}
+.btn{border:1px solid rgba(110,231,183,.2);border-radius:10px;padding:.58rem .85rem;font-weight:700;cursor:pointer;font-size:.78rem;color:#052016;background:linear-gradient(135deg,#6ee7b7,#34d399);margin:.16rem;transition:transform .16s,filter .16s}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.08)}.btn.sec{background:#263c34;color:#d9eee3}.btn.blue{background:#164e63;color:#cffafe}.btn.warn{background:#78350f;color:#ffedd5}
+.badge{display:inline-flex;align-items:center;padding:.28rem .6rem;border-radius:999px;font-size:.68rem;font-weight:750;letter-spacing:.025em;border:1px solid transparent}
+.badge.pending{background:rgba(245,158,11,.13);color:#fcd34d;border-color:rgba(245,158,11,.2)}.badge.issued{background:rgba(52,211,153,.13);color:#6ee7b7;border-color:rgba(52,211,153,.2)}
+.badge.handshake{background:rgba(129,140,248,.14);color:#c7d2fe}.badge.licensed{background:rgba(52,211,153,.13);color:#6ee7b7}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.8rem;margin-bottom:1.1rem}
+.stat{background:linear-gradient(145deg,rgba(20,43,36,.98),rgba(11,29,23,.98));border:1px solid var(--border);border-radius:17px;padding:1rem 1.1rem;min-width:0}
+.stat b{display:block;font-size:1.8rem;letter-spacing:-.05em;color:var(--green);margin-bottom:.15rem}
+.flash{background:rgba(16,185,129,.12);border:1px solid rgba(52,211,153,.28);color:#a7f3d0;padding:.85rem 1rem;border-radius:12px;margin-bottom:1rem}
+.muted{color:var(--muted);font-size:.82rem}form.inline{display:inline}
+@media(max-width:700px){header{align-items:flex-start}header>span{font-size:.75rem}main{margin:1rem auto}.card{border-radius:15px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style></head><body>
 <header>
   <div><h1>SA Invoice Pro – License Server</h1><span style="opacity:.8;font-size:.85rem">Handshake · Issue · Validate · Creator only</span></div>
