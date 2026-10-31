@@ -6,7 +6,7 @@ import { agedBuckets } from '../lib/accounting'
 import { Sync } from '../lib/sync'
 import { getWorkspaceSyncMeta } from '../lib/workspaceSync'
 
-/** Compact owner radar for Home / Dashboard — live from local books. */
+/** Business Command snapshot for Home / Dashboard — live from local books. */
 export default function OwnerInsightsStrip() {
   const { invoices = [], quotes = [], tickets = [], payments = [], expenses = [], clients = [] } = useApp()
   const meta = useMemo(() => getWorkspaceSyncMeta(), [])
@@ -43,7 +43,7 @@ export default function OwnerInsightsStrip() {
     <div className="card" style={{ marginBottom: 14 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
         <div>
-          <h3 style={{ margin: 0, fontSize: 16 }}>Owner radar</h3>
+          <h3 style={{ margin: 0, fontSize: 16 }}>Business Command</h3>
           <p className="muted" style={{ margin: '4px 0 0', fontSize: 12 }}>
             Live from this device · Cloud {cloud ? 'connected' : 'offline'}
             {meta?.at ? ` · last sync ${new Date(meta.at).toLocaleString()}` : ''}
