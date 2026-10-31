@@ -103,135 +103,75 @@ PLAN_LABEL = {
 }
 
 DASH = r'''
-<!doctype html>
-<html lang="en"><head>
-<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>SA Invoice – License Server</title>
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SA Invoice Pro · Owner Control Centre</title>
 <style>
-:root{color-scheme:dark;--green:#34d399;--mint:#6ee7b7;--navy:#071b16;--bg:#07110f;--panel:#10231d;--panel2:#142b24;--border:rgba(167,243,208,.13);--muted:#9bb7aa}
-*{box-sizing:border-box}body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;background:radial-gradient(ellipse at 12% -8%,rgba(16,185,129,.22),transparent 38%),linear-gradient(145deg,#07110f,#0c1d18 58%,#07110f);color:#e8f5ee;min-height:100vh}
-header{background:rgba(5,20,15,.82);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);color:#f0fdf4;padding:1.15rem clamp(1rem,4vw,3rem);display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap}
-header h1{margin:0;font-size:clamp(1.05rem,2vw,1.45rem);letter-spacing:-.035em}header span{color:var(--muted)}main{max-width:1440px;margin:2rem auto;padding:0 clamp(1rem,3vw,2rem)}
-.card{background:linear-gradient(145deg,rgba(20,43,36,.96),rgba(12,31,25,.96));border:1px solid var(--border);border-radius:20px;padding:clamp(1rem,2vw,1.5rem);margin-bottom:1.1rem;box-shadow:0 18px 55px rgba(0,0,0,.16)}
-.card h2{margin:0 0 .75rem;font-size:1.05rem;letter-spacing:-.02em;color:var(--mint)}
-table{width:100%;border-collapse:separate;border-spacing:0;font-size:.86rem;min-width:680px}
-th,td{border-bottom:1px solid var(--border);padding:.8rem .7rem;text-align:left;vertical-align:middle}
-th{font-size:.68rem;text-transform:uppercase;letter-spacing:.09em;color:#8eaa9d;background:rgba(3,15,11,.35)}
-tr:hover td{background:rgba(52,211,153,.045)}
-code{background:rgba(2,12,8,.6);border:1px solid var(--border);padding:.28rem .45rem;border-radius:7px;font-size:.78rem;color:#a7f3d0;overflow-wrap:anywhere}
-.btn{border:1px solid rgba(110,231,183,.2);border-radius:10px;padding:.58rem .85rem;font-weight:700;cursor:pointer;font-size:.78rem;color:#052016;background:linear-gradient(135deg,#6ee7b7,#34d399);margin:.16rem;transition:transform .16s,filter .16s}
-.btn:hover{transform:translateY(-1px);filter:brightness(1.08)}.btn.sec{background:#263c34;color:#d9eee3}.btn.blue{background:#164e63;color:#cffafe}.btn.warn{background:#78350f;color:#ffedd5}
-.badge{display:inline-flex;align-items:center;padding:.28rem .6rem;border-radius:999px;font-size:.68rem;font-weight:750;letter-spacing:.025em;border:1px solid transparent}
-.badge.pending{background:rgba(245,158,11,.13);color:#fcd34d;border-color:rgba(245,158,11,.2)}.badge.issued{background:rgba(52,211,153,.13);color:#6ee7b7;border-color:rgba(52,211,153,.2)}
-.badge.handshake{background:rgba(129,140,248,.14);color:#c7d2fe}.badge.licensed{background:rgba(52,211,153,.13);color:#6ee7b7}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.8rem;margin-bottom:1.1rem}
-.stat{background:linear-gradient(145deg,rgba(20,43,36,.98),rgba(11,29,23,.98));border:1px solid var(--border);border-radius:17px;padding:1rem 1.1rem;min-width:0}
-.stat b{display:block;font-size:1.8rem;letter-spacing:-.05em;color:var(--green);margin-bottom:.15rem}
-.flash{background:rgba(16,185,129,.12);border:1px solid rgba(52,211,153,.28);color:#a7f3d0;padding:.85rem 1rem;border-radius:12px;margin-bottom:1rem}
-.muted{color:var(--muted);font-size:.82rem}form.inline{display:inline}
-@media(max-width:700px){header{align-items:flex-start}header>span{font-size:.75rem}main{margin:1rem auto}.card{border-radius:15px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+:root{color-scheme:dark;--bg:#07110f;--panel:#10231d;--panel2:#142b24;--line:rgba(167,243,208,.14);--mint:#6ee7b7;--green:#34d399;--muted:#9bb7aa;--ink:#e8f5ee;--amber:#fbbf24;--red:#fb7185}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 10% 0%,#123c2d 0,transparent 34%),linear-gradient(145deg,#07110f,#0c1d18 60%,#07110f);color:var(--ink);font:14px Inter,system-ui,sans-serif;min-height:100vh}
+header{height:70px;position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;padding:0 22px;background:rgba(5,20,15,.9);backdrop-filter:blur(18px);border-bottom:1px solid var(--line)}
+.brand{font-weight:850;letter-spacing:-.03em;font-size:17px}.brand small{display:block;color:var(--muted);font-size:11px;font-weight:500;letter-spacing:.04em;margin-top:3px}
+a{color:var(--mint);text-decoration:none}.layout{display:grid;grid-template-columns:245px minmax(0,1fr);min-height:calc(100vh - 70px)}
+aside{padding:20px 14px;border-right:1px solid var(--line);background:rgba(4,18,13,.48)}.navlabel{font-size:10px;color:#6f9482;letter-spacing:.14em;text-transform:uppercase;padding:12px 10px 7px}
+nav a{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;color:#bdd3c7;margin:3px 0;font-weight:650}nav a:hover,nav a.active{background:rgba(52,211,153,.12);color:#a7f3d0}
+main{min-width:0;max-width:1600px;width:100%;padding:25px clamp(14px,3vw,36px);margin:0 auto}
+.topline{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:20px}.topline h1{font-size:clamp(23px,3vw,32px);letter-spacing:-.05em;margin:0}.muted{color:var(--muted)}.small{font-size:12px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.btn{border:1px solid rgba(110,231,183,.2);border-radius:10px;padding:9px 12px;font-weight:750;cursor:pointer;color:#052016;background:linear-gradient(135deg,#6ee7b7,#34d399);font-size:12px}.btn:hover{filter:brightness(1.1);transform:translateY(-1px)}.btn.sec{background:#263c34;color:#d9eee3}.btn.blue{background:#164e63;color:#cffafe}.btn.warn{background:#78350f;color:#ffedd5}.btn.danger{background:#552633;color:#ffe4e6}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}.stat,.panel{background:linear-gradient(145deg,rgba(20,43,36,.97),rgba(12,31,25,.97));border:1px solid var(--line);border-radius:16px;box-shadow:0 14px 38px #0002}.stat{padding:16px}.stat b{display:block;font-size:27px;color:var(--mint);letter-spacing:-.05em}.stat span{font-size:12px;color:var(--muted)}
+.panel{margin:14px 0;overflow:hidden}.panel>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:17px 19px;font-weight:800;color:var(--mint)}.panel>summary::-webkit-details-marker{display:none}.panel>summary:after{content:'＋';font-size:18px;color:var(--muted)}.panel[open]>summary:after{content:'−'}.panelbody{padding:0 18px 18px}.panel h2{font-size:15px;margin:0}
+.searchrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 14px}.searchrow input{flex:1;min-width:190px}input,select{background:#071b16;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:11px 12px;outline:none}input:focus,select:focus{border-color:#34d399}
+.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:12px}table{width:100%;border-collapse:collapse;min-width:720px}th,td{text-align:left;padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:middle}th{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#91aa9e;background:#081a14;position:sticky;top:0}tr:hover td{background:#34d39909}code{overflow-wrap:anywhere;color:#a7f3d0;background:#06130f;border:1px solid var(--line);padding:4px 6px;border-radius:7px;font-size:11px}
+.badge{display:inline-flex;padding:4px 8px;border-radius:99px;font-size:10px;font-weight:800;text-transform:uppercase;background:#263c34;color:#cbded3}.badge.licensed,.badge.issued{background:#064e3b;color:#a7f3d0}.badge.trial{background:#164e63;color:#cffafe}.badge.suspended,.badge.blocked,.badge.expired{background:#552633;color:#ffe4e6}
+.record{border:1px solid var(--line);border-radius:12px;margin-top:9px;background:#071a14}.record summary{cursor:pointer;padding:12px;display:flex;justify-content:space-between;gap:10px;align-items:center}.record summary:hover{background:#34d3990b}.recordbody{padding:0 12px 14px}.infogrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}.info{padding:10px;border:1px solid var(--line);border-radius:9px;background:#0b2018}.info label{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}.info strong{font-size:12px;overflow-wrap:anywhere}.flash{padding:12px 14px;border-radius:11px;margin-bottom:15px;background:#064e3b;color:#a7f3d0;border:1px solid #34d39955}
+.mobilemenu{display:none;background:#19352a;color:#d1fae5;border:1px solid var(--line);border-radius:9px;padding:8px 10px}
+@media(max-width:850px){.layout{grid-template-columns:1fr}aside{display:none;border-right:0;border-bottom:1px solid var(--line)}aside.open{display:block}.mobilemenu{display:inline-flex}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}header{padding:0 14px}}
+@media(max-width:480px){main{padding:16px 11px}.stats{gap:8px}.stat{padding:12px}.stat b{font-size:22px}.panel>summary{padding:14px}.panelbody{padding:0 10px 12px}}
 </style></head><body>
-<header>
-  <div><h1>SA Invoice Pro – License Server</h1><span style="opacity:.8;font-size:.85rem">Handshake · Issue · Validate · Creator only</span></div>
-  <span style="display:flex;align-items:center;gap:12px"><a href="/admin/billing" style="color:#6ee7b7;font-weight:700;text-decoration:none">Billing & transactions ↗</a><span>{{ now }}</span></span>
-</header>
+<header><div class="brand">SA INVOICE PRO <small>OWNER CONTROL CENTRE · LICENCE & DEVICE OPERATIONS</small></div><div class="actions"><a href="/admin/billing">Billing & transactions ↗</a><span class="muted small">{{ now }}</span></div></header>
+<div class="layout">
+<aside id="sidebar"><div class="navlabel">Workspace</div><nav>
+<a class="active" href="#overview">◈ Overview</a><a href="#users">♙ Users & devices</a><a href="#requests">⇢ Licence requests</a><a href="#keys">⌑ Keys & activations</a>
+</nav><div class="navlabel">Operations</div><nav><a href="#controls">⚙ Device controls</a><a href="/admin/billing">▤ Billing ledger ↗</a></nav><p class="muted small" style="padding:12px">Select a section to jump directly to its controls. Expand each record for its full details.</p></aside>
 <main>
+<div class="topline"><div><button class="mobilemenu" onclick="document.getElementById('sidebar').classList.toggle('open')">☰ Menu</button><h1 id="overview">Licence command centre</h1><div class="muted">Live server records · expandable user profiles · direct device actions</div></div><div class="actions"><button class="btn sec" onclick="location.reload()">↻ Refresh records</button><a class="btn" href="/admin/billing">Open billing</a></div></div>
 {% if message %}<div class="flash">{{ message }}</div>{% endif %}
-<div class="stats">
-  <div class="stat"><b>{{ n_handshake }}</b>Handshakes</div>
-  <div class="stat"><b>{{ n_pending }}</b>Pending requests</div>
-  <div class="stat"><b>{{ n_issued }}</b>Keys issued</div>
-  <div class="stat"><b>{{ n_licensed }}</b>Activated</div>
-</div>
+<div class="stats"><div class="stat"><b>{{ n_handshake }}</b><span>Registered devices / users</span></div><div class="stat"><b>{{ n_pending }}</b><span>Pending licence requests</span></div><div class="stat"><b>{{ n_issued }}</b><span>Issued keys</span></div><div class="stat"><b>{{ n_licensed }}</b><span>Licensed devices</span></div></div>
 
-<div class="card">
-  <h2>1. Device handshakes (Get HWID from clients)</h2>
-  <p class="muted">Client pressed Get HWID – server acknowledged the device.</p>
-  <table>
-    <tr><th>HW ID</th><th>Status</th><th>Version</th><th>Last seen</th></tr>
-    {% for u in handshakes %}
-    <tr>
-      <td><code>{{ u.hwid }}</code></td>
-      <td><span class="badge handshake">{{ u.mode or 'handshake' }}</span></td>
-      <td>{{ u.appVersion or '—' }}</td>
-      <td class="muted">{{ u.lastSeen }}</td>
-    </tr>
-    {% else %}
-    <tr><td colspan="4" class="muted">Waiting for client Get HWID…</td></tr>
-    {% endfor %}
-  </table>
+<details class="panel" id="users" open><summary><span>01 · Users & registered devices</span><span class="muted small">{{ n_handshake }} records</span></summary><div class="panelbody">
+<div class="searchrow"><input id="userSearch" type="search" placeholder="Search email, company, HWID, plan or status…" oninput="filterRecords()"><select id="statusFilter" onchange="filterRecords()"><option value="">All statuses</option><option>licensed</option><option>trial</option><option>handshake</option><option>suspended</option><option>blocked</option><option>pending_request</option></select><span class="muted small" id="visibleCount"></span></div>
+{% for u in handshakes %}
+<details class="record searchable" data-search="{{ (u.email or '')|lower }} {{ (u.company or '')|lower }} {{ (u.hwid or '')|lower }} {{ (u.plan or '')|lower }} {{ (u.mode or '')|lower }} {{ (u.appVersion or '')|lower }}">
+<summary><span><strong>{{ u.email or u.company or 'Unlinked device' }}</strong> <span class="muted small">· <code>{{ u.hwid }}</code></span></span><span class="badge {{ (u.mode or 'unknown')|lower }}">{{ u.mode or 'unknown' }}</span></summary>
+<div class="recordbody"><div class="infogrid">
+<div class="info"><label>Account email</label><strong>{{ u.email or 'Not linked' }}</strong></div><div class="info"><label>Company / account</label><strong>{{ u.company or 'Not supplied' }}</strong></div>
+<div class="info"><label>Device hardware ID</label><strong>{{ u.hwid }}</strong></div><div class="info"><label>Licence status</label><strong>{{ u.mode or 'unknown' }}</strong></div>
+<div class="info"><label>Plan</label><strong>{{ u.plan or 'Not assigned' }}</strong></div><div class="info"><label>Application version</label><strong>{{ u.appVersion or 'Unknown' }}</strong></div>
+<div class="info"><label>First handshake</label><strong>{{ u.handshakeAt or '—' }}</strong></div><div class="info"><label>Last seen</label><strong>{{ u.lastSeen or '—' }}</strong></div>
+<div class="info"><label>Activated at</label><strong>{{ u.activatedAt or '—' }}</strong></div><div class="info"><label>Licence expiry</label><strong>{{ u.expiresAt or u.expiry or 'Not recorded' }}</strong></div>
+<div class="info"><label>Seat / device limit</label><strong>{{ u.seats or 'Plan-defined' }}</strong></div><div class="info"><label>Admin note</label><strong>{{ u.adminNote or 'No admin note' }}</strong></div>
 </div>
+<details class="record" style="margin-top:12px"><summary>View complete raw device record</summary><div class="recordbody"><pre style="white-space:pre-wrap;overflow-wrap:anywhere;color:#b8d5c6;font-size:11px">{{ u|tojson(indent=2) }}</pre></div></details>
+<div class="actions" style="margin-top:12px"><form class="inline" method="post" action="/set-status"><input type="hidden" name="hwid" value="{{ u.hwid }}"><button class="btn blue" name="status" value="trial">Set trial</button><button class="btn" name="status" value="licensed">Activate</button><button class="btn warn" name="status" value="suspended">Suspend</button><button class="btn danger" name="status" value="blocked">Block device</button></form><button class="btn sec" onclick="navigator.clipboard.writeText({{ u.hwid|tojson }})">Copy HWID</button></div>
+</div></details>
+{% else %}<p class="muted">No registered users or devices yet. New handshakes will appear here.</p>{% endfor %}
+</div></details>
 
-<div class="card">
-  <h2>2. License requests – approve to generate encrypted key</h2>
-  <table>
-    <tr><th>HW ID</th><th>Company</th><th>Asked</th><th>When</th><th>Issue key</th></tr>
-    {% for r in pending %}
-    <tr>
-      <td><code>{{ r.hwid }}</code></td>
-      <td>{{ r.company or '—' }}</td>
-      <td>{{ r.plan }}</td>
-      <td class="muted">{{ r.at }}</td>
-      <td>
-        <form class="inline" method="post" action="/issue">
-          <input type="hidden" name="hwid" value="{{ r.hwid }}"/>
-          <button class="btn" name="plan" value="T">7-day trial</button>
-          <button class="btn blue" name="plan" value="S">Standard</button>
-          <button class="btn sec" name="plan" value="P">Pro</button>
-          <button class="btn warn" name="plan" value="L">Lifetime</button>
-        </form>
-      </td>
-    </tr>
-    {% else %}
-    <tr><td colspan="5" class="muted">No pending requests</td></tr>
-    {% endfor %}
-  </table>
-</div>
+<details class="panel" id="requests" open><summary><span>02 · Licence requests & approvals</span><span class="muted small">{{ n_pending }} awaiting action</span></summary><div class="panelbody">
+{% for r in pending %}<div class="record"><div class="recordbody" style="padding-top:12px"><div class="infogrid"><div class="info"><label>Device</label><strong><code>{{ r.hwid }}</code></strong></div><div class="info"><label>Company / customer</label><strong>{{ r.company or '—' }}</strong></div><div class="info"><label>Requested plan</label><strong>{{ r.plan or '—' }}</strong></div><div class="info"><label>Requested at</label><strong>{{ r.at or '—' }}</strong></div></div><form class="actions" method="post" action="/issue" style="margin-top:12px"><input type="hidden" name="hwid" value="{{ r.hwid }}"><button class="btn blue" name="plan" value="T">Issue 7-day trial</button><button class="btn" name="plan" value="S">Issue Standard</button><button class="btn sec" name="plan" value="P">Issue Pro</button><button class="btn warn" name="plan" value="L">Issue Lifetime</button></form></div></div>{% else %}<p class="muted">No pending requests. New requests will appear here automatically after refresh.</p>{% endfor %}
+</div></details>
 
-<div class="card">
-  <h2>3. Issued keys & activations</h2>
-  <table>
-    <tr><th>HW ID</th><th>Status</th><th>Plan</th><th>Key</th><th>Activated</th></tr>
-    {% for r in issued %}
-    <tr>
-      <td><code>{{ r.hwid }}</code></td>
-      <td><span class="badge issued">{{ r.status }}</span></td>
-      <td>{{ r.plan }}</td>
-      <td><code>{{ r.key }}</code></td>
-      <td class="muted">{{ r.activatedAt or '—' }}</td>
-    </tr>
-    {% else %}
-    <tr><td colspan="5" class="muted">None yet</td></tr>
-    {% endfor %}
-  </table>
-</div>
+<details class="panel" id="keys"><summary><span>03 · Issued keys & activation history</span><span class="muted small">{{ n_issued }} keys</span></summary><div class="panelbody"><div class="tablewrap"><table><thead><tr><th>Device HWID</th><th>Status</th><th>Plan</th><th>Key</th><th>Activated</th></tr></thead><tbody>
+{% for r in issued %}<tr><td><code>{{ r.hwid }}</code></td><td><span class="badge issued">{{ r.status }}</span></td><td>{{ r.plan }}</td><td><code>{{ r.key }}</code></td><td>{{ r.activatedAt or '—' }}</td></tr>{% else %}<tr><td colspan="5" class="muted">No issued keys recorded.</td></tr>{% endfor %}
+</tbody></table></div></div></details>
 
-<div class="card">
-  <h2>4. Control connected devices (change status)</h2>
-  <p class="muted">Suspended / blocked devices cannot activate or use licensed features once they check in.</p>
-  <table>
-    <tr><th>HW ID</th><th>Current</th><th>Last seen</th><th>Set status</th></tr>
-    {% for u in handshakes %}
-    <tr>
-      <td><code>{{ u.hwid }}</code></td>
-      <td><span class="badge">{{ u.mode }}</span></td>
-      <td class="muted">{{ u.lastSeen }}</td>
-      <td>
-        <form class="inline" method="post" action="/set-status">
-          <input type="hidden" name="hwid" value="{{ u.hwid }}"/>
-          <button class="btn" name="status" value="licensed">Licensed</button>
-          <button class="btn blue" name="status" value="trial">Trial</button>
-          <button class="btn warn" name="status" value="suspended">Suspend</button>
-          <button class="btn sec" name="status" value="blocked">Block</button>
-        </form>
-      </td>
-    </tr>
-    {% else %}
-    <tr><td colspan="4" class="muted">No devices yet</td></tr>
-    {% endfor %}
-  </table>
-</div>
-</main></body></html>
+<details class="panel" id="controls"><summary><span>04 · Device operations & status controls</span><span class="muted small">Owner actions</span></summary><div class="panelbody"><p class="muted">Changes are submitted to the server immediately. Suspended and blocked devices lose access when they next check in.</p><div class="tablewrap"><table><thead><tr><th>Device</th><th>Current state</th><th>Last activity</th><th>Quick action</th></tr></thead><tbody>{% for u in handshakes %}<tr><td><code>{{ u.hwid }}</code><br><span class="muted small">{{ u.email or u.company or 'Unlinked' }}</span></td><td><span class="badge {{ (u.mode or 'unknown')|lower }}">{{ u.mode or 'unknown' }}</span></td><td>{{ u.lastSeen or '—' }}</td><td><form class="inline" method="post" action="/set-status"><input type="hidden" name="hwid" value="{{ u.hwid }}"><button class="btn blue" name="status" value="trial">Trial</button><button class="btn" name="status" value="licensed">Licensed</button><button class="btn warn" name="status" value="suspended">Suspend</button><button class="btn danger" name="status" value="blocked">Block</button></form></td></tr>{% else %}<tr><td colspan="4" class="muted">No devices available.</td></tr>{% endfor %}</tbody></table></div></div></details>
+<p class="muted small">Control Centre · Server-authoritative licence records · All status changes are processed by the licence service.</p>
+</main></div>
+<script>
+function filterRecords(){const q=(document.getElementById('userSearch')?.value||'').toLowerCase().trim();const status=(document.getElementById('statusFilter')?.value||'').toLowerCase();let n=0;document.querySelectorAll('.searchable').forEach(el=>{const match=(!q||el.dataset.search.includes(q))&&(!status||el.dataset.search.split(' ').includes(status));el.hidden=!match;if(match)n++});const count=document.getElementById('visibleCount');if(count)count.textContent=n+' matching records'}
+document.querySelectorAll('nav a[href^="#"]').forEach(a=>a.addEventListener('click',()=>{document.querySelectorAll('nav a').forEach(x=>x.classList.remove('active'));a.classList.add('active');const target=document.querySelector(a.getAttribute('href'));if(target?.tagName==='DETAILS')target.open=true;document.getElementById('sidebar').classList.remove('open')}));
+filterRecords();
+</script></body></html>
 '''
 
 
@@ -262,7 +202,7 @@ def dashboard():
     reqs = list(db.get("requests", {}).values())
     pending = [r for r in reqs if r.get("status") == "pending"]
     issued = [r for r in reqs if r.get("key")]
-    handshakes = sorted(users, key=lambda x: x.get("lastSeen", ""), reverse=True)[:40]
+    handshakes = sorted(users, key=lambda x: x.get("lastSeen", ""), reverse=True)
     n_licensed = len([u for u in users if u.get("mode") == "licensed"])
     return render_template_string(
         DASH,
