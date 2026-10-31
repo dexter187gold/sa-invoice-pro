@@ -104,8 +104,6 @@ export default {
         return json({ error: 'Cloud AI is temporarily unavailable. Your local help remains available; try again shortly.' }, 502)
       }
     }
-    // The legacy workers.dev hostname is no longer an app entry point.
-    // Keep only the authenticated AI API for the canonical Pages frontend.
-    return json({ error: 'This app has moved.', app: 'https://sa-invoice-pro.pages.dev' }, 410, { 'cache-control': 'no-store' })
+    return env.ASSETS.fetch(request)
   },
 }
