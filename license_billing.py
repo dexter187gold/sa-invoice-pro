@@ -204,6 +204,7 @@ def register_billing(app, load_db, save_db, load_owner_config, gen_key_fn=None):
         db = load_db()
         pending = db.setdefault("pending_payments", {})
         pending[payment_id] = {
+            "provider": "payfast",
             "email": email,
             "plan": plan_id,
             "seats": plan["seats"],
@@ -345,8 +346,25 @@ def register_billing(app, load_db, save_db, load_owner_config, gen_key_fn=None):
             "source": "payfast",
             "paymentId": payment_id,
         }
+        payment_details = {
+            "provider": "payfast",
+            "reference": payment_id,
+            "gatewayTransactionId": str(form.get("pf_payment_id") or ""),
+            "status": "success",
+            "amount": str(expected_amount),
+            "currency": "ZAR",
+            "customerEmail": expected_email,
+            "plan": expected_plan,
+            "planName": plan.get("name"),
+            "seats": seats,
+            "channel": "PayFast",
+            "paidAt": now,
+            "verifiedAt": now,
+            "licenceKey": key,
+        }
         pending[payment_id] = {
             **rec,
+            "provider": "payfast",
             "email": expected_email,
             "plan": expected_plan,
             "seats": seats,
@@ -354,7 +372,9 @@ def register_billing(app, load_db, save_db, load_owner_config, gen_key_fn=None):
             "key": key,
             "paidAt": now,
             "pfPaymentId": str(form.get("pf_payment_id") or ""),
+            "transaction": payment_details,
         }
+        db.setdefault("transactions", {})[payment_id] = payment_details
         save_db(db)
         return "OK", 200
 
@@ -743,12 +763,14 @@ def register_billing(app, load_db, save_db, load_owner_config, gen_key_fn=None):
         pending = db.get("pending_payments") or {}
         rows = []
         for ref, rec in pending.items():
-            if rec.get("provider") != "paystack":
+            provider = rec.get("provider") or ("payfast" if rec.get("pfPaymentId") else "paystack")
+            if provider not in ("paystack", "payfast"):
                 continue
             details = rec.get("transaction") or {}
             rows.append({
                 "reference": ref,
-                "gateway_id": rec.get("gatewayTransactionId") or details.get("gatewayTransactionId") or "—",
+                "provider": provider,
+                "gateway_id": rec.get("gatewayTransactionId") or rec.get("pfPaymentId") or details.get("gatewayTransactionId") or "—",
                 "email": rec.get("email") or details.get("customerEmail") or "—",
                 "plan": (rec.get("plan") or details.get("plan") or "—"),
                 "amount": rec.get("amount") or details.get("amount") or "—",
@@ -770,8 +792,8 @@ def register_billing(app, load_db, save_db, load_owner_config, gen_key_fn=None):
         <h1>SA Invoice Pro · Billing & activation ledger</h1><p class="muted">Verified Paystack transactions and account activations. Refresh this page for current server records.</p>
         <div class="stats"><div class="card stat"><b>{{ successful|length }}</b>Successful activations</div><div class="card stat"><b>{{ pending_count }}</b>Pending payments</div><div class="card stat"><b>{{ failed_count }}</b>Failed / init errors</div><div class="card stat"><b>R {{ total }}</b>Verified gross total</div></div>
         <div class="card"><form method="post"><input type="hidden" name="token" value="{{ token }}"><button>Refresh ledger</button></form></div>
-        <div class="card"><h2>Transactions & licence references</h2><div class="scroll"><table><thead><tr><th>Status</th><th>Customer</th><th>Plan</th><th>Amount</th><th>Channel</th><th>Payment reference</th><th>Gateway ID</th><th>Created</th><th>Paid / activated</th><th>Licence key</th></tr></thead><tbody>
-        {% for r in rows %}<tr><td>{{ r.status }}</td><td>{{ r.email }}</td><td>{{ r.plan }}</td><td>{{ r.currency }} {{ r.amount }}</td><td>{{ r.channel }}</td><td><code>{{ r.reference }}</code></td><td><code>{{ r.gateway_id }}</code></td><td>{{ r.created }}</td><td>{{ r.paid }}</td><td><code>{{ r.key }}</code></td></tr>{% else %}<tr><td colspan="10">No Paystack transactions recorded yet.</td></tr>{% endfor %}
+        <div class="card"><h2>Transactions & licence references</h2><div class="scroll"><table><thead><tr><th>Provider</th><th>Status</th><th>Customer</th><th>Plan</th><th>Amount</th><th>Channel</th><th>Payment reference</th><th>Gateway ID</th><th>Created</th><th>Paid / activated</th><th>Licence key</th></tr></thead><tbody>
+        {% for r in rows %}<tr><td>{{ r.provider }}</td><td>{{ r.status }}</td><td>{{ r.email }}</td><td>{{ r.plan }}</td><td>{{ r.currency }} {{ r.amount }}</td><td>{{ r.channel }}</td><td><code>{{ r.reference }}</code></td><td><code>{{ r.gateway_id }}</code></td><td>{{ r.created }}</td><td>{{ r.paid }}</td><td><code>{{ r.key }}</code></td></tr>{% else %}<tr><td colspan="11">No payment transactions recorded yet.</td></tr>{% endfor %}
         </tbody></table></div></div>
         <p class="muted">Only transactions independently verified by Paystack count toward successful activations and gross totals.</p>
         </main></body></html>
