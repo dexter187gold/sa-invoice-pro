@@ -28,6 +28,18 @@ export default function OrbNavigation({ onCommand }) {
   useEffect(() => setMenuOpen(false), [location.pathname, location.search])
   const menuItems = ROOT_NAV.filter((item) => item.to !== '/dev-portal')
 
+  useEffect(() => {
+    if (!menuOpen) return undefined
+    const previousOverflow = document.body.style.overflow
+    const previousOverscroll = document.body.style.overscrollBehavior
+    document.body.style.overflow = 'hidden'
+    document.body.style.overscrollBehavior = 'none'
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.body.style.overscrollBehavior = previousOverscroll
+    }
+  }, [menuOpen])
+
   const start = (event) => {
     const point = event.touches?.[0]
     if (!point) return
@@ -42,12 +54,25 @@ export default function OrbNavigation({ onCommand }) {
     if (!point) return
     const dx = point.clientX - origin.x
     const dy = point.clientY - origin.y
-    if (Date.now() - origin.time > 700 || Math.abs(dx) < 58 || Math.abs(dx) < Math.abs(dy) * 1.25) return
+    if (Date.now() - origin.time > 900 || Math.max(Math.abs(dx), Math.abs(dy)) < 48) return
     suppressClick.current = true
-    setMenuOpen(false)
-    const destination = dx < 0 ? '/invoices/new' : '/tickets'
-    setGestureHint(dx < 0 ? 'New invoice' : 'Create job card')
-    nav(destination)
+    if (Math.abs(dy) > Math.abs(dx) * 1.15) {
+      if (dy < -48) {
+        setMenuOpen(true)
+        setGestureHint('Main menu')
+      } else {
+        setMenuOpen(false)
+        setGestureHint('Menu closed')
+      }
+    } else if (Math.abs(dx) >= 58) {
+      setMenuOpen(false)
+      const destination = dx < 0 ? '/invoices/new' : '/tickets'
+      setGestureHint(dx < 0 ? 'New invoice' : 'Create job card')
+      nav(destination)
+    } else {
+      suppressClick.current = false
+      return
+    }
     window.setTimeout(() => { suppressClick.current = false; setGestureHint('') }, 650)
   }
 
@@ -78,26 +103,29 @@ export default function OrbNavigation({ onCommand }) {
         .orb-shortcut.active{border-color:color-mix(in srgb,var(--green,#16a34a) 55%,transparent);color:var(--green,#16a34a);background:color-mix(in srgb,var(--green,#16a34a) 12%,var(--card,#111827))}
         .orb-shortcut-icon{font-size:19px;line-height:1.15;font-weight:800}.orb-shortcut-label{font-size:9px;font-weight:700;white-space:nowrap}
         .orb-command{appearance:none}
-        .sa-orb-trigger{pointer-events:auto;position:relative;flex:0 0 76px;width:76px;height:76px;border-radius:50%;border:1px solid rgba(255,255,255,.75);padding:5px;display:grid;place-items:center;background:radial-gradient(circle at 34% 24%,#ffffff 0%,#d8fff0 8%,#168c61 34%,#07553d 66%,#062d27 100%);box-shadow:0 0 0 3px #12b98135,0 0 18px 7px #10b98175,0 0 42px 12px #05966945,inset 0 3px 9px #ffffffb8,inset 0 -8px 16px #001b16b8;cursor:pointer;transition:transform .2s ease,filter .2s ease}
+        .sa-orb-trigger{touch-action:none;user-select:none;-webkit-user-select:none;pointer-events:auto;position:relative;flex:0 0 76px;width:76px;height:76px;border-radius:50%;border:1px solid rgba(255,255,255,.75);padding:5px;display:grid;place-items:center;background:radial-gradient(circle at 34% 24%,#ffffff 0%,#d8fff0 8%,#168c61 34%,#07553d 66%,#062d27 100%);box-shadow:0 0 0 3px #12b98135,0 0 18px 7px #10b98175,0 0 42px 12px #05966945,inset 0 3px 9px #ffffffb8,inset 0 -8px 16px #001b16b8;cursor:pointer;transition:transform .2s ease,filter .2s ease}
         .sa-orb-trigger:before{content:"";position:absolute;inset:5px;border-radius:50%;border:1px solid #ffffff75;box-shadow:inset 0 0 13px #ffffff55;pointer-events:none}
         .sa-orb-trigger:after{content:"";position:absolute;left:15%;top:9%;width:48%;height:22%;border-radius:50%;background:linear-gradient(#ffffffb8,#ffffff00);filter:blur(2px);transform:rotate(-24deg);pointer-events:none}
         .sa-orb-trigger:active{transform:scale(.94)}.sa-orb-trigger img{border-radius:50%!important;width:54px!important;height:54px!important;object-fit:contain!important;position:relative;z-index:1;filter:drop-shadow(0 2px 4px #001b16aa)}
-        .sa-orb-menu{position:absolute;bottom:88px;left:50%;transform:translateX(-50%);width:min(430px,calc(100vw - 24px));max-height:min(62vh,520px);overflow:auto;padding:15px;border:1px solid var(--border);border-radius:22px;background:color-mix(in srgb,var(--card,#101827) 94%,transparent);backdrop-filter:blur(22px);box-shadow:0 18px 60px #0008;pointer-events:auto;animation:orbMenuIn .28s cubic-bezier(.2,.8,.2,1) both}
-        @keyframes orbMenuIn{from{opacity:0;transform:translate(-50%,12px) scale(.94)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
-        .sa-orb-menu-head{display:flex;align-items:center;gap:10px;padding:2px 4px 13px;border-bottom:1px solid var(--border);margin-bottom:10px}.sa-orb-menu-head strong{font-size:14px}.sa-orb-menu-head span{display:block;font-size:11px;color:var(--muted)}
-        .sa-orb-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.sa-orb-grid a{display:flex;align-items:center;gap:8px;min-width:0;padding:10px 8px;border:1px solid var(--border);border-radius:12px;background:var(--bg);color:var(--text);text-decoration:none;font-size:11px;font-weight:700;animation:orbItemIn .3s both}.sa-orb-grid a:nth-child(2){animation-delay:25ms}.sa-orb-grid a:nth-child(3){animation-delay:50ms}.sa-orb-grid a:nth-child(4){animation-delay:75ms}
-        @keyframes orbItemIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-        .sa-orb-menu a:hover,.sa-orb-grid a:focus-visible{border-color:var(--green,#16a34a);outline:none}.sa-orb-hint{position:absolute;bottom:88px;left:50%;transform:translateX(-50%);white-space:nowrap;padding:7px 12px;border-radius:99px;background:#064e3b;color:white;font-size:11px;font-weight:800;box-shadow:0 4px 20px #0005}
+        .sa-orb-menu{position:fixed;z-index:82;left:50%;bottom:94px;transform:translateX(-50%);width:min(94vw,760px);max-height:min(68vh,590px);overflow:auto;overscroll-behavior:contain;touch-action:pan-y;padding:10px 8px 18px;background:transparent;border:0;border-radius:0;box-shadow:none;pointer-events:auto;animation:orbMenuIn .32s cubic-bezier(.2,.8,.2,1) both}
+        @keyframes orbMenuIn{from{opacity:0;transform:translate(-50%,18px) scale(.96)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
+        .sa-orb-menu-head{display:flex;align-items:center;justify-content:center;gap:8px;padding:4px 8px 12px;color:var(--text);text-shadow:0 2px 12px #0009}.sa-orb-menu-head strong{font-size:13px}.sa-orb-menu-head span{display:block;font-size:10px;color:var(--muted)}
+        .sa-orb-grid{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:clamp(10px,2.2vw,20px);padding:6px 2px}
+        .sa-orb-grid a{position:relative;display:flex;flex:0 0 clamp(70px,15vw,104px);min-height:82px;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:9px 5px;border:1px solid transparent;border-radius:18px;background:transparent;color:var(--text);text-decoration:none;font-size:11px;font-weight:700;text-align:center;text-shadow:0 2px 8px #000b;animation:orbItemIn .36s both;transition:transform .18s ease,color .18s ease,background .18s ease}
+        .sa-orb-grid a span:first-child{display:grid;place-items:center;width:48px;height:48px;border-radius:50%;font-size:25px;line-height:1;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.24);box-shadow:0 5px 18px #0003;backdrop-filter:blur(12px);text-shadow:none}
+        .sa-orb-grid a:nth-child(3n+1){animation-delay:35ms}.sa-orb-grid a:nth-child(3n+2){animation-delay:75ms}.sa-orb-grid a:nth-child(3n){animation-delay:115ms}
+        @keyframes orbItemIn{from{opacity:0;transform:translateY(16px) scale(.86)}to{opacity:1;transform:translateY(0) scale(1)}}
+        .sa-orb-menu a:hover,.sa-orb-grid a:focus-visible,.sa-orb-grid a:active{color:var(--green,#16a34a);background:rgba(16,185,129,.10);outline:none;transform:translateY(-3px) scale(1.04)}.sa-orb-hint{position:absolute;bottom:88px;left:50%;transform:translateX(-50%);white-space:nowrap;padding:7px 12px;border-radius:99px;background:#064e3b;color:white;font-size:11px;font-weight:800;box-shadow:0 4px 20px #0005}
         @media(max-width:520px){.sa-orb-dock{gap:3px}.orb-rail{max-width:calc((100vw - 88px)/2);gap:1px}.orb-shortcut{min-width:42px;padding:5px 4px}.orb-shortcut-label{font-size:8px}.sa-orb-trigger{width:68px;height:68px;flex-basis:68px}.sa-orb-trigger img{width:48px!important;height:48px!important}.sa-orb-menu{bottom:80px}.sa-orb-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
         @media(prefers-reduced-motion:reduce){.sa-orb-menu,.sa-orb-grid a{animation:none!important}.sa-orb-trigger{transition:none}}
-        html.nav-bottom .main{padding-bottom:calc(108px + env(safe-area-inset-bottom,0px))!important}
+        html.nav-bottom .main{padding-bottom:calc(108px + env(safe-area-inset-bottom,0px))!important} html.nav-bottom,html.nav-bottom body{overscroll-behavior-y:none} .sa-orb-dock{touch-action:pan-x}
       `}</style>
       <nav className="sa-orb-dock" aria-label="SA Invoice Pro navigation">
         {renderRail(LEFT, 'left')}
         <div style={{ position: 'relative', flex: '0 0 76px', display: 'grid', placeItems: 'center' }}>
           {menuOpen ? (
-            <div className="sa-orb-menu" role="dialog" aria-label="Main menu">
-              <div className="sa-orb-menu-head"><AppLogo size={34}/><div><strong>SA Invoice Pro</strong><span>Business workspace</span></div></div>
+            <div className="sa-orb-menu" role="dialog" aria-label="Main menu" onTouchStart={(event) => event.stopPropagation()} onTouchMove={(event) => event.stopPropagation()}>
+              <div className="sa-orb-menu-head"><AppLogo size={30}/><div><strong>SA Invoice Pro</strong><span>Choose where you want to go</span></div></div>
               <div className="sa-orb-grid">
                 {menuItems.map((item) => (
                   <NavLink key={item.to} to={item.to} onClick={() => setMenuOpen(false)}>
@@ -108,7 +136,7 @@ export default function OrbNavigation({ onCommand }) {
             </div>
           ) : null}
           {gestureHint ? <span className="sa-orb-hint">{gestureHint}</span> : null}
-          <button type="button" className="sa-orb-trigger" onTouchStart={start} onTouchEnd={end} onTouchCancel={() => { touch.current = null }} onClick={() => { if (suppressClick.current) return; setMenuOpen((value) => !value) }} aria-label={menuOpen ? 'Close main menu' : 'Open main menu'} aria-expanded={menuOpen} title="SA Invoice Pro main menu — swipe left for invoice, right for job card">
+          <button type="button" className="sa-orb-trigger" onTouchStart={start} onTouchMove={(event) => event.preventDefault()} onTouchEnd={end} onTouchCancel={() => { touch.current = null }} onClick={() => { if (suppressClick.current) return; setMenuOpen((value) => !value) }} aria-label={menuOpen ? 'Close main menu' : 'Open main menu'} aria-expanded={menuOpen} title="SA Invoice Pro main menu — swipe left for invoice, right for job card">
             <AppLogo size={54}/>
           </button>
         </div>
