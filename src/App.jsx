@@ -44,7 +44,6 @@ import Support from './pages/Support'
 import Roadmap from './pages/Roadmap'
 import Inbox from './pages/Inbox'
 import Portal from './pages/Portal'
-import { APP_VERSION } from './config'
 import { ErrorBoundary } from './components/ui'
 import RoleGate from './components/RoleGate'
 
