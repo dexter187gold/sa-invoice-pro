@@ -1,6 +1,6 @@
 {
   "name": "sa-invoice-pro",
-  "version": "6.45.0",
+  "version": "6.45.1",
   "private": true,
   "type": "module",
   "scripts": {

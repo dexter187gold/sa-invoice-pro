@@ -1,6 +1,6 @@
-# SA Invoice Pro 6.42.0
+# SA Invoice Pro 6.45.1
 
-WhatsApp Inbox Cloud replies · respond to business messages from the desk.
+Credit note modal · portal Accept queue · Meta WhatsApp Cloud send · desk for SA repair shops.
 
 ```bash
 npm install && npm run dev

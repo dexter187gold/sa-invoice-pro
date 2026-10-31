@@ -1,10 +1,13 @@
-export const APP_VERSION = '6.45.0'
+export const APP_VERSION = '6.45.1'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
-export const APP_CODENAME = '6.45.0 · Credit modal UI · portal sync'
+export const APP_CODENAME = '6.45.1 · CI export fix · credit modal'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
 export const DEFAULT_VAT_RATE = 0.15
+/** @deprecated prefer DEFAULT_VAT_RATE — kept for AppContext import */
+export const VAT_RATE_DEFAULT = DEFAULT_VAT_RATE
+
 export const SUPPORT_EMAIL = 'sainvoicepro@gmail.com'
 export const PRODUCT_EMAIL = 'sainvoicepro@gmail.com'
 
@@ -47,4 +50,19 @@ export const APP_LINKS = {
   clientPortal: CLIENT_PORTAL_URL,
   website: 'https://sa-invoice-pro-website.pages.dev',
   supportEmail: SUPPORT_EMAIL,
+}
+
+/**
+ * Legacy bag used across license / billing / settings / sync pages.
+ * Prefer named exports (SYNC_API_URL, LICENSE_API_URL, APP_VERSION) for new code.
+ */
+export const SA_CONFIG = {
+  appVersion: APP_VERSION,
+  productEmail: PRODUCT_EMAIL,
+  supportEmail: SUPPORT_EMAIL,
+  syncServerUrl: SYNC_API_URL,
+  defaultLicenseServerUrl: LICENSE_API_URL,
+  clientPortalUrl: CLIENT_PORTAL_URL,
+  website: APP_LINKS.website,
+  payfastSandbox: PAYFAST_SANDBOX,
 }

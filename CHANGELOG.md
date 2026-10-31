@@ -1,3 +1,8 @@
+## 6.45.1 — CI export fix
+
+- Restore `SA_CONFIG` and `VAT_RATE_DEFAULT` exports on `src/config.js` (unblocks check-exports / build)
+- Align README title version with package.json
+
 ## 6.45.0 — Credit modal UI + portal sync fix
 
 - **Invoices**: CN button opens CreditNoteModal (amount + reason; partial/full)
