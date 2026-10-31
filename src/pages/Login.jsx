@@ -26,12 +26,12 @@ function AuthLogoSequence() {
           {[0,1,2].map((n) => <div className={`auth-invoice-sheet sheet-${n}`} key={n}><b>INVOICE</b><i /><i /><i /><strong>R</strong></div>)}
         </div>
         <div className="auth-logo-core">
-          <div className="auth-logo-fill" aria-hidden="true" />
+          <div className="auth-logo-fill" aria-hidden="true"><span /></div>
           <AppLogo size={174} />
         </div>
         <div className="auth-logo-orbit" aria-hidden="true" />
       </div>
-      <div className="auth-logo-caption">SA INVOICE PRO</div>
+      <div className="auth-logo-caption" data-text="SA INVOICE PRO">SA INVOICE PRO</div>
       <div className="auth-logo-subcaption">YOUR BUSINESS. IN PERFECT ORDER.</div>
     </section>
   )
