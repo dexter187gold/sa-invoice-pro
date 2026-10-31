@@ -11,7 +11,6 @@ const SPLASH_MS = 1600
 export default function Login() {
   const { login, register, resetPassword, refresh, toast } = useApp()
   const nav = useNavigate()
-  const fileRef = useRef(null)
   const [mode, setMode] = useState('in')
   const [busy, setBusy] = useState(false)
   const [profileCount, setProfileCount] = useState(0)
@@ -98,40 +97,6 @@ export default function Login() {
     }
   }
 
-  const onImportBackup = async (e) => {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    setBusy(true)
-    try {
-      const text = await file.text()
-      const data = JSON.parse(text)
-      let stats
-      try {
-        stats = await db.replaceAllAtomic(data, { allowPartial: true })
-      } catch (primaryErr) {
-        console.warn('[login import] atomic failed, merge import', primaryErr)
-        stats = await db.importAll(data, { wipe: true })
-      }
-      await refresh?.()
-      const users = await db.getAll(db.STORES.users)
-      setProfileCount((users || []).length)
-      const nUsers = (users || []).length
-      toast(
-        `Backup imported: ${stats.rows} records` +
-          (nUsers
-            ? '. Sign in with the username/email and password from that backup.'
-            : '. No users in backup — use Create account next.'),
-        'success',
-      )
-      setMode('in')
-    } catch (err) {
-      toast(err.message || 'Import failed — check the JSON file', 'error')
-    } finally {
-      setBusy(false)
-    }
-  }
-
   return (
     <div className="auth-page">
       {splash && (
@@ -162,7 +127,7 @@ export default function Login() {
         </aside>
 
         <div className="auth-card-modern">
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}><AppLogo size={72} /></div>
+          <div className="auth-logo-orb" aria-label="SA Invoice Pro"><span className="auth-logo-binary" aria-hidden="true">01010011 01000001 00100000 01001001 01001110 01010110 01001111 01001001 01000011 01000101</span><AppLogo size={82} /></div>
           <div className="tabs">
             <button type="button" className={`tab ${mode === 'in' ? 'active' : ''}`} onClick={() => setMode('in')}>Sign in</button>
             <button type="button" className={`tab ${mode === 'up' ? 'active' : ''}`} onClick={() => setMode('up')}>Create account</button>
@@ -170,7 +135,7 @@ export default function Login() {
           </div>
 
           {!profileCount && mode === 'in' && (
-            <p className="muted" style={{ textAlign: 'center', fontSize: 13, marginTop: 0 }}>No local profiles on this device yet. Create an account or import a backup below.</p>
+            <p className="muted" style={{ textAlign: 'center', fontSize: 13, marginTop: 0 }}>No local profiles on this device yet. Create an account to get started.</p>
           )}
 
           <form onSubmit={onSubmit} className="stack" style={{ gap: 12 }}>
@@ -238,12 +203,7 @@ export default function Login() {
             )}
           </form>
 
-          <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #e5eee8' }}>
-            <p className="muted" style={{ fontSize: 12, margin: '0 0 8px', textAlign: 'center' }}>Device reset or new phone? Import your SA Invoice Pro backup JSON here (before sign-in). Use the password from that backup.</p>
-            <input ref={fileRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={onImportBackup} />
-            <button type="button" className="btn btn-outline" style={{ width: '100%' }} disabled={busy} onClick={() => fileRef.current?.click()}>Import backup JSON</button>
-          </div>
-        </div>
+/div>
       </div>
     </div>
   )
