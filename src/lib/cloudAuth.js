@@ -199,6 +199,7 @@ export async function cloudLogin(username, password, ctx = {}) {
     name: local.name || local.username,
     cloud: false,
   }
+  await isolateWorkspaceForAccount(session.email)
   setSession?.(session)
   setUser?.(session)
   if (refresh) await refresh()
