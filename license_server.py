@@ -843,7 +843,7 @@ def public_config():
 def admin_page():
     cfg = load_owner_config()
     pf = cfg.get("payfast") or {}
-    return render_template_string(ADMIN_HTML, cfg=cfg, pf=pf, token_hint="SA_OWNER_TOKEN env or sa-owner-2026")
+    return render_template_string(ADMIN_HTML, cfg=cfg, pf=pf, paystack=cfg.get("paystack") or {})
 
 @app.post("/admin/save")
 def admin_save():
@@ -859,6 +859,18 @@ def admin_save():
         "passphrase": (request.form.get("passphrase") or "").strip(),
         "sandbox": request.form.get("sandbox") == "on"
     }
+    # Secret stays server-side; it is never included in public config or HTML.
+    paystack = cfg.get("paystack") or {}
+    submitted_secret = (request.form.get("paystackSecretKey") or "").strip()
+    if submitted_secret:
+        if not submitted_secret.startswith(("sk_test_", "sk_live_")):
+            return "Invalid Paystack secret format. Paste a test or live secret key.", 400
+        paystack["secretKey"] = submitted_secret
+        paystack["mode"] = "live" if submitted_secret.startswith("sk_live_") else "test"
+    else:
+        requested_mode = request.form.get("paystackMode") or paystack.get("mode") or "test"
+        paystack["mode"] = "live" if requested_mode == "live" else "test"
+    cfg["paystack"] = paystack
     save_owner_config(cfg)
     return redirect("/admin?saved=1")
 
@@ -881,11 +893,11 @@ button{margin-top:1rem;width:100%;padding:.75rem;border:0;border-radius:10px;bac
 <div class="wrap">
   <div class="card">
     <h1>Admin portal</h1>
-    <p class="muted">Push Google Sign-In Client ID and PayFast credentials to all app users. Clients fetch <code>/api/public-config</code> on startup.</p>
+    <p class="muted">Manage payment credentials securely. Secret keys remain server-side and are never returned to the browser.</p>
     <p class="muted">After save, users pick up config on next app launch.</p>
     <form method="post" action="/admin/save">
       <label>Owner token</label>
-      <input type="password" name="token" placeholder="{{ token_hint }}" required/>
+      <input type="password" name="token" placeholder="Enter owner token" autocomplete="current-password" required/>
       <label>Google OAuth Web Client ID</label>
       <input type="text" name="googleClientId" value="{{ cfg.googleClientId or '' }}" placeholder="….apps.googleusercontent.com"/>
       <label>Public license server URL (optional)</label>
@@ -896,8 +908,18 @@ button{margin-top:1rem;width:100%;padding:.75rem;border:0;border-radius:10px;bac
       <input type="text" name="merchantKey" value="{{ pf.merchantKey or '' }}"/>
       <label>PayFast Passphrase</label>
       <input type="password" name="passphrase" value="{{ pf.passphrase or '' }}"/>
-      <label><input type="checkbox" name="sandbox" {% if pf.sandbox != False %}checked{% endif %}/> Sandbox mode</label>
-      <button type="submit">Save &amp; push to clients</button>
+      <label><input type="checkbox" name="sandbox" {% if pf.sandbox != False %}checked{% endif %}/> PayFast sandbox mode</label>
+      <hr style="border:0;border-top:1px solid #334155;margin:1.2rem 0"/>
+      <h2 style="font-size:1rem;color:#6ee7b7">Paystack checkout</h2>
+      <p class="muted">Status: {{ 'Live' if paystack.mode == 'live' else ('Test' if paystack.secretKey else 'Not configured') }}. Saved keys are never displayed. Leave the field blank to keep the current key.</p>
+      <label>Paystack test/live secret key</label>
+      <input type="password" name="paystackSecretKey" placeholder="sk_test_… or sk_live_…" autocomplete="new-password"/>
+      <label>Checkout mode</label>
+      <select name="paystackMode" style="width:100%;padding:.65rem;border-radius:8px;background:#0f172a;color:#fff;border:1px solid #334155">
+        <option value="test" {% if paystack.mode != 'live' %}selected{% endif %}>Test</option>
+        <option value="live" {% if paystack.mode == 'live' %}selected{% endif %}>Live</option>
+      </select>
+      <button type="submit">Save payment settings</button>
     </form>
   </div>
   <p class="muted">Open this page at <code>/admin</code> on your license server host. Set env <code>SA_OWNER_TOKEN</code> in production.</p>
