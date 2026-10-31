@@ -634,12 +634,31 @@ def register_billing(app, load_db, save_db, load_owner_config, gen_key_fn=None):
             event = request.get_json(force=True, silent=False)
         except Exception:
             return "invalid json", 400
-        if not isinstance(event, dict) or event.get("event") != "charge.success":
+        if not isinstance(event, dict):
             return "ignored", 200
         data = event.get("data") or {}
         reference = str(data.get("reference") or "").strip()
         if not reference:
             return "missing reference", 400
+        event_name = str(event.get("event") or "")
+        if event_name == "charge.failed":
+            db = load_db()
+            rec = db.setdefault("pending_payments", {}).get(reference)
+            if rec and rec.get("provider") == "paystack" and rec.get("status") == "pending":
+                rec["status"] = "failed"
+                rec["failureReason"] = str(data.get("gateway_response") or "Payment failed")[:180]
+                rec["failedAt"] = _now()
+                db.setdefault("transactions", {})[reference] = {
+                    "provider": "paystack", "reference": reference,
+                    "status": "failed", "customerEmail": rec.get("email"),
+                    "plan": rec.get("plan"), "amount": rec.get("amount"),
+                    "currency": rec.get("currency", "ZAR"),
+                    "failureReason": rec["failureReason"], "failedAt": rec["failedAt"],
+                }
+                save_db(db)
+            return "OK", 200
+        if event_name != "charge.success":
+            return "ignored", 200
         # Always verify independently with Paystack before fulfilling the order.
         try:
             verified = _paystack_request("GET", "/transaction/verify/" + reference)
@@ -687,7 +706,20 @@ def register_billing(app, load_db, save_db, load_owner_config, gen_key_fn=None):
                     "email": rec.get("email"), "paidAt": refreshed.get("paidAt"),
                     "reference": reference, "transaction": refreshed.get("transaction") or {},
                 })
-            return jsonify({"ok": True, "status": str(verified.get("status") or "pending"), "licensed": False})
+            gateway_status = str(verified.get("status") or "pending").lower()
+            if gateway_status in ("failed", "abandoned"):
+                rec["status"] = "failed"
+                rec["failureReason"] = str(verified.get("gateway_response") or gateway_status)[:180]
+                rec["failedAt"] = _now()
+                db.setdefault("transactions", {})[reference] = {
+                    "provider": "paystack", "reference": reference,
+                    "status": "failed", "customerEmail": rec.get("email"),
+                    "plan": rec.get("plan"), "amount": rec.get("amount"),
+                    "currency": rec.get("currency", "ZAR"),
+                    "failureReason": rec["failureReason"], "failedAt": rec["failedAt"],
+                }
+                save_db(db)
+            return jsonify({"ok": True, "status": gateway_status, "licensed": False})
         except Exception:
             return jsonify({"ok": True, "status": "pending", "licensed": False})
 
