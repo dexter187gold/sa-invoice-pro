@@ -143,7 +143,6 @@ export default function Shell({ children, sections: sectionsProp }) {
           }}
           onClick={() => {
             setOpen(false)
-            setMoreOpen(false)
             setCommandOpen(false)
             nav('/')
           }}
