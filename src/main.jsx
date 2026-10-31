@@ -28,6 +28,7 @@ import './styles.brain.css'
 import './styles.modern-ux.css'
 import './styles.pulse.css'
 import './styles.nav-comfort.css'
+import './styles.glass.css'
 
 try {
   const saved = localStorage.getItem('sa_theme')
