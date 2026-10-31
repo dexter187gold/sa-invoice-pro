@@ -18,7 +18,6 @@ export default function Shell({ children, sections: sectionsProp }) {
   const nav = useNavigate()
   const location = useLocation()
   const [open, setOpen] = useState(false)
-  const [moreOpen, setMoreOpen] = useState(false)
   const [commandOpen, setCommandOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -56,7 +55,6 @@ export default function Shell({ children, sections: sectionsProp }) {
   }, [])
 
   useEffect(() => {
-    setMoreOpen(false)
     setOpen(false)
     setCommandOpen(false)
   }, [location.pathname, location.search])
@@ -109,20 +107,18 @@ export default function Shell({ children, sections: sectionsProp }) {
       {gesturesOn ? (
         <GestureLayer
           onOpenMenu={() => {
-            setMoreOpen(true)
+            setPaletteOpen(true)
             setCommandOpen(false)
           }}
           onCloseMenu={() => {
-            setMoreOpen(false)
+            setPaletteOpen(false)
             setCommandOpen(false)
             setOpen(false)
           }}
           onOpenCommand={() => {
             setCommandOpen(true)
-            setMoreOpen(false)
           }}
           onCreate={(path) => {
-            setMoreOpen(false)
             setCommandOpen(false)
             nav(path)
           }}
@@ -132,20 +128,6 @@ export default function Shell({ children, sections: sectionsProp }) {
       <QuickActions open={commandOpen} onOpenChange={setCommandOpen} hideTrigger={true} sections={sections} />
 
       <div className="mobile-bar">
-        <button
-          type="button"
-          className="btn btn-outline btn-sm"
-          onClick={() => {
-            setMoreOpen((v) => !v)
-            setCommandOpen(false)
-            setOpen(false)
-          }}
-          aria-label={moreOpen ? 'Close main menu' : 'Open main menu'}
-          aria-expanded={moreOpen}
-          title="Main menu"
-        >
-          ☰
-        </button>
         <button
           type="button"
           className="brand-logo-trigger"
