@@ -49,6 +49,7 @@ export const APP_LINKS = {
   updatesServer: LICENSE_API_URL,
   clientPortal: CLIENT_PORTAL_URL,
   website: 'https://sa-invoice-pro-website.pages.dev',
+  licenseAdmin: 'https://sa-invoice-license.onrender.com/admin',
   supportEmail: SUPPORT_EMAIL,
 }
 
