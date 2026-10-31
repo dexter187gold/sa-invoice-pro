@@ -7,7 +7,8 @@ import { canUseCloudSync } from './soloMode.js'
 import * as db from './db.js'
 import { STORES } from './db.js'
 import { hashPassword } from './hash.js'
-import { ensureWorkspaceSynced, flushPushQueue, describeEnsureResult } from './workspaceSync.js'
+import { ensureWorkspaceSynced, flushPushQueue, clearPushQueue, describeEnsureResult } from './workspaceSync.js'
+import { getSession } from './storage.js'
 
 function isEmail(s) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || '').trim())
@@ -21,6 +22,36 @@ export function passwordMeetsPolicy(password) {
 
 export function passwordPolicyMessage() {
   return 'Password must be at least 6 characters and include letters and numbers (e.g. Shop123)'
+}
+
+
+/**
+ * IndexedDB is device-local, not account-local. Before changing identities,
+ * preserve the previous user's workspace under their email, then activate
+ * only the target account's saved workspace (or an empty one).
+ */
+async function isolateWorkspaceForAccount(targetEmail) {
+  const target = String(targetEmail || '').trim().toLowerCase()
+  if (!target) throw new Error('Cannot switch workspace without an account email')
+  const active = getSession()
+  let previous = String(active?.email || '').trim().toLowerCase()
+  if (!previous || previous === target) {
+    const localUsers = (await db.getAll(STORES.users)) || []
+    if (localUsers.length === 1) {
+      const candidate = String(localUsers[0]?.email || '').trim().toLowerCase()
+      if (candidate && candidate !== target) previous = candidate
+    }
+  }
+  if (previous && previous !== target) {
+    await db.saveAccountWorkspace(previous)
+    await db.clearActiveWorkspace()
+    clearPushQueue()
+  }
+  if (previous !== target) {
+    const restored = await db.restoreAccountWorkspace(target)
+    if (!restored) await db.clearActiveWorkspace()
+    clearPushQueue()
+  }
 }
 
 async function mirrorLocalUser(session, password, extra = {}) {
@@ -100,6 +131,7 @@ export async function cloudLogin(username, password, ctx = {}) {
         linkedWorkspaceOwnerId: u.linkedWorkspaceOwnerId,
         cloud: true,
       }
+      await isolateWorkspaceForAccount(session.email)
       setSession?.(session)
       setUser?.(session)
       try {
@@ -187,6 +219,7 @@ export async function cloudRegister(form, ctx = {}) {
         name: u.name || name,
         cloud: true,
       }
+      await isolateWorkspaceForAccount(session.email)
       setSession?.(session)
       setUser?.(session)
       try {
