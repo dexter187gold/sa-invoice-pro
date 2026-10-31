@@ -34,7 +34,9 @@ export function normalizedPlan(status) {
 }
 
 export function canAccessPath(pathname, status, isOwner = false) {
-  const path = String(pathname || '/').split('?')[0]
+  let path = String(pathname || '/').split('?')[0]
+  if (path.startsWith('/invoices/')) path = '/invoices'
+  if (path.startsWith('/portal/')) path = '/portal'
   if (OWNER_ONLY.has(path)) return !!isOwner
   if (path === '/license' || path === '/support' || path === '/about' || path === '/settings') return true
   if (status?.licensed) {
