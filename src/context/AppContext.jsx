@@ -240,6 +240,8 @@ export function AppProvider({ children }) {
     return { cloud: false }
   }
 
+  const lock = () => { setSession(null); setUser(null) }
+
   const logout = () => { try { Sync.logout() } catch {}; setSession(null); setUser(null) }
 
   const syncNow = async () => {
@@ -258,7 +260,7 @@ export function AppProvider({ children }) {
     expenses, payments, employees, payslips, bankTxns, journal, accounts, timeEntries,
     toasts, toast, dismissToast, theme, setTheme, density, setDensity,
     vatEnabled, vatRate, setVatEnabled, setVatRate,
-    online, refresh, login, register, resetPassword, logout, setCompany, syncNow,
+    online, refresh, login, register, resetPassword, lock, logout, setCompany, syncNow,
   }
 
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>
