@@ -464,6 +464,9 @@
 @media(max-width:520px){.desk-rules-float{right:10px;bottom:calc(88px + env(safe-area-inset-bottom,0px));}.desk-rules-fab{min-height:40px;padding:7px 10px;}}
 
 
+@property --liquid-level { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
+@property --word-fill { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
+
 /* Large five-second brand transformation on mobile sign-in */
 .auth-logo-sequence { display:none; text-align:center; width:100%; color:#eafff1; position:relative; z-index:1; }
 .auth-logo-stage { height:224px; width:min(100%,390px); margin:0 auto; position:relative; display:grid; place-items:center; isolation:isolate; }
