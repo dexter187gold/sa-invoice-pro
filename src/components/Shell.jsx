@@ -43,8 +43,8 @@ export default function Shell({ children, sections: sectionsProp }) {
 
   const visibleRootNav = ROOT_NAV.filter((item) => item.to !== '/dev-portal' && (
     item.to === '/owner-console' || item.to === '/owner-recovery'
-      ? !!user?.isOwner
-      : canAccessPath(item.to, accessStatus, !!user?.isOwner)
+      ? !!(user?.isOwner || user?.role === 'owner' || user?.role === 'Owner')
+      : canAccessPath(item.to, accessStatus, !!(user?.isOwner || user?.role === 'owner' || user?.role === 'Owner'))
   ))
 
   const useBottom = (navPrefs?.layout || 'bottom') !== 'side'
