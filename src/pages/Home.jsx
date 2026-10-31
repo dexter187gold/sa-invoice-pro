@@ -160,10 +160,8 @@ export default function Home() {
   return (
     <PageFade>
       <SoftLicenseBanner />
-      <OwnerInsightsStrip />
       <OnboardingChecklist />
       <DeskRulesCard invoices={invoices} tickets={tickets} clients={clients} />
-      <NpsCard clients={clients} toast={toast} />
 
       {shedding ? (
         <div className="card" style={{ marginBottom: 12, borderLeft: '4px solid #fbbf24' }}>
@@ -317,6 +315,9 @@ export default function Home() {
           </div>
         </section>
       )}
+
+      <OwnerInsightsStrip />
+      <NpsCard clients={clients} toast={toast} />
 
       {showJobs && (jobToBill.length > 0 || openJobs.length > 0) && (
         <section className="pulse-section">
