@@ -146,6 +146,21 @@ export async function getLicenseStatus() {
   }
 }
 
+/** Fetch the authoritative device status from the license server. */
+export async function getRemoteDeviceStatus() {
+  const base = await getServerUrl()
+  if (!base) throw new Error('License server URL not set')
+  const hwid = await getHardwareId()
+  const res = await fetch(base + '/api/device-status', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ hwid }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || 'Could not refresh server licence status')
+  return data
+}
+
 /** Probe license server without mutating state. */
 export async function pingLicenseServer() {
   const base = await getServerUrl()
