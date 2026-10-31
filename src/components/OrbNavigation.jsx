@@ -70,8 +70,8 @@ export default function OrbNavigation({ onCommand }) {
     <>
       <style>{`
         .sa-orb-dock{position:fixed;z-index:80;left:0;right:0;bottom:calc(7px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;justify-content:center;gap:clamp(5px,1.4vw,18px);padding:0 8px;pointer-events:none}
-        .orb-rail{display:flex;align-items:center;gap:clamp(3px,.7vw,10px);max-width:calc((100vw - 104px)/2);min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;pointer-events:auto;padding:7px 2px}
-        .orb-rail::-webkit-scrollbar{display:none}
+        .orb-rail{position:absolute;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:clamp(3px,.7vw,10px);max-width:calc((100vw - 104px)/2);min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;pointer-events:auto;padding:7px 2px}
+        .orb-rail-left{left:6px}.orb-rail-right{right:6px}.orb-rail::-webkit-scrollbar{display:none}
         .orb-shortcut{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:48px;padding:5px 7px;border:1px solid transparent;border-radius:12px;color:var(--text);text-decoration:none;background:color-mix(in srgb,var(--card,#111827) 88%,transparent);backdrop-filter:blur(16px);font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
         .orb-shortcut.active{border-color:color-mix(in srgb,var(--green,#16a34a) 55%,transparent);color:var(--green,#16a34a);background:color-mix(in srgb,var(--green,#16a34a) 12%,var(--card,#111827))}
         .orb-shortcut-icon{font-size:19px;line-height:1.15;font-weight:800}.orb-shortcut-label{font-size:9px;font-weight:700;white-space:nowrap}
