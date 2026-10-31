@@ -107,6 +107,9 @@ export default function OrbNavigation({ onCommand }) {
         .sa-orb-trigger:before{content:"";position:absolute;inset:5px;border-radius:50%;border:1px solid #ffffff75;box-shadow:inset 0 0 13px #ffffff55;pointer-events:none}
         .sa-orb-trigger:after{content:"";position:absolute;left:15%;top:9%;width:48%;height:22%;border-radius:50%;background:linear-gradient(#ffffffb8,#ffffff00);filter:blur(2px);transform:rotate(-24deg);pointer-events:none}
         .sa-orb-trigger:active{transform:scale(.94)}.sa-orb-trigger img{border-radius:50%!important;width:54px!important;height:54px!important;object-fit:contain!important;position:relative;z-index:1;filter:drop-shadow(0 2px 4px #001b16aa)}
+        .sa-orb-backdrop{position:fixed;inset:0;z-index:79;width:100%;height:100%;padding:0;border:0;cursor:default;background:rgba(2,18,14,.42);-webkit-backdrop-filter:blur(18px) brightness(.72) saturate(125%);backdrop-filter:blur(18px) brightness(.72) saturate(125%);touch-action:none;animation:orbBackdropIn .2s ease both}
+        @keyframes orbBackdropIn{from{opacity:0}to{opacity:1}}
+        @media(prefers-reduced-transparency:reduce){.sa-orb-backdrop{background:rgba(2,18,14,.78);-webkit-backdrop-filter:none;backdrop-filter:none}}
         .sa-orb-menu{position:fixed;z-index:82;left:50%;bottom:94px;transform:translateX(-50%);width:min(94vw,760px);max-height:min(68vh,590px);overflow:auto;overscroll-behavior:contain;touch-action:pan-y;padding:10px 8px 18px;background:transparent;border:0;border-radius:0;box-shadow:none;pointer-events:auto;animation:orbMenuIn .32s cubic-bezier(.2,.8,.2,1) both}
         @keyframes orbMenuIn{from{opacity:0;transform:translate(-50%,18px) scale(.96)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
         .sa-orb-menu-head{display:flex;align-items:center;justify-content:center;gap:8px;padding:4px 8px 12px;color:var(--text);text-shadow:0 2px 12px #0009}.sa-orb-menu-head strong{font-size:13px}.sa-orb-menu-head span{display:block;font-size:10px;color:var(--muted)}
@@ -142,7 +145,7 @@ export default function OrbNavigation({ onCommand }) {
         </div>
         {renderRail(RIGHT, 'right')}
       </nav>
-      {menuOpen ? <button type="button" aria-label="Close main menu" onClick={() => setMenuOpen(false)} style={{position:'fixed',inset:0,zIndex:79,background:'transparent',border:0,cursor:'default'}}/> : null}
+      {menuOpen ? <button type="button" aria-label="Close main menu" onClick={() => setMenuOpen(false)} className="sa-orb-backdrop" /> : null}
     </>
   )
 }
