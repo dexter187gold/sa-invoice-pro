@@ -1,15 +1,10 @@
 #!/usr/bin/env python3
-"""Production entrypoint: license_server + PayFast billing routes."""
+"""Production entrypoint for the SA Invoice Pro licence and billing server.
+
+license_server registers all routes, including billing, exactly once at import.
+"""
 import os
-
 import license_server as ls
-
-try:
-    from license_billing import register_billing
-
-    register_billing(ls.app, ls.load, ls.save, ls.load_owner_config, gen_key_fn=ls.gen_key)
-except Exception as e:
-    print("[billing] not loaded:", e)
 
 app = ls.app
 
