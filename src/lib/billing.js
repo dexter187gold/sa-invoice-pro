@@ -129,3 +129,25 @@ export async function verifyPaystackReturn(reference, email) {
 export async function getLicenseEmail() {
   return (await getSetting('licenseEmail', '')) || ''
 }
+
+
+/**
+ * Recover a paid licence from the authoritative billing ledger.
+ * Never trusts the local activation cache; the server's seat check remains decisive.
+ */
+export async function recoverLicense(email) {
+  const ownerEmail = (email || await getLicenseEmail() || '').trim().toLowerCase()
+  if (!ownerEmail || !ownerEmail.includes('@')) throw new Error('Enter the email used for the original purchase')
+  await setSetting('licenseEmail', ownerEmail)
+  const remote = await billingStatus(ownerEmail)
+  if (!remote?.ok) throw new Error(remote?.error || 'Billing service could not verify this account')
+  if (!remote.licensed) {
+    return { ok: false, recovered: false, billing: remote, message: 'No active paid licence was found for this email. Your local data has not been changed.' }
+  }
+  const activation = await claimPaidLicense(ownerEmail)
+  const device = await (await import('./license.js')).getRemoteDeviceStatus()
+  if (!activation?.activated || device?.allowed === false) {
+    throw new Error(device?.message || 'The server did not confirm this device licence')
+  }
+  return { ok: true, recovered: true, billing: remote, activation, device }
+}
