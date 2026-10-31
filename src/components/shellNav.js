@@ -6,6 +6,7 @@ const ROOT_NAV = [
   { to: '/tickets', label: 'Jobs', icon: '🎫', section: 'jobs' },
   { to: '/quotes', label: 'Quotes', icon: '📝', section: 'money' },
   { to: '/payments', label: 'Payments', icon: '💳', section: 'money' },
+  { to: '/wa-chase', label: 'WA chase', icon: '📲', section: 'money' },
   { to: '/expenses', label: 'Expenses', icon: '💸', section: 'books' },
   { to: '/reports', label: 'Reports', icon: '📈', section: 'home' },
   { to: '/products', label: 'Products', icon: '📦', section: 'jobs' },
@@ -29,6 +30,7 @@ const SECTION_NAV = {
     { to: '/invoices', label: 'Invoices', icon: '📄', end: true },
     { to: '/invoices?status=overdue', label: 'Overdue', icon: '⚠️' },
     { to: '/payments', label: 'Payments', icon: '💳' },
+    { to: '/wa-chase', label: 'WA chase', icon: '📲' },
     { to: '/quotes', label: 'Quotes', icon: '📝' },
     { to: '/tickets', label: 'Jobs', icon: '🎫' },
   ],
@@ -72,7 +74,7 @@ const SECTION_NAV = {
 function sectionFromPath(pathname) {
   const p = pathname || '/'
   if (p === '/' || p === '/dashboard' || p === '/reports' || p === '/inbox') return 'home'
-  if (p.startsWith('/invoices') || p.startsWith('/quotes') || p.startsWith('/payments') || p.startsWith('/bank')) return 'money'
+  if (p.startsWith('/invoices') || p.startsWith('/quotes') || p.startsWith('/payments') || p.startsWith('/wa-chase') || p.startsWith('/bank')) return 'money'
   if (p.startsWith('/clients')) return 'clients'
   if (p.startsWith('/tickets') || p.startsWith('/products')) return 'jobs'
   if (p.startsWith('/expenses') || p.startsWith('/accounting') || p.startsWith('/employees') || p.startsWith('/payroll')) return 'books'

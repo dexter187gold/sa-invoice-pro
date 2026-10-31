@@ -36,6 +36,7 @@ import SmsGateway from './pages/SmsGateway'
 import WaTemplates from './pages/WaTemplates'
 import Recurring from './pages/Recurring'
 import Payments from './pages/Payments'
+import WaChase from './pages/WaChase'
 import ExcelViewer from './pages/ExcelViewer'
 import Changelog from './pages/Changelog'
 import SyncHealth from './pages/SyncHealth'
@@ -100,6 +101,7 @@ export default function App() {
                 <Route path="/employees" element={<Employees />} />
                 <Route path="/payroll" element={<Payroll />} />
                 <Route path="/payments" element={<Payments />} />
+                <Route path="/wa-chase" element={<WaChase />} />
                 <Route path="/bank" element={<BankImport />} />
                 <Route path="/branches" element={<Branches />} />
                 <Route path="/recurring" element={<Recurring />} />
