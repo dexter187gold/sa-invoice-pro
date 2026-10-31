@@ -895,6 +895,7 @@ button{margin-top:1rem;width:100%;padding:.75rem;border:0;border-radius:10px;bac
     <h1>Admin portal</h1>
     <p class="muted">Manage payment credentials securely. Secret keys remain server-side and are never returned to the browser.</p>
     <p class="muted">After save, users pick up config on next app launch.</p>
+    <p><a href="/admin/billing" style="color:#6ee7b7;font-weight:700">Open billing & activation ledger →</a></p>
     <form method="post" action="/admin/save">
       <label>Owner token</label>
       <input type="password" name="token" placeholder="Enter owner token" autocomplete="current-password" required/>
