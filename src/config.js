@@ -1,5 +1,6 @@
 export const APP_VERSION = '6.46.0'
 export const APP_NAME = 'SA Invoice Pro'
+export const APP_PUBLIC_URL = 'https://sa-invoice-pro.pages.dev'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
 export const APP_CODENAME = '6.46.0 · WA chase queue · dual path'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
@@ -34,7 +35,7 @@ export const PAYFAST_SANDBOX =
 
 export function publicLinks() {
   return {
-    app: typeof window !== 'undefined' ? window.location.origin : '',
+    app: APP_PUBLIC_URL,
     clientPortal: CLIENT_PORTAL_URL,
     syncApi: SYNC_API_URL,
     licenseApi: LICENSE_API_URL,
@@ -44,6 +45,7 @@ export function publicLinks() {
 
 /** Canonical public endpoints (also used by devConfig / tests). */
 export const APP_LINKS = {
+  app: APP_PUBLIC_URL,
   syncServer: SYNC_API_URL,
   licenseServer: LICENSE_API_URL,
   updatesServer: LICENSE_API_URL,
