@@ -14,7 +14,7 @@ import GestureLayer from './GestureLayer'
 import { loadGesturePrefs } from '../lib/deviceAccess'
 
 export default function Shell({ children, sections: sectionsProp }) {
-  const { user, online, logout, syncNow, toast } = useApp() || {}
+  const { user, online, lock, logout, syncNow, toast } = useApp() || {}
   const nav = useNavigate()
   const location = useLocation()
   const [open, setOpen] = useState(false)
@@ -85,6 +85,10 @@ export default function Shell({ children, sections: sectionsProp }) {
     } finally {
       setSyncing(false)
     }
+  }
+
+  const handleLock = () => {
+    try { lock?.() } finally { nav('/login?locked=1', { replace: true }) }
   }
 
   const handleSignOut = () => {
@@ -168,6 +172,8 @@ export default function Shell({ children, sections: sectionsProp }) {
           </button>
         </div>
         <NotificationBell />
+        <button type="button" className="shell-account-action" onClick={handleLock} title="Lock workspace" aria-label="Lock workspace">🔒</button>
+        <button type="button" className="shell-account-action" onClick={handleSignOut} title="Sign out" aria-label="Sign out">↪</button>
         <span className={`status-dot ${online ? 'on' : 'off'}`} title={online ? 'Online' : 'Offline'} />
       </div>
 
