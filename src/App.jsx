@@ -57,7 +57,6 @@ function Guard({ children, needCompany }) {
             <AppLogo size={64} />
           </div>
           <p>Loading workspace…</p>
-          <span className="muted">v{APP_VERSION}</span>
         </div>
       </div>
     )
