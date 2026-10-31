@@ -16,6 +16,7 @@ import {
 } from '../lib/loadShedding'
 import { loadCommsPrefs, saveCommsPrefs, addOptOut } from '../lib/quietHours'
 import { loadWhiteLabel, saveWhiteLabel, applyWhiteLabel, fileToLogoDataUrl } from '../lib/whiteLabel'
+import { readAccessStatus, normalizedPlan } from '../lib/accessControl'
 
 export default function Settings() {
   const {
@@ -23,6 +24,7 @@ export default function Settings() {
     vatEnabled, vatRate, setVatEnabled, setVatRate, theme, setTheme,
   } = useApp()
   const [tab, setTab] = useState('company')
+  const [accessStatus, setAccessStatus] = useState(null)
   const [ownerDefaults, setOwnerDefaults] = useState(() => {
     try {
       return { currency: 'ZAR', invoicePrefix: 'INV', quoteValidityDays: 14, paymentTermsDays: 7, lowStockThreshold: 3, fiscalYearStart: '03-01', ...JSON.parse(localStorage.getItem('sa_owner_defaults') || '{}') }
@@ -84,6 +86,14 @@ export default function Settings() {
   }
 
   useEffect(() => { refreshAutoBackups() }, [])
+
+  useEffect(() => {
+    let alive = true
+    const refreshAccess = () => readAccessStatus().then((value) => { if (alive) setAccessStatus(value) })
+    refreshAccess()
+    window.addEventListener('sa-license-updated', refreshAccess)
+    return () => { alive = false; window.removeEventListener('sa-license-updated', refreshAccess) }
+  }, [])
 
   useEffect(() => {
     setForm({
@@ -155,6 +165,17 @@ export default function Settings() {
     { id: 'security', label: 'Security & access' },
   ]
 
+  const plan = normalizedPlan(accessStatus)
+  const settingsTabs = tabs.filter((item) => {
+    if (!accessStatus?.licensed) return ['company', 'look', 'cloud', 'data'].includes(item.id)
+    if (plan === 'solo') return ['company', 'look', 'nav', 'cloud', 'data', 'security'].includes(item.id)
+    if (plan === 'shop') return item.id !== 'brand'
+    return true
+  })
+  useEffect(() => {
+    if (!settingsTabs.some((item) => item.id === tab)) setTab('company')
+  }, [accessStatus?.licensed, plan, tab])
+
   return (
     <PageFade>
       <div className="settings-page">
@@ -166,7 +187,7 @@ export default function Settings() {
       </div>
 
       <div className="settings-tabs-scroll" role="tablist" aria-label="Settings sections">
-        {tabs.map((item) => <button key={item.id} type="button" role="tab" aria-selected={tab === item.id} className={`settings-tab ${tab === item.id ? 'active' : ''}`} onClick={() => setTab(item.id)}>{item.label}</button>)}
+        {settingsTabs.map((item) => <button key={item.id} type="button" role="tab" aria-selected={tab === item.id} className={`settings-tab ${tab === item.id ? 'active' : ''}`} onClick={() => setTab(item.id)}>{item.label}</button>)}
       </div>
 
       {tab === 'company' && (
