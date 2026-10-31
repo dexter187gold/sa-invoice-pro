@@ -12,7 +12,7 @@ function AuthLogoSequence() {
   const [phase, setPhase] = useState(0)
   useEffect(() => {
     const started = Date.now()
-    const timer = setInterval(() => setPhase(Math.floor(((Date.now() - started) % 8000) / 1600)), 80)
+    const timer = setInterval(() => { const elapsed = (Date.now() - started) % 9600; setPhase(elapsed < 6400 ? Math.floor(elapsed / 1600) : 4) }, 80)
     return () => clearInterval(timer)
   }, [])
   const binary = ['01010011','01001001','01001110','01010110','01001111','01001001','01000011','01000101']
