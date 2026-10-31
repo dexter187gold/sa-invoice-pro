@@ -591,6 +591,12 @@ def register_billing(app, load_db, save_db, load_owner_config, gen_key_fn=None):
     @app.route("/api/billing/paystack/webhook", methods=["POST"])
     def billing_paystack_webhook():
         secret = (os.environ.get("PAYSTACK_SECRET_KEY") or "").strip()
+        if not secret:
+            try:
+                owner_cfg = load_owner_config() or {}
+                secret = str(((owner_cfg.get("paystack") or {}).get("secretKey")) or "").strip()
+            except Exception:
+                secret = ""
         signature = str(request.headers.get("x-paystack-signature") or "").strip()
         raw = request.get_data(cache=True)
         if not secret or not signature:
