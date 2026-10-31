@@ -105,6 +105,25 @@ export async function billingStatus(email) {
   return res.json().catch(() => ({}))
 }
 
+export async function verifyPaystackReturn(reference, email) {
+  const base = ((await getServerUrl()) || SA_CONFIG.defaultLicenseServerUrl || '').replace(/\/$/, '')
+  if (!reference) throw new Error('Paystack did not return a transaction reference')
+  const res = await fetch(
+    `${base}/api/billing/paystack/status?reference=${encodeURIComponent(reference)}`,
+    { headers: { Accept: 'application/json' } },
+  )
+  const result = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(result.error || 'Could not verify payment')
+  if (result.status !== 'paid' || result.licensed !== true) {
+    return { paid: false, status: result.status || 'pending' }
+  }
+  const ownerEmail = (email || await getLicenseEmail() || '').trim().toLowerCase()
+  if (!ownerEmail) throw new Error('Payment is verified, but the licence email is missing')
+  const activation = await claimPaidLicense(ownerEmail)
+  if (!activation?.activated) throw new Error('Payment verified, but licence activation is not complete yet')
+  return { paid: true, activation }
+}
+
 export async function getLicenseEmail() {
   return (await getSetting('licenseEmail', '')) || ''
 }
