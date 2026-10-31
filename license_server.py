@@ -41,24 +41,15 @@ def _atomic_save(path, obj):
     os.replace(tmp, path)
 
 
+from license_git_store import load_state as _git_load_state, save_state as _git_save_state
+
+
 def load():
-    if os.path.exists(DATA):
-        try:
-            with open(DATA, encoding="utf-8") as f:
-                data = json.load(f)
-            if not isinstance(data, dict):
-                return {"users": {}, "requests": {}, "keys": {}}
-            data.setdefault("users", {})
-            data.setdefault("requests", {})
-            data.setdefault("keys", {})
-            return data
-        except (json.JSONDecodeError, OSError):
-            return {"users": {}, "requests": {}, "keys": {}}
-    return {"users": {}, "requests": {}, "keys": {}}
+    return _git_load_state(DATA)
 
 
 def save(db):
-    _atomic_save(DATA, db)
+    _git_save_state(db, DATA)
 
 
 def _valid_hwid(hwid):
