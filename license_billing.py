@@ -757,7 +757,7 @@ def register_billing(app, load_db, save_db, load_owner_config, gen_key_fn=None):
               <h2>Billing & activation ledger</h2><p>Owner authentication required.</p>
               <form method="post"><input name="token" type="password" required autocomplete="current-password" placeholder="Owner token" style="box-sizing:border-box;width:100%;padding:12px">
               <button style="margin-top:12px;padding:12px;width:100%">Unlock dashboard</button></form></main></body>
-            """, 401 if request.method == "POST" else 200)
+            """), (401 if request.method == "POST" else 200)
         db = load_db()
         txns = db.get("transactions") or {}
         pending = db.get("pending_payments") or {}
