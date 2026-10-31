@@ -8,6 +8,35 @@ import { Sync } from '../lib/sync'
 
 const SPLASH_MS = 1600
 
+function AuthLogoSequence() {
+  const [phase, setPhase] = useState(0)
+  useEffect(() => {
+    const started = Date.now()
+    const timer = setInterval(() => setPhase(Math.floor(((Date.now() - started) % 5000) / 1000)), 80)
+    return () => clearInterval(timer)
+  }, [])
+  const binary = ['01010011','01001001','01001110','01010110','01001111','01001001','01000011','01000101']
+  return (
+    <section className={`auth-logo-sequence phase-${phase}`} aria-label="SA Invoice Pro logo animation">
+      <div className="auth-logo-stage">
+        <div className="auth-binary-rain" aria-hidden="true">
+          {binary.map((bits, i) => <span key={i} style={{ '--stream': i, '--delay': `${i * -0.13}s` }}>{bits}<br />{bits.slice(0,4)}<br />{bits.slice(4)}</span>)}
+        </div>
+        <div className="auth-invoice-build" aria-hidden="true">
+          {[0,1,2].map((n) => <div className={`auth-invoice-sheet sheet-${n}`} key={n}><b>INVOICE</b><i /><i /><i /><strong>R</strong></div>)}
+        </div>
+        <div className="auth-logo-core">
+          <div className="auth-logo-fill" aria-hidden="true" />
+          <AppLogo size={174} />
+        </div>
+        <div className="auth-logo-orbit" aria-hidden="true" />
+      </div>
+      <div className="auth-logo-caption">SA INVOICE PRO</div>
+      <div className="auth-logo-subcaption">YOUR BUSINESS. IN PERFECT ORDER.</div>
+    </section>
+  )
+}
+
 export default function Login() {
   const { login, register, resetPassword, refresh, toast } = useApp()
   const nav = useNavigate()
@@ -126,8 +155,8 @@ export default function Login() {
           <p className="auth-brand-foot" style={{ fontSize: 12, marginTop: 'auto' }}>v{APP_VERSION}</p>
         </aside>
 
-        <div className="auth-card-modern">
-          <div className="auth-logo-orb" aria-label="SA Invoice Pro"><span className="auth-logo-binary" aria-hidden="true">01010011 01000001 00100000 01001001 01001110 01010110 01001111 01001001 01000011 01000101</span><AppLogo size={82} /></div>
+        <AuthLogoSequence />\n        <div className="auth-card-modern">
+          <AuthLogoSequence />
           <div className="tabs">
             <button type="button" className={`tab ${mode === 'in' ? 'active' : ''}`} onClick={() => setMode('in')}>Sign in</button>
             <button type="button" className={`tab ${mode === 'up' ? 'active' : ''}`} onClick={() => setMode('up')}>Create account</button>
