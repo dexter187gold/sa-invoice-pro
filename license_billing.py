@@ -545,8 +545,13 @@ def register_billing(app, load_db, save_db, load_owner_config, gen_key_fn=None):
         plan = PLANS[plan_id]
         amount_cents = int((Decimal(str(plan["amount"])) * 100).quantize(Decimal("1")))
         payment_id = "saip-" + plan_id + "-" + secrets.token_hex(12)
-        site_url = os.environ.get("SA_WEBSITE_URL", "https://sa-invoice.pages.dev").rstrip("/")
-        callback_url = site_url + "/payment-success.html"
+        # Return customers to the actual app. The app verifies this reference
+        # with Paystack on the server before claiming/activating the licence.
+        app_url = os.environ.get(
+            "SA_APP_URL",
+            "https://sa-invoice-pro.pcrepairdex.workers.dev",
+        ).rstrip("/")
+        callback_url = app_url + "/license?paystack=return"
         metadata = {
             "order_id": payment_id,
             "product": "SA Invoice Pro",
