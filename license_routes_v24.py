@@ -105,6 +105,15 @@ def register_v24(app):
         if len(hwid) > 256 or len(key) > 128:
             return jsonify({"error": "invalid payload length", "ok": False}), 400
         db = _load()
+        device = (db.get("users") or {}).get(hwid) or {}
+        device_mode = str(device.get("mode") or "").lower()
+        if device_mode in ("suspended", "blocked", "expired"):
+            return jsonify({
+                "ok": False,
+                "activated": False,
+                "error": f"Device licence status is {device_mode}. Contact SA Invoice Pro support.",
+                "status": device_mode,
+            }), 403
         req = (db.get("requests") or {}).get(hwid) or {}
         key_rec = (db.get("keys") or {}).get(key)
         issued = (req.get("key") or "").upper()
