@@ -156,7 +156,6 @@ export default function Login() {
         </aside>
 
         <AuthLogoSequence />\n        <div className="auth-card-modern">
-          <AuthLogoSequence />
           <div className="tabs">
             <button type="button" className={`tab ${mode === 'in' ? 'active' : ''}`} onClick={() => setMode('in')}>Sign in</button>
             <button type="button" className={`tab ${mode === 'up' ? 'active' : ''}`} onClick={() => setMode('up')}>Create account</button>
