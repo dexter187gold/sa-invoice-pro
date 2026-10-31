@@ -105,6 +105,7 @@ async function localRegister(form, ctx = {}) {
     name,
     cloud: false,
   }
+  await isolateWorkspaceForAccount(email)
   await mirrorLocalUser(session, password, { username })
   setSession?.(session)
   setUser?.(session)
