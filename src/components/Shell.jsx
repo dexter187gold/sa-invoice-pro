@@ -12,6 +12,7 @@ import { ROOT_NAV, SECTION_NAV, sectionFromPath } from './shellNav'
 import { displayAppName } from '../lib/whiteLabel'
 import GestureLayer from './GestureLayer'
 import { loadGesturePrefs } from '../lib/deviceAccess'
+import { readAccessStatus, canAccessPath } from '../lib/accessControl'
 
 export default function Shell({ children, sections: sectionsProp }) {
   const { user, online, lock, logout, syncNow, toast } = useApp() || {}
@@ -22,6 +23,7 @@ export default function Shell({ children, sections: sectionsProp }) {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [gesturesOn, setGesturesOn] = useState(() => !!loadGesturePrefs().enabled)
+  const [accessStatus, setAccessStatus] = useState(null)
   const [navPrefs, setNavPrefs] = useState(() => {
     try {
       const raw = JSON.parse(localStorage.getItem('sa_nav_prefs') || '{}')
@@ -30,6 +32,20 @@ export default function Shell({ children, sections: sectionsProp }) {
       return { layout: 'bottom' }
     }
   })
+
+  useEffect(() => {
+    let alive = true
+    const refreshAccess = () => readAccessStatus().then((value) => { if (alive) setAccessStatus(value) })
+    refreshAccess()
+    window.addEventListener('sa-license-updated', refreshAccess)
+    return () => { alive = false; window.removeEventListener('sa-license-updated', refreshAccess) }
+  }, [])
+
+  const visibleRootNav = ROOT_NAV.filter((item) => item.to !== '/dev-portal' && (
+    item.to === '/owner-console' || item.to === '/owner-recovery'
+      ? !!user?.isOwner
+      : canAccessPath(item.to, accessStatus, !!user?.isOwner)
+  ))
 
   const useBottom = (navPrefs?.layout || 'bottom') !== 'side'
 
@@ -64,10 +80,10 @@ export default function Shell({ children, sections: sectionsProp }) {
   const sections = useMemo(
     () =>
       sectionsProp || [
-        { title: 'Main', links: ROOT_NAV.filter((x) => x.section === 'home' || x.section === 'money') },
-        { title: 'Work', links: ROOT_NAV.filter((x) => x.section === 'jobs' || x.section === 'clients') },
-        { title: 'Books', links: ROOT_NAV.filter((x) => x.section === 'books') },
-        { title: 'Account', links: ROOT_NAV.filter((x) => x.section === 'settings' && x.to !== '/dev-portal') },
+        { title: 'Main', links: visibleRootNav.filter((x) => x.section === 'home' || x.section === 'money') },
+        { title: 'Work', links: visibleRootNav.filter((x) => x.section === 'jobs' || x.section === 'clients') },
+        { title: 'Books', links: visibleRootNav.filter((x) => x.section === 'books') },
+        { title: 'Account', links: visibleRootNav.filter((x) => x.section === 'settings' && x.to !== '/dev-portal') },
       ],
     [sectionsProp],
   )
@@ -189,7 +205,7 @@ export default function Shell({ children, sections: sectionsProp }) {
             </div>
           </div>
           <nav className="side-nav">
-            {ROOT_NAV.filter((item) => item.to !== '/dev-portal').map((item) => (
+            {visibleRootNav.map((item) => (
               <NavLink
                 key={item.to + item.label}
                 to={item.to}
