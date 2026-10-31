@@ -90,8 +90,9 @@ export async function claimPaidLicense(email) {
   if (!res.ok) throw new Error(j.error || 'Claim failed')
   if (j.key) {
     await setSetting('licenseKey', j.key)
-    await setSetting('licenseMeta', j.meta || { server: true, email, plan: j.plan })
+    await setSetting('licenseMeta', { server: true, email, plan: j.plan, seats: j.seats, activatedAt: j.meta?.activatedAt || new Date().toISOString(), ...(j.meta || {}) })
     await setSetting('licenseEmail', email)
+    try { window.dispatchEvent(new CustomEvent('sa-license-updated', { detail: { plan: j.plan } })) } catch {}
   }
   return j
 }
@@ -121,7 +122,8 @@ export async function verifyPaystackReturn(reference, email) {
   if (!ownerEmail) throw new Error('Payment is verified, but the licence email is missing')
   const activation = await claimPaidLicense(ownerEmail)
   if (!activation?.activated) throw new Error('Payment verified, but licence activation is not complete yet')
-  return { paid: true, activation }
+  try { window.dispatchEvent(new CustomEvent('sa-license-updated', { detail: { plan: activation.plan } })) } catch {}
+  return { paid: true, activation, transaction: result.transaction || {}, payment: result }
 }
 
 export async function getLicenseEmail() {
