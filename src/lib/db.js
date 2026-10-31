@@ -2,7 +2,7 @@
 import versionInfo from '../../version.json' with { type: 'json' }
 
 const DB_NAME = 'SAInvoicePro_v2'
-const DB_VERSION = 5
+const DB_VERSION = 6
 
 export const STORES = {
   users: 'users',
@@ -30,6 +30,7 @@ export const STORES = {
   documentRenders: 'documentRenders',
   reminders: 'reminders',
   autoBackups: 'autoBackups',
+  accountWorkspaces: 'accountWorkspaces',
 }
 
 let dbp = null
@@ -45,7 +46,7 @@ function openDB() {
       for (const name of Object.keys(STORES)) {
         if (d.objectStoreNames.contains(name)) continue
         if (name === 'settings') d.createObjectStore(name, { keyPath: 'key' })
-        else if (name === 'company') d.createObjectStore(name, { keyPath: 'id' })
+        else if (name === 'company' || name === 'accountWorkspaces') d.createObjectStore(name, { keyPath: 'id' })
         else d.createObjectStore(name, { keyPath: 'id', autoIncrement: true })
       }
     }
@@ -331,6 +332,49 @@ export async function replaceAllAtomic(data, { allowPartial = false } = {}) {
       fail(error)
     }
   })
+}
+
+
+const ACCOUNT_WORKSPACE_STORES = Object.keys(STORES).filter(
+  (key) => !['users', 'autoBackups', 'accountWorkspaces'].includes(key),
+)
+
+/** Preserve the current device workspace under its authenticated account before switching users. */
+export async function saveAccountWorkspace(accountEmail) {
+  const id = String(accountEmail || '').trim().toLowerCase()
+  if (!id) return false
+  const data = {}
+  let rows = 0
+  for (const key of ACCOUNT_WORKSPACE_STORES) {
+    data[key] = await getAll(STORES[key])
+    rows += data[key].length
+  }
+  if (!rows) return false
+  await put(STORES.accountWorkspaces, { id, data, savedAt: new Date().toISOString() })
+  return true
+}
+
+/** Start with an isolated workspace; account and recovery records remain on device. */
+export async function clearActiveWorkspace() {
+  const database = await openDB()
+  const names = ACCOUNT_WORKSPACE_STORES.map((key) => STORES[key])
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(names, 'readwrite')
+    transaction.oncomplete = () => resolve(true)
+    transaction.onerror = () => reject(transaction.error || new Error('Could not isolate account workspace'))
+    transaction.onabort = () => reject(transaction.error || new Error('Account workspace isolation was aborted'))
+    for (const name of names) transaction.objectStore(name).clear()
+  })
+}
+
+/** Restore only the workspace previously saved for this exact account email. */
+export async function restoreAccountWorkspace(accountEmail) {
+  const id = String(accountEmail || '').trim().toLowerCase()
+  if (!id) return false
+  const saved = await get(STORES.accountWorkspaces, id)
+  if (!saved?.data) return false
+  await importAll(saved.data, { wipe: true })
+  return true
 }
 
 export async function listTicketComments(ticketId) {
