@@ -81,6 +81,46 @@ export default function Settings() {
     }
   }
 
+  const clearWorkspaceSafely = async () => {
+    setConfirm(null)
+    setBusy(true)
+    try {
+      // Preserve a complete, restorable copy before touching any workspace records.
+      const snapshot = await saveAutoBackup({
+        reason: 'pre-workspace-clear',
+        label: 'Recovery copy before workspace clear',
+      })
+      const counts = snapshot?.counts || {}
+      const audit = {
+        id: crypto.randomUUID(),
+        action: 'workspace_clear',
+        at: new Date().toISOString(),
+        actor: user?.email || user?.username || 'local-user',
+        snapshotId: snapshot.id,
+        snapshotAt: snapshot.at,
+        counts,
+        status: 'backup_saved_clear_started',
+      }
+      const prior = (() => {
+        try { return JSON.parse(localStorage.getItem('sa_workspace_clear_audit') || '[]') } catch { return [] }
+      })()
+      localStorage.setItem('sa_workspace_clear_audit', JSON.stringify([audit, ...prior].slice(0, 50)))
+      await db.clearActiveWorkspace()
+      await refresh?.({ skipSync: true })
+      await refreshAutoBackups()
+      const completed = { ...audit, status: 'completed', completedAt: new Date().toISOString() }
+      const current = (() => {
+        try { return JSON.parse(localStorage.getItem('sa_workspace_clear_audit') || '[]') } catch { return [] }
+      })()
+      localStorage.setItem('sa_workspace_clear_audit', JSON.stringify([completed, ...current.filter((entry) => entry.id !== audit.id)].slice(0, 50)))
+      toast('Workspace cleared. A recovery snapshot and audit record were saved on this device.', 'success')
+    } catch (error) {
+      toast(error?.message || 'Workspace clear stopped. Your data was not intentionally removed.', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const refreshAutoBackups = async () => {
     try { setAutoBackups(await listAutoBackups()) } catch (error) { console.warn('[settings] backups', error) }
   }
@@ -308,6 +348,19 @@ export default function Settings() {
           }}>Download backup JSON</button>
           <label className="label">Import backup JSON</label>
           <input className="input" type="file" accept=".json,application/json" disabled={busy} onChange={importDeviceBackup} />
+          <div className="card" style={{ border: '1px solid var(--danger, #b42318)', padding: 14, marginTop: 8 }}>
+            <h4 style={{ margin: '0 0 6px', color: 'var(--danger, #b42318)' }}>Clear workspace</h4>
+            <p className="muted" style={{ fontSize: 12, margin: '0 0 10px' }}>
+              Removes this device's active business workspace records. Your sign-in account, saved recovery snapshots and account-switching records are kept. A recovery snapshot and audit entry are created first.
+            </p>
+            <button type="button" className="btn btn-danger" disabled={busy} onClick={() => setConfirm({
+              title: 'Clear this workspace?',
+              message: 'This will remove the active company profile, clients, invoices, quotes, payments, expenses, tickets, settings and other workspace records from this device. Before clearing, SA Invoice Pro will save a full recovery snapshot and record who requested the action, when it happened, and the snapshot reference. The snapshot stays on this device until downloaded or otherwise backed up. Continue only if you understand that this is not a permanent deletion of the recovery copy.',
+              confirmLabel: 'Save backup & clear workspace',
+              danger: true,
+              action: clearWorkspaceSafely,
+            })}>Clear workspace…</button>
+          </div>
           <button type="button" className="btn btn-outline" onClick={async () => {
             try {
               await saveAutoBackup({ reason: 'manual' })
