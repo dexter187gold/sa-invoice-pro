@@ -18,6 +18,8 @@ export default function License() {
   const [busy, setBusy] = useState(false)
   const [log, setLog] = useState(null)
   const [ping, setPing] = useState(null)
+  const [activationSplash, setActivationSplash] = useState(null)
+  const [returnChecking, setReturnChecking] = useState(false)
 
   const reload = async () => {
     const s = await licenseApi.getLicenseStatus()
@@ -33,10 +35,35 @@ export default function License() {
   }, [])
 
   useEffect(() => {
-    if (params.get('paid') === '1') {
-      toast('Payment return — click Claim paid license if not activated yet', 'info')
-    }
-  }, [params, toast])
+    if (params.get('paystack') !== 'return') return
+    const reference = params.get('reference') || params.get('trxref') || ''
+    let cancelled = false
+    setReturnChecking(true)
+    ;(async () => {
+      try {
+        const result = await billing.verifyPaystackReturn(reference, params.get('email') || email)
+        if (cancelled) return
+        if (result.paid) {
+          await reload()
+          if (!cancelled) {
+            setActivationSplash({
+              title: 'Licence successfully activated',
+              plan: result.activation?.plan || 'Your selected plan',
+              seats: result.activation?.seats,
+            })
+            toast('Payment verified and licence activated', 'success')
+          }
+        } else {
+          toast('Payment is not confirmed yet. Your licence remains inactive while Paystack completes verification.', 'info')
+        }
+      } catch (error) {
+        if (!cancelled) toast(error.message || 'Could not verify payment yet', 'error')
+      } finally {
+        if (!cancelled) setReturnChecking(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [params])
 
   const saveUrl = async () => {
     await db.setSetting('licenseServerUrl', serverUrl.trim().replace(/\/$/, ''))
@@ -91,6 +118,18 @@ export default function License() {
 
   return (
     <PageFade>
+      {activationSplash && (
+        <div role="dialog" aria-modal="true" aria-labelledby="license-activated-title" style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'grid', placeItems: 'center', padding: 20, background: 'rgba(2,12,8,.88)', backdropFilter: 'blur(12px)' }}>
+          <div className="card" style={{ width: 'min(460px,100%)', padding: 28, textAlign: 'center', border: '1px solid rgba(52,211,153,.45)', boxShadow: '0 24px 90px rgba(0,0,0,.5)' }}>
+            <div style={{ width: 68, height: 68, margin: '0 auto 18px', display: 'grid', placeItems: 'center', borderRadius: 22, background: 'rgba(16,185,129,.16)', color: '#34d399', fontSize: 38 }}>✓</div>
+            <h2 id="license-activated-title" style={{ margin: '0 0 8px' }}>{activationSplash.title}</h2>
+            <p className="muted">Your Paystack payment has been independently verified and your SA Invoice Pro licence is active.</p>
+            <p><strong>{activationSplash.plan}</strong>{activationSplash.seats ? ` · ${activationSplash.seats} seats` : ''}</p>
+            <button type="button" className="btn btn-primary" style={{ width: '100%', marginTop: 12 }} onClick={() => setActivationSplash(null)}>Close and continue</button>
+          </div>
+        </div>
+      )}
+      {returnChecking && <div className="card" role="status" style={{ marginBottom: 12 }}>Verifying your Paystack payment securely… Please keep this page open.</div>}
       <div className="page-header">
         <div>
           <h1>License</h1>
