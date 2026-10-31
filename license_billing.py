@@ -522,10 +522,31 @@ def register_billing(app, load_db, save_db, load_owner_config, gen_key_fn=None):
             "createdAt": now, "used": False, "source": "paystack",
             "paymentId": payment_id,
         }
+        transaction_details = {
+            "provider": "paystack",
+            "reference": payment_id,
+            "gatewayTransactionId": transaction.get("id"),
+            "status": "success",
+            "amount": str(rec.get("amount")),
+            "amountMinor": actual_cents,
+            "currency": "ZAR",
+            "customerEmail": expected_email,
+            "plan": plan_id,
+            "planName": plan.get("name"),
+            "seats": int(plan["seats"]),
+            "channel": transaction.get("channel"),
+            "authorization": transaction.get("authorization") or {},
+            "paidAt": now,
+            "verifiedAt": now,
+            "licenceKey": key,
+        }
         pending[payment_id] = {
             **rec, "status": "paid", "key": key, "paidAt": now,
             "paystackReference": payment_id,
+            "gatewayTransactionId": transaction.get("id"),
+            "transaction": transaction_details,
         }
+        db.setdefault("transactions", {})[payment_id] = transaction_details
         save_db(db)
         return True, "fulfilled"
 
@@ -644,7 +665,14 @@ def register_billing(app, load_db, save_db, load_owner_config, gen_key_fn=None):
         if not rec or rec.get("provider") != "paystack":
             return jsonify({"ok": False, "error": "Payment not found"}), 404
         if rec.get("status") == "paid":
-            return jsonify({"ok": True, "status": "paid", "licensed": True, "plan": rec.get("plan")})
+            account = (db.get("accounts") or {}).get(str(rec.get("email") or "").lower(), {})
+            return jsonify({
+                "ok": True, "status": "paid", "licensed": True,
+                "plan": rec.get("plan"), "seats": rec.get("seats"),
+                "email": rec.get("email"), "paidAt": rec.get("paidAt"),
+                "reference": reference, "transaction": rec.get("transaction") or {},
+                "accountStatus": account.get("status"),
+            })
         # Verify only this server-stored reference; never trust a browser-supplied amount.
         try:
             verified = _paystack_request("GET", "/transaction/verify/" + reference)
@@ -652,7 +680,13 @@ def register_billing(app, load_db, save_db, load_owner_config, gen_key_fn=None):
                 ok, reason = _fulfil_paystack(db, reference, verified)
                 if not ok:
                     return jsonify({"ok": False, "error": reason}), 400
-                return jsonify({"ok": True, "status": "paid", "licensed": True, "plan": rec.get("plan")})
+                refreshed = (load_db().get("pending_payments") or {}).get(reference, {})
+                return jsonify({
+                    "ok": True, "status": "paid", "licensed": True,
+                    "plan": rec.get("plan"), "seats": rec.get("seats"),
+                    "email": rec.get("email"), "paidAt": refreshed.get("paidAt"),
+                    "reference": reference, "transaction": refreshed.get("transaction") or {},
+                })
             return jsonify({"ok": True, "status": str(verified.get("status") or "pending"), "licensed": False})
         except Exception:
             return jsonify({"ok": True, "status": "pending", "licensed": False})
