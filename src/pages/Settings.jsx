@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
 import { APP_VERSION, SA_CONFIG } from '../config'
@@ -17,13 +17,17 @@ import {
 import { loadCommsPrefs, saveCommsPrefs, addOptOut } from '../lib/quietHours'
 import { loadWhiteLabel, saveWhiteLabel, applyWhiteLabel, fileToLogoDataUrl } from '../lib/whiteLabel'
 import { readAccessStatus, normalizedPlan } from '../lib/accessControl'
+import Sync from '../lib/sync'
 
 export default function Settings() {
   const {
     user, company, setCompany, toast, refresh,
     vatEnabled, vatRate, setVatEnabled, setVatRate, theme, setTheme,
   } = useApp()
+  const nav = useNavigate()
   const [tab, setTab] = useState('company')
+  const [resetPin, setResetPin] = useState('')
+  const [resetPhrase, setResetPhrase] = useState('')
   const [accessStatus, setAccessStatus] = useState(null)
   const [ownerDefaults, setOwnerDefaults] = useState(() => {
     try {
@@ -82,43 +86,27 @@ export default function Settings() {
   }
 
   const clearWorkspaceSafely = async () => {
-    setConfirm(null)
+    if (resetPhrase.trim() !== 'RESET MY WORKSPACE') return toast('Type RESET MY WORKSPACE exactly to confirm.', 'error')
+    if (!/^\\d{6,12}$/.test(resetPin)) return toast('Enter your 6–12 digit workspace recovery PIN.', 'error')
     setBusy(true)
     try {
-      // Preserve a complete, restorable copy before touching any workspace records.
-      const snapshot = await saveAutoBackup({
-        reason: 'pre-workspace-clear',
-        label: 'Recovery copy before workspace clear',
-      })
-      const counts = snapshot?.counts || {}
-      const audit = {
-        id: crypto.randomUUID(),
-        action: 'workspace_clear',
-        at: new Date().toISOString(),
-        actor: user?.email || user?.username || 'local-user',
-        snapshotId: snapshot.id,
-        snapshotAt: snapshot.at,
-        counts,
-        status: 'backup_saved_clear_started',
-      }
-      const prior = (() => {
-        try { return JSON.parse(localStorage.getItem('sa_workspace_clear_audit') || '[]') } catch { return [] }
-      })()
-      localStorage.setItem('sa_workspace_clear_audit', JSON.stringify([audit, ...prior].slice(0, 50)))
+      const snapshot = await saveAutoBackup({ reason: 'pre-account-workspace-reset', label: 'Recovery copy before account workspace reset' })
+      await Sync.resetWorkspace(resetPin, 'RESET MY WORKSPACE')
       await db.clearActiveWorkspace()
-      await refresh?.({ skipSync: true })
-      await refreshAutoBackups()
-      const completed = { ...audit, status: 'completed', completedAt: new Date().toISOString() }
-      const current = (() => {
-        try { return JSON.parse(localStorage.getItem('sa_workspace_clear_audit') || '[]') } catch { return [] }
-      })()
-      localStorage.setItem('sa_workspace_clear_audit', JSON.stringify([completed, ...current.filter((entry) => entry.id !== audit.id)].slice(0, 50)))
-      toast('Workspace cleared. A recovery snapshot and audit record were saved on this device.', 'success')
-    } catch (error) {
-      toast(error?.message || 'Workspace clear stopped. Your data was not intentionally removed.', 'error')
-    } finally {
-      setBusy(false)
-    }
+      try { if (typeof caches !== 'undefined') await Promise.all((await caches.keys()).map((key) => caches.delete(key))) } catch (error) { console.warn('[workspace reset] cache cleanup', error) }
+      try { if (navigator.serviceWorker?.getRegistrations) await Promise.all((await navigator.serviceWorker.getRegistrations()).map((registration) => registration.unregister())) } catch (error) { console.warn('[workspace reset] service worker cleanup', error) }
+      const audit = { id: crypto.randomUUID(), action: 'account_workspace_reset', at: new Date().toISOString(), actor: user?.email || user?.username || 'signed-in-user', localSnapshotId: snapshot.id, localSnapshotAt: snapshot.at, status: 'completed' }
+      try {
+        const prior = JSON.parse(localStorage.getItem('sa_workspace_clear_audit') || '[]')
+        for (const key of Object.keys(localStorage)) if (/^(saip_|sa_)/i.test(key) && key !== 'sa_workspace_clear_audit') localStorage.removeItem(key)
+        localStorage.setItem('sa_workspace_clear_audit', JSON.stringify([audit, ...(Array.isArray(prior) ? prior : [])].slice(0, 50)))
+      } catch {}
+      setResetPin(''); setResetPhrase(''); setCompany(null)
+      await refresh?.({ skipSync: true }); await refreshAutoBackups()
+      toast('Your account workspace has been reset. Your sign-in account remains; start again with company setup.', 'success')
+      nav('/setup', { replace: true })
+    } catch (error) { toast(error?.message || 'Workspace reset failed. No success was reported.', 'error') }
+    finally { setBusy(false) }
   }
 
   const refreshAutoBackups = async () => {
@@ -349,17 +337,14 @@ export default function Settings() {
           <label className="label">Import backup JSON</label>
           <input className="input" type="file" accept=".json,application/json" disabled={busy} onChange={importDeviceBackup} />
           <div className="card" style={{ border: '1px solid var(--danger, #b42318)', padding: 14, marginTop: 8 }}>
-            <h4 style={{ margin: '0 0 6px', color: 'var(--danger, #b42318)' }}>Clear workspace</h4>
-            <p className="muted" style={{ fontSize: 12, margin: '0 0 10px' }}>
-              Removes this device's active business workspace records. Your sign-in account, saved recovery snapshots and account-switching records are kept. A recovery snapshot and audit entry are created first.
-            </p>
-            <button type="button" className="btn btn-danger" disabled={busy} onClick={() => setConfirm({
-              title: 'Clear this workspace?',
-              message: 'This will remove the active company profile, clients, invoices, quotes, payments, expenses, tickets, settings and other workspace records from this device. Before clearing, SA Invoice Pro will save a full recovery snapshot and record who requested the action, when it happened, and the snapshot reference. The snapshot stays on this device until downloaded or otherwise backed up. Continue only if you understand that this is not a permanent deletion of the recovery copy.',
-              confirmLabel: 'Save backup & clear workspace',
-              danger: true,
-              action: clearWorkspaceSafely,
-            })}>Clear workspace…</button>
+            <h4 style={{ margin: '0 0 6px', color: 'var(--danger, #b42318)' }}>Reset signed-in account workspace</h4>
+            <p className="muted" style={{ fontSize: 12 }}>Resets only this signed-in owner workspace to first-run setup. It preserves your login and recovery snapshots, leaves unrelated accounts and personal workspaces intact, unlinks team seats, and revokes portal access belonging to this account.</p>
+            <div className="card" style={{ padding: 10, marginBottom: 10 }}><strong style={{ color: 'var(--danger, #b42318)' }}>Security warning</strong><p className="muted" style={{ fontSize: 12, margin: '6px 0 0' }}>A private server snapshot and a local recovery snapshot are saved first. Portal URLs for this account will stop working. This clears caches on this browser only; it cannot remotely erase downloads, screenshots, or browser caches on other devices.</p></div>
+            <label className="label">Workspace recovery PIN</label>
+            <input className="input" type="password" inputMode="numeric" autoComplete="off" maxLength={12} value={resetPin} onChange={(e) => setResetPin(e.target.value.replace(/\D/g, '').slice(0, 12))} placeholder="6–12 digit PIN" />
+            <label className="label" style={{ marginTop: 8 }}>Type RESET MY WORKSPACE to confirm</label>
+            <input className="input" value={resetPhrase} onChange={(e) => setResetPhrase(e.target.value)} placeholder="RESET MY WORKSPACE" autoComplete="off" />
+            <button type="button" className="btn btn-danger" style={{ marginTop: 10 }} disabled={busy || resetPhrase.trim() !== 'RESET MY WORKSPACE' || !/^\d{6,12}$/.test(resetPin)} onClick={clearWorkspaceSafely}>{busy ? 'Saving backup & resetting…' : 'Save backups & reset my account'}</button>
           </div>
           <button type="button" className="btn btn-outline" onClick={async () => {
             try {
