@@ -447,6 +447,12 @@ def register_billing(app, load_db, save_db, load_owner_config, gen_key_fn=None):
     def _paystack_request(method, path, payload=None):
         secret = (os.environ.get("PAYSTACK_SECRET_KEY") or "").strip()
         if not secret:
+            try:
+                owner_cfg = load_owner_config() or {}
+                secret = str(((owner_cfg.get("paystack") or {}).get("secretKey")) or "").strip()
+            except Exception:
+                secret = ""
+        if not secret:
             raise RuntimeError("Paystack is not configured")
         body = None if payload is None else __import__("json").dumps(payload).encode("utf-8")
         req = urllib.request.Request(
@@ -527,7 +533,7 @@ def register_billing(app, load_db, save_db, load_owner_config, gen_key_fn=None):
     def billing_paystack_initialize():
         if request.method == "OPTIONS":
             return ("", 204)
-        if not (os.environ.get("PAYSTACK_SECRET_KEY") or "").strip():
+        if not (os.environ.get("PAYSTACK_SECRET_KEY") or str(((load_owner_config() or {}).get("paystack") or {}).get("secretKey") or "").strip()):
             return jsonify({"ok": False, "configured": False, "error": "Paystack test/live secret is not configured on the server"}), 503
         data = request.get_json(silent=True) or {}
         plan_id = str(data.get("plan") or "shop").lower().strip()
