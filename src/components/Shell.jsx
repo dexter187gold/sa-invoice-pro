@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
-import { APP_VERSION } from '../config'
 import CommandPalette from './CommandPalette'
 import QuickActions from './QuickActions'
 import AppAssistant from './AppAssistant'
 import NotificationBell from './NotificationBell'
 import ActiveSeatChip from './ActiveSeatChip'
 import AppLogo from './AppLogo'
+import OrbNavigation from './OrbNavigation'
 import { ROOT_NAV, SECTION_NAV, sectionFromPath } from './shellNav'
 import { displayAppName } from '../lib/whiteLabel'
 import GestureLayer from './GestureLayer'
@@ -198,7 +198,7 @@ export default function Shell({ children, sections: sectionsProp }) {
             </button>
             <div>
               <strong>{brandLabel}</strong>
-              <span className="muted" style={{ fontSize: 11 }}>v{APP_VERSION}</span>
+              <span className="muted" style={{ fontSize: 11 }}>Business workspace</span>
             </div>
           </div>
           <nav className="side-nav">
@@ -224,97 +224,8 @@ export default function Shell({ children, sections: sectionsProp }) {
         </main>
       </div>
 
-      {useBottom ? (
-        <>
-          <nav className="bottom-nav" aria-label="Main menu, contextual navigation and command centre">
-            <button
-              type="button"
-              className={`bnav bottom-nav-menu ${moreOpen ? 'on' : ''}`}
-              onClick={() => {
-                setMoreOpen((v) => !v)
-                setCommandOpen(false)
-                setOpen(false)
-              }}
-              aria-label={moreOpen ? 'Close main menu' : 'Open main menu'}
-              aria-expanded={moreOpen}
-              title="Main menu"
-            >
-              <span className="ico" aria-hidden>☰</span>
-              Menu
-            </button>
-            <div className="bottom-nav-scroll" aria-label="Section shortcuts">
-              {bottomItems
-                .filter((item) => !item.isRoot && !item.isMore)
-                .map((item) => (
-                  <NavLink
-                    key={item.to + item.label}
-                    to={item.to}
-                    end={item.end}
-                    className={() => `bnav ${isItemActive(item) ? 'on' : ''}`}
-                    onClick={() => {
-                      setMoreOpen(false)
-                      setOpen(false)
-                    }}
-                  >
-                    <span className="ico" aria-hidden>{item.icon}</span>
-                    {item.label}
-                  </NavLink>
-                ))}
-            </div>
-            <button
-              type="button"
-              className={`bnav bottom-nav-fixed ${commandOpen ? 'on' : ''}`}
-              onClick={() => {
-                setCommandOpen((v) => !v)
-                setMoreOpen(false)
-                setOpen(false)
-              }}
-              aria-label={commandOpen ? 'Close command centre' : 'Open command centre'}
-              aria-expanded={commandOpen}
-            >
-              <span className="ico" aria-hidden>▦</span>
-              {commandOpen ? 'Close' : 'Command'}
-            </button>
-          </nav>
+      {useBottom ? <OrbNavigation onCommand={() => setCommandOpen((value) => !value)} /> : null}
 
-          <div
-            className={`drawer-backdrop ${moreOpen ? 'show' : ''}`}
-            onClick={() => setMoreOpen(false)}
-            aria-hidden={!moreOpen}
-          />
-          <div className={`drawer ${moreOpen ? 'open' : ''}`} id="more-drawer" role="dialog" aria-label="More pages">
-            <div className="drawer-handle" />
-            <h3>All sections</h3>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => { setMoreOpen(false); nav('/invoices/new') }}>+ Invoice</button>
-              <button type="button" className="btn btn-outline btn-sm" onClick={() => { setMoreOpen(false); nav('/quotes') }}>+ Quote</button>
-              <button type="button" className="btn btn-outline btn-sm" onClick={() => { setMoreOpen(false); nav('/tickets') }}>+ Job</button>
-            </div>
-            {user ? (
-              <button type="button" className="btn btn-outline btn-sm" style={{ width: '100%', marginBottom: 12 }} onClick={handleSignOut}>
-                Sign out
-              </button>
-            ) : null}
-            {sections.map((sec) => (
-              <div key={sec.title} className="drawer-section">
-                <div className="drawer-section-title">{sec.title}</div>
-                {sec.links.map((l) => (
-                  <NavLink
-                    key={l.to + l.label}
-                    to={l.to}
-                    end={l.end}
-                    className={({ isActive }) => `drawer-link ${isActive ? 'active' : ''}`}
-                    onClick={() => setMoreOpen(false)}
-                  >
-                    {l.icon ? <span className="ico">{l.icon}</span> : null}
-                    {l.label}
-                  </NavLink>
-                ))}
-              </div>
-            ))}
-          </div>
-        </>
-      ) : null}
     </>
   )
 }
