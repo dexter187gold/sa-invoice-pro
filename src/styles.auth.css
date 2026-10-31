@@ -469,7 +469,13 @@
 .auth-logo-stage { height:224px; width:min(100%,390px); margin:0 auto; position:relative; display:grid; place-items:center; isolation:isolate; }
 .auth-logo-core { position:relative; z-index:4; display:grid; place-items:center; transform-origin:center; filter:drop-shadow(0 0 24px rgba(71,220,143,.30)); }
 .auth-logo-core img,.auth-logo-core svg { width:174px; height:174px; object-fit:contain; position:relative; z-index:5; opacity:1; filter:drop-shadow(0 5px 14px rgba(0,0,0,.38)); }
-.auth-logo-fill { position:absolute; z-index:-1; width:148px; height:148px; border-radius:50%; background:conic-gradient(from 0deg,rgba(95,255,166,.78) var(--fill,0%),rgba(21,105,72,.05) 0); filter:blur(2px); opacity:0; }
+.auth-logo-fill { position:absolute; z-index:6; width:148px; height:148px; border-radius:50%; overflow:hidden; pointer-events:none; opacity:0; isolation:isolate; background:linear-gradient(180deg,rgba(57,190,151,.12),rgba(20,132,91,.18)); mix-blend-mode:screen; }
+.auth-logo-fill::before,.auth-logo-fill::after { content:"";position:absolute;left:-35%;width:170%;height:175%;top:calc(100% - var(--liquid-level,0%));border-radius:43%;background:linear-gradient(110deg,rgba(82,177,222,.44),rgba(73,197,154,.38) 48%,rgba(120,205,156,.45));filter:blur(1px);animation:authLiquidDrift 4.6s ease-in-out infinite alternate; }
+.auth-logo-fill::after { top:calc(100% - var(--liquid-level,0%) + 5px);left:-45%;opacity:.62;background:linear-gradient(110deg,rgba(232,117,132,.25),rgba(102,190,174,.32),rgba(70,159,205,.28));animation:authLiquidDrift 6.2s ease-in-out infinite alternate-reverse; }
+.auth-logo-fill span { position:absolute;z-index:2;inset:0;border-radius:50%;background:linear-gradient(145deg,rgba(22,101,66,.08),rgba(12,86,54,.34)); }
+.auth-logo-caption { position:relative;isolation:isolate;color:rgba(230,255,239,.45); }
+.auth-logo-caption::after { content:attr(data-text);position:absolute;inset:0;background:linear-gradient(100deg,#b8f3ce 0%,#38b879 48%,#0d5c39 100%);background-clip:text;-webkit-background-clip:text;color:transparent;clip-path:inset(calc(100% - var(--word-fill,0%)) 0 0 0); }
+@keyframes authLiquidDrift { from{transform:translate3d(-5%,0,0) rotate(-9deg)}to{transform:translate3d(5%,-2%,0) rotate(9deg)} }
 .auth-binary-rain { position:absolute; inset:0; display:flex; justify-content:space-around; overflow:hidden; opacity:0; }
 .auth-binary-rain span { position:absolute; left:calc(5% + var(--stream)*12.5%); top:-80px; color:rgba(167,255,199,.88); font:700 10px/1.7 monospace; letter-spacing:2px; text-shadow:0 0 12px rgba(75,255,151,.8); animation:authBinaryFall 1s linear infinite; animation-delay:var(--delay); }
 .auth-invoice-build { position:absolute; inset:0; display:grid; place-items:center; opacity:0; }
@@ -494,14 +500,16 @@
 .phase-3 .auth-invoice-sheet { transform:scale(.12) rotate(0); opacity:.1; }
 .phase-3 .auth-logo-core { opacity:1; animation:authLogoRebuild 1s cubic-bezier(.15,.85,.25,1) both; }
 .phase-4 .auth-logo-core { opacity:1; transform:scale(1); }
-.phase-4 .auth-logo-fill { opacity:.78; animation:authOrbFill 3.2s cubic-bezier(.18,.7,.2,1) both; }
+.phase-4 .auth-logo-fill { opacity:1; animation:authLiquidRise 3.2s cubic-bezier(.18,.7,.2,1) both; }
+.phase-4 .auth-logo-caption { animation:authWordFill 3.2s cubic-bezier(.18,.7,.2,1) both; }
 .phase-4 .auth-logo-orbit { animation:authOrbitPulse 1s ease-out both; }
 @keyframes authBinaryFall { from{transform:translateY(0);opacity:0}12%{opacity:1}to{transform:translateY(310px);opacity:0} }
 @keyframes authLogoBreak { 0%{opacity:1;transform:scale(1)}70%{opacity:.6;transform:scale(1.12)}100%{opacity:0;transform:scale(.18);filter:blur(8px)} }
 @keyframes authLogoRebuild { 0%{opacity:0;transform:scale(.12);filter:blur(10px)}65%{opacity:1;transform:scale(1.08);filter:blur(0)}100%{opacity:1;transform:scale(1)} }
 @keyframes authInvoiceCompile { 0%{opacity:0;transform:translateY(48px) scale(.5)}30%{opacity:1}100%{opacity:1} }
 @keyframes authInvoiceToOrb { to{opacity:0;transform:scale(.18) rotate(12deg);filter:blur(6px)} }
-@keyframes authOrbFill { from{--fill:0%;opacity:.1;transform:scale(.8)}to{--fill:100%;opacity:.85;transform:scale(1.12)} }
+@keyframes authLiquidRise { from{--liquid-level:0%;transform:scale(.94)}to{--liquid-level:100%;transform:scale(1)} }
+@keyframes authWordFill { from{--word-fill:0%}to{--word-fill:100%} }
 @keyframes authOrbitPulse { 0%{transform:scale(.65);opacity:0}55%{opacity:1}100%{transform:scale(1.1);opacity:.65} }
 @media(max-width:900px) {
   .auth-layout { display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:4px; }
