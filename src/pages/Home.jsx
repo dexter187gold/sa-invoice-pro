@@ -170,26 +170,13 @@ export default function Home() {
         </div>
       ) : null}
 
-      {nextActions.length > 0 && (
-        <div className="card" style={{ marginBottom: 12, padding: '12px 14px' }}>
-          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>Do next</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {nextActions.map((a) => (
-              <Link
-                key={a.id}
-                to={a.href}
-                className="btn btn-sm"
-                style={{
-                  borderLeft: a.tone === 'good' ? '3px solid #22c55e' : a.tone === 'warn' ? '3px solid #f59e0b' : '3px solid #64748b',
-                }}
-              >
-                {a.title}
-              </Link>
-            ))}
-            <Link className="btn btn-outline btn-sm" to="/quotes">Quotes · pull cloud decisions</Link>
-          </div>
-        </div>
-      )}
+      <div style={{ marginTop: 16, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <Link className="btn btn-outline btn-sm" to="/sync">Sync health</Link>
+        <Link className="btn btn-outline btn-sm" to="/settings">Settings · Cloud</Link>
+        <Link className="btn btn-outline btn-sm" to="/accounting">Accounting</Link>
+        <Link className="btn btn-outline btn-sm" to="/bank">Bank import</Link>
+      </div>
+
 
       <section className="pulse-hero">
         <div className="pulse-hero-text">
@@ -319,6 +306,27 @@ export default function Home() {
       <OwnerInsightsStrip />
       <NpsCard clients={clients} toast={toast} />
 
+      {nextActions.length > 0 && (
+        <div className="card" style={{ marginBottom: 12, padding: '12px 14px' }}>
+          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>Do next</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {nextActions.map((a) => (
+              <Link
+                key={a.id}
+                to={a.href}
+                className="btn btn-sm"
+                style={{
+                  borderLeft: a.tone === 'good' ? '3px solid #22c55e' : a.tone === 'warn' ? '3px solid #f59e0b' : '3px solid #64748b',
+                }}
+              >
+                {a.title}
+              </Link>
+            ))}
+            <Link className="btn btn-outline btn-sm" to="/quotes">Quotes · pull cloud decisions</Link>
+          </div>
+        </div>
+      )}
+
       {showJobs && (jobToBill.length > 0 || openJobs.length > 0) && (
         <section className="pulse-section">
           <div className="pulse-section-head">
@@ -346,12 +354,6 @@ export default function Home() {
         </section>
       )}
 
-      <div style={{ marginTop: 16, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        <Link className="btn btn-outline btn-sm" to="/sync">Sync health</Link>
-        <Link className="btn btn-outline btn-sm" to="/settings">Settings · Cloud</Link>
-        <Link className="btn btn-outline btn-sm" to="/accounting">Accounting</Link>
-        <Link className="btn btn-outline btn-sm" to="/bank">Bank import</Link>
-      </div>
     </PageFade>
   )
 }
