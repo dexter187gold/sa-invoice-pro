@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import AppLogo from './AppLogo'
 import { ROOT_NAV } from './shellNav'
+import { canAccessPath } from '../lib/accessControl'
 
 const LEFT = [
   { to: '/invoices/new', label: 'Create invoice', icon: '＋' },
@@ -18,7 +19,7 @@ const RIGHT = [
   { to: '/settings', label: 'Settings', icon: '⚙' },
 ]
 
-export default function OrbNavigation({ onCommand }) {
+export default function OrbNavigation({ onCommand, accessStatus, isOwner = false }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [gestureHint, setGestureHint] = useState('')
   const touch = useRef(null)
@@ -26,7 +27,7 @@ export default function OrbNavigation({ onCommand }) {
   const nav = useNavigate()
   const location = useLocation()
   useEffect(() => setMenuOpen(false), [location.pathname, location.search])
-  const menuItems = ROOT_NAV.filter((item) => item.to !== '/dev-portal')
+  const menuItems = ROOT_NAV.filter((item) => item.to !== '/dev-portal' && canAccessPath(item.to, accessStatus, isOwner))
 
   useEffect(() => {
     if (!menuOpen) return undefined
@@ -124,7 +125,7 @@ export default function OrbNavigation({ onCommand }) {
         html.nav-bottom .main{padding-bottom:calc(108px + env(safe-area-inset-bottom,0px))!important} html.nav-bottom,html.nav-bottom body{overscroll-behavior-y:none} .sa-orb-dock{touch-action:pan-x}
       `}</style>
       <nav className="sa-orb-dock" aria-label="SA Invoice Pro navigation">
-        {renderRail(LEFT, 'left')}
+        {renderRail(LEFT.filter((item) => canAccessPath(item.to, accessStatus, isOwner)), 'left')}
         <div style={{ position: 'relative', flex: '0 0 76px', display: 'grid', placeItems: 'center' }}>
           {menuOpen ? (
             <div className="sa-orb-menu" role="dialog" aria-label="Main menu" onTouchStart={(event) => event.stopPropagation()} onTouchMove={(event) => event.stopPropagation()}>
@@ -143,7 +144,7 @@ export default function OrbNavigation({ onCommand }) {
             <AppLogo size={54}/>
           </button>
         </div>
-        {renderRail(RIGHT, 'right')}
+        {renderRail(RIGHT.filter((item) => canAccessPath(item.to, accessStatus, isOwner)), 'right')}
       </nav>
       {menuOpen ? <button type="button" aria-label="Close main menu" onClick={() => setMenuOpen(false)} className="sa-orb-backdrop" /> : null}
     </>
