@@ -50,13 +50,13 @@ export default function AppLogo({ size = 'md', showWordmark = false, className =
         style={{ display: 'block', filter: 'drop-shadow(0 6px 16px rgba(124,58,237,.45))' }}>
         <defs>
           <linearGradient id="saLabOrb" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#e879f9" /><stop offset="45%" stopColor="#7c3aed" /><stop offset="100%" stopColor="#38bdf8" />
+            <stop offset="0%" stopColor="#86efac" /><stop offset="45%" stopColor="#059669" /><stop offset="100%" stopColor="#34d399" />
           </linearGradient>
           <linearGradient id="saLabRing" x1="0%" y1="100%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#38bdf8" /><stop offset="50%" stopColor="#e879f9" /><stop offset="100%" stopColor="#a78bfa" />
+            <stop offset="0%" stopColor="#38bdf8" /><stop offset="50%" stopColor="#e879f9" /><stop offset="100%" stopColor="#6ee7b7" />
           </linearGradient>
           <radialGradient id="saLabCore" cx="40%" cy="35%" r="65%">
-            <stop offset="0%" stopColor="#2a1848" /><stop offset="70%" stopColor="#0c0a14" /><stop offset="100%" stopColor="#05040a" />
+            <stop offset="0%" stopColor="#064e3b" /><stop offset="70%" stopColor="#022c22" /><stop offset="100%" stopColor="#011c17" />
           </radialGradient>
         </defs>
         <circle cx="64" cy="64" r="60" fill="none" stroke="url(#saLabRing)" strokeWidth="4" opacity="0.95" />
@@ -64,12 +64,12 @@ export default function AppLogo({ size = 'md', showWordmark = false, className =
         <ellipse cx="48" cy="44" rx="18" ry="10" fill="rgba(232,121,249,0.18)" />
         <text x="64" y="74" textAnchor="middle" fontFamily="system-ui,Segoe UI,sans-serif" fontWeight="800" fontSize="36" fill="url(#saLabOrb)" letterSpacing="-1">SA</text>
         <rect x="40" y="88" width="48" height="14" rx="4" fill="rgba(232,121,249,0.15)" stroke="rgba(56,189,248,0.45)" strokeWidth="1" />
-        <text x="64" y="98" textAnchor="middle" fontFamily="system-ui,sans-serif" fontWeight="700" fontSize="9" fill="#e879f9" letterSpacing="1.5">LAB</text>
+        <text x="64" y="98" textAnchor="middle" fontFamily="system-ui,sans-serif" fontWeight="700" fontSize="9" fill="#e879f9" letterSpacing="1.5">PRO</text>
       </svg>
       {showWordmark && (
         <div className="app-logo-wordmark">
           <div className="app-logo-title">SA INVOICE PRO</div>
-          <div className="app-logo-sub muted brain-ribbon">Pinky & the Brain · Lab</div>
+          <div className="app-logo-sub muted brain-ribbon">Professional business workspace</div>
         </div>
       )}
     </div>
