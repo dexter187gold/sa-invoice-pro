@@ -95,6 +95,12 @@ function mergeWorkspaces(local, cloud) {
   }
 }
 
+
+/** Drop queued writes from a different account; queue entries are not tenant-tagged. */
+export function clearPushQueue() {
+  writeQueue([])
+}
+
 export async function flushPushQueue() {
   if (!Sync.isLoggedIn()) return { flushed: 0 }
   const q = readQueue()
