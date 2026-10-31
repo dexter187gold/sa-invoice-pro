@@ -128,7 +128,7 @@ def _verify_payfast_itn(form: dict, passphrase: str, sandbox: bool) -> tuple[boo
 
 
 def register_billing(app, load_db, save_db, load_owner_config, gen_key_fn=None):
-    from flask import request, jsonify, redirect
+    from flask import request, jsonify, redirect, render_template_string
 
     gen_key = gen_key_fn or _gen_key
 
@@ -690,5 +690,60 @@ def register_billing(app, load_db, save_db, load_owner_config, gen_key_fn=None):
             return jsonify({"ok": True, "status": str(verified.get("status") or "pending"), "licensed": False})
         except Exception:
             return jsonify({"ok": True, "status": "pending", "licensed": False})
+
+    @app.route("/admin/billing", methods=["GET", "POST"])
+    def billing_admin_dashboard():
+        """Owner-token protected payment and licence activation ledger."""
+        expected = (os.environ.get("SA_OWNER_TOKEN") or "").strip()
+        supplied = (request.form.get("token") or request.args.get("token") or "").strip()
+        if not expected or not supplied or not hmac.compare_digest(expected, supplied):
+            return render_template_string("""
+              <!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">
+              <title>SAIP Billing Admin</title>
+              <body style="font:16px system-ui;background:#0f172a;color:#e2e8f0;padding:24px">
+              <main style="max-width:420px;margin:8vh auto;background:#1e293b;padding:24px;border-radius:16px">
+              <h2>Billing & activation ledger</h2><p>Owner authentication required.</p>
+              <form method="post"><input name="token" type="password" required autocomplete="current-password" placeholder="Owner token" style="box-sizing:border-box;width:100%;padding:12px">
+              <button style="margin-top:12px;padding:12px;width:100%">Unlock dashboard</button></form></main></body>
+            """, 401 if request.method == "POST" else 200)
+        db = load_db()
+        txns = db.get("transactions") or {}
+        pending = db.get("pending_payments") or {}
+        rows = []
+        for ref, rec in pending.items():
+            if rec.get("provider") != "paystack":
+                continue
+            details = rec.get("transaction") or {}
+            rows.append({
+                "reference": ref,
+                "gateway_id": rec.get("gatewayTransactionId") or details.get("gatewayTransactionId") or "—",
+                "email": rec.get("email") or details.get("customerEmail") or "—",
+                "plan": (rec.get("plan") or details.get("plan") or "—"),
+                "amount": rec.get("amount") or details.get("amount") or "—",
+                "currency": rec.get("currency") or details.get("currency") or "ZAR",
+                "status": rec.get("status") or "pending",
+                "channel": details.get("channel") or "—",
+                "created": rec.get("createdAt") or "—",
+                "paid": rec.get("paidAt") or details.get("paidAt") or "—",
+                "key": rec.get("key") or details.get("licenceKey") or "—",
+            })
+        rows.sort(key=lambda row: row["created"], reverse=True)
+        successful = [r for r in rows if r["status"] == "paid"]
+        pending_count = len([r for r in rows if r["status"] == "pending"])
+        failed_count = len([r for r in rows if r["status"] in ("failed", "initialization_failed")])
+        total = sum((Decimal(str(r["amount"])) for r in successful), Decimal("0.00"))
+        return render_template_string("""
+        <!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>SAIP Billing Ledger</title>
+        <style>body{font:14px system-ui;background:#f1f5f9;color:#0f172a;margin:0;padding:16px}main{max-width:1400px;margin:auto}.stats{display:flex;gap:10px;flex-wrap:wrap}.card{background:white;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin:12px 0}.stat{min-width:130px}.stat b{display:block;font-size:24px;color:#047857}table{width:100%;border-collapse:collapse;min-width:980px}td,th{text-align:left;padding:9px;border-bottom:1px solid #e2e8f0;vertical-align:top}th{font-size:11px;color:#64748b;text-transform:uppercase}code{overflow-wrap:anywhere}.scroll{overflow:auto}.muted{color:#64748b}</style></head><body><main>
+        <h1>SA Invoice Pro · Billing & activation ledger</h1><p class="muted">Verified Paystack transactions and account activations. Refresh this page for current server records.</p>
+        <div class="stats"><div class="card stat"><b>{{ successful|length }}</b>Successful activations</div><div class="card stat"><b>{{ pending_count }}</b>Pending payments</div><div class="card stat"><b>{{ failed_count }}</b>Failed / init errors</div><div class="card stat"><b>R {{ total }}</b>Verified gross total</div></div>
+        <div class="card"><form method="post"><input type="hidden" name="token" value="{{ token }}"><button>Refresh ledger</button></form></div>
+        <div class="card"><h2>Transactions & licence references</h2><div class="scroll"><table><thead><tr><th>Status</th><th>Customer</th><th>Plan</th><th>Amount</th><th>Channel</th><th>Payment reference</th><th>Gateway ID</th><th>Created</th><th>Paid / activated</th><th>Licence key</th></tr></thead><tbody>
+        {% for r in rows %}<tr><td>{{ r.status }}</td><td>{{ r.email }}</td><td>{{ r.plan }}</td><td>{{ r.currency }} {{ r.amount }}</td><td>{{ r.channel }}</td><td><code>{{ r.reference }}</code></td><td><code>{{ r.gateway_id }}</code></td><td>{{ r.created }}</td><td>{{ r.paid }}</td><td><code>{{ r.key }}</code></td></tr>{% else %}<tr><td colspan="10">No Paystack transactions recorded yet.</td></tr>{% endfor %}
+        </tbody></table></div></div>
+        <p class="muted">Only transactions independently verified by Paystack count toward successful activations and gross totals.</p>
+        </main></body></html>
+        """, rows=rows[:250], successful=successful, pending_count=pending_count,
+             failed_count=failed_count, total=f"{total:,.2f}", token=supplied)
 
     print("[billing] PayFast + Paystack checkout/webhook + account claim registered")
