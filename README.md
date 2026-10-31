@@ -1,6 +1,6 @@
-# SA Invoice Pro 6.45.2
+# SA Invoice Pro 6.46.0
 
-Credit note modal · portal Accept queue · Meta WhatsApp Cloud send · desk for SA repair shops.
+WhatsApp chase queue · credit notes · portal Accept · desk for SA repair shops.
 
 ```bash
 npm install && npm run dev
