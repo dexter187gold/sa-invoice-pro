@@ -9,25 +9,14 @@ def _data_path():
 def _now():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
+from license_git_store import load_state as _git_load_state, save_state as _git_save_state
+
+
 def _load():
-    path = _data_path()
-    if os.path.exists(path):
-        with open(path, encoding="utf-8") as f:
-            data = json.load(f)
-            if not isinstance(data, dict):
-                return {"users": {}, "requests": {}, "keys": {}}
-            data.setdefault("users", {})
-            data.setdefault("requests", {})
-            data.setdefault("keys", {})
-            return data
-    return {"users": {}, "requests": {}, "keys": {}}
+    return _git_load_state(_data_path())
 
 def _save(db):
-    path = _data_path()
-    tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(db, f, indent=2)
-    os.replace(tmp, path)
+    _git_save_state(db, _data_path())
 
 def register_v24(app):
     from flask import request, jsonify
