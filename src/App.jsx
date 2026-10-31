@@ -68,6 +68,9 @@ function LicenseAccessGate({ children }) {
 
   const isOwner = !!(user?.isOwner || user?.role === 'owner' || user?.role === 'Owner')
   if (state.loading) return <div className="muted" style={{ padding: 24 }}>Checking licence access…</div>
+  if (!state.status?.licensed && Number(state.status?.trialDaysLeft || 0) > 0 && location.pathname === '/') {
+    return <Navigate to="/clients" replace />
+  }
   if (!canAccessPath(location.pathname, state.status, isOwner)) {
     const feature = pathFeatureLabel(location.pathname)
     return (
