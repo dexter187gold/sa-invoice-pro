@@ -16,12 +16,17 @@ export default function License() {
   const [busy, setBusy] = useState(false)
   const [returnChecking, setReturnChecking] = useState(false)
   const [billingInfo, setBillingInfo] = useState(null)
+  const [planPrices, setPlanPrices] = useState({})
   const [refreshing, setRefreshing] = useState(false)
 
   const reload = async () => {
     setRefreshing(true)
     try {
       let current = await licenseApi.getLicenseStatus()
+      try {
+        const plans = await billing.fetchBillingPlans()
+        setPlanPrices(Object.fromEntries(plans.map((plan) => [plan.id, plan.amount])))
+      } catch { /* Server confirms final pricing at checkout. */ }
       const em = await billing.getLicenseEmail()
       if (em) {
         setEmail(em)
@@ -118,7 +123,7 @@ export default function License() {
             const action = isCurrent ? 'Current plan' : currentIndex < 0 || targetIndex > currentIndex ? 'Upgrade to ' + t.name : 'Switch to ' + t.name;
             return <div key={t.id} style={{ border: isCurrent || t.recommended ? '2px solid var(--green,#22c55e)' : '1px solid var(--border,rgba(255,255,255,.12))', borderRadius: 12, padding: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}><strong>{t.name}</strong>{isCurrent && <span className="badge">Active</span>}</div>
-              <div className="muted" style={{ fontSize: 11, margin: '4px 0 8px' }}>{t.priceHint}</div>
+              <div className="muted" style={{ fontSize: 11, margin: '4px 0 8px' }}>{t.priceHint} · {planPrices[t.id] != null ? 'R ' + Number(planPrices[t.id]).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'Price confirmed at checkout'}</div>
               <ul style={{ margin: '0 0 10px', paddingLeft: 16, fontSize: 12 }}>{t.features.map((feature) => <li key={feature}>{feature}</li>)}</ul>
               <button type="button" className={isCurrent ? 'btn btn-outline btn-sm' : 'btn btn-primary btn-sm'} style={{ width: '100%' }} disabled={busy || !email.includes('@') || isCurrent} onClick={() => buy(t.id)}>{action}</button>
             </div>;
