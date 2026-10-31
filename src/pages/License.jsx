@@ -22,12 +22,19 @@ export default function License() {
   const [returnChecking, setReturnChecking] = useState(false)
   const [billingInfo, setBillingInfo] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [deviceServerStatus, setDeviceServerStatus] = useState(null)
 
   const reload = async () => {
     setRefreshing(true)
     try {
       let current = await licenseApi.getLicenseStatus()
       setServerUrl(await licenseApi.getServerUrl())
+      try {
+        const deviceStatus = await licenseApi.getRemoteDeviceStatus()
+        setDeviceServerStatus(deviceStatus)
+      } catch (error) {
+        setDeviceServerStatus({ ok: false, error: error.message || 'Server status refresh failed' })
+      }
       const em = await billing.getLicenseEmail()
       if (em) {
         setEmail(em)
@@ -249,8 +256,20 @@ export default function License() {
       )}
       {billingInfo && !billingInfo.licensed && billingInfo.ok === false && <div className="card" role="status"><strong>Billing status unavailable</strong><p className="muted">{billingInfo.error}</p></div>}
 
+      {deviceServerStatus && (
+        <div className="card" role="status" style={{ marginBottom: 12 }}>
+          <strong>Server device status: {deviceServerStatus.status || deviceServerStatus.mode || (deviceServerStatus.ok ? 'Unknown' : 'Unavailable')}</strong>
+          <p className="muted" style={{ margin: '4px 0 0' }}>
+            {deviceServerStatus.allowed === false
+              ? 'This device is restricted by the licence server. Contact support if this is unexpected.'
+              : deviceServerStatus.ok
+                ? 'The server has returned the current device status.'
+                : (deviceServerStatus.error || 'The server could not confirm device status.')}
+          </p>
+        </div>
+      )}
       <div className="grid-stats" style={{ marginBottom: '1rem' }}>
-        <StatCard label="Status" value={(licensed || billingInfo?.licensed) ? 'Licensed' : (billingInfo?.status || 'Soft trial')} tone={(licensed || billingInfo?.licensed) ? 'good' : 'warn'} />
+        <StatCard label="Status" value={(licensed || billingInfo?.licensed) ? 'Licensed' : (deviceServerStatus?.status || billingInfo?.status || 'Soft trial')} tone={(licensed || billingInfo?.licensed) ? 'good' : 'warn'} />
         <StatCard label="Trial days left" value={trialLeft ?? '—'} tone={trialLeft != null && trialLeft <= 7 ? 'bad' : undefined} />
         <StatCard label="Handshake" value={status?.handshakeOk ? 'OK' : 'Pending'} tone={status?.handshakeOk ? 'good' : 'warn'} />
         <StatCard label="Connectivity" value={online ? 'Online' : 'Offline'} tone={online ? 'good' : 'warn'} />
