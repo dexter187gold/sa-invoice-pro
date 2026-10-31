@@ -1,0 +1,69 @@
+import { getLicenseStatus } from './license.js'
+
+const BASIC_PATHS = new Set([
+  '/', '/dashboard', '/clients', '/invoices', '/quotes', '/tickets',
+  '/products', '/payments', '/license', '/support', '/about', '/settings',
+])
+
+const PLAN_FEATURES = {
+  solo: new Set([
+    ...BASIC_PATHS, '/inbox', '/wa-chase', '/documents', '/portal',
+  ]),
+  shop: new Set([
+    ...BASIC_PATHS, '/inbox', '/wa-chase', '/documents', '/portal',
+    '/expenses', '/petty-cash', '/accounting', '/reports', '/employees',
+    '/payroll', '/recurring', '/bank', '/excel', '/sync', '/team',
+    '/wa-templates', '/sms',
+  ]),
+  multi: new Set([
+    ...BASIC_PATHS, '/inbox', '/wa-chase', '/documents', '/portal',
+    '/expenses', '/petty-cash', '/accounting', '/reports', '/employees',
+    '/payroll', '/recurring', '/bank', '/excel', '/sync', '/team',
+    '/wa-templates', '/sms', '/branches', '/webhooks', '/portal-admin',
+  ]),
+}
+
+const OWNER_ONLY = new Set(['/owner-console', '/owner-recovery', '/dev-portal'])
+
+export function normalizedPlan(status) {
+  const raw = String(status?.meta?.plan || status?.meta?.planId || '').toLowerCase()
+  if (raw.includes('multi') || raw === 'm') return 'multi'
+  if (raw.includes('shop') || raw === 'p') return 'shop'
+  if (raw.includes('solo') || raw === 's' || raw === 'standard') return 'solo'
+  return ''
+}
+
+export function canAccessPath(pathname, status, isOwner = false) {
+  const path = String(pathname || '/').split('?')[0]
+  if (OWNER_ONLY.has(path)) return !!isOwner
+  if (path === '/license' || path === '/support' || path === '/about' || path === '/settings') return true
+  if (status?.licensed) {
+    const plan = normalizedPlan(status)
+    const allowed = PLAN_FEATURES[plan] || BASIC_PATHS
+    return allowed.has(path)
+  }
+  // Trials expose only the basic workspace. Expiry does not erase customer data.
+  return BASIC_PATHS.has(path) && Number(status?.trialDaysLeft || 0) > 0
+}
+
+export async function readAccessStatus() {
+  try { return await getLicenseStatus() }
+  catch { return { licensed: false, trialDaysLeft: 0, meta: null } }
+}
+
+export function pathFeatureLabel(pathname) {
+  const path = String(pathname || '').split('?')[0]
+  const labels = {
+    '/expenses': 'Expense management', '/petty-cash': 'Petty cash',
+    '/accounting': 'Accounting', '/reports': 'Advanced reports',
+    '/employees': 'Staff management', '/payroll': 'Payroll',
+    '/recurring': 'Recurring invoices', '/bank': 'Bank statement import',
+    '/excel': 'Spreadsheet tools', '/branches': 'Multi-branch management',
+    '/webhooks': 'API and webhooks', '/portal-admin': 'Client portal administration',
+    '/sms': 'SMS gateway', '/wa-templates': 'WhatsApp templates',
+    '/team': 'Team and seat management', '/sync': 'Advanced sync tools',
+    '/inbox': 'Team inbox', '/wa-chase': 'WhatsApp automation',
+    '/documents': 'Business document library',
+  }
+  return labels[path] || 'This feature'
+}
