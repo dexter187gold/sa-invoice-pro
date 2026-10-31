@@ -227,7 +227,7 @@ export default function Shell({ children, sections: sectionsProp }) {
         </main>
       </div>
 
-      {useBottom ? <OrbNavigation onCommand={() => setCommandOpen((value) => !value)} /> : null}
+      {useBottom ? <OrbNavigation onCommand={() => setCommandOpen((value) => !value)} accessStatus={accessStatus} isOwner={!!(user?.isOwner || user?.role === 'owner' || user?.role === 'Owner')} /> : null}
 
     </>
   )
