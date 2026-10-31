@@ -20,14 +20,33 @@ export default function License() {
   const [ping, setPing] = useState(null)
   const [activationSplash, setActivationSplash] = useState(null)
   const [returnChecking, setReturnChecking] = useState(false)
+  const [billingInfo, setBillingInfo] = useState(null)
+  const [refreshing, setRefreshing] = useState(false)
 
   const reload = async () => {
-    const s = await licenseApi.getLicenseStatus()
-    setStatus(s)
-    setServerUrl(await licenseApi.getServerUrl())
-    setLog(s.exchange || null)
-    const em = await billing.getLicenseEmail()
-    if (em) setEmail(em)
+    setRefreshing(true)
+    try {
+      let current = await licenseApi.getLicenseStatus()
+      setServerUrl(await licenseApi.getServerUrl())
+      const em = await billing.getLicenseEmail()
+      if (em) {
+        setEmail(em)
+        try {
+          const remote = await billing.billingStatus(em)
+          setBillingInfo(remote)
+          if (remote?.licensed && !current.licensed) {
+            await billing.claimPaidLicense(em)
+            current = await licenseApi.getLicenseStatus()
+          }
+        } catch (error) {
+          setBillingInfo({ ok: false, error: error.message || 'Could not reach billing status service' })
+        }
+      }
+      setStatus(current)
+      setLog(current.exchange || null)
+    } finally {
+      setRefreshing(false)
+    }
   }
 
   useEffect(() => {
@@ -142,9 +161,10 @@ export default function License() {
             {online ? 'Online' : 'Offline'} · Pay → auto seats on email · v{APP_VERSION}
           </p>
         </div>
-        <button type="button" className="btn btn-outline" onClick={reload} disabled={busy}>Refresh</button>
+        <button type="button" className="btn btn-outline" onClick={reload} disabled={busy || refreshing}>{refreshing ? 'Refreshing…' : 'Refresh status'}</button>
       </div>
 
+      {!licensed && !billingInfo?.licensed && <>
       <div className="card" style={{ marginBottom: 12, borderLeft: '4px solid #38bdf8' }}>
         <strong>Self-serve licensing</strong>
         <p className="muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
@@ -209,7 +229,9 @@ export default function License() {
         </div>
       </div>
 
-      {!licensed && (
+      </>}
+
+      {!licensed && !billingInfo?.licensed && (
         <div className="card" style={{ marginBottom: '1rem', borderLeft: '4px solid var(--warn, #f59e0b)' }}>
           <strong>{trialLeft != null && trialLeft <= 0 ? 'Trial ended (soft)' : 'Trial / unlicensed workspace'}</strong>
           <p className="muted" style={{ margin: '0.35rem 0 0' }}>
@@ -218,15 +240,17 @@ export default function License() {
         </div>
       )}
 
-      {licensed && (
+      {(licensed || billingInfo?.licensed) && (
         <div className="card" style={{ marginBottom: '1rem', borderLeft: '4px solid var(--green, #10b981)' }}>
-          <strong>Licensed · {String(status?.meta?.plan || 'active').toUpperCase()}</strong>
-          <p className="muted" style={{ margin: '0.35rem 0 0' }}>Your {status?.meta?.plan || 'paid'} plan is active with {status?.meta?.seats || 'the included'} seat allowance. Your plan features are now unlocked.</p>
+          <strong>Payment confirmed · Licence active</strong>
+          <p className="muted" style={{ margin: '0.35rem 0 0' }}>Your {status?.meta?.plan || billingInfo?.plan || 'paid'} plan is active with {status?.meta?.seats || billingInfo?.seats || 'the included'} seat allowance. Purchase options are hidden while this licence is active.</p>
+          {billingInfo?.paidAt ? <p className="muted">Activated: {billingInfo.paidAt}</p> : null}
         </div>
       )}
+      {billingInfo && !billingInfo.licensed && billingInfo.ok === false && <div className="card" role="status"><strong>Billing status unavailable</strong><p className="muted">{billingInfo.error}</p></div>}
 
       <div className="grid-stats" style={{ marginBottom: '1rem' }}>
-        <StatCard label="Status" value={licensed ? 'Licensed' : 'Soft trial'} tone={licensed ? 'good' : 'warn'} />
+        <StatCard label="Status" value={(licensed || billingInfo?.licensed) ? 'Licensed' : (billingInfo?.status || 'Soft trial')} tone={(licensed || billingInfo?.licensed) ? 'good' : 'warn'} />
         <StatCard label="Trial days left" value={trialLeft ?? '—'} tone={trialLeft != null && trialLeft <= 7 ? 'bad' : undefined} />
         <StatCard label="Handshake" value={status?.handshakeOk ? 'OK' : 'Pending'} tone={status?.handshakeOk ? 'good' : 'warn'} />
         <StatCard label="Connectivity" value={online ? 'Online' : 'Offline'} tone={online ? 'good' : 'warn'} />
