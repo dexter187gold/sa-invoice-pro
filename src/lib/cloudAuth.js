@@ -35,6 +35,9 @@ async function isolateWorkspaceForAccount(targetEmail) {
   if (!target) throw new Error('Cannot switch workspace without an account email')
   const active = getSession()
   let previous = String(active?.email || '').trim().toLowerCase()
+  if (!previous) {
+    try { previous = String(localStorage.getItem('sa_active_workspace_account') || '').trim().toLowerCase() } catch {}
+  }
   if (!previous || previous === target) {
     const localUsers = (await db.getAll(STORES.users)) || []
     if (localUsers.length === 1) {
@@ -52,6 +55,7 @@ async function isolateWorkspaceForAccount(targetEmail) {
     if (!restored) await db.clearActiveWorkspace()
     clearPushQueue()
   }
+  try { localStorage.setItem('sa_active_workspace_account', target) } catch {}
 }
 
 async function mirrorLocalUser(session, password, extra = {}) {
