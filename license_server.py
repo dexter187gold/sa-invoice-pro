@@ -140,7 +140,7 @@ code{background:#f1f5f9;padding:.1rem .3rem;border-radius:4px;font-size:.78rem}
 </style></head><body>
 <header>
   <div><h1>SA Invoice Pro – License Server</h1><span style="opacity:.8;font-size:.85rem">Handshake · Issue · Validate · Creator only</span></div>
-  <span>{{ now }}</span>
+  <span style="display:flex;align-items:center;gap:12px"><a href="/admin/billing" style="color:#6ee7b7;font-weight:700;text-decoration:none">Billing & transactions ↗</a><span>{{ now }}</span></span>
 </header>
 <main>
 {% if message %}<div class="flash">{{ message }}</div>{% endif %}
