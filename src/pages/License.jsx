@@ -14,7 +14,6 @@ export default function License() {
   const [email, setEmail] = useState('')
   const [provider, setProvider] = useState('paystack')
   const [busy, setBusy] = useState(false)
-  const [log, setLog] = useState(null)
   const [returnChecking, setReturnChecking] = useState(false)
   const [billingInfo, setBillingInfo] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
@@ -38,7 +37,6 @@ export default function License() {
         }
       }
       setStatus(current)
-      setLog(current.exchange || null)
     } finally {
       setRefreshing(false)
     }
@@ -72,21 +70,6 @@ export default function License() {
     return () => { cancelled = true }
   }, [params])
 
-  const run = async (fn, label) => {
-    setBusy(true)
-    try {
-      const out = await fn()
-      setLog(out)
-      toast(label, 'success')
-      await reload()
-    } catch (e) {
-      toast(e.message || String(e), 'error')
-      setLog({ error: e.message, details: e.details })
-    } finally {
-      setBusy(false)
-    }
-  }
-
   const buy = async (planId) => {
     setBusy(true)
     try {
@@ -94,7 +77,6 @@ export default function License() {
       // page navigates to PayFast
     } catch (e) {
       toast(e.message || String(e), 'error')
-      setLog({ error: e.message, details: e.details })
       setBusy(false)
     }
   }
@@ -163,33 +145,15 @@ export default function License() {
       {billingInfo && !billingInfo.licensed && billingInfo.ok === false && <div className="card" role="status"><strong>Billing status unavailable</strong><p className="muted">{billingInfo.error}</p></div>}
 
       <div className="grid-stats" style={{ marginBottom: '1rem' }}>
-        <StatCard label="Status" value={(licensed || billingInfo?.licensed) ? 'Licensed' : (deviceServerStatus?.status || billingInfo?.status || 'Soft trial')} tone={(licensed || billingInfo?.licensed) ? 'good' : 'warn'} />
+        <StatCard label="Status" value={(licensed || billingInfo?.licensed) ? 'Licensed' : (billingInfo?.status || 'Soft trial')} tone={(licensed || billingInfo?.licensed) ? 'good' : 'warn'} />
         <StatCard label="Trial days left" value={trialLeft ?? '—'} tone={trialLeft != null && trialLeft <= 7 ? 'bad' : undefined} />
         <StatCard label="Handshake" value={status?.handshakeOk ? 'OK' : 'Pending'} tone={status?.handshakeOk ? 'good' : 'warn'} />
         <StatCard label="Connectivity" value={online ? 'Online' : 'Offline'} tone={online ? 'good' : 'warn'} />
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-        <LoadingButton loading={busy} onClick={claim}>
-          Claim paid license
-        </LoadingButton>
-        <LoadingButton loading={busy} onClick={() => run(() => licenseApi.fullActivate(), 'Legacy activate')}>
-          Legacy activate
-        </LoadingButton>
-        <button type="button" className="btn btn-outline" disabled={busy} onClick={() => run(() => licenseApi.handshake(), 'Handshake OK')}>
-          Handshake
-        </button>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         <Link className="btn btn-outline" to="/settings">Settings / backup</Link>
       </div>
-
-      {log && (
-        <div className="card">
-          <h3 style={{ marginTop: 0 }}>Last server reply</h3>
-          <pre style={{ fontSize: 12, overflow: 'auto', whiteSpace: 'pre-wrap', margin: 0, background: 'var(--bg)', padding: 12, borderRadius: 8 }}>
-            {JSON.stringify(log, null, 2)}
-          </pre>
-        </div>
-      )}
 
       {!status && <EmptyState title="Loading license status…" hint="If this hangs, check network and server URL." />}
     </PageFade>
