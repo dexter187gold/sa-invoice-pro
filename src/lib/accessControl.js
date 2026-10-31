@@ -5,9 +5,13 @@ const BASIC_PATHS = new Set([
   '/products', '/payments', '/license', '/support', '/about', '/settings',
 ])
 
+// A trial is deliberately a small, usable introduction to the core workflow.
+// Keep this list narrow: trial accounts can manage clients, invoices and quotes only.
+const TRIAL_PATHS = new Set(['/clients', '/invoices', '/quotes'])
+
 const PLAN_FEATURES = {
   solo: new Set([
-    ...BASIC_PATHS, '/inbox', '/wa-chase', '/documents', '/portal',
+    ...BASIC_PATHS, '/inbox', '/documents', '/portal',
   ]),
   shop: new Set([
     ...BASIC_PATHS, '/inbox', '/wa-chase', '/documents', '/portal',
@@ -38,14 +42,18 @@ export function canAccessPath(pathname, status, isOwner = false) {
   if (path.startsWith('/invoices/')) path = '/invoices'
   if (path.startsWith('/portal/')) path = '/portal'
   if (OWNER_ONLY.has(path)) return !!isOwner
-  if (path === '/license' || path === '/support' || path === '/about' || path === '/settings') return true
+
   if (status?.licensed) {
+    if (path === '/license' || path === '/support' || path === '/about' || path === '/settings') return true
     const plan = normalizedPlan(status)
     const allowed = PLAN_FEATURES[plan] || BASIC_PATHS
     return allowed.has(path)
   }
-  // Trials expose only the basic workspace. Expiry does not erase customer data.
-  return BASIC_PATHS.has(path) && Number(status?.trialDaysLeft || 0) > 0
+
+  // Keep licence checkout reachable so a trial user can upgrade, but expose
+  // no other modules beyond the three trial workflow areas.
+  if (path === '/license') return true
+  return TRIAL_PATHS.has(path) && Number(status?.trialDaysLeft || 0) > 0
 }
 
 export async function readAccessStatus() {
@@ -65,7 +73,9 @@ export function pathFeatureLabel(pathname) {
     '/sms': 'SMS gateway', '/wa-templates': 'WhatsApp templates',
     '/team': 'Team and seat management', '/sync': 'Advanced sync tools',
     '/inbox': 'Team inbox', '/wa-chase': 'WhatsApp automation',
-    '/documents': 'Business document library',
+    '/documents': 'Business document library', '/tickets': 'Job cards',
+    '/products': 'Products and services', '/payments': 'Payment management',
+    '/dashboard': 'Dashboard', '/settings': 'Settings',
   }
   return labels[path] || 'This feature'
 }
