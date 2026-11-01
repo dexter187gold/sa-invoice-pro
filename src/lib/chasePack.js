@@ -28,7 +28,6 @@ export function buildChaseMessage(inv, client = {}, company = {}) {
   )
 }
 
-/** Live demo template (no real client) — shows staff what the link will look like */
 export function buildLiveExampleMessage(company = {}) {
   const co = company.name || 'SA Invoice Pro Demo Shop'
   return (
@@ -79,17 +78,13 @@ export function buildChaseList(invoices, clients = [], company = {}) {
     .sort((a, b) => b.days - a.days)
 }
 
-/** Jobs marked ready / completed that still need a collection ping */
 export function buildCollectionChaseList(tickets, clients = [], company = {}) {
-  const ready = (tickets || []).filter((t) => {
-    const s = String(t.status || '').toLowerCase()
-    return s.includes('ready') || s === 'completed' || s === 'done' || t.readyForCollection
-  })
-  return ready
+  return (tickets || [])
+    .filter((t) => ['resolved', 'waiting', 'in_progress'].includes(String(t.status || '')))
     .map((ticket) => {
       const client = (clients || []).find((c) => String(c.id) === String(ticket.clientId)) || {}
-      const phone = client.phone || ticket.clientPhone || ticket.phone || ''
       const message = buildJobReadyMessage(ticket, client, company)
+      const phone = client.phone || ticket.contactPhone || ''
       return {
         id: String(ticket.id),
         kind: 'job',
@@ -98,8 +93,54 @@ export function buildCollectionChaseList(tickets, clients = [], company = {}) {
         phone,
         hasPhone: !!toWaNumber(phone),
         message,
-        days: 0,
         url: waMeUrl(phone, message),
       }
     })
+}
+
+export function buildInvoiceReminder(inv, client, company) {
+  return buildChaseMessage(inv, client, company)
+}
+export function buildJobUpdate(ticket, client, company) {
+  const name = client?.name || ticket?.contactName || 'there'
+  const co = company?.name || 'us'
+  const st = ticket?.status || 'in progress'
+  return (
+    `Hi ${name},\n\n` +
+    `Update from *${co}* on *${ticket?.title || ticket?.subject || 'your job'}*: status is now *${st}*.\n\n` +
+    `Reply here if you have questions.`
+  )
+}
+export function buildReadyForCollection(ticket, client, company) {
+  return buildJobReadyMessage(ticket, client, company)
+}
+export function buildQuoteFollowUp(quote, client, company) {
+  const name = client?.name || 'there'
+  const co = company?.name || 'us'
+  const num = quote?.number || ''
+  return (
+    `Hi ${name},\n\n` +
+    `Just checking in from *${co}* about quote *${num}*. Happy to adjust scope or answer questions.\n\n` +
+    `Reply here when you are ready.`
+  )
+}
+export function buildPaymentThanks(inv, client, company) {
+  const name = client?.name || 'there'
+  const co = company?.name || 'us'
+  const num = inv?.number || ''
+  return (
+    `Hi ${name},\n\n` +
+    `Thank you — *${co}* received your payment` +
+    (num ? ` for invoice *${num}*` : '') +
+    `. We appreciate your business.`
+  )
+}
+export function buildPortalShare(client, company, url) {
+  const name = client?.name || 'there'
+  const co = company?.name || 'us'
+  return (
+    `Hi ${name},\n\n` +
+    `*${co}* shared your client portal:\n${url || ''}\n\n` +
+    `You can view quotes and invoices there.`
+  )
 }
