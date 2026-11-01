@@ -1,5 +1,5 @@
 /**
- * WhatsApp Cloud API (Meta) — send text / job status from the desk.
+ * WhatsApp Cloud API (Meta) — send text / job status / approved templates from the desk.
  * Prefers saip-sync proxy so the long-lived token never ships to the browser in production.
  * Falls back to direct Graph when proxy is unavailable and local secrets exist (dev).
  */
@@ -44,7 +44,6 @@ export async function saveWhatsAppConfig(patch = {}) {
     appId: patch.appId != null ? String(patch.appId) : cur.appId,
     graphVersion: patch.graphVersion || cur.graphVersion,
   }
-  // Never persist full token into IndexedDB if it came only from secrets vault
   await db.setSetting(SETTING_KEY, {
     enabled: next.enabled,
     preferCloud: next.preferCloud,
@@ -53,7 +52,6 @@ export async function saveWhatsAppConfig(patch = {}) {
     wabaId: next.wabaId,
     appId: next.appId,
     graphVersion: next.graphVersion,
-    // only store token if user explicitly pasted one in Settings
     accessToken: patch.accessToken != null ? String(patch.accessToken) : (await db.getSetting(SETTING_KEY))?.accessToken || '',
   })
   await audit('whatsapp.config', { enabled: next.enabled, hasToken: !!next.accessToken, phoneNumberId: next.phoneNumberId })
@@ -79,10 +77,6 @@ export async function getWhatsAppLog(limit = 30) {
   return (Array.isArray(prev) ? prev : []).slice(0, limit)
 }
 
-/**
- * Send a plain text message via Cloud API.
- * @returns {{ ok: boolean, mode: 'cloud'|'wa.me', messageId?: string, error?: string }}
- */
 export async function sendWhatsAppText(to, text, opts = {}) {
   const cfg = await getWhatsAppConfig()
   const msisdn = toWaNumber(to)
@@ -106,7 +100,6 @@ export async function sendWhatsAppText(to, text, opts = {}) {
     throw new Error('WhatsApp Cloud not configured — add Meta token + Phone number ID in Dev Portal / Integrations')
   }
 
-  // 1) Prefer proxy (token stays on Render)
   if (cfg.proxyUrl && !opts.forceDirect) {
     try {
       const res = await fetch(cfg.proxyUrl, {
@@ -116,7 +109,7 @@ export async function sendWhatsAppText(to, text, opts = {}) {
           to: msisdn,
           text: body,
           phoneNumberId: cfg.phoneNumberId,
-          accessToken: cfg.accessToken, // proxy may ignore and use its own env
+          accessToken: cfg.accessToken,
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -125,7 +118,6 @@ export async function sendWhatsAppText(to, text, opts = {}) {
         await audit('whatsapp.send', { to: msisdn, via: 'proxy' })
         return { ok: true, mode: 'cloud', messageId: data.messageId || data.messages?.[0]?.id }
       }
-      // fall through to direct if proxy returns 404/501
       if (res.status !== 404 && res.status !== 501) {
         await pushLog({ to: msisdn, ok: false, mode: 'cloud-proxy', status: res.status, error: data.error || data.message })
         if (opts.fallbackWaMe !== false) {
@@ -136,11 +128,9 @@ export async function sendWhatsAppText(to, text, opts = {}) {
       }
     } catch (e) {
       if (String(e.message || '').includes('proxy failed') && opts.fallbackWaMe === false) throw e
-      // network / missing route → try direct
     }
   }
 
-  // 2) Direct Graph API (dev / when proxy not deployed)
   const url = `https://graph.facebook.com/${cfg.graphVersion}/${cfg.phoneNumberId}/messages`
   const res = await fetch(url, {
     method: 'POST',
@@ -172,7 +162,6 @@ export async function sendWhatsAppText(to, text, opts = {}) {
   return { ok: true, mode: 'cloud', messageId }
 }
 
-/** Job-status template used from Tickets */
 export function buildJobStatusMessage(ticket, company) {
   const name = ticket?.contactName || 'there'
   const co = company?.name || 'SA Invoice Pro'
@@ -190,8 +179,108 @@ export function buildJobStatusMessage(ticket, company) {
     .join('\n')
 }
 
-/** One-shot helper: prefer Cloud, fall back to wa.me */
 export async function notifyJobStatus(ticket, phone, company, opts = {}) {
   const msg = opts.message || buildJobStatusMessage(ticket, company)
   return sendWhatsAppText(phone, msg, opts)
 }
+
+/**
+ * Meta-approved message templates (outside 24h session window).
+ * templateName must match the exact name approved in Meta Business Manager.
+ */
+export async function sendWhatsAppTemplate(to, templateName, bodyParams = [], opts = {}) {
+  const cfg = await getWhatsAppConfig()
+  const msisdn = toWaNumber(to)
+  if (!msisdn) throw new Error('Invalid WhatsApp number')
+  const name = String(templateName || '').trim()
+  if (!name) throw new Error('Template name required')
+  const lang = opts.language || 'en'
+  const components = []
+  if (bodyParams?.length) {
+    components.push({
+      type: 'body',
+      parameters: bodyParams.map((t) => ({ type: 'text', text: String(t ?? '').slice(0, 1024) })),
+    })
+  }
+  if (!(cfg.accessToken && cfg.phoneNumberId)) {
+    const fallback = opts.fallbackText || bodyParams.join(' · ')
+    if (opts.fallbackWaMe !== false && fallback) {
+      openWhatsApp(msisdn, fallback)
+      return { ok: true, mode: 'wa.me', note: 'Template needs Cloud API — opened free-form instead' }
+    }
+    throw new Error('WhatsApp Cloud credentials required for Meta templates')
+  }
+  const url = `https://graph.facebook.com/${cfg.graphVersion || 'v21.0'}/${cfg.phoneNumberId}/messages`
+  const payload = {
+    messaging_product: 'whatsapp',
+    to: msisdn,
+    type: 'template',
+    template: {
+      name,
+      language: { code: lang },
+      components,
+    },
+  }
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + cfg.accessToken,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    const errMsg = data?.error?.message || data?.error?.error_user_msg || 'Template send failed'
+    await pushLog({ to: msisdn, ok: false, mode: 'template', template: name, error: errMsg })
+    if (opts.fallbackWaMe !== false && opts.fallbackText) {
+      openWhatsApp(msisdn, opts.fallbackText)
+      return { ok: true, mode: 'wa.me', error: errMsg }
+    }
+    throw new Error(errMsg)
+  }
+  const messageId = data?.messages?.[0]?.id
+  await pushLog({ to: msisdn, ok: true, mode: 'template', template: name, id: messageId })
+  await audit('whatsapp.template', { to: msisdn, template: name })
+  return { ok: true, mode: 'cloud-template', messageId, template: name }
+}
+
+/** Catalog of Meta template names — align metaName with your approval emails */
+export const META_TEMPLATE_MAP = [
+  {
+    id: 'job_status_update',
+    metaName: 'job_status_update',
+    label: 'Job status update',
+    category: 'UTILITY',
+    language: 'en',
+    bodyParams: ['customer_name', 'job_title', 'status', 'company'],
+    when: 'Outside 24h chat window — job progress',
+  },
+  {
+    id: 'invoice_reminder',
+    metaName: 'invoice_reminder',
+    label: 'Invoice reminder',
+    category: 'UTILITY',
+    language: 'en',
+    bodyParams: ['customer_name', 'invoice_number', 'amount', 'company'],
+    when: 'Chase overdue invoices (utility)',
+  },
+  {
+    id: 'appointment_update',
+    metaName: 'appointment_update',
+    label: 'Appointment / collection',
+    category: 'UTILITY',
+    language: 'en',
+    bodyParams: ['customer_name', 'detail', 'company'],
+    when: 'Ready for collection / on-site ETA',
+  },
+  {
+    id: 'hello_world',
+    metaName: 'hello_world',
+    label: 'Hello World (Meta sample)',
+    category: 'UTILITY',
+    language: 'en_US',
+    bodyParams: [],
+    when: 'Test that Cloud API + WABA work after approval',
+  },
+]
