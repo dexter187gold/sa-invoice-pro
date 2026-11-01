@@ -14,7 +14,6 @@ export const PLAN_CODES = {
   E: 'enterprise',
 }
 
-/** Reverse map: tier id → server plan code */
 export const PLAN_ID_TO_CODE = {
   trial: 'T',
   solo: 'S',
@@ -24,10 +23,6 @@ export const PLAN_ID_TO_CODE = {
   enterprise: 'E',
 }
 
-/**
- * Full catalogue (includes trial / lifetime for status display).
- * Checkout UI typically filters with `purchasable: true`.
- */
 export const TIERS = [
   {
     id: 'trial',
@@ -122,14 +117,10 @@ export const TIERS = [
   },
 ]
 
-/** Plans shown on License buy cards */
 export function purchasableTiers() {
   return TIERS.filter((t) => t.purchasable !== false)
 }
 
-/**
- * Normalize any server/app plan string to a tier id (solo, shop, multi, …).
- */
 export function normalizePlanId(raw) {
   const s = String(raw || '').trim()
   if (!s) return ''
@@ -156,7 +147,6 @@ export function planCodeForId(id) {
   return PLAN_ID_TO_CODE[normalizePlanId(id)] || 'S'
 }
 
-/** Feature-gate group: trial→trial, lifetime→solo, enterprise→multi */
 export function featurePlanGroup(raw) {
   const id = normalizePlanId(raw)
   if (id === 'trial') return 'trial'
@@ -164,4 +154,34 @@ export function featurePlanGroup(raw) {
   if (id === 'enterprise') return 'multi'
   if (id === 'solo' || id === 'shop' || id === 'multi') return id
   return 'solo'
+}
+
+export const COMPARISON_COLUMNS = ['trial', 'solo', 'shop', 'multi', 'lifetime', 'enterprise']
+
+export const COMPARISON_ROWS = [
+  { id: 'seats', label: 'Devices / seats', values: { trial: '1', solo: '1', shop: '5', multi: '25', lifetime: '1', enterprise: '25' } },
+  { id: 'term', label: 'Term', values: { trial: '7 days', solo: '12 mo', shop: '24 mo', multi: '12 mo', lifetime: 'Lifetime', enterprise: 'Lifetime' } },
+  { id: 'invoices', label: 'Invoices & quotes', values: { trial: true, solo: true, shop: true, multi: true, lifetime: true, enterprise: true } },
+  { id: 'jobs', label: 'Job cards / tickets', values: { trial: false, solo: true, shop: true, multi: true, lifetime: true, enterprise: true } },
+  { id: 'whatsapp', label: 'WhatsApp chase & templates', values: { trial: false, solo: true, shop: true, multi: true, lifetime: true, enterprise: true } },
+  { id: 'portal', label: 'Client portal', values: { trial: false, solo: true, shop: true, multi: true, lifetime: true, enterprise: true } },
+  { id: 'cloud', label: 'Cloud restore / multi-device sync', values: { trial: false, solo: true, shop: true, multi: true, lifetime: true, enterprise: true } },
+  { id: 'accounting', label: 'Accounting, bank, payroll', values: { trial: false, solo: false, shop: true, multi: true, lifetime: false, enterprise: true } },
+  { id: 'team', label: 'Team seats & roles', values: { trial: false, solo: false, shop: true, multi: true, lifetime: false, enterprise: true } },
+  { id: 'branches', label: 'Multi-branch workspaces', values: { trial: false, solo: false, shop: false, multi: true, lifetime: false, enterprise: true } },
+  { id: 'api', label: 'API / webhooks', values: { trial: false, solo: false, shop: false, multi: true, lifetime: false, enterprise: true } },
+  { id: 'sla', label: 'Priority / SLA support', values: { trial: false, solo: false, shop: true, multi: true, lifetime: false, enterprise: true } },
+]
+
+export function comparisonColumns(includeTrial = true) {
+  const ids = includeTrial ? COMPARISON_COLUMNS : COMPARISON_COLUMNS.filter((id) => id !== 'trial')
+  return ids.map((id) => getTier(id)).filter(Boolean)
+}
+
+export function cellValue(row, planId) {
+  const v = row?.values?.[planId]
+  if (v === true) return 'yes'
+  if (v === false) return 'no'
+  if (v == null) return '—'
+  return String(v)
 }
