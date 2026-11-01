@@ -25,6 +25,7 @@ import './styles.table.css'
 import './styles.invoice.css'
 import './styles.modern.css'
 import './styles.brain.css'
+import './styles.sniper.css'
 import './styles.modern-ux.css'
 import './styles.pulse.css'
 import './styles.nav-comfort.css'
@@ -32,7 +33,10 @@ import './styles.glass.css'
 
 try {
   const saved = localStorage.getItem('sa_theme')
-  if (saved === 'brain' || saved === 'dark' || !saved) {
+  if (saved === 'sniper' || saved === 'dark' || !saved) {
+    document.documentElement.classList.add('sniper')
+    document.documentElement.setAttribute('data-theme', 'sniper')
+  } else if (saved === 'brain') {
     document.documentElement.classList.add('brain')
     if (saved !== 'light') document.documentElement.classList.add('dark')
   }
