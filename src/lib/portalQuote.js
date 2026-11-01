@@ -205,3 +205,97 @@ export function portalQuoteSummary(quotes = []) {
   }
   return s
 }
+
+/**
+ * P5 — Desk write-back: pull portal Accept/Reject onto local quotes.
+ * Prefer workspace pull (server already updated quote on decision);
+ * fall back to /api/portal/decisions log.
+ */
+export async function syncPortalDecisionsToDesk({ quotes = [], putQuote } = {}) {
+  if (typeof putQuote !== 'function') {
+    throw new Error('putQuote required')
+  }
+  let applied = 0
+  const sources = []
+
+  try {
+    const { Sync } = await import('./sync.js')
+    if (!Sync.isLoggedIn?.()) {
+      return { applied: 0, reason: 'not_logged_in', sources }
+    }
+
+    try {
+      const row = await Sync.pull()
+      const remoteQuotes = row?.data?.quotes || row?.quotes || []
+      for (const rq of remoteQuotes) {
+        const st = normalizeQuoteStatus(rq.status)
+        const decided =
+          rq.portalDecision ||
+          st === 'accepted' ||
+          st === 'rejected' ||
+          st === 'converted'
+        if (!decided) continue
+        const local = (quotes || []).find((q) => String(q.id) === String(rq.id))
+        if (!local) continue
+        const same =
+          normalizeQuoteStatus(local.status) === st &&
+          String(local.portalDecision || '') === String(rq.portalDecision || st)
+        if (same && !rq.portalNote) continue
+        await putQuote({
+          ...local,
+          status: st,
+          portalDecision: rq.portalDecision || st,
+          portalNote: rq.portalNote || rq.portalDecisionReason || local.portalNote || '',
+          portalDecisionAt: rq.portalDecisionAt || rq.updatedAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
+        applied++
+      }
+      if (applied) sources.push('workspace')
+    } catch (e) {
+      sources.push('workspace_error:' + (e?.message || 'fail'))
+    }
+
+    try {
+      const data = await Sync.listPortalDecisions({ limit: 80 })
+      const rows = data?.data || data?.decisions || []
+      for (const item of rows) {
+        const qid = item.quoteId || item.quote_id
+        if (!qid) continue
+        const local = (quotes || []).find((q) => String(q.id) === String(qid))
+        if (!local) continue
+        const action =
+          item.action === 'rejected' ||
+          item.action === 'reject' ||
+          item.status === 'rejected' ||
+          item.decision === 'rejected'
+            ? 'reject'
+            : 'approve'
+        const nextStatus = action === 'reject' ? 'rejected' : 'accepted'
+        if (
+          normalizeQuoteStatus(local.status) === nextStatus &&
+          local.portalDecision === nextStatus
+        ) {
+          continue
+        }
+        const { updated } = applyPortalDecisionLocally(
+          [local],
+          qid,
+          action,
+          item.note || item.portalNote || item.reason || '',
+        )
+        if (updated) {
+          await putQuote(updated)
+          applied++
+        }
+      }
+      if (rows.length) sources.push('decisions_log')
+    } catch (e) {
+      sources.push('decisions_error:' + (e?.message || 'fail'))
+    }
+
+    return { applied, sources, ok: true }
+  } catch (e) {
+    return { applied, sources, ok: false, error: e?.message || String(e) }
+  }
+}
