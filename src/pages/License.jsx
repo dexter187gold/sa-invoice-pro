@@ -6,6 +6,7 @@ import * as billing from '../lib/billing'
 import { APP_VERSION } from '../config'
 import { TIERS, purchasableTiers, normalizePlanId, getTier } from '../lib/licenseTiers'
 import { PageFade, StatCard, EmptyState } from '../components/ui'
+import PlanCompareTable from '../components/PlanCompareTable'
 
 export default function License() {
   const { toast, online } = useApp()
@@ -269,6 +270,11 @@ export default function License() {
           })}
         </div>
       </div>
+
+      <PlanCompareTable
+        currentPlan={billingInfo?.plan || status?.meta?.plan || status?.meta?.planId || ''}
+        includeTrial
+      />
 
       {!licensed && !billingInfo?.licensed && (
         <div className="card" style={{ marginBottom: '1rem', borderLeft: '4px solid var(--warn, #f59e0b)' }}>
