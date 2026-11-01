@@ -8,7 +8,7 @@ const KEY = 'sa_dev_config_v1'
 
 export const DEFAULT_ENDPOINTS = {
   syncServer: APP_LINKS?.syncServer || 'https://saip-sync.onrender.com',
-  licenseServer: APP_LINKS?.licenseServer || 'https://sa-invoice-license.onrender.com',
+  licenseServer: APP_LINKS?.licenseServer || 'https://saip-license.onrender.com',
   updatesServer: APP_LINKS?.updatesServer || 'https://sa-invoice-updates.onrender.com',
   deskAppUrl: '',
   clientPortalUrl: 'https://sa-invoice-pro-client-portal.pcrepairdex.workers.dev',
@@ -59,7 +59,7 @@ export function getEndpoint(name, fallback = '') {
 /** Render / ops secret names (documentation only — values never stored in the app). */
 export const RENDER_SECRET_CHECKLIST = [
   { service: 'saip-sync', keys: ['JWT_SECRET', 'GIT_STORE_TOKEN', 'PORT'] },
-  { service: 'sa-invoice-license', keys: ['ADMIN_TOKEN', 'PAYFAST_MERCHANT_ID', 'PAYFAST_MERCHANT_KEY', 'PAYFAST_PASSPHRASE', 'GOOGLE_CLIENT_ID'] },
+  { service: 'saip-license', keys: ['ADMIN_TOKEN', 'PAYFAST_MERCHANT_ID', 'PAYFAST_MERCHANT_KEY', 'PAYFAST_PASSPHRASE', 'GOOGLE_CLIENT_ID'] },
   { service: 'sa-invoice-updates', keys: ['UPDATE_TOKEN'] },
   { service: 'desk / Pages', keys: ['(none required for static SPA)'] },
 ]
