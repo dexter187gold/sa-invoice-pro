@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext'
 import * as licenseApi from '../lib/license'
 import * as billing from '../lib/billing'
 import { APP_VERSION } from '../config'
-import { TIERS } from '../lib/licenseTiers'
+import { TIERS, purchasableTiers, normalizePlanId, getTier } from '../lib/licenseTiers'
 import { PageFade, StatCard, EmptyState } from '../components/ui'
 
 export default function License() {
@@ -213,17 +213,17 @@ export default function License() {
 
       <div className="card" style={{ marginBottom: 16 }}>
         <h3 style={{ marginTop: 0 }}>{(licensed || billingInfo?.licensed) ? 'Change or upgrade your plan' : 'Choose your licence plan'}</h3>
-        <p className="muted" style={{ fontSize: 13 }}>Return here any time to switch between Solo, Shop and Multi-branch.</p>
+        <p className="muted" style={{ fontSize: 13 }}>Plans match the licence server: Solo (S), Shop (P), Multi-branch (M), Lifetime (L), Enterprise (E).</p>
         <label className="label" htmlFor="license-payment-provider">Payment provider</label>
         <select id="license-payment-provider" className="input" value={provider} onChange={(e) => setProvider(e.target.value)} style={{ maxWidth: 320, marginBottom: 12 }}>
           <option value="paystack">Paystack · Cards, eligible wallets, Capitec Pay & EFT</option>
           <option value="payfast">PayFast · Cards & Instant EFT</option>
         </select>
         <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fill,minmax(190px,1fr))' }}>
-          {TIERS.map((t) => {
-            const currentPlan = String(billingInfo?.plan || status?.meta?.plan || '').toLowerCase()
+          {purchasableTiers().map((t) => {
+            const currentPlan = normalizePlanId(billingInfo?.plan || status?.meta?.plan || status?.meta?.planId || '')
             const isCurrent = currentPlan === t.id
-            const currentIndex = TIERS.findIndex((x) => x.id === currentPlan)
+            const currentIndex = TIERS.findIndex((x) => x.id === normalizePlanId(currentPlan))
             const targetIndex = TIERS.findIndex((x) => x.id === t.id)
             const action = isCurrent
               ? 'Current plan'
@@ -248,6 +248,7 @@ export default function License() {
                   {planPrices[t.id] != null
                     ? 'R ' + Number(planPrices[t.id]).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                     : 'Price confirmed at checkout'}
+                  {' · code '}{t.code}
                 </div>
                 <ul style={{ margin: '0 0 10px', paddingLeft: 16, fontSize: 12 }}>
                   {t.features.map((feature) => (
