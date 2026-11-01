@@ -27,7 +27,6 @@ export async function setTicketStatus(ticketId, status, note) {
   const t = await db.get(store, ticketId)
   if (!t) throw new Error('Ticket not found')
   if (t.status && !canTransition(t.status, status) && t.status !== status) {
-    // Allow force for admin/bulk; log only
     console.warn(`Ticket ${ticketId}: ${t.status} → ${status} (non-standard)`)
   }
   const history = Array.isArray(t.statusHistory) ? t.statusHistory : []
@@ -83,28 +82,13 @@ export async function addTicketReminder(ticketId, { dueAt, message }) {
   return patch
 }
 
-export function dueReminders(tickets, now = Date.now()) {
-  const out = []
-  for (const t of tickets || []) {
-    for (const r of t.reminders || []) {
-      if (!r.done && r.dueAt && new Date(r.dueAt).getTime() <= now) {
-        out.push({ ticket: t, reminder: r })
-      }
-    }
-  }
-  return out
-}
-
-export function sortTickets(list, mode = 'priority') {
+export function sortTickets(list, mode = 'updated') {
   const arr = [...(list || [])]
   if (mode === 'priority') {
-    arr.sort((a, b) => {
-      const pa = PRIORITY_ORDER[a.priority] ?? 2
-      const pb = PRIORITY_ORDER[b.priority] ?? 2
-      if (pa !== pb) return pa - pb
-      return String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || ''))
-    })
-  } else if (mode === 'updated') {
+    arr.sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9))
+  } else if (mode === 'created') {
+    arr.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+  } else {
     arr.sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))
   }
   return arr
@@ -117,17 +101,37 @@ export function ticketAgeHours(t) {
 }
 
 /**
- * Build a draft invoice from a job card / ticket.
+ * One-shot: job card → unpaid invoice, linked both ways.
+ * Idempotent: if ticket already has invoiceId, returns existing invoice (unless force).
  */
-export async function invoiceFromTicket(ticket, { invoices = [], vatRate = 0.15, vatEnabled = true, defaultRate = 450 } = {}) {
+export async function invoiceFromTicket(ticket, {
+  invoices = [],
+  vatRate = 0.15,
+  vatEnabled = true,
+  defaultRate = 450,
+  force = false,
+  markResolved = true,
+  labourOverride = null,
+} = {}) {
   if (!ticket) throw new Error('Ticket required')
+
+  if (ticket.invoiceId && !force) {
+    const existing = await db.get(STORES.invoices, ticket.invoiceId).catch(() => null)
+    if (existing) return { ...existing, _alreadyInvoiced: true }
+  }
+
   const { invoiceTotals } = await import('./money')
   const year = new Date().getFullYear()
-  const n = (invoices || []).length + 1
+  const sameYear = (invoices || []).filter((i) => String(i.number || '').includes(String(year)))
+  const n = sameYear.length + 1
   const number = `INV-${year}-${String(n).padStart(4, '0')}`
 
   const lines = []
-  if (ticket.workDone || ticket.description || ticket.title) {
+  const labourPrice = labourOverride != null
+    ? Number(labourOverride)
+    : (Number(ticket.amount || ticket.quotedAmount || ticket.labourAmount) || defaultRate)
+
+  if (ticket.workDone || ticket.description || ticket.title || labourPrice) {
     const desc = [
       ticket.title,
       ticket.workDone,
@@ -136,15 +140,14 @@ export async function invoiceFromTicket(ticket, { invoices = [], vatRate = 0.15,
     ]
       .filter(Boolean)
       .join('\n')
-    const price = Number(ticket.amount || ticket.quotedAmount || ticket.labourAmount) || defaultRate
-    lines.push({ description: desc || 'Service', qty: 1, price })
+    lines.push({ description: desc || 'Service', qty: 1, price: labourPrice })
   }
   if (Array.isArray(ticket.parts) && ticket.parts.length) {
-    for (const p of ticket.parts) {
+    for (const part of ticket.parts) {
       lines.push({
-        description: p.name || p.description || 'Part',
-        qty: Number(p.qty) || 1,
-        price: Number(p.price) || 0,
+        description: part.name || part.description || 'Part',
+        qty: Number(part.qty) || 1,
+        price: Number(part.price) || 0,
       })
     }
   }
@@ -156,6 +159,7 @@ export async function invoiceFromTicket(ticket, { invoices = [], vatRate = 0.15,
   const today = new Date().toISOString().slice(0, 10)
   const payload = {
     clientId: ticket.clientId || '',
+    clientName: ticket.contactName || '',
     number,
     date: today,
     dueDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
@@ -174,13 +178,26 @@ export async function invoiceFromTicket(ticket, { invoices = [], vatRate = 0.15,
     updatedAt: new Date().toISOString(),
   }
   const inv = await db.add(STORES.invoices, payload)
-  // link ticket
+
+  const history = Array.isArray(ticket.statusHistory) ? [...ticket.statusHistory] : []
+  const nextStatus = markResolved && !['closed', 'resolved'].includes(ticket.status)
+    ? 'resolved'
+    : ticket.status
+  if (nextStatus !== ticket.status) {
+    history.push({ from: ticket.status, to: nextStatus, at: new Date().toISOString(), note: 'Invoiced (one-shot)' })
+  }
   try {
     await db.put(STORES.tickets, {
       ...ticket,
       invoiceId: inv.id,
+      invoiceNumber: inv.number,
       invoicedAt: new Date().toISOString(),
+      status: nextStatus || ticket.status,
+      statusHistory: history.slice(-40),
       updatedAt: new Date().toISOString(),
+      closedAt: nextStatus === 'resolved' || nextStatus === 'closed'
+        ? (ticket.closedAt || new Date().toISOString())
+        : ticket.closedAt,
     })
   } catch {}
   return inv
