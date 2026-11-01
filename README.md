@@ -1,9 +1,10 @@
-# SA Invoice Pro 6.46.1
+# SA Invoice Pro 6.47.0
 
-Tech Diagnose Report · WhatsApp chase · credit notes · portal Accept · desk for SA repair shops.
+Tech Diagnose Report · Cloudflare edge proxy · license /health · desk for SA repair shops.
 
 ```bash
 npm install && npm run dev
 ```
 
-Product: **sainvoicepro@gmail.com**
+Product: **sainvoicepro@gmail.com**  
+Website: https://sa-invoice-pro.pages.dev

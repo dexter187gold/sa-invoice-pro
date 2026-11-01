@@ -1,0 +1,8 @@
+name = "saip-edge-proxy"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[vars]
+SYNC_ORIGIN = "https://saip-sync.onrender.com"
+LICENSE_ORIGIN = "https://saip-license.onrender.com"
