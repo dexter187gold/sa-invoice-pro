@@ -1,0 +1,138 @@
+/* SA Invoice Pro · SNIPER theme — precision paperwork, dark optic, SA green reticle */
+:root {
+  --sniper-bg: #070b10;
+  --sniper-panel: #0d1520;
+  --sniper-elevated: #121c2a;
+  --sniper-line: rgba(94, 234, 212, 0.14);
+  --sniper-mint: #5eead4;
+  --sniper-mint-deep: #0f766e;
+  --sniper-amber: #fbbf24;
+  --sniper-red: #f43f5e;
+  --sniper-text: #e8f1f7;
+  --sniper-muted: #8ba3b5;
+  --sniper-cross: rgba(94, 234, 212, 0.35);
+}
+
+html.sniper,
+[data-theme="sniper"],
+html.dark.sniper {
+  --bg: var(--sniper-bg);
+  --bg-elevated: var(--sniper-elevated);
+  --card: var(--sniper-panel);
+  --text: var(--sniper-text);
+  --text-secondary: #c5d4e0;
+  --muted: var(--sniper-muted);
+  --border: var(--sniper-line);
+  --border-strong: rgba(94, 234, 212, 0.28);
+  --green: #14b8a6;
+  --green-dark: #0f766e;
+  --green-light: #5eead4;
+  --green-soft: rgba(20, 184, 166, 0.14);
+  --green-soft-strong: rgba(20, 184, 166, 0.22);
+  --danger: var(--sniper-red);
+  --warn: var(--sniper-amber);
+  --success: #14b8a6;
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.55);
+  color-scheme: dark;
+}
+
+html.sniper body,
+[data-theme="sniper"] body {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(20, 184, 166, 0.12), transparent 55%),
+    radial-gradient(ellipse 40% 30% at 100% 100%, rgba(15, 118, 110, 0.08), transparent 50%),
+    var(--sniper-bg);
+}
+
+html.sniper .card,
+[data-theme="sniper"] .card {
+  background: linear-gradient(160deg, rgba(18, 28, 42, 0.95), rgba(13, 21, 32, 0.98));
+  border: 1px solid var(--sniper-line);
+  box-shadow: var(--shadow);
+}
+
+html.sniper .btn-primary,
+[data-theme="sniper"] .btn-primary {
+  background: linear-gradient(135deg, #14b8a6, #0d9488);
+  color: #042f2e;
+  border: none;
+  font-weight: 750;
+}
+
+html.sniper .btn-primary:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 0 24px rgba(20, 184, 166, 0.35);
+}
+
+.sniper-reticle {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 16px;
+}
+.sniper-reticle::before,
+.sniper-reticle::after {
+  content: "";
+  position: absolute;
+  background: var(--sniper-mint);
+  opacity: 0.85;
+}
+.sniper-reticle::before {
+  left: 50%;
+  top: 8%;
+  bottom: 8%;
+  width: 2px;
+  transform: translateX(-50%);
+}
+.sniper-reticle::after {
+  top: 50%;
+  left: 8%;
+  right: 8%;
+  height: 2px;
+  transform: translateY(-50%);
+}
+.sniper-reticle-ring {
+  position: absolute;
+  inset: 12px;
+  border: 2px solid rgba(94, 234, 212, 0.55);
+  border-radius: 50%;
+  box-shadow: 0 0 24px rgba(20, 184, 166, 0.25), inset 0 0 20px rgba(20, 184, 166, 0.08);
+  animation: sniperPulse 2.8s ease-in-out infinite;
+}
+.sniper-reticle-ring.outer {
+  inset: 0;
+  border-color: rgba(94, 234, 212, 0.25);
+  animation-delay: 0.4s;
+}
+@keyframes sniperPulse {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.04); opacity: 1; }
+}
+.sniper-scope-scan {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--sniper-mint), transparent);
+  animation: sniperScan 2.2s linear infinite;
+  opacity: 0.7;
+}
+@keyframes sniperScan {
+  0% { top: 15%; }
+  100% { top: 85%; }
+}
+
+html.sniper .auth-logo-subcaption,
+.auth-page.sniper-auth .auth-logo-subcaption {
+  color: var(--sniper-mint) !important;
+  letter-spacing: 0.14em;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.auth-page.sniper-auth {
+  background:
+    radial-gradient(circle at 50% 20%, rgba(20, 184, 166, 0.15), transparent 45%),
+    linear-gradient(180deg, #05080c 0%, #0a1219 50%, #070b10 100%);
+}

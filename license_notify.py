@@ -2,8 +2,9 @@
 
 Env (Render saip-license):
   SMTP_HOST, SMTP_PORT (default 587), SMTP_USER, SMTP_PASS, SMTP_FROM
-  SMS_WEBHOOK_URL  — POST JSON {to, body} (optional generic gateway)
-  TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM  — optional Twilio SMS
+  SMTP_BCC / LICENSE_BCC — default sainvoicepro@gmail.com (owner evidence copy)
+  SMS_WEBHOOK_URL  — POST JSON {to, body}
+  TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM
 """
 from __future__ import annotations
 
@@ -51,6 +52,9 @@ def send_email_license(to_email: str, key: str, plan: str, seats: int) -> dict[s
     msg["Subject"] = "SA Invoice Pro — your activation key"
     msg["From"] = from_addr
     msg["To"] = to_email
+    bcc = _env("SMTP_BCC") or _env("LICENSE_BCC") or "sainvoicepro@gmail.com"
+    if bcc and bcc.lower() != to_email.lower():
+        msg["Bcc"] = bcc
     msg.set_content(body)
 
     try:
@@ -71,7 +75,7 @@ def send_email_license(to_email: str, key: str, plan: str, seats: int) -> dict[s
                 if user:
                     smtp.login(user, password)
                 smtp.send_message(msg)
-        return {"ok": True, "channel": "email", "to": to_email}
+        return {"ok": True, "channel": "email", "to": to_email, "bcc": bcc}
     except Exception as exc:
         return {"ok": False, "channel": "email", "error": type(exc).__name__}
 
@@ -87,8 +91,7 @@ def send_sms_license(phone: str, key: str, plan: str) -> dict[str, Any]:
         try:
             data = json.dumps({"to": to, "body": text, "from": "SAInvoicePro"}).encode("utf-8")
             req = urllib.request.Request(
-                webhook,
-                data=data,
+                webhook, data=data,
                 headers={"Content-Type": "application/json", "User-Agent": "SAIP-License/1"},
                 method="POST",
             )
@@ -105,16 +108,12 @@ def send_sms_license(phone: str, key: str, plan: str) -> dict[str, Any]:
         try:
             import base64
             from urllib.parse import urlencode
-
             auth = base64.b64encode(f"{sid}:{token}".encode()).decode()
             payload = urlencode({"To": "+" + to if not to.startswith("+") else to, "From": frm, "Body": text}).encode()
             req = urllib.request.Request(
                 f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json",
                 data=payload,
-                headers={
-                    "Authorization": "Basic " + auth,
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
+                headers={"Authorization": "Basic " + auth, "Content-Type": "application/x-www-form-urlencoded"},
                 method="POST",
             )
             with urllib.request.urlopen(req, timeout=20) as resp:
@@ -127,7 +126,6 @@ def send_sms_license(phone: str, key: str, plan: str) -> dict[str, Any]:
 
 
 def deliver_license_key(*, email: str, phone: str, key: str, plan: str, seats: int) -> dict[str, Any]:
-    """Best-effort email + SMS. Never raises — payment path must stay OK."""
     results = []
     if email:
         results.append(send_email_license(email, key, plan, seats))
@@ -135,8 +133,4 @@ def deliver_license_key(*, email: str, phone: str, key: str, plan: str, seats: i
         results.append(send_sms_license(phone, key, plan))
     if not results:
         results.append({"ok": False, "error": "no delivery channel"})
-    return {
-        "ok": any(r.get("ok") for r in results),
-        "results": results,
-        "key_tail": (key or "")[-6:],
-    }
+    return {"ok": any(r.get("ok") for r in results), "results": results, "key_tail": (key or "")[-6:]}
