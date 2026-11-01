@@ -19,6 +19,12 @@ try:
 except Exception as e:
     print("[dashboard] safe dashboard not registered:", e)
 
+try:
+    from apply_license_delivery import apply as apply_delivery
+    apply_delivery(app)
+except Exception as e:
+    print("[delivery] not applied:", e)
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "5055"))
     app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
