@@ -20,6 +20,13 @@ except Exception as e:
     print("[dashboard] safe dashboard not registered:", e)
 
 try:
+    from license_owner_ops import register_owner_ops
+    register_owner_ops(app)
+    print("[owner] owner ops registered")
+except Exception as e:
+    print("[owner] not registered:", e)
+
+try:
     from apply_license_delivery import apply as apply_delivery
     apply_delivery(app)
 except Exception as e:
