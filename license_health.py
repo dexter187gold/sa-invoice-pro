@@ -1,30 +1,32 @@
-"""Register fast health probes for Render / Cloudflare uptime checks."""
-from flask import jsonify
+"""Health endpoints for saip-license."""
+from __future__ import annotations
+
 from datetime import datetime, timezone
 
 
 def register_health(app, load_fn=None):
-    def _now():
-        return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    from flask import jsonify
+
+    def _payload():
+        devices = 0
+        try:
+            if load_fn:
+                db = load_fn() or {}
+                users = db.get("users") or {}
+                devices = len(users) if isinstance(users, dict) else 0
+        except Exception:
+            pass
+        return {
+            "ok": True,
+            "service": "saip-license",
+            "version": "2.5.0",
+            "devices": devices,
+            "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        }
 
     @app.get("/health")
     @app.get("/api/health")
     def health():
-        devices = -1
-        if callable(load_fn):
-            try:
-                db = load_fn() or {}
-                devices = len(db.get("devices") or db.get("users") or {})
-            except Exception:
-                devices = -1
-        return jsonify(
-            {
-                "ok": True,
-                "service": "saip-license",
-                "version": "2.4.1",
-                "ts": _now(),
-                "devices": devices,
-            }
-        )
+        return jsonify(_payload())
 
-    return app
+    print("[health] endpoints ready")
