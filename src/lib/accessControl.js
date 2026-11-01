@@ -1,3 +1,4 @@
+import { featurePlanGroup, normalizePlanId } from './licenseTiers.js'
 import { getLicenseStatus } from './license.js'
 
 const BASIC_PATHS = new Set([
@@ -30,11 +31,9 @@ const PLAN_FEATURES = {
 const OWNER_ONLY = new Set(['/owner-console', '/owner-recovery', '/dev-portal'])
 
 export function normalizedPlan(status) {
-  const raw = String(status?.meta?.plan || status?.meta?.planId || '').toLowerCase()
-  if (raw.includes('multi') || raw === 'm') return 'multi'
-  if (raw.includes('shop') || raw === 'p') return 'shop'
-  if (raw.includes('solo') || raw === 's' || raw === 'standard') return 'solo'
-  return ''
+  const raw = status?.meta?.plan || status?.meta?.planId || status?.meta?.tier || ''
+  // Map lifetime→solo, enterprise→multi for feature gates
+  return featurePlanGroup(raw) || normalizePlanId(raw) || ''
 }
 
 export function canAccessPath(pathname, status, isOwner = false) {
