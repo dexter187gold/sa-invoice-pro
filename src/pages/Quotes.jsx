@@ -93,7 +93,7 @@ export default function Quotes() {
         toast('No new portal decisions for local quotes', 'info')
       }
     } catch (e) {
-      if (!silent) toast ren?.(e?.message || 'Cloud decisions unavailable', 'info')
+      if (!silent) toast(e?.message || 'Cloud decisions unavailable', 'info')
     }
   }
 
@@ -150,7 +150,9 @@ export default function Quotes() {
           <p className="subtitle">Portal Accept → desk write-back · offline queue · convert to invoice · {quotes.length} total</p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" className="btn btn-outline" onClick={() => pullCloudDecisions({ silent: false })}false })}>Pull cloud decisions</button>
+          <button type="button" className="btn btn-outline" onClick={() => pullCloudDecisions({ silent: false })}>
+            Pull cloud decisions
+          </button>
           <Link className="btn btn-primary" to="/quotes/new">New quote</Link>
         </div>
       </div>
