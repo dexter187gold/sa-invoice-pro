@@ -1,7 +1,7 @@
-export const APP_VERSION = '6.47.0'
+export const APP_VERSION = '6.48.0'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
-export const APP_CODENAME = '6.47.0 · Edge proxy · license health · Tech Diagnose'
+export const APP_CODENAME = '6.48.0 · WhatsApp desk replies · Inbox quick pack'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
 export const DEFAULT_VAT_RATE = 0.15

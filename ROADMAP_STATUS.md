@@ -1,13 +1,17 @@
 # SA Invoice Pro — Owner roadmap
 
-**Ship:** **6.47.0** · **Weighted readiness ≈ 94%**
+**Ship:** **6.48.0** · **Weighted readiness ≈ 94.5%**
 
 | P | Theme | % |
 |---|--------|--:|
 | P0 Stability / CI | **97%** |
-| P7 WhatsApp | **90%** |
+| P7 WhatsApp | **92%** |
 | P8 License/PayFast | **88%** |
 | Docs / IT templates | **92%** |
+
+### 6.48.0 done
+- Inbox QUICK_REPLIES expanded for bench responses (ready, parts, quote, payment, bring ID, estimate, booking)
+- ZA-tone templates for faster WhatsApp replies from the desk
 
 ### 6.47.0 done
 - Tech Diagnose Report in Documents

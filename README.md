@@ -1,6 +1,6 @@
-# SA Invoice Pro 6.47.0
+# SA Invoice Pro 6.48.0
 
-Tech Diagnose Report · Cloudflare edge proxy · license /health · desk for SA repair shops.
+WhatsApp desk replies · Inbox quick pack for repair shops.
 
 ```bash
 npm install && npm run dev

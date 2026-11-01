@@ -107,10 +107,59 @@ export function afterHoursReply(client, company, lang = 'en') {
   return `Hi ${name}, we are currently outside business hours at *${co}*. We'll reply in the morning. For urgent matters, leave a message. Thank you!`
 }
 
+export function readyCollectionReply(client, company) {
+  const name = (client?.name || '').split(' ')[0] || 'there'
+  const co = company?.name || 'us'
+  return `Hi ${name}, good news from *${co}* — your device is ready for collection.\n\nPlease bring ID. See you soon!`
+}
+
+export function waitingPartsReply(client, company) {
+  const name = (client?.name || '').split(' ')[0] || 'there'
+  const co = company?.name || 'us'
+  return `Hi ${name}, quick update from *${co}*: we are still waiting on the part for your repair.\n\nI will WhatsApp the moment it arrives and we start the job. Reply if you have questions.`
+}
+
+export function quoteFollowReply(client, company) {
+  const name = (client?.name || '').split(' ')[0] || 'there'
+  const co = company?.name || 'us'
+  return `Hi ${name}, just following up on the quote from *${co}*.\n\nLet me know if you would like to go ahead or if you need any changes. Thank you!`
+}
+
+export function paymentReceivedReply(client, company) {
+  const name = (client?.name || '').split(' ')[0] || 'there'
+  const co = company?.name || 'us'
+  return `Hi ${name}, *${co}* confirms we have received your payment. Thank you!\n\nReceipt / invoice is available if you need a copy — just reply.`
+}
+
+export function bringAccessoriesReply(client, company) {
+  const name = (client?.name || '').split(' ')[0] || 'there'
+  const co = company?.name || 'us'
+  return `Hi ${name}, from *${co}*: when you collect, please bring your ID and any accessories (charger, box if you have it). See you soon!`
+}
+
+export function priceEstimateReply(client, company) {
+  const name = (client?.name || '').split(' ')[0] || 'there'
+  const co = company?.name || 'us'
+  return `Hi ${name}, thanks for the details. From *${co}*: once we diagnose the device we will send a firm quote.\n\nTypical turnaround is 1–2 days after parts arrive. Reply with model + issue for a faster estimate.`
+}
+
+export function bookingConfirmReply(client, company) {
+  const name = (client?.name || '').split(' ')[0] || 'there'
+  const co = company?.name || 'us'
+  return `Hi ${name}, your booking at *${co}* is confirmed.\n\nPlease bring the device and ID. Reply if you need to change the time.`
+}
+
 export const QUICK_REPLIES = [
   { id: 'greeting', label: 'Greeting', build: greetingReply },
   { id: 'ask_more', label: 'Ask for more info', build: askMoreInfo },
   { id: 'after_hours', label: 'After hours', build: afterHoursReply },
+  { id: 'ready', label: 'Ready for collection', build: readyCollectionReply },
+  { id: 'parts', label: 'Waiting on parts', build: waitingPartsReply },
+  { id: 'quote', label: 'Quote follow-up', build: quoteFollowReply },
+  { id: 'paid', label: 'Payment received', build: paymentReceivedReply },
+  { id: 'bring', label: 'Bring ID + accessories', build: bringAccessoriesReply },
+  { id: 'estimate', label: 'Price / diagnose next', build: priceEstimateReply },
+  { id: 'book', label: 'Booking confirmed', build: bookingConfirmReply },
 ]
 
 export const WA_TEMPLATE_CATALOG = [

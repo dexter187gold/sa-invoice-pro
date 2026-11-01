@@ -1,3 +1,8 @@
+## 6.48.0 — WhatsApp desk replies
+
+- **Inbox**: Expanded QUICK_REPLIES — ready for collection, waiting on parts, quote follow-up, payment received, bring ID + accessories, price/diagnose next, booking confirmed (ZA tone).
+- Desk can respond to pending WhatsApp clients faster without leaving the app (Cloud or wa.me).
+
 ## 6.47.0 — Edge reliability + license health + Tech Diagnose
 
 - **Documents**: Tech Diagnose Report template (Hardware, 12 sections)
