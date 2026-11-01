@@ -12,9 +12,10 @@ import {
   listQueuedPortalDecisions,
   clearQueuedPortalDecisions,
   applyPortalDecisionLocally,
+  syncPortalDecisionsToDesk,
 } from '../lib/portalQuote'
+import { Sync } from '../lib/sync'
 import { convertQuoteToInvoice, canConvertQuote } from '../lib/quoteConvert'
-import { SYNC_API_URL, APP_LINKS } from '../config'
 import PageInsightsBar from '../components/PageInsightsBar'
 
 export default function Quotes() {
@@ -33,8 +34,11 @@ export default function Quotes() {
   const counts = useMemo(() => {
     const c = { all: quotes.length, draft: 0, converted: 0, accepted: 0, rejected: 0, expired: 0 }
     for (const qt of quotes) {
-      const s = String(qt.status || 'draft').toLowerCase()
+      let s = String(qt.status || 'draft').toLowerCase()
+      if (s === 'approved') s = 'accepted'
+      if (s === 'declined') s = 'rejected'
       if (c[s] != null) c[s]++
+      else if (String(qt.portalDecision || '').toLowerCase() === 'accepted') c.accepted++
     }
     return c
   }, [quotes])
@@ -70,30 +74,35 @@ export default function Quotes() {
     toast(applied ? `Applied ${applied} portal decision(s)` : 'Queue cleared (no matching local quotes)', 'success')
   }
 
-  const pullCloudDecisions = async () => {
+  const pullCloudDecisions = async ({ silent = false } = {}) => {
     try {
-      const base = (SYNC_API_URL || APP_LINKS.syncServer || '').replace(/\/$/, '')
-      const res = await fetch(`${base}/api/portal/decisions?limit=30`, { headers: { Accept: 'application/json' } })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.message || data.error || 'Could not fetch decisions')
-      const rows = data.data || data.decisions || []
-      let applied = 0
-      for (const item of rows) {
-        const qt = quotes.find((x) => String(x.id) === String(item.quoteId))
-        if (!qt) continue
-        const action = item.action === 'rejected' || item.action === 'reject' ? 'reject' : 'approve'
-        const { updated } = applyPortalDecisionLocally([qt], item.quoteId, action, item.note)
-        if (updated && String(qt.status) !== String(updated.status)) {
-          await db.put(STORES.quotes, updated)
-          applied++
-        }
+      if (!Sync.isLoggedIn?.()) {
+        if (!silent) toast('Sign in to cloud sync to pull portal decisions', 'info')
+        return
       }
+      const putQuote = async (row) => {
+        await db.put(STORES.quotes, row)
+      }
+      const result = await syncPortalDecisionsToDesk({ quotes, putQuote })
       await refresh()
-      toast(applied ? `Synced ${applied} decision(s) from cloud` : `Cloud returned ${rows.length} decision(s)`, 'success')
+      setQueue(listQueuedPortalDecisions())
+      if (silent && !result.applied) return
+      if (result.applied) {
+        toast(`Portal write-back: ${result.applied} quote(s) updated on desk`, 'success')
+      } else if (!silent) {
+        toast('No new portal decisions for local quotes', 'info')
+      }
     } catch (e) {
-      toast(e?.message || 'Cloud decisions unavailable', 'info')
+      if (!silent) toast ren?.(e?.message || 'Cloud decisions unavailable', 'info')
     }
   }
+
+  useEffect(() => {
+    pullCloudDecisions({ silent: true })
+    const id = setInterval(() => pullCloudDecisions({ silent: true }), 45000)
+    return () => clearInterval(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const convert = async (qt) => {
     if (!canConvertQuote(qt)) return toast('Quote cannot be converted', 'error')
@@ -138,15 +147,22 @@ export default function Quotes() {
       <div className="page-header">
         <div>
           <h1>Quotes</h1>
-          <p className="subtitle">Portal Accept/Decline · offline queue · convert to invoice · {quotes.length} total</p>
+          <p className="subtitle">Portal Accept → desk write-back · offline queue · convert to invoice · {quotes.length} total</p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" className="btn btn-outline" onClick={pullCloudDecisions}>Pull cloud decisions</button>
+          <button type="button" className="btn btn-outline" onClick={() => pullCloudDecisions({ silent: false })}false })}>Pull cloud decisions</button>
           <Link className="btn btn-primary" to="/quotes/new">New quote</Link>
         </div>
       </div>
 
       <PageInsightsBar page="quotes" />
+
+      {counts.accepted > 0 && (
+        <div className="card" style={{ marginBottom: 12, padding: 12, borderLeft: '4px solid var(--green)' }}>
+          <strong>{counts.accepted} accepted quote(s)</strong>
+          <span className="muted" style={{ marginLeft: 8, fontSize: 13 }}>Ready to convert to invoice when you are.</span>
+        </div>
+      )}
 
       {queue.length > 0 && (
         <div className="card" style={{ padding: 12, marginBottom: 12, border: '1px solid var(--warning, #fbbf24)' }}>
