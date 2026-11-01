@@ -1,5 +1,5 @@
 /**
- * Self-serve billing: plans → PayFast checkout → claim by email.
+ * Self-serve billing: plans → PayFast/Paystack checkout → claim / key activate.
  * Account/email seats — not IP or MAC.
  */
 import { getServerUrl, getHardwareId } from './license.js'
@@ -16,12 +16,13 @@ export async function fetchBillingPlans() {
   return j.plans || []
 }
 
-export async function startCheckout({ plan, email, returnUrl, cancelUrl } = {}) {
+export async function startCheckout({ plan, email, phone, returnUrl, cancelUrl } = {}) {
   const base = ((await getServerUrl()) || SA_CONFIG.defaultLicenseServerUrl || '').replace(/\/$/, '')
   if (!base) throw new Error('License server URL not set')
   const body = {
     plan: plan || 'shop',
     email: (email || '').trim().toLowerCase(),
+    phone: String(phone || '').trim(),
     return_url: returnUrl || `${window.location.origin}/license?paid=1`,
     cancel_url: cancelUrl || `${window.location.origin}/license?cancelled=1`,
   }
@@ -59,9 +60,10 @@ export function submitPayFastForm(processUrl, fields) {
   form.submit()
 }
 
-export async function buyPlan(plan, email, provider = 'paystack') {
+export async function buyPlan(plan, email, provider = 'paystack', phone = '') {
+  const cleanPhone = String(phone || '').trim()
   if (provider === 'payfast') {
-    const session = await startCheckout({ plan, email })
+    const session = await startCheckout({ plan, email, phone: cleanPhone })
     if (!session.configured || !session.processUrl) throw new Error(session.error || 'PayFast not configured on license server')
     submitPayFastForm(session.processUrl, session.fields)
     return session
@@ -69,7 +71,7 @@ export async function buyPlan(plan, email, provider = 'paystack') {
   const base = ((await getServerUrl()) || SA_CONFIG.defaultLicenseServerUrl || '').replace(/\/$/, '')
   const res = await fetch(`${base}/api/billing/paystack/initialize`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ plan, email: (email || '').trim().toLowerCase() }),
+    body: JSON.stringify({ plan, email: (email || '').trim().toLowerCase(), phone: cleanPhone }),
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok || !data.authorizationUrl) throw new Error(data.error || 'Paystack checkout could not be started')
@@ -123,17 +125,15 @@ export async function verifyPaystackReturn(reference, email) {
   const activation = await claimPaidLicense(ownerEmail)
   if (!activation?.activated) throw new Error('Payment verified, but licence activation is not complete yet')
   try { window.dispatchEvent(new CustomEvent('sa-license-updated', { detail: { plan: activation.plan } })) } catch {}
-  return { paid: true, activation, transaction: result.transaction || {}, payment: result }
+  return { paid: true, activated: true, plan: activation.plan, activation, transaction: result.transaction || {}, payment: result }
 }
 
 export async function getLicenseEmail() {
   return (await getSetting('licenseEmail', '')) || ''
 }
 
-
 /**
  * Recover a paid licence from the authoritative billing ledger.
- * Never trusts the local activation cache; the server's seat check remains decisive.
  */
 export async function recoverLicense(email) {
   const ownerEmail = (email || await getLicenseEmail() || '').trim().toLowerCase()
@@ -142,7 +142,7 @@ export async function recoverLicense(email) {
   const remote = await billingStatus(ownerEmail)
   if (!remote?.ok) throw new Error(remote?.error || 'Billing service could not verify this account')
   if (!remote.licensed) {
-    return { ok: false, recovered: false, billing: remote, message: 'No active paid licence was found for this email. Your local data has not been changed.' }
+    return { ok: false, recovered: false, billing: remote, message: 'No active paid licence was found for this email.' }
   }
   const activation = await claimPaidLicense(ownerEmail)
   const device = await (await import('./license.js')).getRemoteDeviceStatus()
