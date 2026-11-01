@@ -55,6 +55,22 @@ async function postJson(base, paths, body) {
   throw err
 }
 
+/** True only when the server confirmed activation (token + server flag). */
+export async function hasServerProof() {
+  const meta = await getSetting('licenseMeta', null)
+  const token = await getSetting('activationToken', null)
+  const key = await getSetting('licenseKey', null)
+  return !!(key && token && meta && meta.server === true && meta.activationToken)
+}
+
+export async function clearLicenseLocal() {
+  await setSetting('licenseKey', null)
+  await setSetting('licenseMeta', null)
+  await setSetting('activationToken', null)
+  await setSetting('licenseOfflineBlob', null)
+  try { localStorage.removeItem('sa_license_cache') } catch {}
+}
+
 export async function handshake() {
   const base = await getServerUrl()
   if (!base) throw new Error('License server URL not set')
@@ -64,7 +80,6 @@ export async function handshake() {
   })
   await setSetting('handshakeOk', true)
   await setSetting('lastLicenseExchange', { step: 'handshake', at: new Date().toISOString(), response: j })
-  if (j.key) await setSetting('pendingLicenseKey', j.key)
   return j
 }
 
@@ -81,29 +96,79 @@ export async function requestLicense() {
   })
   await setSetting('lastLicenseExchange', { step: 'request', at: new Date().toISOString(), response: j })
   const key = j.key || j.licenseKey || j.license_key
-  if (key) {
-    await setSetting('pendingLicenseKey', key)
-    await setSetting('licenseMeta', j.meta || { plan: j.plan || 'pending', requestedAt: new Date().toISOString(), status: j.status || 'requested' })
-  }
+  if (key) await setSetting('pendingLicenseKey', key)
   return j
 }
 
+/**
+ * Activate only if the licence server accepts this key for this device HWID.
+ * Wrong keys are rejected; localStorage alone cannot mark licensed.
+ */
 export async function activate(key) {
-  const k = (key || (await getSetting('pendingLicenseKey', '')) || (await getSetting('licenseKey', '')) || '').trim()
-  if (!k) throw new Error('No license key — run Request first so the server can issue one')
+  const k = (key || (await getSetting('pendingLicenseKey', '')) || '').trim().toUpperCase()
+  if (!k) throw new Error('Enter the activation key from your email or SMS')
+  if (k.length < 10) throw new Error('Activation key looks incomplete')
   const base = await getServerUrl()
-  if (!base) throw new Error('License server URL not set')
+  if (!base) throw new Error('License server URL not set — cannot verify key')
   const hwid = await getHardwareId()
-  const j = await postJson(base, ['/api/activate', '/api/license/activate', '/api/activate-validate'], { hwid, key: k, app: 'sa-invoice-pro' })
-  if (j.valid === false || j.ok === false || j.activated === false) throw new Error(j.error || j.message || 'Server did not confirm activation')
-  if (j.valid === true && j.ok === undefined) { j.ok = true; j.activated = true }
-  if (j.valid === true && !j.meta) j.meta = { plan: j.plan, label: j.label, expiresAt: j.expiresAt, server: true, activatedAt: new Date().toISOString() }
+  const email = ((await getSetting('licenseEmail', '')) || '').trim().toLowerCase()
+
+  const j = await postJson(
+    base,
+    ['/api/activate', '/api/license/activate', '/api/activate-validate'],
+    { hwid, key: k, email, app: 'sa-invoice-pro' },
+  )
+
+  const ok = j.ok === true || j.activated === true || j.valid === true
+  if (!ok || j.ok === false || j.activated === false || j.valid === false) {
+    await clearLicenseLocal()
+    throw new Error(j.error || j.message || 'Server rejected this activation key')
+  }
+
+  const token = j.activationToken || j.meta?.activationToken
+  const meta = {
+    ...(j.meta || {}),
+    server: true,
+    plan: j.plan || j.meta?.plan || 'standard',
+    activatedAt: j.meta?.activatedAt || new Date().toISOString(),
+    hwid,
+    activationToken: token || j.meta?.activationToken || null,
+  }
+
   await setSetting('licenseKey', j.key || k)
-  await setSetting('licenseMeta', j.meta || { activatedAt: new Date().toISOString(), plan: j.plan || 'standard', server: true })
-  await setSetting('licenseOfflineBlob', { key: j.key || k, meta: j.meta || {} })
-  await setSetting('lastLicenseExchange', { step: 'activate', at: new Date().toISOString(), response: j })
-  try { localStorage.setItem('sa_license_cache', JSON.stringify({ key: j.key || k, meta: j.meta })) } catch {}
-  return j
+  await setSetting('licenseMeta', meta)
+  if (token) await setSetting('activationToken', token)
+  await setSetting('licenseOfflineBlob', { key: j.key || k, meta, activationToken: token })
+  await setSetting('lastLicenseExchange', { step: 'activate', at: new Date().toISOString(), response: { ok: true, plan: meta.plan } })
+  try {
+    localStorage.setItem('sa_license_cache', JSON.stringify({ key: j.key || k, meta, activationToken: token }))
+  } catch {}
+  return { ...j, ok: true, activated: true, valid: true, meta }
+}
+
+/** Online re-check — clears local proof if server disagrees. */
+export async function revalidateLicense() {
+  const base = await getServerUrl()
+  const key = await getSetting('licenseKey', null)
+  const token = await getSetting('activationToken', null)
+  const hwid = await getHardwareId()
+  if (!base || !key) return { ok: false, licensed: false, reason: 'missing' }
+  try {
+    const j = await postJson(base, ['/api/license/verify', '/api/device-status'], {
+      hwid,
+      key,
+      activationToken: token,
+    })
+    const licensed = j.ok === true && (j.licensed === true || j.status === 'licensed' || j.mode === 'licensed')
+    if (!licensed) {
+      await clearLicenseLocal()
+      return { ok: false, licensed: false, reason: j.error || 'not_licensed', remote: j }
+    }
+    return { ok: true, licensed: true, remote: j }
+  } catch (e) {
+    const proof = await hasServerProof()
+    return { ok: proof, licensed: proof, offline: true, error: e.message }
+  }
 }
 
 export async function fullActivate() {
@@ -127,15 +192,17 @@ export async function getLicenseStatus() {
   const trialStart = await ensureTrialStarted()
   const key = await getSetting('licenseKey', null)
   const meta = await getSetting('licenseMeta', null)
+  const token = await getSetting('activationToken', null)
   const hwid = await getHardwareId()
   const elapsed = (Date.now() - new Date(trialStart).getTime()) / 86400000
   const trialDaysLeft = Math.max(0, Math.ceil(ALPHA_TRIAL_DAYS - elapsed))
   const exchange = await getSetting('lastLicenseExchange', null)
   const serverUrl = await getServerUrl()
+  const licensed = !!(key && meta && meta.server === true && (token || meta.activationToken))
   return {
-    licensed: !!(key && meta && meta.server),
-    key,
-    meta,
+    licensed,
+    key: licensed ? key : null,
+    meta: licensed ? meta : null,
     hwid,
     trialDaysLeft,
     trialDaysTotal: ALPHA_TRIAL_DAYS,
@@ -143,10 +210,10 @@ export async function getLicenseStatus() {
     exchange,
     serverUrl,
     alphaSoft: true,
+    serverProof: licensed,
   }
 }
 
-/** Fetch the authoritative device status from the license server. */
 export async function getRemoteDeviceStatus() {
   const base = await getServerUrl()
   if (!base) throw new Error('License server URL not set')
@@ -161,7 +228,6 @@ export async function getRemoteDeviceStatus() {
   return data
 }
 
-/** Probe license server without mutating state. */
 export async function pingLicenseServer() {
   const base = await getServerUrl()
   if (!base) return { ok: false, error: 'No server URL' }
