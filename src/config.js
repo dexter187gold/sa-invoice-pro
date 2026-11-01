@@ -1,8 +1,7 @@
-export const APP_VERSION = '6.46.0'
+export const APP_VERSION = '6.46.1'
 export const APP_NAME = 'SA Invoice Pro'
-export const APP_PUBLIC_URL = 'https://sa-invoice-pro.pages.dev'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
-export const APP_CODENAME = '6.46.0 · WA chase queue · dual path'
+export const APP_CODENAME = '6.46.1 · Tech diagnose report'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
 export const DEFAULT_VAT_RATE = 0.15
@@ -25,7 +24,7 @@ export const SYNC_API_URL =
 /** License / activation server */
 export const LICENSE_API_URL =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_LICENSE_API_URL) ||
-  'https://sa-invoice-license.onrender.com'
+  'https://saip-license.onrender.com'
 
 /** Dev portal (secrets vault) — restricted */
 export const DEV_PORTAL_PATH = '/dev-portal'
@@ -35,7 +34,7 @@ export const PAYFAST_SANDBOX =
 
 export function publicLinks() {
   return {
-    app: APP_PUBLIC_URL,
+    app: typeof window !== 'undefined' ? window.location.origin : '',
     clientPortal: CLIENT_PORTAL_URL,
     syncApi: SYNC_API_URL,
     licenseApi: LICENSE_API_URL,
@@ -43,22 +42,15 @@ export function publicLinks() {
   }
 }
 
-/** Canonical public endpoints (also used by devConfig / tests). */
 export const APP_LINKS = {
-  app: APP_PUBLIC_URL,
   syncServer: SYNC_API_URL,
   licenseServer: LICENSE_API_URL,
   updatesServer: LICENSE_API_URL,
   clientPortal: CLIENT_PORTAL_URL,
-  website: 'https://sa-invoice-pro-website.pages.dev',
-  licenseAdmin: 'https://sa-invoice-license.onrender.com/admin',
+  website: 'https://sa-invoice-pro.pages.dev',
   supportEmail: SUPPORT_EMAIL,
 }
 
-/**
- * Legacy bag used across license / billing / settings / sync pages.
- * Prefer named exports (SYNC_API_URL, LICENSE_API_URL, APP_VERSION) for new code.
- */
 export const SA_CONFIG = {
   appVersion: APP_VERSION,
   productEmail: PRODUCT_EMAIL,
