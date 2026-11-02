@@ -32,15 +32,21 @@ import './styles.nav-comfort.css'
 import './styles.glass.css'
 
 try {
-  const saved = localStorage.getItem('sa_theme')
-  if (saved === 'sniper' || saved === 'dark' || !saved) {
-    document.documentElement.classList.add('sniper')
+  const saved = localStorage.getItem('sa_global_theme') || localStorage.getItem('sa_theme')
+  if (!saved || saved === 'sniper' || saved === 'dark' || saved === 'brain' || saved === 'midnight') {
+    document.documentElement.classList.add('sniper', 'dark')
     document.documentElement.setAttribute('data-theme', 'sniper')
-  } else if (saved === 'brain') {
-    document.documentElement.classList.add('brain')
-    if (saved !== 'light') document.documentElement.classList.add('dark')
+    try { localStorage.setItem('sa_global_theme', 'sniper'); localStorage.setItem('sa_theme', 'sniper') } catch {}
+  } else if (saved === 'light' || saved === 'sand') {
+    document.documentElement.setAttribute('data-theme', saved)
+  } else {
+    document.documentElement.classList.add('dark')
+    document.documentElement.setAttribute('data-theme', saved)
   }
-} catch {}
+} catch {
+  document.documentElement.classList.add('sniper', 'dark')
+  document.documentElement.setAttribute('data-theme', 'sniper')
+}
 
 try {
   document.documentElement.style.visibility = 'visible'
@@ -48,9 +54,10 @@ try {
   document.body && (document.body.style.opacity = '1')
 } catch {}
 
-const root = document.getElementById('root')
-initFont()
-createRoot(root).render(
+try { initFont() } catch {}
+
+const root = createRoot(document.getElementById('root'))
+root.render(
   <React.StrictMode>
     <BrowserRouter>
       <AppProvider>
