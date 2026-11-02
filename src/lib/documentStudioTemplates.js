@@ -20,11 +20,15 @@ function stubsToTemplates(stubs, category, categoryLabel, tags) {
     tags,
     sections: [
       { heading: '1. Document control', body: `Title: ${stub.title}\nReference: ____________________\nDate: __________` },
-      { heading: '2. Purpose', body: stub.purpose },
-      { heading: '3. Scope', body: stub.scope },
-      { heading: '4. Details', body: 'Record findings, work done, parts/materials and customer instructions.' },
-      { heading: '5. Outcome', body: 'Status: ____________________\nFollow-up: ____________________' },
-      { heading: '6. Sign-off', body: 'Prepared by: ____________________\nCustomer: ____________________\nDate: __________' },
+      { heading: '2. Parties', body: 'Client / patient / guest: ____________________\nContact: ____________________\nOur reference: ____________________' },
+      { heading: '3. Purpose', body: stub.purpose },
+      { heading: '4. Scope', body: stub.scope },
+      { heading: '5. Facts / background', body: 'Record relevant history, instructions and constraints.' },
+      { heading: '6. Work performed / findings', body: 'Detail services, products, advice or procedures completed.' },
+      { heading: '7. Recommendations', body: 'Next steps, risks and client responsibilities.' },
+      { heading: '8. Commercial', body: 'Fees / deposits: ____________________\nInvoice / quote ref: ____________________' },
+      { heading: '9. Outcome', body: 'Status: ____________________\nFollow-up date: ____________________' },
+      { heading: '10. Sign-off', body: 'Prepared by: ____________________\nClient acceptance: ____________________\nDate: __________' },
     ],
   }))
 }

@@ -1,0 +1,30 @@
+/* Scrollable forms & modals (desktop + mobile) */
+.modal-backdrop {
+  align-items: flex-start !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+.modal-card {
+  max-height: min(92vh, 920px) !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  width: min(560px, 100%) !important;
+  margin: auto;
+}
+@media (min-width: 768px) {
+  .auth-page {
+    align-items: flex-start !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    min-height: 100vh;
+    padding-top: 24px;
+    padding-bottom: 24px;
+  }
+  .auth-page .auth-card,
+  .auth-page .auth-card-modern,
+  .form-scroll-host {
+    max-height: calc(100svh - 48px) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+}
