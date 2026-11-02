@@ -212,7 +212,7 @@ export default function Setup() {
 
   const phaseBlurb = useMemo(() => {
     if (phase === 2) return `${PHASES[1].blurb} · section ${companySection}/4 · ${complete.pct}% profile`
-    if (phase === 3) return `${PHASES[2].blurb} · ${biz.short}`
+    if (phase === 3) return `${PHASES[2].blurb} · ${biz.short} module`
     return PHASES[0].blurb
   }, [phase, companySection, complete.pct, biz.short])
 
@@ -296,42 +296,47 @@ export default function Setup() {
 
             {phase === 3 && (
               <section className="form-section">
-                <h4 style={{ marginTop: 0 }}>Preferences</h4>
-                <p className="muted" style={{ fontSize: 13 }}>Desk look, VAT defaults, then your {biz.short} module pack.</p>
+                <h4 style={{ marginTop: 0 }}>Preferences & module setup</h4>
+                <p className="muted" style={{ fontSize: 13 }}>
+                  Desk look and VAT, then finish your <strong>{biz.short}</strong> workspace pack.
+                </p>
 
-                <div className="form-grid cols-2" style={{ marginBottom: 16 }}>
-                  <div>
-                    <label className="label">Theme</label>
-                    <select className="select" value={prefs.theme} onChange={setPref('theme')}>
-                      <option value="sniper">Sniper (default)</option>
-                      <option value="dark">Dark</option>
-                      <option value="light">Light</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="label">Navigation</label>
-                    <select className="select" value={prefs.navLayout} onChange={setPref('navLayout')}>
-                      <option value="bottom">Bottom navigation</option>
-                      <option value="sidebar">Sidebar</option>
-                      <option value="compact">Compact sidebar</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="label" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <input type="checkbox" checked={!!prefs.vatEnabled} onChange={setPref('vatEnabled')} />
-                      Charge VAT on invoices
-                    </label>
-                  </div>
-                  <div>
-                    <label className="label">VAT rate %</label>
-                    <input
-                      className="input"
-                      type="number"
-                      step="0.01"
-                      value={prefs.vatRate}
-                      onChange={setPref('vatRate')}
-                      disabled={!prefs.vatEnabled}
-                    />
+                <div className="card" style={{ padding: 12, marginBottom: 14, border: '1px solid var(--border)' }}>
+                  <strong style={{ display: 'block', marginBottom: 8 }}>Desk preferences</strong>
+                  <div className="form-grid cols-2">
+                    <div>
+                      <label className="label">Theme</label>
+                      <select className="select" value={prefs.theme} onChange={setPref('theme')}>
+                        <option value="sniper">Sniper (default)</option>
+                        <option value="dark">Dark</option>
+                        <option value="light">Light</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="label">Navigation</label>
+                      <select className="select" value={prefs.navLayout} onChange={setPref('navLayout')}>
+                        <option value="bottom">Bottom navigation</option>
+                        <option value="sidebar">Sidebar</option>
+                        <option value="compact">Compact sidebar</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="label" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <input type="checkbox" checked={!!prefs.vatEnabled} onChange={setPref('vatEnabled')} />
+                        Charge VAT on invoices
+                      </label>
+                    </div>
+                    <div>
+                      <label className="label">VAT rate %</label>
+                      <input
+                        className="input"
+                        type="number"
+                        step="0.01"
+                        value={prefs.vatRate}
+                        onChange={setPref('vatRate')}
+                        disabled={!prefs.vatEnabled}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -339,6 +344,9 @@ export default function Setup() {
                   businessTypeId={form.businessType}
                   toast={toast}
                   refresh={refresh}
+                  form={form}
+                  setForm={setForm}
+                  showFields
                   onDefaults={(d) => {
                     if (d?.suggestVat != null) {
                       setPrefs((p) => ({ ...p, vatEnabled: !!d.suggestVat }))
