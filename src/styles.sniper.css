@@ -1,4 +1,8 @@
-/* SA Invoice Pro · SNIPER theme — precision paperwork, dark optic, SA green reticle */
+/* =============================================================================
+   SA Invoice Pro · SNIPER design system
+   Dark optic · teal reticle · precision motion · full-app scope
+   ============================================================================= */
+
 :root {
   --sniper-bg: #070b10;
   --sniper-panel: #0d1520;
@@ -6,16 +10,19 @@
   --sniper-line: rgba(94, 234, 212, 0.14);
   --sniper-mint: #5eead4;
   --sniper-mint-deep: #0f766e;
+  --sniper-teal: #14b8a6;
   --sniper-amber: #fbbf24;
   --sniper-red: #f43f5e;
   --sniper-text: #e8f1f7;
   --sniper-muted: #8ba3b5;
   --sniper-cross: rgba(94, 234, 212, 0.35);
+  --sniper-glow: 0 0 28px rgba(20, 184, 166, 0.28);
+  --sniper-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 html.sniper,
-[data-theme="sniper"],
-html.dark.sniper {
+html[data-theme="sniper"],
+[data-theme="sniper"] {
   --bg: var(--sniper-bg);
   --bg-elevated: var(--sniper-elevated);
   --card: var(--sniper-panel);
@@ -24,16 +31,18 @@ html.dark.sniper {
   --muted: var(--sniper-muted);
   --border: var(--sniper-line);
   --border-strong: rgba(94, 234, 212, 0.28);
-  --green: #14b8a6;
-  --green-dark: #0f766e;
-  --green-light: #5eead4;
+  --green: var(--sniper-teal);
+  --green-dark: var(--sniper-mint-deep);
+  --green-light: var(--sniper-mint);
   --green-soft: rgba(20, 184, 166, 0.14);
   --green-soft-strong: rgba(20, 184, 166, 0.22);
   --danger: var(--sniper-red);
   --warn: var(--sniper-amber);
-  --success: #14b8a6;
+  --success: var(--sniper-teal);
   --shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
   --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.55);
+  --primary: var(--sniper-teal);
+  --accent: var(--sniper-mint);
   color-scheme: dark;
 }
 
@@ -43,6 +52,28 @@ html.sniper body,
     radial-gradient(ellipse 80% 50% at 50% -10%, rgba(20, 184, 166, 0.12), transparent 55%),
     radial-gradient(ellipse 40% 30% at 100% 100%, rgba(15, 118, 110, 0.08), transparent 50%),
     var(--sniper-bg);
+  color: var(--sniper-text);
+}
+
+html.sniper body::before {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.035;
+  background-image:
+    linear-gradient(var(--sniper-mint) 1px, transparent 1px),
+    linear-gradient(90deg, var(--sniper-mint) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 20%, transparent 75%);
+}
+
+html.sniper #root,
+html.sniper .app-shell,
+html.sniper .main-content {
+  position: relative;
+  z-index: 1;
 }
 
 html.sniper .card,
@@ -50,6 +81,17 @@ html.sniper .card,
   background: linear-gradient(160deg, rgba(18, 28, 42, 0.95), rgba(13, 21, 32, 0.98));
   border: 1px solid var(--sniper-line);
   box-shadow: var(--shadow);
+  border-radius: 14px;
+  animation: sniperCardIn 0.42s var(--sniper-ease) both;
+}
+
+html.sniper .card:hover {
+  border-color: rgba(94, 234, 212, 0.22);
+}
+
+html.sniper .muted,
+html.sniper .subtitle {
+  color: var(--sniper-muted);
 }
 
 html.sniper .btn-primary,
@@ -58,12 +100,103 @@ html.sniper .btn-primary,
   color: #042f2e;
   border: none;
   font-weight: 750;
+  transition: transform 0.18s var(--sniper-ease), box-shadow 0.18s ease, filter 0.18s ease;
 }
 
 html.sniper .btn-primary:hover {
   filter: brightness(1.08);
-  box-shadow: 0 0 24px rgba(20, 184, 166, 0.35);
+  box-shadow: var(--sniper-glow);
+  transform: translateY(-1px);
 }
+
+html.sniper .btn-outline,
+html.sniper .btn-secondary {
+  border-color: var(--sniper-line);
+  color: var(--sniper-mint);
+  background: rgba(13, 21, 32, 0.6);
+}
+
+html.sniper .btn-outline:hover,
+html.sniper .btn-secondary:hover {
+  border-color: rgba(94, 234, 212, 0.4);
+  background: rgba(20, 184, 166, 0.08);
+}
+
+html.sniper .bottom-nav,
+html.sniper .side-nav,
+html.sniper nav.app-nav,
+html.sniper .app-bottom-nav {
+  background: rgba(7, 11, 16, 0.92) !important;
+  border-color: var(--sniper-line) !important;
+  backdrop-filter: blur(12px);
+}
+
+html.sniper .bottom-nav a.active,
+html.sniper .side-nav a.active,
+html.sniper .nav-item.active {
+  color: var(--sniper-mint) !important;
+  box-shadow: inset 0 -2px 0 var(--sniper-teal);
+}
+
+html.sniper .top-bar,
+html.sniper .app-header,
+html.sniper header.app-top {
+  background: rgba(7, 11, 16, 0.85);
+  border-bottom: 1px solid var(--sniper-line);
+  backdrop-filter: blur(10px);
+}
+
+html.sniper th {
+  color: var(--sniper-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+html.sniper tr:hover td {
+  background: rgba(20, 184, 166, 0.04);
+}
+
+html.sniper .input,
+html.sniper input,
+html.sniper select,
+html.sniper textarea {
+  background: rgba(7, 11, 16, 0.75);
+  border-color: var(--sniper-line);
+  color: var(--sniper-text);
+}
+
+html.sniper .input:focus,
+html.sniper input:focus,
+html.sniper select:focus,
+html.sniper textarea:focus {
+  outline: none;
+  border-color: rgba(94, 234, 212, 0.45);
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.12);
+}
+
+html.sniper .page-fade,
+html.sniper .PageFade,
+html.sniper [data-page-fade] {
+  animation: sniperPageIn 0.38s var(--sniper-ease) both;
+}
+
+@keyframes sniperPageIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes sniperCardIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+
+html.sniper .sniper-stagger > *:nth-child(1) { animation-delay: 0.02s; }
+html.sniper .sniper-stagger > *:nth-child(2) { animation-delay: 0.05s; }
+html.sniper .sniper-stagger > *:nth-child(3) { animation-delay: 0.08s; }
+html.sniper .sniper-stagger > *:nth-child(4) { animation-delay: 0.11s; }
+html.sniper .sniper-stagger > *:nth-child(5) { animation-delay: 0.14s; }
+html.sniper .sniper-stagger > *:nth-child(6) { animation-delay: 0.17s; }
 
 .sniper-reticle {
   position: relative;
@@ -77,62 +210,121 @@ html.sniper .btn-primary:hover {
   position: absolute;
   background: var(--sniper-mint);
   opacity: 0.85;
-}
-.sniper-reticle::before {
   left: 50%;
-  top: 8%;
-  bottom: 8%;
-  width: 2px;
-  transform: translateX(-50%);
-}
-.sniper-reticle::after {
   top: 50%;
-  left: 8%;
-  right: 8%;
-  height: 2px;
-  transform: translateY(-50%);
+  transform: translate(-50%, -50%);
 }
+.sniper-reticle::before { width: 2px; height: 100%; }
+.sniper-reticle::after { width: 100%; height: 2px; }
 .sniper-reticle-ring {
   position: absolute;
   inset: 12px;
-  border: 2px solid rgba(94, 234, 212, 0.55);
+  border: 2px solid var(--sniper-cross);
   border-radius: 50%;
-  box-shadow: 0 0 24px rgba(20, 184, 166, 0.25), inset 0 0 20px rgba(20, 184, 166, 0.08);
-  animation: sniperPulse 2.8s ease-in-out infinite;
+  animation: sniperPulse 2.4s ease-in-out infinite;
 }
 .sniper-reticle-ring.outer {
   inset: 0;
-  border-color: rgba(94, 234, 212, 0.25);
-  animation-delay: 0.4s;
+  border-width: 1px;
+  opacity: 0.5;
+  animation-delay: 0.3s;
 }
+
 @keyframes sniperPulse {
-  0%, 100% { transform: scale(1); opacity: 0.9; }
+  0%, 100% { transform: scale(1); opacity: 0.7; }
   50% { transform: scale(1.04); opacity: 1; }
 }
-.sniper-scope-scan {
-  position: absolute;
-  left: 10%;
-  right: 10%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--sniper-mint), transparent);
-  animation: sniperScan 2.2s linear infinite;
-  opacity: 0.7;
-}
+
 @keyframes sniperScan {
-  0% { top: 15%; }
-  100% { top: 85%; }
+  0% { transform: translateY(-100%); opacity: 0; }
+  15% { opacity: 0.55; }
+  85% { opacity: 0.55; }
+  100% { transform: translateY(100%); opacity: 0; }
 }
 
-html.sniper .auth-logo-subcaption,
-.auth-page.sniper-auth .auth-logo-subcaption {
-  color: var(--sniper-mint) !important;
-  letter-spacing: 0.14em;
-  font-size: 11px;
-  text-transform: uppercase;
+.sniper-scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 28%;
+  background: linear-gradient(to bottom, transparent, rgba(94, 234, 212, 0.07), transparent);
+  animation: sniperScan 3.2s linear infinite;
+  pointer-events: none;
 }
 
-.auth-page.sniper-auth {
+html.sniper .auth-page {
   background:
-    radial-gradient(circle at 50% 20%, rgba(20, 184, 166, 0.15), transparent 45%),
-    linear-gradient(180deg, #05080c 0%, #0a1219 50%, #070b10 100%);
+    radial-gradient(ellipse 70% 45% at 50% 0%, rgba(20, 184, 166, 0.14), transparent 55%),
+    var(--sniper-bg);
+  color: var(--sniper-text);
+  min-height: 100vh;
+}
+
+html.sniper .auth-brand-panel {
+  background: linear-gradient(165deg, #0d1520 0%, #070b10 100%);
+  border-right: 1px solid var(--sniper-line);
+}
+
+html.sniper .auth-card-modern,
+html.sniper .auth-card {
+  background: linear-gradient(160deg, rgba(18, 28, 42, 0.98), rgba(13, 21, 32, 0.99));
+  border: 1px solid var(--sniper-line);
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+html.sniper .auth-eyebrow {
+  color: var(--sniper-mint);
+  letter-spacing: 0.12em;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+html.sniper .login-splash {
+  background: var(--sniper-bg);
+  color: var(--sniper-text);
+}
+
+html.sniper .login-splash-title {
+  letter-spacing: 0.14em;
+  font-weight: 800;
+  color: var(--sniper-mint);
+}
+
+html.sniper .login-splash-bar span {
+  background: linear-gradient(90deg, transparent, var(--sniper-mint), transparent);
+}
+
+html.sniper .tab.active {
+  color: var(--sniper-mint);
+  border-bottom-color: var(--sniper-teal);
+}
+
+html.sniper .sniper-tagline {
+  text-align: center;
+  font-size: 12px;
+  color: var(--sniper-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 12px;
+}
+
+html.sniper .command-centre,
+html.sniper .drawer,
+html.sniper .sheet {
+  background: rgba(13, 21, 32, 0.96);
+  border-color: var(--sniper-line);
+  backdrop-filter: blur(14px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.sniper .page-fade,
+  html.sniper .card,
+  html.sniper .btn-primary,
+  .sniper-reticle-ring,
+  .sniper-scanline {
+    animation: none !important;
+    transition: none !important;
+  }
 }
