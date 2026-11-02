@@ -1,8 +1,25 @@
 /**
- * Global theme pack — 10 dominant product aesthetics (2025–2026).
+ * Global theme pack — Sniper first, then product aesthetics.
  * Applied via documentElement data-theme + CSS variables.
  */
 export const THEMES = [
+  {
+    id: 'sniper',
+    label: 'Sniper',
+    desc: 'Dark optic · teal reticle · precision desk',
+    vars: {
+      '--bg': '#070b10',
+      '--bg-elevated': '#121c2a',
+      '--card': '#0d1520',
+      '--text': '#e8f1f7',
+      '--muted': '#8ba3b5',
+      '--border': 'rgba(94,234,212,.14)',
+      '--green': '#14b8a6',
+      '--green-soft': 'rgba(20,184,166,.14)',
+      '--danger': '#f43f5e',
+      '--warn': '#fbbf24',
+    },
+  },
   {
     id: 'midnight',
     label: 'Midnight Pro',
@@ -186,24 +203,25 @@ export function applyTheme(id) {
   for (const [k, v] of Object.entries(theme.vars)) {
     root.style.setProperty(k, v)
   }
-  if (theme.id === 'light' || theme.id === 'sand') {
-    root.classList.remove('dark', 'brain')
-  } else {
-    root.classList.add('dark', 'brain')
-  }
+  root.classList.toggle('sniper', theme.id === 'sniper')
+  root.classList.toggle('dark', theme.id !== 'light' && theme.id !== 'sand')
+  root.classList.remove('brain')
   try {
     localStorage.setItem('sa_global_theme', theme.id)
-    localStorage.setItem('sa_theme', theme.id === 'light' || theme.id === 'sand' ? 'light' : 'brain')
+    localStorage.setItem(
+      'sa_theme',
+      theme.id === 'sniper' ? 'sniper' : theme.id === 'light' || theme.id === 'sand' ? 'light' : 'dark',
+    )
   } catch {}
-  window.dispatchEvent(new CustomEvent('sa-theme', { detail: theme }))
+  try { window.dispatchEvent(new CustomEvent('sa-theme', { detail: theme })) } catch {}
   return theme
 }
 
 export function loadSavedTheme() {
   try {
-    const id = localStorage.getItem('sa_global_theme') || 'midnight'
-    return applyTheme(id)
+    const id = localStorage.getItem('sa_global_theme') || localStorage.getItem('sa_theme') || 'sniper'
+    return applyTheme(id === 'brain' || id === 'dark' || id === 'midnight' ? 'sniper' : id)
   } catch {
-    return applyTheme('midnight')
+    return applyTheme('sniper')
   }
 }
