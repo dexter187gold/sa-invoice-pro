@@ -34,6 +34,18 @@ import {
   HOSPITALITY_ACCOUNT_TYPES,
   HOSPITALITY_DOCUMENT_STUBS,
 } from './hospitalityCatalog.js'
+import {
+  HEALTH_BEAUTY_SERVICE_PRESETS,
+  HEALTH_BEAUTY_PRODUCT_PRESETS,
+  HEALTH_BEAUTY_ACCOUNT_TYPES,
+  HEALTH_BEAUTY_DOCUMENT_STUBS,
+} from './healthBeautyCatalog.js'
+import {
+  MEDICAL_SERVICE_PRESETS,
+  MEDICAL_PRODUCT_PRESETS,
+  MEDICAL_ACCOUNT_TYPES,
+  MEDICAL_DOCUMENT_STUBS,
+} from './medicalCatalog.js'
 
 export const IT_MODULE = {
   id: 'it',
@@ -161,8 +173,8 @@ export const MODULE_REGISTRY = {
   hospitality: {
     id: 'hospitality',
     label: 'Hospitality / Café / Guest house',
-    version: '0.1.0',
-    status: 'active',
+    version: '1.0.0',
+    status: 'stable',
     description: 'Rooms, F&B, functions, booking and event order sheets.',
     routes: ['/invoices', '/quotes', '/products', '/documents'],
     features: { products: true, hospitalityPresets: true },
@@ -171,6 +183,36 @@ export const MODULE_REGISTRY = {
       productPresets: HOSPITALITY_PRODUCT_PRESETS,
       accountTypes: HOSPITALITY_ACCOUNT_TYPES,
       documentStubs: HOSPITALITY_DOCUMENT_STUBS,
+    },
+  },
+  health_beauty: {
+    id: 'health_beauty',
+    label: 'Health / Beauty / Salon',
+    version: '1.0.0',
+    status: 'stable',
+    description: 'Salon, spa and wellness services, retail and consent/aftercare docs.',
+    routes: ['/products', '/tickets', '/documents', '/invoices'],
+    features: { products: true, jobCards: true, healthBeautyPresets: true },
+    catalogs: {
+      servicePresets: HEALTH_BEAUTY_SERVICE_PRESETS,
+      productPresets: HEALTH_BEAUTY_PRODUCT_PRESETS,
+      accountTypes: HEALTH_BEAUTY_ACCOUNT_TYPES,
+      documentStubs: HEALTH_BEAUTY_DOCUMENT_STUBS,
+    },
+  },
+  medical: {
+    id: 'medical',
+    label: 'Medical / Clinic / Health',
+    version: '0.1.0',
+    status: 'active',
+    description: 'Consults, procedures, allied health, consent and certificates.',
+    routes: ['/tickets', '/products', '/documents', '/invoices'],
+    features: { jobCards: true, products: true, medicalPresets: true },
+    catalogs: {
+      servicePresets: MEDICAL_SERVICE_PRESETS,
+      productPresets: MEDICAL_PRODUCT_PRESETS,
+      accountTypes: MEDICAL_ACCOUNT_TYPES,
+      documentStubs: MEDICAL_DOCUMENT_STUBS,
     },
   },
   field: {
@@ -208,6 +250,8 @@ export function smeModuleScoreboard() {
     automotive: MODULE_REGISTRY.automotive?.status || 'planned',
     consulting: MODULE_REGISTRY.consulting?.status || 'planned',
     hospitality: MODULE_REGISTRY.hospitality?.status || 'planned',
+    health_beauty: MODULE_REGISTRY.health_beauty?.status || 'planned',
+    medical: MODULE_REGISTRY.medical?.status || 'planned',
   }
 }
 
