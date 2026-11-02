@@ -196,31 +196,51 @@ export function getTheme(id) {
   return THEMES.find((t) => t.id === id) || THEMES[0]
 }
 
+/** Apply theme; light modes remove sniper chrome and dark class. */
 export function applyTheme(id) {
   const theme = getTheme(id)
   const root = document.documentElement
+  const isLight = theme.id === 'light' || theme.id === 'sand'
+  const isSniper = theme.id === 'sniper'
+
   root.setAttribute('data-theme', theme.id)
+  root.classList.toggle('sniper', isSniper)
+  root.classList.toggle('dark', !isLight)
+  root.classList.remove('brain')
+
   for (const [k, v] of Object.entries(theme.vars)) {
     root.style.setProperty(k, v)
   }
-  root.classList.toggle('sniper', theme.id === 'sniper')
-  root.classList.toggle('dark', theme.id !== 'light' && theme.id !== 'sand')
-  root.classList.remove('brain')
+
+  if (!theme.vars['--text-secondary']) {
+    root.style.setProperty('--text-secondary', isLight ? '#334155' : '#cbd5e1')
+  }
+  if (!theme.vars['--bg-elevated']) {
+    root.style.setProperty('--bg-elevated', theme.vars['--card'] || (isLight ? '#ffffff' : '#111827'))
+  }
+  if (!theme.vars['--border-strong']) {
+    root.style.setProperty('--border-strong', isLight ? '#cbd5e1' : '#334155')
+  }
+
+  root.style.setProperty('color-scheme', isLight ? 'light' : 'dark')
+
   try {
     localStorage.setItem('sa_global_theme', theme.id)
-    localStorage.setItem(
-      'sa_theme',
-      theme.id === 'sniper' ? 'sniper' : theme.id === 'light' || theme.id === 'sand' ? 'light' : 'dark',
-    )
+    localStorage.setItem('sa_theme', isSniper ? 'sniper' : isLight ? 'light' : 'dark')
   } catch {}
-  try { window.dispatchEvent(new CustomEvent('sa-theme', { detail: theme })) } catch {}
+  try {
+    window.dispatchEvent(new CustomEvent('sa-theme', { detail: theme }))
+  } catch {}
   return theme
 }
 
 export function loadSavedTheme() {
   try {
-    const id = localStorage.getItem('sa_global_theme') || localStorage.getItem('sa_theme') || 'sniper'
-    return applyTheme(id === 'brain' || id === 'dark' || id === 'midnight' ? 'sniper' : id)
+    let id = localStorage.getItem('sa_global_theme') || localStorage.getItem('sa_theme') || 'sniper'
+    // Legacy keys only — do not force every dark theme onto Sniper
+    if (id === 'brain') id = 'sniper'
+    if (id === 'dark') id = 'midnight'
+    return applyTheme(id)
   } catch {
     return applyTheme('sniper')
   }
