@@ -10,6 +10,7 @@ const ROOT_NAV = [
   { to: '/expenses', label: 'Expenses', icon: '💸', section: 'books' },
   { to: '/reports', label: 'Reports', icon: '📈', section: 'home' },
   { to: '/products', label: 'Products', icon: '📦', section: 'jobs' },
+  { to: '/documents', label: 'Documents', icon: '📁', section: 'tools' },
   { to: '/inbox', label: 'Messages', icon: '💬', section: 'home' },
   { to: '/accounting', label: 'Accounting', icon: '📒', section: 'books' },
   { to: '/settings', label: 'Settings', icon: '⚙️', section: 'settings' },
@@ -25,6 +26,7 @@ const SECTION_NAV = {
     { to: '/', label: 'Home', icon: '⌂', end: true },
     { to: '/dashboard', label: 'Dashboard', icon: '📊' },
     { to: '/reports', label: 'Reports', icon: '📈' },
+    { to: '/documents', label: 'Documents', icon: '📁' },
     { to: '/inbox', label: 'Messages', icon: '💬' },
     { to: '__root__', label: 'Main', icon: '☰', isRoot: true },
   ],
@@ -44,6 +46,7 @@ const SECTION_NAV = {
   ],
   jobs: [
     { to: '/tickets', label: 'Job cards', icon: '🎫', end: true },
+    { to: '/documents', label: 'Documents', icon: '📁' },
     { to: '/inbox', label: 'Messages', icon: '💬' },
     { to: '/products', label: 'Products', icon: '📦' },
     { to: '/invoices', label: 'Bill', icon: '📄' },
