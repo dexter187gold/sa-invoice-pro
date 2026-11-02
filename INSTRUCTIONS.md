@@ -73,4 +73,4 @@ Grok does not store passwords; ask owner to set secrets in host dashboards.
 
 ---
 
-*Last updated with release 6.49.0 — smart WhatsApp suggest + bench quick pack.*
+*Last updated with release 6.50.0 — smart inbound WhatsApp suggest + expanded bench replies.*

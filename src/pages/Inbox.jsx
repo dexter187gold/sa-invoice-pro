@@ -5,7 +5,7 @@ import * as db from '../lib/db'
 import { STORES } from '../lib/db'
 import { Sync } from '../lib/sync'
 import { PageFade, EmptyState } from '../components/ui'
-import { QUICK_REPLIES } from '../lib/waTemplates'
+import { QUICK_REPLIES, suggestFromInbound } from '../lib/waTemplates'
 import { sendWhatsAppText, getWhatsAppConfigStatus } from '../lib/waBusiness'
 
 function urgencyToPriority(u) {
@@ -24,6 +24,7 @@ export default function Inbox() {
   const [busy, setBusy] = useState(false)
   const [replyFor, setReplyFor] = useState(null)
   const [replyText, setReplyText] = useState('')
+  const [inboundText, setInboundText] = useState('')
   const [waStatus, setWaStatus] = useState(null)
 
   const load = useCallback(async () => {
@@ -58,12 +59,22 @@ export default function Inbox() {
     const clientStub = { name: wa.name, phone: wa.phone }
     const first = QUICK_REPLIES[0]
     setReplyText(first.build(clientStub, company))
+    setInboundText('')
   }
 
   const applyQuick = (qr) => {
     if (!replyFor) return
     const clientStub = { name: replyFor.name, phone: replyFor.phone }
     setReplyText(qr.build(clientStub, company))
+  }
+
+  const doSmartSuggest = () => {
+    if (!replyFor) return
+    const id = suggestFromInbound(inboundText)
+    const qr = QUICK_REPLIES.find((q) => q.id === id) || QUICK_REPLIES[0]
+    const clientStub = { name: replyFor.name, phone: replyFor.phone }
+    setReplyText(qr.build(clientStub, company))
+    toast?.(`Suggested: ${qr.label}`, 'info')
   }
 
   const sendReply = async () => {
@@ -78,6 +89,7 @@ export default function Inbox() {
       }
       setReplyFor(null)
       setReplyText('')
+      setInboundText('')
     } catch (e) {
       toast?.(e.message || 'Could not send', 'error')
     } finally {
@@ -91,7 +103,6 @@ export default function Inbox() {
       const phoneKey = String(wa.phone || '').replace(/\D/g, '')
       const exists = clients.find((c) => String(c.phone || '').replace(/\D/g, '') === phoneKey)
 
-      // Optimistically remove from pending UI
       setPending((prev) => prev.filter((c) => String(c.phone || '').replace(/\D/g, '') !== phoneKey))
 
       if (exists) {
@@ -182,14 +193,12 @@ export default function Inbox() {
 
   const importAllClients = async () => {
     for (const wa of pending) {
-      // eslint-disable-next-line no-await-in-loop
       await importClient(wa)
     }
   }
 
   const importAllJobs = async () => {
     for (const job of intake) {
-      // eslint-disable-next-line no-await-in-loop
       await importJob(job)
     }
     if (intake.length) nav('/tickets')
@@ -236,6 +245,21 @@ export default function Inbox() {
       {replyFor ? (
         <div className="card" style={{ marginBottom: '1rem', borderColor: 'var(--accent)' }}>
           <h3 style={{ marginTop: 0 }}>Reply to {replyFor.name || replyFor.phone}</h3>
+
+          <label className="stack" style={{ gap: 4, marginBottom: 8 }}>
+            <span className="muted" style={{ fontSize: 12 }}>Paste inbound message (optional) — Smart suggest fills a ZA-tone reply</span>
+            <textarea
+              className="input"
+              rows={3}
+              value={inboundText}
+              onChange={(e) => setInboundText(e.target.value)}
+              placeholder="Paste the client's WhatsApp message here…"
+            />
+            <button type="button" className="btn btn-outline btn-sm" onClick={doSmartSuggest} disabled={!inboundText.trim()}>
+              Smart suggest
+            </button>
+          </label>
+
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
             {QUICK_REPLIES.map((qr) => (
               <button key={qr.id} type="button" className="btn btn-outline btn-sm" onClick={() => applyQuick(qr)}>
@@ -252,7 +276,7 @@ export default function Inbox() {
           />
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <button type="button" className="btn btn-primary" disabled={busy} onClick={sendReply}>{sendLabel}</button>
-            <button type="button" className="btn btn-outline" onClick={() => { setReplyFor(null); setReplyText('') }}>Cancel</button>
+            <button type="button" className="btn btn-outline" onClick={() => { setReplyFor(null); setReplyText(''); setInboundText('') }}>Cancel</button>
           </div>
           {waStatus && !waStatus.configured ? (
             <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>

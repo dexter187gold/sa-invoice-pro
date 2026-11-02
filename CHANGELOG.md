@@ -1,3 +1,9 @@
+## 6.50.0 — Smart inbound WhatsApp suggest
+
+- **Inbox**: Paste the client's inbound message → **Smart suggest** (local keyword match) fills the best ZA-tone reply. No network needed.
+- Expanded bench quick replies: FRP/Google lock, screen/glass, battery, data recovery, warranty, ETA.
+- Desk responds faster to common enquiries while staying on the app (Cloud or wa.me).
+
 ## 6.49.0 — Smart WhatsApp replies
 
 - **Inbox**: Paste inbound client message → **Smart suggest** (local keyword match) fills a ZA-tone reply. No network needed.

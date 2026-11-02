@@ -149,6 +149,66 @@ export function bookingConfirmReply(client, company) {
   return `Hi ${name}, your booking at *${co}* is confirmed.\n\nPlease bring the device and ID. Reply if you need to change the time.`
 }
 
+export function frpReply(client, company) {
+  const name = (client?.name || '').split(' ')[0] || 'there'
+  const co = company?.name || 'us'
+  return `Hi ${name}, from *${co}*: FRP / Google lock notes.\n\nWe can check activation lock status. Please confirm the device is yours and bring proof of purchase if possible. Reply with model + whether you know the Google account.`
+}
+
+export function screenReply(client, company) {
+  const name = (client?.name || '').split(' ')[0] || 'there'
+  const co = company?.name || 'us'
+  return `Hi ${name}, from *${co}*: screen / glass repair.\n\nWe stock common models. Reply with exact model (e.g. iPhone 13 / Samsung A54) + photo of the damage for a faster quote. Typical 1–2 hours once the part is in.`
+}
+
+export function batteryReply(client, company) {
+  const name = (client?.name || '').split(' ')[0] || 'there'
+  const co = company?.name || 'us'
+  return `Hi ${name}, from *${co}*: battery swap.\n\nMost models we can do same-day. Reply with the exact model and whether it is swollen or just dying fast. We'll confirm price and time.`
+}
+
+export function dataReply(client, company) {
+  const name = (client?.name || '').split(' ')[0] || 'there'
+  const co = company?.name || 'us'
+  return `Hi ${name}, from *${co}*: data recovery.\n\nWe can assess photos / WhatsApp / contacts. Success depends on the damage. Reply with model + what happened (water, drop, not turning on) and we'll advise next steps.`
+}
+
+export function warrantyReply(client, company) {
+  const name = (client?.name || '').split(' ')[0] || 'there'
+  const co = company?.name || 'us'
+  return `Hi ${name}, from *${co}*: warranty note.\n\nOur repairs carry a 90-day workmanship warranty on the part we fitted. Accidental damage or new issues are not covered. Reply with the original job number if you need a check.`
+}
+
+export function etaReply(client, company) {
+  const name = (client?.name || '').split(' ')[0] || 'there'
+  const co = company?.name || 'us'
+  return `Hi ${name}, from *${co}*: ETA update.\n\nMost screen/battery jobs are same-day or next-day once the part is in stock. I'll WhatsApp as soon as yours is ready. Reply if you have a deadline.`
+}
+
+/** Local keyword match for inbound text. Returns best QUICK_REPLY id. */
+export function suggestFromInbound(text = '') {
+  const t = String(text || '').toLowerCase()
+  if (!t.trim()) return null
+  const rules = [
+    { keys: ['frp', 'google lock', 'locked', 'activation lock', 'mdm'], id: 'frp' },
+    { keys: ['screen', 'crack', 'cracked', 'broken glass', 'lcd', 'display'], id: 'screen' },
+    { keys: ['battery', 'batt', 'swollen', 'not charging'], id: 'battery' },
+    { keys: ['data', 'recovery', 'photos', 'backup'], id: 'data' },
+    { keys: ['ready', 'collect', 'afhaal', 'pick up', 'collection'], id: 'ready' },
+    { keys: ['parts', 'waiting', 'wait', 'order', 'onderdeel'], id: 'parts' },
+    { keys: ['quote', 'kwotasie', 'price', 'how much', 'cost', 'estimate'], id: 'estimate' },
+    { keys: ['paid', 'payment', 'betaling', 'proof', 'eft', 'receipt'], id: 'paid' },
+    { keys: ['book', 'booking', 'appointment', 'afspraak'], id: 'book' },
+    { keys: ['after hours', 'closed', 'after 5', 'weekend'], id: 'after_hours' },
+    { keys: ['warranty', 'waarborg', 'guarantee'], id: 'warranty' },
+    { keys: ['eta', 'how long', 'when ready', 'turnaround'], id: 'eta' },
+  ]
+  for (const r of rules) {
+    if (r.keys.some((k) => t.includes(k))) return r.id
+  }
+  return 'greeting'
+}
+
 export const QUICK_REPLIES = [
   { id: 'greeting', label: 'Greeting', build: greetingReply },
   { id: 'ask_more', label: 'Ask for more info', build: askMoreInfo },
@@ -160,6 +220,12 @@ export const QUICK_REPLIES = [
   { id: 'bring', label: 'Bring ID + accessories', build: bringAccessoriesReply },
   { id: 'estimate', label: 'Price / diagnose next', build: priceEstimateReply },
   { id: 'book', label: 'Booking confirmed', build: bookingConfirmReply },
+  { id: 'frp', label: 'FRP / Google lock', build: frpReply },
+  { id: 'screen', label: 'Screen / glass', build: screenReply },
+  { id: 'battery', label: 'Battery swap', build: batteryReply },
+  { id: 'data', label: 'Data recovery', build: dataReply },
+  { id: 'warranty', label: 'Warranty note', build: warrantyReply },
+  { id: 'eta', label: 'ETA / turnaround', build: etaReply },
 ]
 
 export const WA_TEMPLATE_CATALOG = [
