@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from 'react'
+import CompanyProfileForm from '../components/CompanyProfileForm'
+import { companyToForm, formToCompanyPayload, validateCompanyForm } from '../lib/companyProfile'
+import { applyBusinessType } from '../lib/businessTypes'
 import { Link, useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
@@ -36,11 +39,7 @@ export default function Settings() {
       return { currency: 'ZAR', invoicePrefix: 'INV', quoteValidityDays: 14, paymentTermsDays: 7, lowStockThreshold: 3, fiscalYearStart: '03-01' }
     }
   })
-  const [form, setForm] = useState({
-    name: company?.name || '', email: company?.email || '', phone: company?.phone || '',
-    vatNumber: company?.vatNumber || '', address: company?.address || '',
-    bankName: company?.bankName || '', accountNumber: company?.accountNumber || '', branchCode: company?.branchCode || '',
-  })
+  const [form, setForm] = useState(() => companyToForm(company))
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState(null)
   const [autoBackups, setAutoBackups] = useState([])
@@ -87,7 +86,6 @@ export default function Settings() {
       try {
         await Sync.resetWorkspace(resetPin, 'RESET MY WORKSPACE')
       } catch (err) {
-        // Allow factory preset offline / when server PIN not set
         if (resetPin !== '00000000') throw err
         console.warn('[workspace reset] server rejected; continuing local reset with factory PIN', err)
       }
@@ -123,15 +121,7 @@ export default function Settings() {
   }, [])
 
   useEffect(() => {
-    setForm({
-      name: company?.name || '', email: company?.email || '', phone: company?.phone || '',
-      vatNumber: company?.vatNumber || '', address: company?.address || '',
-      bankName: company?.bankName || '', accountNumber: company?.accountNumber || '', branchCode: company?.branchCode || '',
-      registrationNumber: company?.registrationNumber || '',
-      payeReference: company?.payeReference || '',
-      uifReference: company?.uifReference || '',
-      sdlReference: company?.sdlReference || '',
-    })
+    setForm(companyToForm(company))
   }, [company])
 
   useEffect(() => { applyWhiteLabel(loadWhiteLabel()) }, [])
@@ -144,12 +134,16 @@ export default function Settings() {
 
   const saveCompany = async (e) => {
     e?.preventDefault?.()
+    const errors = validateCompanyForm(form)
+    if (errors.length) return toast(errors[0], 'error')
     setBusy(true)
     try {
-      const row = { ...(company || {}), ...form, updatedAt: new Date().toISOString() }
+      const payload = formToCompanyPayload(form)
+      const row = { ...(company || {}), ...payload, updatedAt: new Date().toISOString() }
       if (company?.id) await db.put(db.STORES.company || 'company', row)
       else await db.add(db.STORES.company || 'company', row)
       setCompany?.(row)
+      try { applyBusinessType(form.businessType) } catch {}
       await refresh?.()
       toast('Company saved', 'success')
     } catch (err) {
@@ -211,25 +205,11 @@ export default function Settings() {
       </div>
 
       {tab === 'company' && (
-        <form className="card form-grid" onSubmit={saveCompany} style={{ marginTop: 12 }}>
-          <h3 style={{ marginTop: 0 }}>Company profile</h3>
-          <label className="label">Name</label>
-          <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-          <label className="label">Email</label>
-          <input className="input" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          <label className="label">Phone</label>
-          <input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-          <label className="label">VAT number</label>
-          <input className="input" value={form.vatNumber} onChange={(e) => setForm({ ...form, vatNumber: e.target.value })} />
-          <label className="label">Address</label>
-          <textarea className="input" rows={2} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-          <label className="label">Bank name</label>
-          <input className="input" value={form.bankName} onChange={(e) => setForm({ ...form, bankName: e.target.value })} />
-          <label className="label">Account number</label>
-          <input className="input" value={form.accountNumber} onChange={(e) => setForm({ ...form, accountNumber: e.target.value })} />
-          <label className="label">Branch code</label>
-          <input className="input" value={form.branchCode} onChange={(e) => setForm({ ...form, branchCode: e.target.value })} />
-          <LoadingButton loading={busy} className="btn btn-primary">{busy ? 'Saving…' : 'Save company'}</LoadingButton>
+        <form className="card" onSubmit={saveCompany} style={{ marginTop: 12 }}>
+          <h3 style={{ marginTop: 0 }}>Company & account profile</h3>
+          <p className="muted" style={{ marginTop: 0 }}>Legal identity, contact, tax, banking and workspace details for your business type.</p>
+          <CompanyProfileForm form={form} setForm={setForm} mode="full" />
+          <LoadingButton loading={busy} className="btn btn-primary" style={{ marginTop: 12 }}>{busy ? 'Saving…' : 'Save company profile'}</LoadingButton>
         </form>
       )}
 
