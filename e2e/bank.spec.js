@@ -18,6 +18,7 @@ test.describe('Bank CSV import', () => {
 
   test('paste area and parse control present', async ({ page }) => {
     await injectSession(page)
+    await seedIndexedDbCompany(page)
     await page.goto('/bank')
     await page.waitForTimeout(800)
     // File input or textarea for paste
