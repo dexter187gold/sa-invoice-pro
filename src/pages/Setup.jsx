@@ -15,6 +15,7 @@ import {
 } from '../lib/companyProfile'
 import CompanyProfileForm from '../components/CompanyProfileForm'
 import ModuleSetupStep from '../components/ModuleSetupStep'
+import VatSelector from '../components/VatSelector'
 
 const PHASES = [
   { id: 1, title: 'Personal', blurb: 'Your profile on this workspace' },
@@ -320,21 +321,11 @@ export default function Setup() {
                         <option value="compact">Compact sidebar</option>
                       </select>
                     </div>
-                    <div>
-                      <label className="label" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <input type="checkbox" checked={!!prefs.vatEnabled} onChange={setPref('vatEnabled')} />
-                        Charge VAT on invoices
-                      </label>
-                    </div>
-                    <div>
-                      <label className="label">VAT rate %</label>
-                      <input
-                        className="input"
-                        type="number"
-                        step="0.01"
-                        value={prefs.vatRate}
-                        onChange={setPref('vatRate')}
-                        disabled={!prefs.vatEnabled}
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <VatSelector
+                        enabled={!!prefs.vatEnabled}
+                        rate={prefs.vatRate}
+                        onChange={({ enabled, rate }) => setPrefs((p) => ({ ...p, vatEnabled: enabled, vatRate: rate }))}
                       />
                     </div>
                   </div>
