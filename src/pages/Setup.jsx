@@ -5,41 +5,58 @@ import * as db from '../lib/db'
 import { APP_VERSION } from '../config'
 import AppLogo from '../components/AppLogo'
 import { PageFade } from '../components/ui'
-import { businessTypeOptions, applyBusinessType, getBusinessType } from '../lib/businessTypes'
+import { applyBusinessType } from '../lib/businessTypes'
+import {
+  companyToForm,
+  formToCompanyPayload,
+  validateCompanyForm,
+  profileCompleteness,
+} from '../lib/companyProfile'
+import CompanyProfileForm from '../components/CompanyProfileForm'
 
-const TYPE_OPTIONS = businessTypeOptions()
+const STEPS = [
+  { id: 1, title: 'Identity', blurb: 'Name, type, registration' },
+  { id: 2, title: 'Contact', blurb: 'Reachability & address' },
+  { id: 3, title: 'Tax & bank', blurb: 'VAT, banking, terms' },
+  { id: 4, title: 'Workspace', blurb: 'Type-specific details' },
+]
 
 export default function Setup() {
   const { company, setCompany, toast, refresh } = useApp()
   const nav = useNavigate()
   const [busy, setBusy] = useState(false)
-  const [form, setForm] = useState({
-    name: company?.name || '',
-    email: company?.email || '',
-    phone: company?.phone || '',
-    vatNumber: company?.vatNumber || '',
-    address: company?.address || '',
-    businessType: getBusinessType(company?.businessType).id,
-    bankName: company?.bankName || '',
-    accountNumber: company?.accountNumber || '',
-    branchCode: company?.branchCode || '',
-  })
+  const [step, setStep] = useState(1)
+  const [form, setForm] = useState(() => companyToForm(company))
 
   React.useEffect(() => {
     if (company?.name) nav('/', { replace: true })
   }, [company, nav])
 
+  const complete = profileCompleteness(form)
+
+  const next = () => {
+    if (step === 1 && !String(form.name || '').trim()) {
+      return toast('Business name is required', 'error')
+    }
+    setStep((s) => Math.min(4, s + 1))
+  }
+  const back = () => setStep((s) => Math.max(1, s - 1))
+
   const save = async (e) => {
-    e.preventDefault()
-    if (!form.name.trim()) return toast('Company name required', 'error')
+    e?.preventDefault?.()
+    const errors = validateCompanyForm(form, { requireContact: false })
+    if (errors.length) return toast(errors[0], 'error')
     setBusy(true)
     try {
-      const row = await db.saveCompany({ ...form, name: form.name.trim() })
+      const payload = formToCompanyPayload(form)
+      const row = await db.saveCompany(payload)
       setCompany(row)
       try { applyBusinessType(form.businessType) } catch {}
       await refresh()
       toast("Company saved — let's go", 'success')
       nav('/', { replace: true })
+    } catch (err) {
+      toast(err?.message || 'Save failed', 'error')
     } finally {
       setBusy(false)
     }
@@ -48,69 +65,61 @@ export default function Setup() {
   return (
     <div className="auth-page">
       <PageFade>
-        <div className="card auth-card" style={{ width: 'min(520px, 100%)' }}>
+        <div className="card auth-card" style={{ width: 'min(640px, 100%)' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
             <AppLogo size={48} />
           </div>
           <h1 style={{ marginTop: 0, textAlign: 'center' }}>Company setup</h1>
           <p className="muted" style={{ textAlign: 'center' }}>
-            One-time setup · ZAR · SA tax invoices · v{APP_VERSION}
+            Full account profile · ZAR · SA tax invoices · v{APP_VERSION}
           </p>
-          <ol className="onboard-steps" style={{ fontSize: 13, marginBottom: 12 }}>
-            <li>Business name & contact (required)</li>
-            <li>Choose your business type (drives modules & accent)</li>
-            <li>VAT number if registered · bank for invoice footers</li>
-          </ol>
-          <form className="form-grid" onSubmit={save}>
-            <div>
-              <label className="label">Business name *</label>
-              <input className="input focus-ring" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 16 }}>
+            {STEPS.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                className={`btn btn-sm ${step === s.id ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => setStep(s.id)}
+                style={{ minWidth: 72 }}
+              >
+                {s.id}. {s.title}
+              </button>
+            ))}
+          </div>
+          <p className="muted" style={{ textAlign: 'center', fontSize: 13, marginTop: 0 }}>
+            {STEPS[step - 1].blurb} · Profile {complete.pct}% complete
+          </p>
+
+          <form onSubmit={step === 4 ? save : (e) => { e.preventDefault(); next() }}>
+            <CompanyProfileForm form={form} setForm={setForm} mode="setup-step" step={step} />
+            <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+              {step > 1 && (
+                <button type="button" className="btn btn-outline" onClick={back} disabled={busy}>
+                  Back
+                </button>
+              )}
+              {step < 4 ? (
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
+                  Continue
+                </button>
+              ) : (
+                <button type="submit" className="btn btn-primary" disabled={busy} style={{ flex: 1 }}>
+                  {busy ? 'Saving…' : 'Save & open desk'}
+                </button>
+              )}
             </div>
-            <div className="form-grid cols-2">
-              <div>
-                <label className="label">Email</label>
-                <input className="input" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-              </div>
-              <div>
-                <label className="label">Phone</label>
-                <input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-              </div>
-            </div>
-            <div className="form-grid cols-2">
-              <div>
-                <label className="label">VAT number</label>
-                <input className="input" value={form.vatNumber} onChange={(e) => setForm({ ...form, vatNumber: e.target.value })} />
-              </div>
-              <div>
-                <label className="label">Business type</label>
-                <select className="select" value={form.businessType} onChange={(e) => setForm({ ...form, businessType: e.target.value })}>
-                  {TYPE_OPTIONS.map((ty) => (
-                    <option key={ty.value} value={ty.value}>{ty.label}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className="label">Address</label>
-              <textarea className="textarea" rows={2} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-            </div>
-            <div className="form-grid cols-3">
-              <div>
-                <label className="label">Bank</label>
-                <input className="input" value={form.bankName} onChange={(e) => setForm({ ...form, bankName: e.target.value })} />
-              </div>
-              <div>
-                <label className="label">Account</label>
-                <input className="input" value={form.accountNumber} onChange={(e) => setForm({ ...form, accountNumber: e.target.value })} />
-              </div>
-              <div>
-                <label className="label">Branch code</label>
-                <input className="input" value={form.branchCode} onChange={(e) => setForm({ ...form, branchCode: e.target.value })} />
-              </div>
-            </div>
-            <button className="btn btn-primary" type="submit" disabled={busy} style={{ width: '100%' }}>
-              {busy ? 'Saving…' : 'Save & open desk'}
-            </button>
+            {step < 4 && (
+              <button
+                type="button"
+                className="btn btn-outline"
+                style={{ width: '100%', marginTop: 8 }}
+                disabled={busy || !String(form.name || '').trim()}
+                onClick={save}
+              >
+                Save with what I have
+              </button>
+            )}
           </form>
         </div>
       </PageFade>
