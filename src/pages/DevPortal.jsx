@@ -5,7 +5,7 @@ import {
   loadDevConfig, saveDevConfig, resetDevConfig, DEFAULT_ENDPOINTS, RENDER_SECRET_CHECKLIST, getEndpoint,
 } from '../lib/devConfig'
 import { loadSecrets, saveSecrets, clearSecrets, SECRET_FIELDS, secretsToEnvSnippet } from '../lib/devSecrets'
-import { isDevPortalAuthed, loginDevPortal, logoutDevPortal, getDevUsername } from '../lib/devAuth'
+import { isDevPortalAuthed, loginDevPortal, logoutDevPortal } from '../lib/devAuth'
 import { APP_VERSION, APP_LINKS } from '../config'
 
 const URL_FIELDS = [
@@ -18,8 +18,8 @@ const URL_FIELDS = [
 ]
 
 function DevLogin({ onOk }) {
-  const [username, setUsername] = useState(() => getDevUsername())
-  const [password, setPassword] = useState('')
+  const [email, setEmail] = useState('sainvoicepro@gmail.com')
+  const [token, setToken] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
@@ -28,10 +28,11 @@ function DevLogin({ onOk }) {
     setBusy(true)
     setErr('')
     try {
-      await loginDevPortal(username, password)
+      await loginDevPortal(email, token)
+      setToken('')
       onOk()
     } catch (ex) {
-      setErr(ex?.message || 'Login failed')
+      setErr(ex?.message || 'Developer sign-in failed')
     } finally {
       setBusy(false)
     }
@@ -39,28 +40,29 @@ function DevLogin({ onOk }) {
 
   return (
     <div className="auth-page" style={{ minHeight: '100vh' }}>
-      <div className="auth-card" style={{ maxWidth: 420, margin: '10vh auto' }}>
-        <h1 style={{ marginTop: 0 }}>Developer portal</h1>
+      <div className="auth-card" style={{ maxWidth: 440, margin: '10vh auto' }}>
+        <h1 style={{ marginTop: 0 }}>SA Invoice Pro · Developer access</h1>
         <p className="muted" style={{ fontSize: 13 }}>
-          Restricted. Product ops for SA Invoice Pro — not for shop staff.
+          Secure owner verification. This opens a developer session, separate from customer and admin accounts.
         </p>
         <form className="stack" style={{ gap: 12 }} onSubmit={submit}>
           <label className="stack" style={{ gap: 4 }}>
-            <span className="muted" style={{ fontSize: 12 }}>Developer username</span>
-            <input className="input" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} required />
+            <span className="muted" style={{ fontSize: 12 }}>Owner email</span>
+            <input className="input" type="email" autoComplete="username" value={email} readOnly />
           </label>
           <label className="stack" style={{ gap: 4 }}>
-            <span className="muted" style={{ fontSize: 12 }}>Password</span>
-            <input className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <span className="muted" style={{ fontSize: 12 }}>SA owner token</span>
+            <input className="input" type="password" autoComplete="current-password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Enter your owner token" required />
           </label>
-          {err ? <p style={{ color: 'var(--danger, #b91c1c)', margin: 0, fontSize: 13 }}>{err}</p> : null}
-          <button className="btn btn-primary" type="submit" disabled={busy} style={{ width: '100%' }}>
-            {busy ? 'Checking…' : 'Unlock developer portal'}
+          {err ? <p role="alert" style={{ color: 'var(--danger, #b91c1c)', margin: 0, fontSize: 13 }}>{err}</p> : null}
+          <button className="btn btn-primary" type="submit" disabled={busy || !token} style={{ width: '100%' }}>
+            {busy ? 'Verifying developer access…' : 'Sign in as developer'}
           </button>
         </form>
         <p className="muted" style={{ fontSize: 12, marginTop: 16 }}>
-          <Link to="/login">← Back to shop login</Link>
+          Developer access is verified by the SA Invoice Pro server. Your token is not saved in this browser.
         </p>
+        <p style={{ marginTop: 12, fontSize: 13 }}><a href="/login">← Return to app sign-in</a></p>
       </div>
     </div>
   )
