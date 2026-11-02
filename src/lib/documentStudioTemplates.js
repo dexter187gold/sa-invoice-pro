@@ -1,9 +1,10 @@
-/** Merged document studio templates: IT + Retail + Trades + Automotive + Consulting */
+/** Merged document studio templates: IT + Retail + Trades + Automotive + Consulting + Hospitality */
 import { IT_DOCUMENT_TEMPLATES, getITDocumentTemplate } from './itDocumentTemplates.js'
 import { RETAIL_DOCUMENT_TEMPLATES } from './retailCatalog.js'
 import { TRADES_DOCUMENT_STUBS } from './tradesCatalog.js'
 import { AUTO_DOCUMENT_STUBS } from './automotiveCatalog.js'
 import { CONSULTING_DOCUMENT_STUBS } from './consultingCatalog.js'
+import { HOSPITALITY_DOCUMENT_STUBS } from './hospitalityCatalog.js'
 
 function stubsToTemplates(stubs, category, categoryLabel, tags) {
   return stubs.map((stub) => ({
@@ -37,6 +38,9 @@ export function getAllStudioTemplates() {
     if (!list.some((x) => x.id === r.id)) list.push(r)
   }
   for (const r of stubsToTemplates(CONSULTING_DOCUMENT_STUBS, 'Consulting', 'Consulting & professional', ['consulting', 'sow'])) {
+    if (!list.some((x) => x.id === r.id)) list.push(r)
+  }
+  for (const r of stubsToTemplates(HOSPITALITY_DOCUMENT_STUBS, 'Hospitality', 'Hospitality & events', ['hospitality', 'rooms', 'fb'])) {
     if (!list.some((x) => x.id === r.id)) list.push(r)
   }
   return list
