@@ -1,13 +1,17 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { moduleSetupForType, installModulePack } from '../lib/moduleSetup'
 import { getBusinessType } from '../lib/businessTypes'
 
-export default function ModuleSetupStep({ businessTypeId, toast, refresh }) {
+export default function ModuleSetupStep({ businessTypeId, toast, refresh, onDefaults }) {
   const type = getBusinessType(businessTypeId)
   const setup = moduleSetupForType(businessTypeId)
   const [busy, setBusy] = useState(false)
   const [installed, setInstalled] = useState(false)
   const [checked, setChecked] = useState({})
+
+  useEffect(() => {
+    if (setup?.defaults && onDefaults) onDefaults(setup.defaults)
+  }, [businessTypeId])
 
   if (!setup) {
     return (

@@ -6,6 +6,7 @@ import { RETAIL_SERVICE_PRESETS, RETAIL_PRODUCT_PRESETS } from './retailCatalog.
 import { TRADES_SERVICE_PRESETS, TRADES_PRODUCT_PRESETS } from './tradesCatalog.js'
 import { AUTO_SERVICE_PRESETS, AUTO_PRODUCT_PRESETS } from './automotiveCatalog.js'
 import { CONSULTING_SERVICE_PRESETS, CONSULTING_PRODUCT_PRESETS } from './consultingCatalog.js'
+import { HOSPITALITY_SERVICE_PRESETS, HOSPITALITY_PRODUCT_PRESETS } from './hospitalityCatalog.js'
 
 async function install(services, products, stockZero = false) {
   let n = 0
@@ -26,6 +27,7 @@ export const CATALOG_PACKS = {
   trades: { label: 'Trades pack', run: () => install(TRADES_SERVICE_PRESETS, TRADES_PRODUCT_PRESETS) },
   automotive: { label: 'Automotive pack', run: () => install(AUTO_SERVICE_PRESETS, AUTO_PRODUCT_PRESETS) },
   consulting: { label: 'Consulting pack', run: () => install(CONSULTING_SERVICE_PRESETS, CONSULTING_PRODUCT_PRESETS) },
+  hospitality: { label: 'Hospitality pack', run: () => install(HOSPITALITY_SERVICE_PRESETS, HOSPITALITY_PRODUCT_PRESETS, true) },
 }
 
 export function packsForBusiness(biz) {
@@ -33,10 +35,11 @@ export function packsForBusiness(biz) {
   const mods = biz?.modules || []
   const out = []
   if (id === 'it_msp' || mods.includes('it')) out.push('it')
-  if (id === 'retail' || id === 'hospitality' || mods.includes('retail')) out.push('retail')
+  if (id === 'retail' || mods.includes('retail')) out.push('retail')
   if (id === 'trades' || mods.includes('trades')) out.push('trades')
   if (id === 'automotive' || mods.includes('automotive')) out.push('automotive')
   if (id === 'consulting' || mods.includes('consulting')) out.push('consulting')
-  if (!out.length) out.push('it', 'retail', 'trades', 'automotive', 'consulting')
+  if (id === 'hospitality' || mods.includes('hospitality')) out.push('hospitality')
+  if (!out.length) out.push('it', 'retail', 'trades', 'automotive', 'consulting', 'hospitality')
   return out
 }
