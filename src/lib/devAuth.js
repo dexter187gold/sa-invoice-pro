@@ -11,9 +11,9 @@ export function isDevPortalAuthed() {
   try {
     const raw = sessionStorage.getItem(SESSION_KEY)
     if (!raw) return false
-    const s = JSON.parse(raw)
-    if (!s?.token || s.email !== DEV_EMAIL || s.role !== 'developer') return false
-    if (!s.exp || Date.now() >= s.exp) {
+    const session = JSON.parse(raw)
+    if (!session?.token || session.email !== DEV_EMAIL || session.role !== 'developer') return false
+    if (!session.exp || Date.now() >= session.exp) {
       sessionStorage.removeItem(SESSION_KEY)
       return false
     }
