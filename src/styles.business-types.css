@@ -1,0 +1,50 @@
+/* Business-type accents on top of Sniper / global theme — keep layouts consistent */
+
+:root {
+  --biz-accent: #14b8a6;
+  --biz-accent-soft: rgba(20, 184, 166, 0.14);
+}
+
+html[data-business-type] .btn-primary {
+  background: linear-gradient(135deg, var(--biz-accent), color-mix(in srgb, var(--biz-accent) 70%, #0f172a));
+}
+html[data-business-type] .nav-link.active,
+html[data-business-type] .bottom-nav a.active,
+html[data-business-type] .nav-item.active {
+  color: var(--biz-accent);
+  box-shadow: inset 0 -2px 0 var(--biz-accent);
+}
+
+html[data-nav-style="optic"] .bottom-nav,
+html[data-nav-style="optic"] .side-nav {
+  letter-spacing: 0.02em;
+}
+html[data-nav-style="shop"] .stat .value {
+  font-variant-numeric: tabular-nums;
+}
+html[data-nav-style="field"] .list-card,
+html[data-nav-style="field"] .open-invoice-row {
+  border-left: 3px solid var(--biz-accent-soft);
+}
+html[data-nav-style="soft"] .card {
+  border-radius: 16px;
+}
+html[data-nav-style="clean"] .page-header {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.75rem;
+}
+
+.biz-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--biz-accent);
+  border: 1px solid var(--biz-accent-soft);
+  background: var(--biz-accent-soft);
+}

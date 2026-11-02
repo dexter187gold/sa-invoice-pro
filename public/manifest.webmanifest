@@ -1,7 +1,7 @@
 {
-  "name": "SA Invoice Pro · Lab",
-  "short_name": "SAIP Lab",
-  "description": "Personal offline-first SA invoicing, job cards and accounting. Phone-only Lab edition.",
+  "name": "SA Invoice Pro",
+  "short_name": "SA Invoice Pro",
+  "description": "South African desk OS — invoices, quotes, jobs, payments, documents. Offline-friendly.",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
@@ -9,27 +9,40 @@
   "display_override": ["standalone", "minimal-ui", "browser"],
   "launch_handler": { "client_mode": "focus-existing" },
   "prefer_related_applications": false,
-  "background_color": "#0c0a14",
-  "theme_color": "#0c0a14",
+  "background_color": "#070b10",
+  "theme_color": "#070b10",
   "categories": ["business", "finance", "productivity"],
   "lang": "en-ZA",
+  "dir": "ltr",
   "shortcuts": [
-    { "name": "New invoice", "short_name": "Invoice", "description": "Create an invoice", "url": "/invoices/new", "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
-    { "name": "Clients", "short_name": "Clients", "description": "Open client records", "url": "/clients", "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
-    { "name": "Bank import", "short_name": "Bank", "description": "Review bank transactions", "url": "/bank", "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }] }
-  ],
-  "icons": [
     {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "name": "New invoice",
+      "short_name": "Invoice",
+      "url": "/invoices/new?source=pwa",
+      "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
     },
     {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
+      "name": "Job cards",
+      "short_name": "Jobs",
+      "url": "/tickets?source=pwa",
+      "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Documents",
+      "short_name": "Docs",
+      "url": "/documents?source=pwa",
+      "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Clients",
+      "short_name": "Clients",
+      "url": "/clients?source=pwa",
+      "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
     }
+  ],
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" },
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]
 }
