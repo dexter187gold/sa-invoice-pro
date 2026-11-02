@@ -86,3 +86,22 @@ export async function loginDevPortal(email, ownerToken) {
 export function logoutDevPortal() {
   try { sessionStorage.removeItem(SESSION_KEY) } catch {}
 }
+
+export async function devRequest(path, options = {}) {
+  const raw = sessionStorage.getItem(SESSION_KEY)
+  const session = raw ? JSON.parse(raw) : null
+  if (!session?.token || session.role !== 'developer') throw new Error('Developer session required')
+  const response = await fetch(`${SYNC_API}${path}`, {
+    ...options,
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.token}`,
+      ...(options.headers || {}),
+    },
+    cache: 'no-store',
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`)
+  return data
+}
