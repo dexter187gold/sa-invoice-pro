@@ -117,6 +117,7 @@ export default function App() {
         <Route path="/portal" element={<Portal />} />
         <Route path="/portal/:token" element={<Portal />} />
         <Route path="/portal/:token/:section" element={<Portal />} />
+        <Route path="/dev-portal" element={<DevPortal />} />
         <Route path="/setup" element={<Guard needCompany={false}><Setup /></Guard>} />
         <Route path="/*" element={
           <Guard>
@@ -159,7 +160,6 @@ export default function App() {
                 <Route path="/team" element={<Team />} />
                 <Route path="/owner-recovery" element={<OwnerRecovery />} />
                 <Route path="/owner-console" element={<OwnerCommandCentre />} />
-                <Route path="/dev-portal" element={<DevPortal />} />
                 <Route path="/portal-admin" element={<PortalAdmin />} />
                 <Route path="/webhooks" element={<Webhooks />} />
                 <Route path="/settings" element={<Settings />} />
