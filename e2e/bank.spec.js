@@ -20,12 +20,8 @@ test.describe('Bank CSV import', () => {
     await injectSession(page)
     await seedIndexedDbCompany(page)
     await page.goto('/bank')
-    await page.waitForTimeout(800)
-    // File input or textarea for paste
-    const file = page.locator('input[type="file"]')
-    const area = page.locator('textarea')
-    const hasFile = (await file.count()) > 0
-    const hasArea = (await area.count()) > 0
-    expect(hasFile || hasArea).toBeTruthy()
+    await expect(page.getByRole('heading', { name: /bank import/i })).toBeVisible({ timeout: 10000 })
+    // The bank-import screen must expose its statement upload control.
+    await expect(page.locator('input[type="file"]')).toBeAttached({ timeout: 5000 })
   })
 })
