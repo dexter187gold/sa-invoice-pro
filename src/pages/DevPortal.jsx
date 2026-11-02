@@ -5,7 +5,7 @@ import {
   loadDevConfig, saveDevConfig, resetDevConfig, DEFAULT_ENDPOINTS, RENDER_SECRET_CHECKLIST, getEndpoint,
 } from '../lib/devConfig'
 import { loadSecrets, saveSecrets, clearSecrets, SECRET_FIELDS, secretsToEnvSnippet } from '../lib/devSecrets'
-import { isDevPortalAuthed, loginDevPortal, logoutDevPortal } from '../lib/devAuth'
+import { verifyDevPortalSession, loginDevPortal, logoutDevPortal } from '../lib/devAuth'
 import { APP_VERSION, APP_LINKS } from '../config'
 
 const URL_FIELDS = [
@@ -67,13 +67,22 @@ function DevLogin({ onOk }) {
 }
 
 export default function DevPortal() {
-  const [authed, setAuthed] = useState(() => isDevPortalAuthed())
+  const [authed, setAuthed] = useState(false)
+  const [authChecked, setAuthChecked] = useState(false)
   const [form, setForm] = useState(() => loadDevConfig())
   const [secrets, setSecrets] = useState(() => loadSecrets())
   const [showSecrets, setShowSecrets] = useState(false)
   const [health, setHealth] = useState(null)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
+
+  useEffect(() => {
+    let alive = true
+    verifyDevPortalSession().then((ok) => {
+      if (alive) { setAuthed(ok); setAuthChecked(true) }
+    })
+    return () => { alive = false }
+  }, [])
 
   useEffect(() => {
     if (authed) {
@@ -90,6 +99,7 @@ export default function DevPortal() {
     return g
   }, [])
 
+  if (!authChecked) return <div className="auth-page" style={{ minHeight: '100vh', padding: 24 }}>Verifying developer session…</div>
   if (!authed) return <DevLogin onOk={() => setAuthed(true)} />
 
   const toast = (t) => setMsg(t)
