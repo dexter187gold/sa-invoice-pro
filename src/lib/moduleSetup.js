@@ -9,9 +9,9 @@ export const MODULE_SETUP = {
     intro: 'Prep the desk for job cards, device work and document studio.',
     checklist: [
       'Install the IT service & parts pack (remote, on-site, workshop SKUs)',
-      'Fill workshop hours and support email under Company \u2192 Details',
+      'Fill workshop hours and support email under Company Details',
       'Use Documents for assessments, POPIA and tech diagnose reports',
-      'Tickets \u2192 job cards with device intake and status WhatsApp',
+      'Tickets for job cards with device intake and status WhatsApp',
     ],
     defaults: { defaultSupportType: 'workshop', suggestVat: true },
     routes: [
@@ -26,9 +26,9 @@ export const MODULE_SETUP = {
     intro: 'Counter sales, stock and simple returns paperwork.',
     checklist: [
       'Install the Retail product & service pack',
-      'Set trading hours and till label under Company \u2192 Details',
-      'Use Products for stock levels and branch transfer when ready',
-      'Documents \u2192 return note / till variance when needed',
+      'Set trading hours and till label under Company Details',
+      'Use Products for stock levels',
+      'Documents for return note / till variance when needed',
     ],
     defaults: { defaultSupportType: 'workshop', suggestVat: true },
     routes: [
@@ -43,9 +43,9 @@ export const MODULE_SETUP = {
     intro: 'Call-outs, labour, materials and site paperwork.',
     checklist: [
       'Install the Trades labour & materials pack',
-      'Set service area and call-out note under Company \u2192 Details',
+      'Set service area and call-out note under Company Details',
       'Job cards default to on-site / call-out',
-      'Documents \u2192 site instruction and practical completion',
+      'Documents for site instruction and practical completion',
     ],
     defaults: { defaultSupportType: 'onsite', suggestVat: true },
     routes: [
@@ -60,9 +60,9 @@ export const MODULE_SETUP = {
     intro: 'Diagnostics, labour, parts and vehicle job cards.',
     checklist: [
       'Install the Automotive service & parts pack',
-      'Set bay hours and bay count under Company \u2192 Details',
+      'Set bay hours and bay count under Company Details',
       'Job cards default to workshop / vehicle',
-      'Documents \u2192 authority to repair and QC handover',
+      'Documents for authority to repair and QC handover',
     ],
     defaults: { defaultSupportType: 'workshop', suggestVat: true },
     routes: [
@@ -79,7 +79,7 @@ export const MODULE_SETUP = {
       'Install the Hospitality F&B and rooms pack',
       'Set trading hours / kitchen note on company details',
       'Use Quotes for functions and Invoices for walk-ins',
-      'Documents \u2192 booking confirmation and function order sheet',
+      'Documents for booking confirmation and function order sheet',
     ],
     defaults: { defaultSupportType: 'workshop', suggestVat: true },
     routes: [
@@ -88,15 +88,49 @@ export const MODULE_SETUP = {
       { to: '/products', label: 'Menu & rooms' },
     ],
   },
+  health_beauty: {
+    packKey: 'health_beauty',
+    title: 'Health & beauty workspace',
+    intro: 'Salon, spa and wellness services with consent and aftercare paperwork.',
+    checklist: [
+      'Install the Health & Beauty service pack',
+      'Set trading hours under module details',
+      'Use Tickets for appointments / treatment cards',
+      'Documents for consent and aftercare notes',
+    ],
+    defaults: { defaultSupportType: 'workshop', suggestVat: true },
+    routes: [
+      { to: '/tickets', label: 'Appointments' },
+      { to: '/products', label: 'Services & retail' },
+      { to: '/documents', label: 'Consent / aftercare' },
+    ],
+  },
+  medical: {
+    packKey: 'medical',
+    title: 'Medical / clinic workspace',
+    intro: 'Consults, procedures, certificates and patient paperwork.',
+    checklist: [
+      'Install the Medical / Clinic service pack',
+      'Set practice hours under module details',
+      'Use Tickets for appointments / encounters',
+      'Documents for consent, sick notes and referrals',
+    ],
+    defaults: { defaultSupportType: 'workshop', suggestVat: false },
+    routes: [
+      { to: '/tickets', label: 'Appointments' },
+      { to: '/invoices', label: 'Invoices' },
+      { to: '/documents', label: 'Clinical docs' },
+    ],
+  },
   consulting: {
     packKey: 'consulting',
     title: 'Consulting workspace',
     intro: 'Retainers, T&M rates, SOW and progress notes.',
     checklist: [
       'Install the Consulting rate pack (hourly, day, retainer)',
-      'Add practice number / specialties under Company \u2192 Details',
+      'Add practice number / specialties under Company Details',
       'Job cards default to remote / engagement',
-      'Documents \u2192 statement of work and status notes',
+      'Documents for statement of work and status notes',
     ],
     defaults: { defaultSupportType: 'remote', suggestVat: false },
     routes: [
@@ -109,7 +143,8 @@ export const MODULE_SETUP = {
 
 export function moduleSetupForType(businessTypeId) {
   const type = getBusinessType(businessTypeId)
-  return MODULE_SETUP[type.id] || null
+  const id = type.id === 'beauty' ? 'health_beauty' : type.id
+  return MODULE_SETUP[id] || MODULE_SETUP[type.id] || null
 }
 
 export async function installModulePack(businessTypeId) {
