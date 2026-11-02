@@ -224,8 +224,8 @@ export const MODULE_REGISTRY = {
   legal: {
     id: 'legal',
     label: 'Legal / Attorneys',
-    version: '0.1.0',
-    status: 'active',
+    version: '1.0.0',
+    status: 'stable',
     description: 'Mandates, fee notes, matter status, retainers and disbursements.',
     routes: ['/tickets', '/quotes', '/invoices', '/documents', '/products'],
     features: { jobCards: true, products: true, legalPresets: true },
