@@ -1,4 +1,4 @@
-/** One-click catalog packs by vertical */
+/** One-click catalog packs by vertical — only the pack for the active business type. */
 import * as db from './db.js'
 import { STORES } from './db.js'
 import { IT_SERVICE_PRESETS, IT_PRODUCT_PRESETS, presetToServiceRow, presetToProductRow } from './itCatalog.js'
@@ -36,19 +36,33 @@ export const CATALOG_PACKS = {
   legal: { label: 'Legal pack', run: () => install(LEGAL_SERVICE_PRESETS, LEGAL_PRODUCT_PRESETS, true) },
 }
 
+/** Map business type id → pack keys. Only these install buttons show. */
+export const TYPE_PACK_MAP = {
+  it_msp: ['it'],
+  retail: ['retail'],
+  trades: ['trades'],
+  automotive: ['automotive'],
+  consulting: ['consulting'],
+  hospitality: ['hospitality'],
+  beauty: ['health_beauty'],
+  health_beauty: ['health_beauty'],
+  medical: ['medical'],
+  legal: ['legal'],
+}
+
+/**
+ * Packs for the current business type only.
+ * Never falls back to "all packs" (that caused IT pack on every module).
+ */
 export function packsForBusiness(biz) {
   const id = biz?.id
+  if (!id) return []
+  if (TYPE_PACK_MAP[id]) return TYPE_PACK_MAP[id].filter((k) => CATALOG_PACKS[k])
   const mods = biz?.modules || []
   const out = []
-  if (id === 'it_msp' || mods.includes('it')) out.push('it')
-  if (id === 'retail' || mods.includes('retail')) out.push('retail')
-  if (id === 'trades' || mods.includes('trades')) out.push('trades')
-  if (id === 'automotive' || mods.includes('automotive')) out.push('automotive')
-  if (id === 'consulting' || mods.includes('consulting')) out.push('consulting')
-  if (id === 'hospitality' || mods.includes('hospitality')) out.push('hospitality')
-  if (id === 'health_beauty' || id === 'beauty' || mods.includes('health_beauty')) out.push('health_beauty')
-  if (id === 'medical' || mods.includes('medical')) out.push('medical')
-  if (id === 'legal' || mods.includes('legal')) out.push('legal')
-  if (!out.length) out.push('it', 'retail', 'trades', 'automotive', 'consulting', 'hospitality', 'health_beauty', 'medical', 'legal')
-  return out
+  for (const key of Object.keys(CATALOG_PACKS)) {
+    if (mods.includes(key)) out.push(key)
+  }
+  if (mods.includes('beauty') && CATALOG_PACKS.health_beauty) out.push('health_beauty')
+  return [...new Set(out)]
 }

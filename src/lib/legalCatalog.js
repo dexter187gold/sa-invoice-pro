@@ -43,4 +43,22 @@ export const LEGAL_DOCUMENT_STUBS = [
     purpose: 'Update the client on progress and next steps.',
     scope: 'Current status, outstanding items, risks, recommended actions.',
   },
+  {
+    id: 'legal_poa',
+    title: 'Power of attorney (short form)',
+    purpose: 'Authorise the firm to act on specific steps for the client.',
+    scope: 'Parties, powers granted, limits, duration, signatures and witnesses.',
+  },
+  {
+    id: 'legal_trust_receipt',
+    title: 'Trust deposit receipt',
+    purpose: 'Acknowledge funds received into trust or as a deposit.',
+    scope: 'Amount, matter, payment method, trust account reference, date.',
+  },
+  {
+    id: 'legal_file_closing',
+    title: 'File closing / final account note',
+    purpose: 'Close the matter and confirm final fees and documents returned.',
+    scope: 'Matter summary, final fees, trust balance, documents retained or returned.',
+  },
 ]
