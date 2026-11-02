@@ -7,6 +7,7 @@ import { CONSULTING_DOCUMENT_STUBS } from './consultingCatalog.js'
 import { HOSPITALITY_DOCUMENT_STUBS } from './hospitalityCatalog.js'
 import { HEALTH_BEAUTY_DOCUMENT_STUBS } from './healthBeautyCatalog.js'
 import { MEDICAL_DOCUMENT_STUBS } from './medicalCatalog.js'
+import { LEGAL_DOCUMENT_STUBS } from './legalCatalog.js'
 
 function stubsToTemplates(stubs, category, categoryLabel, tags) {
   return stubs.map((stub) => ({
@@ -49,6 +50,9 @@ export function getAllStudioTemplates() {
     if (!list.some((x) => x.id === r.id)) list.push(r)
   }
   for (const r of stubsToTemplates(MEDICAL_DOCUMENT_STUBS, 'Medical', 'Clinic & medical', ['medical', 'clinic'])) {
+    if (!list.some((x) => x.id === r.id)) list.push(r)
+  }
+  for (const r of stubsToTemplates(LEGAL_DOCUMENT_STUBS, 'Legal', 'Legal & practice', ['legal', 'attorney'])) {
     if (!list.some((x) => x.id === r.id)) list.push(r)
   }
   return list
