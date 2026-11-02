@@ -8,8 +8,9 @@ import {
   profileCompleteness,
 } from '../lib/companyProfile'
 import { getBusinessType } from '../lib/businessTypes'
+import ModuleSetupStep from './ModuleSetupStep'
 
-export default function CompanyProfileForm({ form, setForm, mode = 'full', step = 1 }) {
+export default function CompanyProfileForm({ form, setForm, mode = 'full', step = 1, toast, refresh, showModuleSetup = false }) {
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value })
   const biz = getBusinessType(form.businessType)
   const moduleFields = moduleFieldsForType(form.businessType)
@@ -184,6 +185,12 @@ export default function CompanyProfileForm({ form, setForm, mode = 'full', step 
 
       {show(4) && !moduleFields.length && mode === 'setup-step' && (
         <p className="muted">No extra fields for this business type — you can finish setup.</p>
+      )}
+
+      {mode === 'full' && showModuleSetup && (
+        <section className="form-section" style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+          <ModuleSetupStep businessTypeId={form.businessType} toast={toast} refresh={refresh} />
+        </section>
       )}
     </div>
   )
