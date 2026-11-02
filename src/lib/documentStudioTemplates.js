@@ -1,24 +1,25 @@
-/** Merged document studio templates: IT + Retail + Trades */
+/** Merged document studio templates: IT + Retail + Trades + Automotive */
 import { IT_DOCUMENT_TEMPLATES, getITDocumentTemplate } from './itDocumentTemplates.js'
 import { RETAIL_DOCUMENT_TEMPLATES } from './retailCatalog.js'
 import { TRADES_DOCUMENT_STUBS } from './tradesCatalog.js'
+import { AUTO_DOCUMENT_STUBS } from './automotiveCatalog.js'
 
-function tradesAsTemplates() {
-  return TRADES_DOCUMENT_STUBS.map((stub) => ({
+function stubsToTemplates(stubs, category, categoryLabel, tags) {
+  return stubs.map((stub) => ({
     id: stub.id,
     title: stub.title,
-    category: 'Trades',
-    categoryLabel: 'Trades & site work',
+    category,
+    categoryLabel,
     purpose: stub.purpose,
     scope: stub.scope,
-    tags: ['trades', 'construction'],
+    tags,
     sections: [
-      { heading: '1. Document control', body: `Title: ${stub.title}\nJob / quote ref: ____________________\nSite: ____________________\nDate: __________` },
+      { heading: '1. Document control', body: `Title: ${stub.title}\nReference: ____________________\nDate: __________` },
       { heading: '2. Purpose', body: stub.purpose },
       { heading: '3. Scope', body: stub.scope },
-      { heading: '4. Details', body: 'Describe work, materials, measurements, and client instructions. Attach photos separately.' },
-      { heading: '5. Commercial impact', body: 'Extra cost / credit: ____________________\nAffects completion date: Yes / No · New date: __________' },
-      { heading: '6. Sign-off', body: 'Technician: ____________________\nClient: ____________________\nDate: __________' },
+      { heading: '4. Details', body: 'Record findings, work done, parts/materials and customer instructions.' },
+      { heading: '5. Outcome', body: 'Status: ____________________\nFollow-up: ____________________' },
+      { heading: '6. Sign-off', body: 'Prepared by: ____________________\nCustomer: ____________________\nDate: __________' },
     ],
   }))
 }
@@ -28,7 +29,10 @@ export function getAllStudioTemplates() {
   for (const r of RETAIL_DOCUMENT_TEMPLATES) {
     if (!list.some((x) => x.id === r.id)) list.push(r)
   }
-  for (const r of tradesAsTemplates()) {
+  for (const r of stubsToTemplates(TRADES_DOCUMENT_STUBS, 'Trades', 'Trades & site work', ['trades', 'construction'])) {
+    if (!list.some((x) => x.id === r.id)) list.push(r)
+  }
+  for (const r of stubsToTemplates(AUTO_DOCUMENT_STUBS, 'Automotive', 'Automotive & workshop', ['auto', 'vehicle', 'workshop'])) {
     if (!list.some((x) => x.id === r.id)) list.push(r)
   }
   return list
