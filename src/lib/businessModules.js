@@ -5,6 +5,12 @@
 
 import { IT_DOCUMENT_TEMPLATES } from './itDocumentTemplates.js'
 import { IT_SERVICE_PRESETS, ACCOUNT_TYPES, SUPPORT_TYPES } from './itCatalog.js'
+import {
+  RETAIL_PRODUCT_PRESETS,
+  RETAIL_SERVICE_PRESETS,
+  RETAIL_ACCOUNT_TYPES,
+  RETAIL_DOCUMENT_STUBS,
+} from './retailCatalog.js'
 
 export const IT_MODULE = {
   id: 'it',
@@ -71,9 +77,18 @@ export const MODULE_REGISTRY = {
   },
   retail: {
     id: 'retail',
-    label: 'Retail helpers',
-    routes: ['/products', '/payments'],
-    features: { products: true, payments: true },
+    label: 'Retail / POS / Shop',
+    version: '0.1.0',
+    status: 'active',
+    description: 'Counter sales presets, account types, return/till/supplier document stubs.',
+    routes: ['/products', '/payments', '/invoices'],
+    features: { products: true, payments: true, retailPresets: true },
+    catalogs: {
+      productPresets: RETAIL_PRODUCT_PRESETS,
+      servicePresets: RETAIL_SERVICE_PRESETS,
+      accountTypes: RETAIL_ACCOUNT_TYPES,
+      documentStubs: RETAIL_DOCUMENT_STUBS,
+    },
   },
   field: {
     id: 'field',
@@ -99,4 +114,16 @@ export function filterNavByModules(links, type) {
     if (to.startsWith('/documents') && !mods.has('documents') && !mods.has('it')) return false
     return true
   })
+}
+
+export function smeModuleScoreboard() {
+  return {
+    core: CORE_MODULE.status || 'stable',
+    it: IT_MODULE.status || 'stable',
+    retail: MODULE_REGISTRY.retail?.status || 'planned',
+  }
+}
+
+export function getVerticalModule(moduleId) {
+  return MODULE_REGISTRY[moduleId] || null
 }
