@@ -132,3 +132,16 @@ html[data-theme="sand"] .open-invoice-row {
   background: var(--card);
   border-color: var(--border);
 }
+
+/* List cards — never force white glare on dark themes */
+html.sniper .list-card,
+html.dark .list-card {
+  background: linear-gradient(160deg, rgba(18, 28, 42, 0.95), rgba(13, 21, 32, 0.98)) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+html[data-theme="light"] .list-card,
+html[data-theme="sand"] .list-card {
+  background: var(--card) !important;
+  color: var(--text) !important;
+}
