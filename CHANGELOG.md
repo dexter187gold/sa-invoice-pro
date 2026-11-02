@@ -1,3 +1,9 @@
+## 6.49.0 — Smart WhatsApp replies
+
+- **Inbox**: Paste inbound client message → **Smart suggest** (local keyword match) fills a ZA-tone reply. No network needed.
+- **QUICK_REPLIES** expanded: FRP/Google lock, screen crack, battery swap, data recovery, ETA, warranty note.
+- Desk responds faster to common bench enquiries while staying on the app (Cloud or wa.me).
+
 ## 6.48.0 — WhatsApp desk replies
 
 - **Inbox**: Expanded QUICK_REPLIES — ready for collection, waiting on parts, quote follow-up, payment received, bring ID + accessories, price/diagnose next, booking confirmed (ZA tone).

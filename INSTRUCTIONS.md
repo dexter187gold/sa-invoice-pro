@@ -73,4 +73,4 @@ Grok does not store passwords; ask owner to set secrets in host dashboards.
 
 ---
 
-*Last updated with release 6.23.0 — portal server write-back + auth e2e harness.*
+*Last updated with release 6.49.0 — smart WhatsApp suggest + bench quick pack.*
