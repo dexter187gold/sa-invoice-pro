@@ -5,8 +5,9 @@ import * as db from '../lib/db'
 import { APP_VERSION } from '../config'
 import AppLogo from '../components/AppLogo'
 import { PageFade } from '../components/ui'
+import { businessTypeOptions, applyBusinessType, getBusinessType } from '../lib/businessTypes'
 
-const TYPES = ['IT / MSP', 'Consulting', 'Retail / POS', 'Trades', 'Agriculture', 'Legal', 'Medical', 'Other']
+const TYPE_OPTIONS = businessTypeOptions()
 
 export default function Setup() {
   const { company, setCompany, toast, refresh } = useApp()
@@ -18,7 +19,7 @@ export default function Setup() {
     phone: company?.phone || '',
     vatNumber: company?.vatNumber || '',
     address: company?.address || '',
-    businessType: company?.businessType || 'IT / MSP',
+    businessType: getBusinessType(company?.businessType).id,
     bankName: company?.bankName || '',
     accountNumber: company?.accountNumber || '',
     branchCode: company?.branchCode || '',
@@ -35,6 +36,7 @@ export default function Setup() {
     try {
       const row = await db.saveCompany({ ...form, name: form.name.trim() })
       setCompany(row)
+      try { applyBusinessType(form.businessType) } catch {}
       await refresh()
       toast("Company saved — let's go", 'success')
       nav('/', { replace: true })
@@ -56,13 +58,13 @@ export default function Setup() {
           </p>
           <ol className="onboard-steps" style={{ fontSize: 13, marginBottom: 12 }}>
             <li>Business name & contact (required)</li>
-            <li>VAT number if registered</li>
-            <li>Bank details for invoice footers</li>
+            <li>Choose your business type (drives modules & accent)</li>
+            <li>VAT number if registered · bank for invoice footers</li>
           </ol>
           <form className="form-grid" onSubmit={save}>
             <div>
               <label className="label">Business name *</label>
-              <input className="input focus-ring" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
+              <input className="input focus-ring" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
             <div className="form-grid cols-2">
               <div>
@@ -71,7 +73,7 @@ export default function Setup() {
               </div>
               <div>
                 <label className="label">Phone</label>
-                <input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+27…" />
+                <input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               </div>
             </div>
             <div className="form-grid cols-2">
@@ -82,7 +84,9 @@ export default function Setup() {
               <div>
                 <label className="label">Business type</label>
                 <select className="select" value={form.businessType} onChange={(e) => setForm({ ...form, businessType: e.target.value })}>
-                  {TYPES.map((ty) => <option key={ty}>{ty}</option>)}
+                  {TYPE_OPTIONS.map((ty) => (
+                    <option key={ty.value} value={ty.value}>{ty.label}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -100,12 +104,12 @@ export default function Setup() {
                 <input className="input" value={form.accountNumber} onChange={(e) => setForm({ ...form, accountNumber: e.target.value })} />
               </div>
               <div>
-                <label className="label">Branch</label>
+                <label className="label">Branch code</label>
                 <input className="input" value={form.branchCode} onChange={(e) => setForm({ ...form, branchCode: e.target.value })} />
               </div>
             </div>
-            <button className="btn btn-primary" type="submit" disabled={busy}>
-              {busy ? 'Saving…' : "Let's go"}
+            <button className="btn btn-primary" type="submit" disabled={busy} style={{ width: '100%' }}>
+              {busy ? 'Saving…' : 'Save & open desk'}
             </button>
           </form>
         </div>

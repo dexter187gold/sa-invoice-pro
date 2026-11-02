@@ -5,6 +5,8 @@ import { AppProvider } from './context/AppContext'
 import App from './App'
 import { initFont } from './lib/fonts'
 import { loadSavedTheme } from './lib/themes'
+import { registerPwa } from './lib/registerPwa'
+import { loadSavedBusinessType } from './lib/businessTypes'
 import { applyWhiteLabel, loadWhiteLabel } from './lib/whiteLabel'
 
 try {
@@ -25,6 +27,7 @@ import './styles.modern.css'
 import './styles.brain.css'
 import './styles.sniper.css'
 import './styles.theme-modes.css'
+import './styles.business-types.css'
 import './styles.modern-ux.css'
 import './styles.pulse.css'
 import './styles.nav-comfort.css'
@@ -32,6 +35,8 @@ import './styles.glass.css'
 
 // Apply theme once, after styles load — never force-overwrite user choice
 try { loadSavedTheme() } catch {}
+try { loadSavedBusinessType() } catch {}
+try { registerPwa() } catch {}
 try { applyWhiteLabel(loadWhiteLabel()) } catch {}
 try { initFont() } catch {}
 
