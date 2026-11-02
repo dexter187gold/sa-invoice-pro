@@ -145,9 +145,12 @@ export function getITDocumentTemplate(id) {
 
 export function searchITDocumentTemplates(query, category = 'all') {
   const q = String(query || '').trim().toLowerCase()
+  const categoryKey = String(category || 'all').trim().toLowerCase()
+  const categoryAliases = { privacy: 'security', compliance: 'security', governance: 'governance' }
+  const normalizedCategory = categoryAliases[categoryKey] || categoryKey
   return IT_DOCUMENT_TEMPLATES.filter(
     (item) =>
-      (category === 'all' || item.category === category) &&
+      (normalizedCategory === 'all' || item.category.toLowerCase() === normalizedCategory) &&
       (!q ||
         [item.title, item.purpose, item.scope, item.categoryLabel, ...item.tags]
           .join(' ')
