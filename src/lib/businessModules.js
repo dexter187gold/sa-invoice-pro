@@ -28,6 +28,12 @@ import {
   CONSULTING_ACCOUNT_TYPES,
   CONSULTING_DOCUMENT_STUBS,
 } from './consultingCatalog.js'
+import {
+  HOSPITALITY_SERVICE_PRESETS,
+  HOSPITALITY_PRODUCT_PRESETS,
+  HOSPITALITY_ACCOUNT_TYPES,
+  HOSPITALITY_DOCUMENT_STUBS,
+} from './hospitalityCatalog.js'
 
 export const IT_MODULE = {
   id: 'it',
@@ -140,8 +146,8 @@ export const MODULE_REGISTRY = {
   consulting: {
     id: 'consulting',
     label: 'Consulting / Professional services',
-    version: '0.1.0',
-    status: 'active',
+    version: '1.0.0',
+    status: 'stable',
     description: 'Retainers, T&M, SOW and progress notes.',
     routes: ['/tickets', '/products', '/documents', '/quotes'],
     features: { jobCards: true, consultingPresets: true },
@@ -150,6 +156,21 @@ export const MODULE_REGISTRY = {
       productPresets: CONSULTING_PRODUCT_PRESETS,
       accountTypes: CONSULTING_ACCOUNT_TYPES,
       documentStubs: CONSULTING_DOCUMENT_STUBS,
+    },
+  },
+  hospitality: {
+    id: 'hospitality',
+    label: 'Hospitality / Café / Guest house',
+    version: '0.1.0',
+    status: 'active',
+    description: 'Rooms, F&B, functions, booking and event order sheets.',
+    routes: ['/invoices', '/quotes', '/products', '/documents'],
+    features: { products: true, hospitalityPresets: true },
+    catalogs: {
+      servicePresets: HOSPITALITY_SERVICE_PRESETS,
+      productPresets: HOSPITALITY_PRODUCT_PRESETS,
+      accountTypes: HOSPITALITY_ACCOUNT_TYPES,
+      documentStubs: HOSPITALITY_DOCUMENT_STUBS,
     },
   },
   field: {
@@ -186,6 +207,7 @@ export function smeModuleScoreboard() {
     trades: MODULE_REGISTRY.trades?.status || 'planned',
     automotive: MODULE_REGISTRY.automotive?.status || 'planned',
     consulting: MODULE_REGISTRY.consulting?.status || 'planned',
+    hospitality: MODULE_REGISTRY.hospitality?.status || 'planned',
   }
 }
 
