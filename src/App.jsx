@@ -1,6 +1,7 @@
 import React from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import ScrollToTop from './components/ScrollToTop'
+import InstallPrompt from './components/InstallPrompt'
 import { useApp } from './context/AppContext'
 import Shell from './components/Shell'
 import ToastHost from './components/ToastHost'
@@ -109,6 +110,7 @@ export default function App() {
     <>
       <ScrollToTop />
       <ToastHost />
+      <InstallPrompt />
       <LegalConsent />
       <Routes>
         <Route path="/login" element={<Login />} />
