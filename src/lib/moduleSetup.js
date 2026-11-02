@@ -9,9 +9,9 @@ export const MODULE_SETUP = {
     intro: 'Prep the desk for job cards, device work and document studio.',
     checklist: [
       'Install the IT service & parts pack (remote, on-site, workshop SKUs)',
-      'Fill workshop hours and support email on the previous step',
+      'Fill workshop hours and support email under Company \u2192 Details',
       'Use Documents for assessments, POPIA and tech diagnose reports',
-      'Tickets → job cards with device intake and status WhatsApp',
+      'Tickets \u2192 job cards with device intake and status WhatsApp',
     ],
     defaults: { defaultSupportType: 'workshop', suggestVat: true },
     routes: [
@@ -26,9 +26,9 @@ export const MODULE_SETUP = {
     intro: 'Counter sales, stock and simple returns paperwork.',
     checklist: [
       'Install the Retail product & service pack',
-      'Set trading hours and till label on the previous step',
+      'Set trading hours and till label under Company \u2192 Details',
       'Use Products for stock levels and branch transfer when ready',
-      'Documents → return note / till variance when needed',
+      'Documents \u2192 return note / till variance when needed',
     ],
     defaults: { defaultSupportType: 'workshop', suggestVat: true },
     routes: [
@@ -43,9 +43,9 @@ export const MODULE_SETUP = {
     intro: 'Call-outs, labour, materials and site paperwork.',
     checklist: [
       'Install the Trades labour & materials pack',
-      'Set service area and call-out note on the previous step',
+      'Set service area and call-out note under Company \u2192 Details',
       'Job cards default to on-site / call-out',
-      'Documents → site instruction and practical completion',
+      'Documents \u2192 site instruction and practical completion',
     ],
     defaults: { defaultSupportType: 'onsite', suggestVat: true },
     routes: [
@@ -60,9 +60,9 @@ export const MODULE_SETUP = {
     intro: 'Diagnostics, labour, parts and vehicle job cards.',
     checklist: [
       'Install the Automotive service & parts pack',
-      'Set bay hours and bay count on the previous step',
+      'Set bay hours and bay count under Company \u2192 Details',
       'Job cards default to workshop / vehicle',
-      'Documents → authority to repair and QC handover',
+      'Documents \u2192 authority to repair and QC handover',
     ],
     defaults: { defaultSupportType: 'workshop', suggestVat: true },
     routes: [
@@ -71,15 +71,32 @@ export const MODULE_SETUP = {
       { to: '/documents', label: 'Vehicle docs' },
     ],
   },
+  hospitality: {
+    packKey: 'hospitality',
+    title: 'Hospitality workspace',
+    intro: 'Rooms, F&B, functions and guest-facing paperwork.',
+    checklist: [
+      'Install the Hospitality F&B and rooms pack',
+      'Set trading hours / kitchen note on company details',
+      'Use Quotes for functions and Invoices for walk-ins',
+      'Documents \u2192 booking confirmation and function order sheet',
+    ],
+    defaults: { defaultSupportType: 'workshop', suggestVat: true },
+    routes: [
+      { to: '/invoices', label: 'Invoices' },
+      { to: '/quotes', label: 'Quotes / functions' },
+      { to: '/products', label: 'Menu & rooms' },
+    ],
+  },
   consulting: {
     packKey: 'consulting',
     title: 'Consulting workspace',
     intro: 'Retainers, T&M rates, SOW and progress notes.',
     checklist: [
       'Install the Consulting rate pack (hourly, day, retainer)',
-      'Add practice number / specialties on the previous step',
+      'Add practice number / specialties under Company \u2192 Details',
       'Job cards default to remote / engagement',
-      'Documents → statement of work and status notes',
+      'Documents \u2192 statement of work and status notes',
     ],
     defaults: { defaultSupportType: 'remote', suggestVat: false },
     routes: [
