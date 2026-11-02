@@ -1,10 +1,32 @@
 import { test, expect } from '@playwright/test'
 import { injectSession, seedIndexedDbCompany } from './helpers.js'
 
+
+async function seedMultiPlanLicense(page) {
+  await page.evaluate(async () => {
+    const db = await new Promise((resolve, reject) => {
+      const req = indexedDB.open('SAInvoicePro_v2', 6)
+      req.onsuccess = () => resolve(req.result)
+      req.onerror = () => reject(req.error)
+    })
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction('settings', 'readwrite')
+      const store = tx.objectStore('settings')
+      store.put({ key: 'licenseKey', value: 'E2E-MULTI-LICENSE' })
+      store.put({ key: 'activationToken', value: 'E2E-SERVER-PROOF' })
+      store.put({ key: 'licenseMeta', value: { server: true, plan: 'multi', activationToken: 'E2E-SERVER-PROOF' } })
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+    db.close()
+  })
+}
+
 test.describe('Bank CSV import', () => {
   test('bank route loads with session', async ({ page }) => {
     await injectSession(page)
     await seedIndexedDbCompany(page)
+    await seedMultiPlanLicense(page)
     const errors = []
     page.on('pageerror', (e) => errors.push(String(e)))
     await page.goto('/bank')
