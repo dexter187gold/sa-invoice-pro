@@ -7,11 +7,8 @@ import { formatMoney } from '../lib/money'
 import {
   SearchInput, EmptyState, matchesQuery, ConfirmDialog, PageFade, Segmented, downloadCsv, ActionMenu,
 } from '../components/ui'
-import { IT_SERVICE_PRESETS, IT_PRODUCT_PRESETS, presetToServiceRow, presetToProductRow } from '../lib/itCatalog'
-import { RETAIL_PRODUCT_PRESETS, RETAIL_SERVICE_PRESETS } from '../lib/retailCatalog'
-import { TRADES_PRODUCT_PRESETS, TRADES_SERVICE_PRESETS } from '../lib/tradesCatalog'
-import { AUTO_PRODUCT_PRESETS, AUTO_SERVICE_PRESETS } from '../lib/automotiveCatalog'
 import { getBusinessType } from '../lib/businessTypes'
+import CatalogPackButtons from '../components/CatalogPackButtons'
 import { listBranches } from '../lib/branches'
 import { applyStockTransfer, stockAt, stockTotal, formatBranchLabel, HQ_KEY } from '../lib/stockTransfer'
 
@@ -37,78 +34,6 @@ export default function Products() {
     () => list.filter((p) => matchesQuery(p, q, ['name', 'sku', 'description'])),
     [list, q],
   )
-
-  const installRetailPack = async () => {
-    try {
-      let n = 0
-      for (const s of RETAIL_SERVICE_PRESETS) {
-        await db.add(STORES.services, presetToServiceRow(s))
-        n++
-      }
-      for (const pr of RETAIL_PRODUCT_PRESETS) {
-        await db.add(STORES.products, presetToProductRow({ ...pr, stock: 0 }))
-        n++
-      }
-      await refresh?.()
-      toast?.(`Installed Retail pack · ${n} items (edit prices & stock anytime)`, 'success')
-    } catch (e) {
-      toast?.(e?.message || 'Install failed', 'error')
-    }
-  }
-
-  const installTradesPack = async () => {
-    try {
-      let n = 0
-      for (const s of TRADES_SERVICE_PRESETS) {
-        await db.add(STORES.services, presetToServiceRow(s))
-        n++
-      }
-      for (const pr of TRADES_PRODUCT_PRESETS) {
-        await db.add(STORES.products, presetToProductRow(pr))
-        n++
-      }
-      await refresh?.()
-      toast?.(`Installed Trades pack · ${n} items`, 'success')
-    } catch (e) {
-      toast?.(e?.message || 'Install failed', 'error')
-    }
-  }
-
-  const installAutoPack = async () => {
-    try {
-      let n = 0
-      for (const s of AUTO_SERVICE_PRESETS) {
-        await db.add(STORES.services, presetToServiceRow(s))
-        n++
-      }
-      for (const pr of AUTO_PRODUCT_PRESETS) {
-        await db.add(STORES.products, presetToProductRow(pr))
-        n++
-      }
-      await refresh?.()
-      toast?.(`Installed Automotive pack · ${n} items`, 'success')
-    } catch (e) {
-      toast?.(e?.message || 'Install failed', 'error')
-    }
-  }
-
-  const installItPack = async () => {
-    try {
-      let n = 0
-      for (const s of IT_SERVICE_PRESETS) {
-        await db.add(STORES.services, presetToServiceRow(s))
-        n++
-      }
-      for (const pr of IT_PRODUCT_PRESETS) {
-        await db.add(STORES.products, presetToProductRow(pr))
-        n++
-      }
-      await refresh?.()
-      toast?.(`Installed IT pack · ${n} items (edit prices anytime)`, 'success')
-    } catch (e) {
-      toast?.(e?.message || 'Install failed', 'error')
-    }
-  }
 
   const save = async (e) => {
     e.preventDefault()
@@ -227,26 +152,7 @@ export default function Products() {
         </div>
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
           <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={!filtered.length}>Export</button>
-          {(biz.id === 'it_msp' || biz.modules?.includes('it')) && (
-            <button type="button" className="btn btn-secondary" onClick={installItPack}>Install IT pack</button>
-          )}
-          {(biz.id === 'retail' || biz.id === 'hospitality' || biz.modules?.includes('retail')) && (
-            <button type="button" className="btn btn-secondary" onClick={installRetailPack}>Install Retail pack</button>
-          )}
-          {(biz.id === 'trades' || biz.modules?.includes('trades')) && (
-            <button type="button" className="btn btn-secondary" onClick={installTradesPack}>Install Trades pack</button>
-          )}
-          {(biz.id === 'automotive' || biz.modules?.includes('automotive')) && (
-            <button type="button" className="btn btn-secondary" onClick={installAutoPack}>Install Automotive pack</button>
-          )}
-          {biz.id !== 'it_msp' && biz.id !== 'retail' && biz.id !== 'trades' && biz.id !== 'automotive' && !biz.modules?.includes('it') && !biz.modules?.includes('retail') && (
-            <>
-              <button type="button" className="btn btn-outline" onClick={installItPack}>Install IT pack</button>
-              <button type="button" className="btn btn-outline" onClick={installRetailPack}>Install Retail pack</button>
-              <button type="button" className="btn btn-outline" onClick={installTradesPack}>Install Trades pack</button>
-              <button type="button" className="btn btn-outline" onClick={installAutoPack}>Install Automotive pack</button>
-            </>
-          )}
+          <CatalogPackButtons biz={biz} refresh={refresh} toast={toast} />
           <Link className="btn btn-outline" to="/branches">Branches</Link>
         </div>
       </div>
