@@ -1,6 +1,5 @@
 /**
  * Retail / POS / Shop — SA SME presets (ZAR, indicative).
- * Used when business type includes the retail module.
  */
 
 export const RETAIL_ACCOUNT_TYPES = [
@@ -54,3 +53,21 @@ export const RETAIL_DOCUMENT_STUBS = [
     scope: 'Supplier, lines, quantities, needed-by date, delivery address.',
   },
 ]
+
+export const RETAIL_DOCUMENT_TEMPLATES = RETAIL_DOCUMENT_STUBS.map((stub) => ({
+  id: stub.id,
+  title: stub.title,
+  category: 'Retail',
+  categoryLabel: 'Retail & shop',
+  purpose: stub.purpose,
+  scope: stub.scope,
+  tags: ['retail', 'shop', ...(stub.title || '').toLowerCase().split(/[^a-z0-9]+/).filter((x) => x.length > 3).slice(0, 4)],
+  sections: [
+    { heading: '1. Document control', body: `Title: ${stub.title}\nVersion: 1.0\nStore / till: ____________________\nDate: __________\nStaff: ____________________` },
+    { heading: '2. Purpose', body: stub.purpose },
+    { heading: '3. Scope', body: stub.scope },
+    { heading: '4. Details', body: 'Record line items, quantities, amounts, original invoice/till reference, and any serial numbers. Do not store full card numbers.' },
+    { heading: '5. Outcome', body: 'Refund / exchange / order status: ____________________\nAmount: ____________________\nMethod: Cash / Card / EFT / Store credit' },
+    { heading: '6. Sign-off', body: 'Staff: ____________________  Date: __________\nCustomer (if applicable): ____________________  Date: __________\nSupervisor: ____________________  Date: __________' },
+  ],
+}))
