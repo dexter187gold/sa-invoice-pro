@@ -98,3 +98,37 @@ html.dark:not(.sniper) .card {
   border-color: var(--border);
   animation: none;
 }
+
+/* Payments — open invoice rows (eye-safe, theme tokens) */
+.open-invoice-stack { display: flex; flex-direction: column; gap: 0.55rem; margin-bottom: 1rem; }
+.open-invoice-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 0.95rem 1.1rem;
+  border-radius: var(--radius, 12px);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  box-shadow: var(--shadow-sm, none);
+}
+.open-invoice-meta strong { color: var(--text); }
+.open-invoice-client { margin-left: 0.35rem; color: var(--muted); }
+.open-invoice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+html.sniper .open-invoice-row,
+html.dark .open-invoice-row {
+  background: linear-gradient(160deg, rgba(18, 28, 42, 0.95), rgba(13, 21, 32, 0.98));
+  border-color: var(--border);
+}
+html[data-theme="light"] .open-invoice-row,
+html[data-theme="sand"] .open-invoice-row {
+  background: var(--card);
+  border-color: var(--border);
+}
