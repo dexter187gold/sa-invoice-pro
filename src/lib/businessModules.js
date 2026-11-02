@@ -1,6 +1,5 @@
 /**
  * Business modules — capability packs per vertical.
- * IT module is compiled as one working unit (routes, nav, catalogs, documents).
  */
 
 import { IT_DOCUMENT_TEMPLATES } from './itDocumentTemplates.js'
@@ -17,6 +16,12 @@ import {
   TRADES_ACCOUNT_TYPES,
   TRADES_DOCUMENT_STUBS,
 } from './tradesCatalog.js'
+import {
+  AUTO_SERVICE_PRESETS,
+  AUTO_PRODUCT_PRESETS,
+  AUTO_ACCOUNT_TYPES,
+  AUTO_DOCUMENT_STUBS,
+} from './automotiveCatalog.js'
 
 export const IT_MODULE = {
   id: 'it',
@@ -99,8 +104,8 @@ export const MODULE_REGISTRY = {
   trades: {
     id: 'trades',
     label: 'Trades / Construction',
-    version: '0.1.0',
-    status: 'active',
+    version: '1.0.0',
+    status: 'stable',
     description: 'Call-outs, labour, materials, site variation and completion notes.',
     routes: ['/tickets', '/products', '/quotes'],
     features: { jobCards: true, tradesPresets: true },
@@ -109,6 +114,21 @@ export const MODULE_REGISTRY = {
       productPresets: TRADES_PRODUCT_PRESETS,
       accountTypes: TRADES_ACCOUNT_TYPES,
       documentStubs: TRADES_DOCUMENT_STUBS,
+    },
+  },
+  automotive: {
+    id: 'automotive',
+    label: 'Automotive / Workshop',
+    version: '0.1.0',
+    status: 'active',
+    description: 'Diagnostics, labour, service, tyres, parts, job card and QC docs.',
+    routes: ['/tickets', '/products'],
+    features: { jobCards: true, autoPresets: true },
+    catalogs: {
+      servicePresets: AUTO_SERVICE_PRESETS,
+      productPresets: AUTO_PRODUCT_PRESETS,
+      accountTypes: AUTO_ACCOUNT_TYPES,
+      documentStubs: AUTO_DOCUMENT_STUBS,
     },
   },
   field: {
@@ -143,6 +163,7 @@ export function smeModuleScoreboard() {
     it: IT_MODULE.status || 'stable',
     retail: MODULE_REGISTRY.retail?.status || 'planned',
     trades: MODULE_REGISTRY.trades?.status || 'planned',
+    automotive: MODULE_REGISTRY.automotive?.status || 'planned',
   }
 }
 
