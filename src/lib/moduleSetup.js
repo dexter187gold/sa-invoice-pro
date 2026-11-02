@@ -8,10 +8,10 @@ export const MODULE_SETUP = {
     title: 'IT / electronics workspace',
     intro: 'Prep the desk for job cards, device work and document studio.',
     checklist: [
-      'Install the IT service & parts pack (remote, on-site, workshop SKUs)',
+      'Install the IT service & parts pack',
       'Fill workshop hours and support email under Company Details',
-      'Use Documents for assessments, POPIA and tech diagnose reports',
-      'Tickets for job cards with device intake and status WhatsApp',
+      'Use Documents for assessments and tech diagnose reports',
+      'Tickets for job cards with device intake',
     ],
     defaults: { defaultSupportType: 'workshop', suggestVat: true },
     routes: [
@@ -120,6 +120,23 @@ export const MODULE_SETUP = {
       { to: '/tickets', label: 'Appointments' },
       { to: '/invoices', label: 'Invoices' },
       { to: '/documents', label: 'Clinical docs' },
+    ],
+  },
+  legal: {
+    packKey: 'legal',
+    title: 'Legal / practice workspace',
+    intro: 'Mandates, fee notes, matter tracking and disbursements.',
+    checklist: [
+      'Install the Legal service pack',
+      'Set practice number / specialties under module details',
+      'Use Tickets as matters / file references',
+      'Documents for engagement letters and fee notes',
+    ],
+    defaults: { defaultSupportType: 'remote', suggestVat: true },
+    routes: [
+      { to: '/tickets', label: 'Matters' },
+      { to: '/quotes', label: 'Quotes' },
+      { to: '/documents', label: 'Engagement & fee notes' },
     ],
   },
   consulting: {
