@@ -10,6 +10,16 @@ import { HOSPITALITY_SERVICE_PRESETS, HOSPITALITY_PRODUCT_PRESETS } from './hosp
 import { HEALTH_BEAUTY_SERVICE_PRESETS, HEALTH_BEAUTY_PRODUCT_PRESETS } from './healthBeautyCatalog.js'
 import { MEDICAL_SERVICE_PRESETS, MEDICAL_PRODUCT_PRESETS } from './medicalCatalog.js'
 import { LEGAL_SERVICE_PRESETS, LEGAL_PRODUCT_PRESETS } from './legalCatalog.js'
+import { AGRI_SERVICE_PRESETS, AGRI_PRODUCT_PRESETS } from './agricultureCatalog.js'
+import { ACCOUNTING_SERVICE_PRESETS, ACCOUNTING_PRODUCT_PRESETS } from './accountingCatalog.js'
+import { LOGISTICS_SERVICE_PRESETS, LOGISTICS_PRODUCT_PRESETS } from './logisticsCatalog.js'
+import { EDU_SERVICE_PRESETS, EDU_PRODUCT_PRESETS } from './educationCatalog.js'
+import { MFG_SERVICE_PRESETS, MFG_PRODUCT_PRESETS } from './manufacturingCatalog.js'
+import { PROP_SERVICE_PRESETS, PROP_PRODUCT_PRESETS } from './propertyCatalog.js'
+import { SEC_SERVICE_PRESETS, SEC_PRODUCT_PRESETS } from './securityCatalog.js'
+import { CLEAN_SERVICE_PRESETS, CLEAN_PRODUCT_PRESETS } from './cleaningCatalog.js'
+import { CREATIVE_SERVICE_PRESETS, CREATIVE_PRODUCT_PRESETS } from './creativeCatalog.js'
+import { NPO_SERVICE_PRESETS, NPO_PRODUCT_PRESETS } from './nonprofitCatalog.js'
 
 async function install(services, products, stockZero = false) {
   let n = 0
@@ -34,9 +44,18 @@ export const CATALOG_PACKS = {
   health_beauty: { label: 'Health & Beauty pack', run: () => install(HEALTH_BEAUTY_SERVICE_PRESETS, HEALTH_BEAUTY_PRODUCT_PRESETS, true) },
   medical: { label: 'Medical / Clinic pack', run: () => install(MEDICAL_SERVICE_PRESETS, MEDICAL_PRODUCT_PRESETS, true) },
   legal: { label: 'Legal pack', run: () => install(LEGAL_SERVICE_PRESETS, LEGAL_PRODUCT_PRESETS, true) },
+  agriculture: { label: 'Agriculture pack', run: () => install(AGRI_SERVICE_PRESETS, AGRI_PRODUCT_PRESETS, true) },
+  accounting: { label: 'Accounting pack', run: () => install(ACCOUNTING_SERVICE_PRESETS, ACCOUNTING_PRODUCT_PRESETS) },
+  logistics: { label: 'Logistics pack', run: () => install(LOGISTICS_SERVICE_PRESETS, LOGISTICS_PRODUCT_PRESETS) },
+  education: { label: 'Education pack', run: () => install(EDU_SERVICE_PRESETS, EDU_PRODUCT_PRESETS) },
+  manufacturing: { label: 'Manufacturing pack', run: () => install(MFG_SERVICE_PRESETS, MFG_PRODUCT_PRESETS, true) },
+  property: { label: 'Property pack', run: () => install(PROP_SERVICE_PRESETS, PROP_PRODUCT_PRESETS) },
+  security: { label: 'Security pack', run: () => install(SEC_SERVICE_PRESETS, SEC_PRODUCT_PRESETS) },
+  cleaning: { label: 'Cleaning pack', run: () => install(CLEAN_SERVICE_PRESETS, CLEAN_PRODUCT_PRESETS) },
+  creative: { label: 'Creative pack', run: () => install(CREATIVE_SERVICE_PRESETS, CREATIVE_PRODUCT_PRESETS) },
+  nonprofit: { label: 'Non-profit pack', run: () => install(NPO_SERVICE_PRESETS, NPO_PRODUCT_PRESETS) },
 }
 
-/** Map business type id → pack keys. Only these install buttons show. */
 export const TYPE_PACK_MAP = {
   it_msp: ['it'],
   retail: ['retail'],
@@ -48,21 +67,27 @@ export const TYPE_PACK_MAP = {
   health_beauty: ['health_beauty'],
   medical: ['medical'],
   legal: ['legal'],
+  agriculture: ['agriculture'],
+  accounting: ['accounting'],
+  logistics: ['logistics'],
+  education: ['education'],
+  manufacturing: ['manufacturing'],
+  property: ['property'],
+  security: ['security'],
+  cleaning: ['cleaning'],
+  creative: ['creative'],
+  nonprofit: ['nonprofit'],
+  other: [],
 }
 
-/**
- * Packs for the current business type only.
- * Never falls back to "all packs" (that caused IT pack on every module).
- */
 export function packsForBusiness(biz) {
   const id = biz?.id
   if (!id) return []
-  if (TYPE_PACK_MAP[id]) return TYPE_PACK_MAP[id].filter((k) => CATALOG_PACKS[k])
+  if (TYPE_PACK_MAP[id] !== undefined) return TYPE_PACK_MAP[id].filter((k) => CATALOG_PACKS[k])
   const mods = biz?.modules || []
   const out = []
   for (const key of Object.keys(CATALOG_PACKS)) {
     if (mods.includes(key)) out.push(key)
   }
-  if (mods.includes('beauty') && CATALOG_PACKS.health_beauty) out.push('health_beauty')
   return [...new Set(out)]
 }

@@ -1,13 +1,13 @@
 # SME modules roadmap
 
-| # | Type | Status |
-|---|------|--------|
-| 1-8 | IT through Medical | DONE |
-| 9 | Legal / Attorneys | DONE |
-| 10-20 | Others | Planned |
+All verticals (except Other) have **type-scoped install packs** and **document stubs expanded to 10-section templates** in Document Studio.
 
-**Packs:** Install buttons are **type-scoped only** (Retail only shows Retail pack — never IT).
+| Status | Types |
+|--------|--------|
+| **DONE** | IT, Retail, Trades, Auto, Consulting, Hospitality, Beauty, Medical, Legal, Agriculture, Accounting, Logistics, Education, Manufacturing, Property, Security, Cleaning, Creative, Non-profit |
+| **CORE-ONLY** | Other / General |
 
-**UX:** Desktop forms and modals scroll.
+**Done: 19 / 20** (+ other = core desk only)
 
-Done: 9/20
+Each non-IT vertical ships ~6 document stubs (control, parties, purpose, scope, facts, work, recommendations, commercial, outcome, sign-off).
+IT keeps the full 64+ template library.
