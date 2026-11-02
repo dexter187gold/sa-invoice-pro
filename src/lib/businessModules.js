@@ -11,6 +11,12 @@ import {
   RETAIL_ACCOUNT_TYPES,
   RETAIL_DOCUMENT_STUBS,
 } from './retailCatalog.js'
+import {
+  TRADES_SERVICE_PRESETS,
+  TRADES_PRODUCT_PRESETS,
+  TRADES_ACCOUNT_TYPES,
+  TRADES_DOCUMENT_STUBS,
+} from './tradesCatalog.js'
 
 export const IT_MODULE = {
   id: 'it',
@@ -78,8 +84,8 @@ export const MODULE_REGISTRY = {
   retail: {
     id: 'retail',
     label: 'Retail / POS / Shop',
-    version: '0.1.0',
-    status: 'active',
+    version: '1.0.0',
+    status: 'stable',
     description: 'Counter sales presets, account types, return/till/supplier document stubs.',
     routes: ['/products', '/payments', '/invoices'],
     features: { products: true, payments: true, retailPresets: true },
@@ -88,6 +94,21 @@ export const MODULE_REGISTRY = {
       servicePresets: RETAIL_SERVICE_PRESETS,
       accountTypes: RETAIL_ACCOUNT_TYPES,
       documentStubs: RETAIL_DOCUMENT_STUBS,
+    },
+  },
+  trades: {
+    id: 'trades',
+    label: 'Trades / Construction',
+    version: '0.1.0',
+    status: 'active',
+    description: 'Call-outs, labour, materials, site variation and completion notes.',
+    routes: ['/tickets', '/products', '/quotes'],
+    features: { jobCards: true, tradesPresets: true },
+    catalogs: {
+      servicePresets: TRADES_SERVICE_PRESETS,
+      productPresets: TRADES_PRODUCT_PRESETS,
+      accountTypes: TRADES_ACCOUNT_TYPES,
+      documentStubs: TRADES_DOCUMENT_STUBS,
     },
   },
   field: {
@@ -121,6 +142,7 @@ export function smeModuleScoreboard() {
     core: CORE_MODULE.status || 'stable',
     it: IT_MODULE.status || 'stable',
     retail: MODULE_REGISTRY.retail?.status || 'planned',
+    trades: MODULE_REGISTRY.trades?.status || 'planned',
   }
 }
 
