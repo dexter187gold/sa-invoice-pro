@@ -46,6 +46,12 @@ import {
   MEDICAL_ACCOUNT_TYPES,
   MEDICAL_DOCUMENT_STUBS,
 } from './medicalCatalog.js'
+import {
+  LEGAL_SERVICE_PRESETS,
+  LEGAL_PRODUCT_PRESETS,
+  LEGAL_ACCOUNT_TYPES,
+  LEGAL_DOCUMENT_STUBS,
+} from './legalCatalog.js'
 
 export const IT_MODULE = {
   id: 'it',
@@ -203,8 +209,8 @@ export const MODULE_REGISTRY = {
   medical: {
     id: 'medical',
     label: 'Medical / Clinic / Health',
-    version: '0.1.0',
-    status: 'active',
+    version: '1.0.0',
+    status: 'stable',
     description: 'Consults, procedures, allied health, consent and certificates.',
     routes: ['/tickets', '/products', '/documents', '/invoices'],
     features: { jobCards: true, products: true, medicalPresets: true },
@@ -213,6 +219,21 @@ export const MODULE_REGISTRY = {
       productPresets: MEDICAL_PRODUCT_PRESETS,
       accountTypes: MEDICAL_ACCOUNT_TYPES,
       documentStubs: MEDICAL_DOCUMENT_STUBS,
+    },
+  },
+  legal: {
+    id: 'legal',
+    label: 'Legal / Attorneys',
+    version: '0.1.0',
+    status: 'active',
+    description: 'Mandates, fee notes, matter status, retainers and disbursements.',
+    routes: ['/tickets', '/quotes', '/invoices', '/documents', '/products'],
+    features: { jobCards: true, products: true, legalPresets: true },
+    catalogs: {
+      servicePresets: LEGAL_SERVICE_PRESETS,
+      productPresets: LEGAL_PRODUCT_PRESETS,
+      accountTypes: LEGAL_ACCOUNT_TYPES,
+      documentStubs: LEGAL_DOCUMENT_STUBS,
     },
   },
   field: {
@@ -252,6 +273,7 @@ export function smeModuleScoreboard() {
     hospitality: MODULE_REGISTRY.hospitality?.status || 'planned',
     health_beauty: MODULE_REGISTRY.health_beauty?.status || 'planned',
     medical: MODULE_REGISTRY.medical?.status || 'planned',
+    legal: MODULE_REGISTRY.legal?.status || 'planned',
   }
 }
 
