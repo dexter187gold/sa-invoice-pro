@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import CompanyProfileForm from '../components/CompanyProfileForm'
+import VatSelector from '../components/VatSelector'
 import { companyToForm, formToCompanyPayload, validateCompanyForm } from '../lib/companyProfile'
 import { applyBusinessType } from '../lib/businessTypes'
 import { Link, useNavigate } from 'react-router-dom'
@@ -208,7 +209,7 @@ export default function Settings() {
         <form className="card" onSubmit={saveCompany} style={{ marginTop: 12 }}>
           <h3 style={{ marginTop: 0 }}>Company & account profile</h3>
           <p className="muted" style={{ marginTop: 0 }}>Legal identity, contact, tax, banking and workspace details for your business type.</p>
-          <CompanyProfileForm form={form} setForm={setForm} mode="full" />
+          <CompanyProfileForm form={form} setForm={setForm} mode="full" showModuleSetup toast={toast} refresh={refresh} />
           <LoadingButton loading={busy} className="btn btn-primary" style={{ marginTop: 12 }}>{busy ? 'Saving…' : 'Save company profile'}</LoadingButton>
         </form>
       )}
@@ -220,12 +221,18 @@ export default function Settings() {
             Switch to {theme === 'dark' ? 'light' : 'dark'} mode
           </button>
           <ThemePicker setTheme={setTheme} toast={toast} />
-          <label className="label">VAT enabled</label>
-          <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <input type="checkbox" checked={!!vatEnabled} onChange={(e) => setVatEnabled?.(e.target.checked)} /> Charge VAT on invoices
-          </label>
-          <label className="label">VAT rate</label>
-          <input className="input" type="number" step="0.01" value={vatRate} onChange={(e) => setVatRate?.(Number(e.target.value))} />
+          <VatSelector
+            enabled={!!vatEnabled}
+            rate={vatRate}
+            onChange={({ enabled, rate }) => {
+              setVatEnabled?.(enabled)
+              setVatRate?.(rate)
+              try {
+                localStorage.setItem('sa_vat_enabled', enabled ? '1' : '0')
+                localStorage.setItem('sa_vat_rate', String(rate ?? 15))
+              } catch {}
+            }}
+          />
         </div>
       )}
 
