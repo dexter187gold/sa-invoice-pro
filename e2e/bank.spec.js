@@ -41,6 +41,7 @@ test.describe('Bank CSV import', () => {
   test('paste area and parse control present', async ({ page }) => {
     await injectSession(page)
     await seedIndexedDbCompany(page)
+    await seedMultiPlanLicense(page)
     await page.goto('/bank')
     await expect(page.getByRole('heading', { name: /bank import/i })).toBeVisible({ timeout: 10000 })
     // The bank-import screen must expose its statement upload control.
