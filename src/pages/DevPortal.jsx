@@ -22,7 +22,6 @@ function DevLogin({ onOk }) {
   const [token, setToken] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
-
   const submit = async (e) => {
     e.preventDefault()
     setBusy(true)
@@ -37,7 +36,6 @@ function DevLogin({ onOk }) {
       setBusy(false)
     }
   }
-
   return (
     <div className="auth-page" style={{ minHeight: '100vh' }}>
       <div className="auth-card" style={{ maxWidth: 440, margin: '10vh auto' }}>
