@@ -22,6 +22,12 @@ import {
   AUTO_ACCOUNT_TYPES,
   AUTO_DOCUMENT_STUBS,
 } from './automotiveCatalog.js'
+import {
+  CONSULTING_SERVICE_PRESETS,
+  CONSULTING_PRODUCT_PRESETS,
+  CONSULTING_ACCOUNT_TYPES,
+  CONSULTING_DOCUMENT_STUBS,
+} from './consultingCatalog.js'
 
 export const IT_MODULE = {
   id: 'it',
@@ -119,8 +125,8 @@ export const MODULE_REGISTRY = {
   automotive: {
     id: 'automotive',
     label: 'Automotive / Workshop',
-    version: '0.1.0',
-    status: 'active',
+    version: '1.0.0',
+    status: 'stable',
     description: 'Diagnostics, labour, service, tyres, parts, job card and QC docs.',
     routes: ['/tickets', '/products'],
     features: { jobCards: true, autoPresets: true },
@@ -129,6 +135,21 @@ export const MODULE_REGISTRY = {
       productPresets: AUTO_PRODUCT_PRESETS,
       accountTypes: AUTO_ACCOUNT_TYPES,
       documentStubs: AUTO_DOCUMENT_STUBS,
+    },
+  },
+  consulting: {
+    id: 'consulting',
+    label: 'Consulting / Professional services',
+    version: '0.1.0',
+    status: 'active',
+    description: 'Retainers, T&M, SOW and progress notes.',
+    routes: ['/tickets', '/products', '/documents', '/quotes'],
+    features: { jobCards: true, consultingPresets: true },
+    catalogs: {
+      servicePresets: CONSULTING_SERVICE_PRESETS,
+      productPresets: CONSULTING_PRODUCT_PRESETS,
+      accountTypes: CONSULTING_ACCOUNT_TYPES,
+      documentStubs: CONSULTING_DOCUMENT_STUBS,
     },
   },
   field: {
@@ -164,6 +185,7 @@ export function smeModuleScoreboard() {
     retail: MODULE_REGISTRY.retail?.status || 'planned',
     trades: MODULE_REGISTRY.trades?.status || 'planned',
     automotive: MODULE_REGISTRY.automotive?.status || 'planned',
+    consulting: MODULE_REGISTRY.consulting?.status || 'planned',
   }
 }
 
