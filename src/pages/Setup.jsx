@@ -5,7 +5,7 @@ import * as db from '../lib/db'
 import { APP_VERSION } from '../config'
 import AppLogo from '../components/AppLogo'
 import { PageFade } from '../components/ui'
-import { applyBusinessType } from '../lib/businessTypes'
+import { applyBusinessType, getBusinessType } from '../lib/businessTypes'
 import {
   companyToForm,
   formToCompanyPayload,
@@ -13,12 +13,14 @@ import {
   profileCompleteness,
 } from '../lib/companyProfile'
 import CompanyProfileForm from '../components/CompanyProfileForm'
+import ModuleSetupStep from '../components/ModuleSetupStep'
 
-const STEPS = [
+const BASE_STEPS = [
   { id: 1, title: 'Identity', blurb: 'Name, type, registration' },
   { id: 2, title: 'Contact', blurb: 'Reachability & address' },
   { id: 3, title: 'Tax & bank', blurb: 'VAT, banking, terms' },
-  { id: 4, title: 'Workspace', blurb: 'Type-specific details' },
+  { id: 4, title: 'Details', blurb: 'Type-specific fields' },
+  { id: 5, title: 'Module', blurb: 'Pack & checklist' },
 ]
 
 export default function Setup() {
@@ -33,12 +35,14 @@ export default function Setup() {
   }, [company, nav])
 
   const complete = profileCompleteness(form)
+  const biz = getBusinessType(form.businessType)
+  const maxStep = 5
 
   const next = () => {
     if (step === 1 && !String(form.name || '').trim()) {
       return toast('Business name is required', 'error')
     }
-    setStep((s) => Math.min(4, s + 1))
+    setStep((s) => Math.min(maxStep, s + 1))
   }
   const back = () => setStep((s) => Math.max(1, s - 1))
 
@@ -71,35 +75,43 @@ export default function Setup() {
           </div>
           <h1 style={{ marginTop: 0, textAlign: 'center' }}>Company setup</h1>
           <p className="muted" style={{ textAlign: 'center' }}>
-            Full account profile · ZAR · SA tax invoices · v{APP_VERSION}
+            Account profile + {biz.short} module · v{APP_VERSION}
           </p>
 
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 16 }}>
-            {STEPS.map((s) => (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 12 }}>
+            {BASE_STEPS.map((s) => (
               <button
                 key={s.id}
                 type="button"
                 className={`btn btn-sm ${step === s.id ? 'btn-primary' : 'btn-outline'}`}
                 onClick={() => setStep(s.id)}
-                style={{ minWidth: 72 }}
+                style={{ minWidth: 64 }}
               >
                 {s.id}. {s.title}
               </button>
             ))}
           </div>
           <p className="muted" style={{ textAlign: 'center', fontSize: 13, marginTop: 0 }}>
-            {STEPS[step - 1].blurb} · Profile {complete.pct}% complete
+            {BASE_STEPS[step - 1].blurb}
+            {step === 5 ? ` · ${biz.label}` : ''}
+            {' · '}Profile {complete.pct}%
           </p>
 
-          <form onSubmit={step === 4 ? save : (e) => { e.preventDefault(); next() }}>
-            <CompanyProfileForm form={form} setForm={setForm} mode="setup-step" step={step} />
+          <form onSubmit={step === maxStep ? save : (e) => { e.preventDefault(); next() }}>
+            {step <= 4 && (
+              <CompanyProfileForm form={form} setForm={setForm} mode="setup-step" step={step} />
+            )}
+            {step === 5 && (
+              <ModuleSetupStep businessTypeId={form.businessType} toast={toast} refresh={refresh} />
+            )}
+
             <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
               {step > 1 && (
                 <button type="button" className="btn btn-outline" onClick={back} disabled={busy}>
                   Back
                 </button>
               )}
-              {step < 4 ? (
+              {step < maxStep ? (
                 <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
                   Continue
                 </button>
@@ -109,7 +121,7 @@ export default function Setup() {
                 </button>
               )}
             </div>
-            {step < 4 && (
+            {step < maxStep && (
               <button
                 type="button"
                 className="btn btn-outline"
