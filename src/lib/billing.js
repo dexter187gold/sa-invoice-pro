@@ -18,136 +18,115 @@ export async function fetchBillingPlans() {
 
 export async function startCheckout({ plan, email, phone, returnUrl, cancelUrl } = {}) {
   const base = ((await getServerUrl()) || SA_CONFIG.defaultLicenseServerUrl || '').replace(/\/$/, '')
-  if (!base) throw new Error('License server URL not set')
   const body = {
     plan: plan || 'shop',
     email: (email || '').trim().toLowerCase(),
     phone: String(phone || '').trim(),
-    return_url: returnUrl || `${window.location.origin}/license?paid=1`,
-    cancel_url: cancelUrl || `${window.location.origin}/license?cancelled=1`,
+    returnUrl,
+    cancelUrl,
   }
-  if (!body.email || !body.email.includes('@')) {
-    throw new Error('Enter the email that will own this license')
-  }
-  await setSetting('licenseEmail', body.email)
   const res = await fetch(`${base}/api/billing/checkout`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify(body),
   })
   const j = await res.json().catch(() => ({}))
-  if (!res.ok) {
-    const err = new Error(j.error || 'Checkout unavailable')
-    err.details = j
-    throw err
-  }
+  if (!res.ok) throw new Error(j.error || j.message || 'Checkout failed')
+  await setSetting('licenseEmail', body.email)
   return j
-}
-
-/** Browser-submit PayFast form (same pattern as portal pay). */
-export function submitPayFastForm(processUrl, fields) {
-  const form = document.createElement('form')
-  form.method = 'POST'
-  form.action = processUrl
-  Object.entries(fields || {}).forEach(([k, v]) => {
-    const inp = document.createElement('input')
-    inp.type = 'hidden'
-    inp.name = k
-    inp.value = v == null ? '' : String(v)
-    form.appendChild(inp)
-  })
-  document.body.appendChild(form)
-  form.submit()
 }
 
 export async function buyPlan(plan, email, provider = 'paystack', phone = '') {
   const cleanPhone = String(phone || '').trim()
-  if (provider === 'payfast') {
+  if (provider === 'paystack' || provider === 'payfast') {
     const session = await startCheckout({ plan, email, phone: cleanPhone })
-    if (!session.configured || !session.processUrl) throw new Error(session.error || 'PayFast not configured on license server')
-    submitPayFastForm(session.processUrl, session.fields)
-    return session
+    if (session.redirectUrl || session.url) {
+      window.location.href = session.redirectUrl || session.url
+      return session
+    }
   }
   const base = ((await getServerUrl()) || SA_CONFIG.defaultLicenseServerUrl || '').replace(/\/$/, '')
-  const res = await fetch(`${base}/api/billing/paystack/initialize`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+  const res = await fetch(`${base}/api/billing/buy`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ plan, email: (email || '').trim().toLowerCase(), phone: cleanPhone }),
   })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok || !data.authorizationUrl) throw new Error(data.error || 'Paystack checkout could not be started')
+  const j = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(j.error || 'Purchase failed')
   await setSetting('licenseEmail', (email || '').trim().toLowerCase())
-  window.location.assign(data.authorizationUrl)
-  return data
+  return j
 }
 
 export async function claimPaidLicense(email) {
   const base = ((await getServerUrl()) || SA_CONFIG.defaultLicenseServerUrl || '').replace(/\/$/, '')
-  const deviceId = await getHardwareId()
   const res = await fetch(`${base}/api/billing/claim`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ email: (email || '').trim().toLowerCase(), deviceId, hwid: deviceId }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: (email || '').trim().toLowerCase() }),
   })
   const j = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(j.error || 'Claim failed')
-  if (j.key) {
-    await setSetting('licenseKey', j.key)
+  if (j.meta || j.plan) {
     await setSetting('licenseMeta', { server: true, email, plan: j.plan, seats: j.seats, activatedAt: j.meta?.activatedAt || new Date().toISOString(), ...(j.meta || {}) })
-    await setSetting('licenseEmail', email)
-    try { window.dispatchEvent(new CustomEvent('sa-license-updated', { detail: { plan: j.plan } })) } catch {}
   }
+  await setSetting('licenseEmail', email)
+  try { window.dispatchEvent(new CustomEvent('sa-license-updated', { detail: { plan: j.plan } })) } catch {}
   return j
 }
 
 export async function billingStatus(email) {
   const base = ((await getServerUrl()) || SA_CONFIG.defaultLicenseServerUrl || '').replace(/\/$/, '')
-  const res = await fetch(
-    `${base}/api/billing/status?email=${encodeURIComponent((email || '').trim().toLowerCase())}`,
-    { headers: { Accept: 'application/json' } },
-  )
-  return res.json().catch(() => ({}))
+  const q = encodeURIComponent((email || '').trim().toLowerCase())
+  const res = await fetch(`${base}/api/billing/status?email=${q}`, { headers: { Accept: 'application/json' } })
+  const j = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(j.error || 'Status failed')
+  return j
 }
 
 export async function verifyPaystackReturn(reference, email) {
   const base = ((await getServerUrl()) || SA_CONFIG.defaultLicenseServerUrl || '').replace(/\/$/, '')
-  if (!reference) throw new Error('Paystack did not return a transaction reference')
-  const res = await fetch(
-    `${base}/api/billing/paystack/status?reference=${encodeURIComponent(reference)}`,
-    { headers: { Accept: 'application/json' } },
-  )
+  const res = await fetch(`${base}/api/billing/paystack/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reference, email: (email || '').trim().toLowerCase() }),
+  })
   const result = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(result.error || 'Could not verify payment')
-  if (result.status !== 'paid' || result.licensed !== true) {
-    return { paid: false, status: result.status || 'pending' }
+  if (!res.ok) throw new Error(result.error || 'Verify failed')
+  if (result.paid && result.activation) {
+    const activation = result.activation
+    try { window.dispatchEvent(new CustomEvent('sa-license-updated', { detail: { plan: activation.plan } })) } catch {}
+    return { paid: true, activated: true, plan: activation.plan, activation, transaction: result.transaction || {}, payment: result }
   }
-  const ownerEmail = (email || await getLicenseEmail() || '').trim().toLowerCase()
-  if (!ownerEmail) throw new Error('Payment is verified, but the licence email is missing')
-  const activation = await claimPaidLicense(ownerEmail)
-  if (!activation?.activated) throw new Error('Payment verified, but licence activation is not complete yet')
-  try { window.dispatchEvent(new CustomEvent('sa-license-updated', { detail: { plan: activation.plan } })) } catch {}
-  return { paid: true, activated: true, plan: activation.plan, activation, transaction: result.transaction || {}, payment: result }
+  return { paid: !!result.paid, activated: false, ...result }
 }
 
 export async function getLicenseEmail() {
   return (await getSetting('licenseEmail', '')) || ''
 }
 
-/**
- * Recover a paid licence from the authoritative billing ledger.
- */
-export async function recoverLicense(email) {
-  const ownerEmail = (email || await getLicenseEmail() || '').trim().toLowerCase()
-  if (!ownerEmail || !ownerEmail.includes('@')) throw new Error('Enter the email used for the original purchase')
-  await setSetting('licenseEmail', ownerEmail)
-  const remote = await billingStatus(ownerEmail)
-  if (!remote?.ok) throw new Error(remote?.error || 'Billing service could not verify this account')
-  if (!remote.licensed) {
-    return { ok: false, recovered: false, billing: remote, message: 'No active paid licence was found for this email.' }
+export async function saveLicenseContact(email, phone = '') {
+  const em = String(email || '').trim().toLowerCase()
+  const ph = String(phone || '').trim()
+  if (!em || !em.includes('@')) throw new Error('Enter a valid email')
+  await setSetting('licenseEmail', em)
+  await setSetting('licensePhone', ph)
+  let server = { ok: false }
+  try {
+    const base = ((await getServerUrl()) || SA_CONFIG.defaultLicenseServerUrl || '').replace(/\/$/, '')
+    let hwid = ''
+    try { hwid = (await getHardwareId()) || '' } catch {}
+    const res = await fetch(`${base}/api/license/contact-log`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ email: em, phone: ph, hwid }),
+    })
+    server = await res.json().catch(() => ({}))
+  } catch {
+    server = { ok: false, offline: true }
   }
-  const activation = await claimPaidLicense(ownerEmail)
-  const device = await (await import('./license.js')).getRemoteDeviceStatus()
-  if (!activation?.activated || device?.allowed === false) {
-    throw new Error(device?.message || 'The server did not confirm this device licence')
-  }
-  return { ok: true, recovered: true, billing: remote, activation, device }
+  return { ok: true, email: em, phone: ph, server }
+}
+
+export async function getLicensePhone() {
+  return (await getSetting('licensePhone', '')) || ''
 }
