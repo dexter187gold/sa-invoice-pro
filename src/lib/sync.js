@@ -236,6 +236,9 @@ export const Sync = {
 
   lastPushAt() { return _lastPushAt },
 
+  async getNotifications() { return request('/api/notifications') },
+  async markNotificationsRead() { return request('/api/notifications/read', { method: 'POST', body: JSON.stringify({ all: true }) }) },
+
   async getTeam() { return request('/api/team') },
   async createTeamInvite(role = 'tech') {
     return request('/api/team/invite', { method: 'POST', body: JSON.stringify({ role }) })
