@@ -335,7 +335,16 @@ export default function Setup() {
                   </div>
                 </div>
 
-                <ModuleSetupStep businessTypeId={form.businessType} toast={toast} refresh={refresh} />
+                <ModuleSetupStep
+                  businessTypeId={form.businessType}
+                  toast={toast}
+                  refresh={refresh}
+                  onDefaults={(d) => {
+                    if (d?.suggestVat != null) {
+                      setPrefs((p) => ({ ...p, vatEnabled: !!d.suggestVat }))
+                    }
+                  }}
+                />
               </section>
             )}
 
