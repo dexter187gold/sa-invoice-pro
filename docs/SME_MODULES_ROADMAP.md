@@ -2,10 +2,9 @@
 
 | # | Type | Status |
 |---|------|--------|
-| 1-5 | IT, Retail, Trades, Auto, Consulting | DONE |
-| 6 | Hospitality | DONE |
-| 7 | Health / Beauty | DONE |
-| 8 | Medical / Clinic | ACTIVE |
-| 9-20 | Legal and others | Planned |
+| 1-7 | IT through Beauty | DONE |
+| 8 | Medical / Clinic | DONE |
+| 9 | Legal / Attorneys | ACTIVE |
+| 10-20 | Others | Planned |
 
-Done: 7/20 · Active: Medical
+Done: 8/20 · Active: Legal
