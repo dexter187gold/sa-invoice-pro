@@ -10,6 +10,7 @@ import {
 import { IT_SERVICE_PRESETS, IT_PRODUCT_PRESETS, presetToServiceRow, presetToProductRow } from '../lib/itCatalog'
 import { RETAIL_PRODUCT_PRESETS, RETAIL_SERVICE_PRESETS } from '../lib/retailCatalog'
 import { TRADES_PRODUCT_PRESETS, TRADES_SERVICE_PRESETS } from '../lib/tradesCatalog'
+import { AUTO_PRODUCT_PRESETS, AUTO_SERVICE_PRESETS } from '../lib/automotiveCatalog'
 import { getBusinessType } from '../lib/businessTypes'
 import { listBranches } from '../lib/branches'
 import { applyStockTransfer, stockAt, stockTotal, formatBranchLabel, HQ_KEY } from '../lib/stockTransfer'
@@ -68,6 +69,24 @@ export default function Products() {
       }
       await refresh?.()
       toast?.(`Installed Trades pack · ${n} items`, 'success')
+    } catch (e) {
+      toast?.(e?.message || 'Install failed', 'error')
+    }
+  }
+
+  const installAutoPack = async () => {
+    try {
+      let n = 0
+      for (const s of AUTO_SERVICE_PRESETS) {
+        await db.add(STORES.services, presetToServiceRow(s))
+        n++
+      }
+      for (const pr of AUTO_PRODUCT_PRESETS) {
+        await db.add(STORES.products, presetToProductRow(pr))
+        n++
+      }
+      await refresh?.()
+      toast?.(`Installed Automotive pack · ${n} items`, 'success')
     } catch (e) {
       toast?.(e?.message || 'Install failed', 'error')
     }
@@ -214,14 +233,18 @@ export default function Products() {
           {(biz.id === 'retail' || biz.id === 'hospitality' || biz.modules?.includes('retail')) && (
             <button type="button" className="btn btn-secondary" onClick={installRetailPack}>Install Retail pack</button>
           )}
-          {(biz.id === 'trades' || biz.id === 'automotive' || biz.modules?.includes('field') || biz.modules?.includes('trades')) && (
+          {(biz.id === 'trades' || biz.modules?.includes('trades')) && (
             <button type="button" className="btn btn-secondary" onClick={installTradesPack}>Install Trades pack</button>
           )}
-          {biz.id !== 'it_msp' && biz.id !== 'retail' && biz.id !== 'trades' && !biz.modules?.includes('it') && !biz.modules?.includes('retail') && (
+          {(biz.id === 'automotive' || biz.modules?.includes('automotive')) && (
+            <button type="button" className="btn btn-secondary" onClick={installAutoPack}>Install Automotive pack</button>
+          )}
+          {biz.id !== 'it_msp' && biz.id !== 'retail' && biz.id !== 'trades' && biz.id !== 'automotive' && !biz.modules?.includes('it') && !biz.modules?.includes('retail') && (
             <>
               <button type="button" className="btn btn-outline" onClick={installItPack}>Install IT pack</button>
               <button type="button" className="btn btn-outline" onClick={installRetailPack}>Install Retail pack</button>
               <button type="button" className="btn btn-outline" onClick={installTradesPack}>Install Trades pack</button>
+              <button type="button" className="btn btn-outline" onClick={installAutoPack}>Install Automotive pack</button>
             </>
           )}
           <Link className="btn btn-outline" to="/branches">Branches</Link>
