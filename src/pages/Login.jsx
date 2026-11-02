@@ -32,7 +32,7 @@ function AuthLogoSequence() {
         <div className="auth-logo-orbit" aria-hidden="true" />
       </div>
       <div className="auth-logo-caption" data-text="SA INVOICE PRO">SA INVOICE PRO</div>
-      <div className="auth-logo-subcaption">YOUR BUSINESS. IN PERFECT ORDER.</div>
+      <div className="auth-logo-subcaption">SNIPE THROUGH PAPERWORK</div>
     </section>
   )
 }
@@ -131,9 +131,13 @@ export default function Login() {
       {splash && (
         <div className={`login-splash ${fade ? 'fade-out' : ''}`} aria-live="polite">
           <div className="login-splash-inner">
+            <div className="sniper-reticle" aria-hidden="true">
+              <div className="sniper-reticle-ring outer" />
+              <div className="sniper-reticle-ring" />
+            </div>
             <AppLogo size={104} />
             <div className="login-splash-title">SA INVOICE PRO</div>
-            <p style={{ color: 'rgba(220,252,231,0.95)', margin: '0.35rem 0 0' }}>Professional invoicing, payments & business management</p>
+            <p className="sniper-tagline">Snipe through paperwork</p>
             <p style={{ color: 'rgba(167,243,208,0.9)', margin: '0.35rem 0 0', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>SOUTH AFRICAN BUSINESS WORKSPACE</p>
             <div className="login-splash-bar" aria-hidden><span /></div>
           </div>
@@ -141,9 +145,9 @@ export default function Login() {
       )}
       <div className="auth-layout">
         <aside className="auth-brand-panel">
-          <div className="auth-brand-lockup"><AppLogo size={58} /><div><strong>SA INVOICE PRO</strong><span>BUSINESS MANAGEMENT SUITE</span></div></div>
+          <div className="auth-brand-lockup"><AppLogo size={58} /><div><strong>SA INVOICE PRO</strong><span>SNIPER DESK</span></div></div>
           <div className="auth-brand-copy">
-            <span className="auth-eyebrow">ONE WORKSPACE. COMPLETE CONTROL.</span>
+            <span className="auth-eyebrow">SNIPER DESK · ONE WORKSPACE</span>
             <h2>Run your business with confidence.</h2>
             <p>Professional tools for South African businesses — from quotes and invoices to payments, accounting, payroll and customer management.</p>
             <div className="auth-feature-list">
@@ -155,7 +159,9 @@ export default function Login() {
           <p className="auth-brand-foot" style={{ fontSize: 12, marginTop: 'auto' }}>v{APP_VERSION}</p>
         </aside>
 
-        <AuthLogoSequence />\n        <div className="auth-card-modern">
+        <AuthLogoSequence />
+        <div className="auth-card-modern">
+          <div className="sniper-scanline" aria-hidden="true" />
           <div className="tabs">
             <button type="button" className={`tab ${mode === 'in' ? 'active' : ''}`} onClick={() => setMode('in')}>Sign in</button>
             <button type="button" className={`tab ${mode === 'up' ? 'active' : ''}`} onClick={() => setMode('up')}>Create account</button>
@@ -194,7 +200,7 @@ export default function Login() {
                 >
                   Send recovery code
                 </button>
-                {shownCode ? <p className="muted" style={{ fontSize: 12 }}>Dev code: <strong style={{ color: '#0d3324' }}>{shownCode}</strong></p> : null}
+                {shownCode ? <p className="muted" style={{ fontSize: 12 }}>Dev code: <strong style={{ color: '#5eead4' }}>{shownCode}</strong></p> : null}
                 <label className="stack" style={{ gap: 4 }}><span className="muted" style={{ fontSize: 12 }}>Recovery code</span>
                   <input className="input" value={form.recoveryCode} onChange={(e) => setForm({ ...form, recoveryCode: e.target.value })} placeholder="6-digit code" /></label>
                 <label className="stack" style={{ gap: 4 }}><span className="muted" style={{ fontSize: 12 }}>New password (letters + numbers, min 6)</span>
@@ -227,7 +233,7 @@ export default function Login() {
               {busy ? 'Please wait…' : mode === 'in' ? 'Sign in' : mode === 'up' ? 'Create account' : 'Reset password'}
             </button>
             {mode === 'in' && (
-              <button type="button" style={{ background: 'none', border: 0, color: '#08794e', cursor: 'pointer', fontWeight: 600 }} onClick={() => setMode('forgot')}>Forgot password?</button>
+              <button type="button" style={{ background: 'none', border: 0, color: '#5eead4', cursor: 'pointer', fontWeight: 600 }} onClick={() => setMode('forgot')}>Forgot password?</button>
             )}
           </form>
 
