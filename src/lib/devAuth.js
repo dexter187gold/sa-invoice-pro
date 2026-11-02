@@ -23,6 +23,32 @@ export function isDevPortalAuthed() {
   }
 }
 
+export async function verifyDevPortalSession() {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY)
+    if (!raw) return false
+    const session = JSON.parse(raw)
+    if (!session?.token || session.email !== DEV_EMAIL || session.role !== 'developer' || Date.now() >= Number(session.exp || 0)) {
+      logoutDevPortal()
+      return false
+    }
+    const response = await fetch(`${SYNC_API}/api/dev/me`, {
+      headers: { Authorization: `Bearer ${session.token}`, Accept: 'application/json' },
+      cache: 'no-store',
+      signal: AbortSignal.timeout?.(10000),
+    })
+    if (!response.ok) {
+      logoutDevPortal()
+      return false
+    }
+    const data = await response.json().catch(() => ({}))
+    return data?.ok === true && data?.user?.role === 'developer' && data?.user?.email === DEV_EMAIL
+  } catch {
+    logoutDevPortal()
+    return false
+  }
+}
+
 export async function loginDevPortal(email, ownerToken) {
   const address = String(email || '').trim().toLowerCase()
   const secret = String(ownerToken || '')
