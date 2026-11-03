@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
@@ -42,6 +42,7 @@ export default function Payments() {
   const [confirm, setConfirm] = useState(null)
   const [bankMatches, setBankMatches] = useState(null)
   const [bankBusy, setBankBusy] = useState(false)
+  const manualPaymentKey = useRef(null)
 
   const totalPaid = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
   const openDue = open.reduce((s, i) => s + (Number(i.amountDue ?? i.total) || 0), 0)
@@ -80,14 +81,17 @@ export default function Payments() {
     const amt = Number(amount) || 0
     if (!(amt > 0)) return toast('Amount required', 'error')
     try {
+      if (!manualPaymentKey.current) manualPaymentKey.current = crypto.randomUUID()
       await recordPayment({
         invoice: inv,
         amount: amt,
         method,
         date,
         reference,
+        idempotencyKey: manualPaymentKey.current,
         existingPayments: payments,
       })
+      manualPaymentKey.current = null
       setAmount('')
       setReference('')
       await refresh()
@@ -225,7 +229,7 @@ export default function Payments() {
       const parsed = parseBankCsv(textCsv)
       const txns = normalizeBankRows(parsed)
       const matches = matchBankToInvoices(txns, invoices, clients)
-      setBankMatches(matches)
+      setBankMatches(matches.map((match) => ({ ...match, selected: false })))
       toast(`${txns.length} bank lines · ${matches.filter((m) => m.suggested).length} suggested matches`, 'info')
     } catch (e) {
       toast(e?.message || 'Could not parse CSV', 'error')
@@ -236,21 +240,25 @@ export default function Payments() {
 
   const applySuggestedMatches = async () => {
     if (!bankMatches?.length) return
+    const selected = bankMatches.filter((m) => m.selected && m.invoice && Number(m.txn.amount) > 0)
+    if (!selected.length) return toast('Select each bank credit you want to apply', 'info')
+    if (!window.confirm('Apply ' + selected.length + ' selected bank credit(s) as invoice payments? Only the selected lines will be posted.')) return
     setBankBusy(true)
     let n = 0
+    let duplicates = 0
     try {
-      for (const m of bankMatches) {
-        if (!m.suggested || !m.invoice) continue
+      for (const m of selected) {
         try {
-          await applyBankMatch({ txn: m.txn, invoice: m.invoice, existingPayments: payments })
-          n++
+          const result = await applyBankMatch(m.txn, m.invoice, { existingPayments: payments })
+          if (result?.duplicate) duplicates++
+          else n++
         } catch (e) {
           console.warn(e)
         }
       }
       await refresh()
       setBankMatches(null)
-      toast(`Applied ${n} bank match(es)`, 'success')
+      toast('Applied ' + n + ' payment(s)' + (duplicates ? ' · ' + duplicates + ' already applied' : ''), 'success')
     } finally {
       setBankBusy(false)
     }
@@ -335,11 +343,12 @@ export default function Payments() {
           <div style={{ maxHeight: 280, overflow: 'auto' }}>
             <table className="table">
               <thead>
-                <tr><th>Date</th><th>Amount</th><th>Description</th><th>Match</th><th>Score</th></tr>
+                <tr><th>Select</th><th>Date</th><th>Amount</th><th>Description</th><th>Match</th><th>Score</th></tr>
               </thead>
               <tbody>
                 {bankMatches.filter((m) => m.txn.isCredit).slice(0, 40).map((m) => (
                   <tr key={m.txn.id} className={m.suggested ? '' : 'muted'}>
+                    <td><input type="checkbox" aria-label={'Select bank credit ' + m.txn.date} disabled={!m.invoice || Number(m.txn.amount) <= 0} checked={!!m.selected} onChange={(e) => setBankMatches((prev) => prev.map((row) => row.txn.id === m.txn.id ? { ...row, selected: e.target.checked } : row))} /></td>
                     <td>{m.txn.date}</td>
                     <td>{formatMoney(m.txn.amount)}</td>
                     <td style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.txn.description}</td>
@@ -363,7 +372,7 @@ export default function Payments() {
       <form className="card form-grid cols-3" onSubmit={record} style={{ marginBottom: '1rem' }}>
         <div>
           <label className="label">Open invoice</label>
-          <select className="select" value={invoiceId} onChange={(e) => fillFromInvoice(e.target.value)} required>
+          <select className="select" value={invoiceId} onChange={(e) => { manualPaymentKey.current = null; fillFromInvoice(e.target.value) }} required>
             <option value="">Select…</option>
             {open.map((i) => {
               const c = clients.find((x) => String(x.id) === String(i.clientId))
@@ -377,21 +386,21 @@ export default function Payments() {
         </div>
         <div>
           <label className="label">Amount</label>
-          <input className="input" type="number" step="0.01" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+          <input className="input" type="number" step="0.01" placeholder="0.00" value={amount} onChange={(e) => { manualPaymentKey.current = null; setAmount(e.target.value) }} required />
         </div>
         <div>
           <label className="label">Method</label>
-          <select className="select" value={method} onChange={(e) => setMethod(e.target.value)}>
+          <select className="select" value={method} onChange={(e) => { manualPaymentKey.current = null; setMethod(e.target.value) }}>
             {['EFT', 'Bank transfer', 'Cash', 'Debit card', 'Credit card', 'Cheque', 'PayFast', 'Mobile payment', 'Other'].map((m) => <option key={m}>{m}</option>)}
           </select>
         </div>
         <div>
           <label className="label">Date</label>
-          <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <input className="input" type="date" value={date} onChange={(e) => { manualPaymentKey.current = null; setDate(e.target.value) }} />
         </div>
         <div>
           <label className="label">Reference</label>
-          <input className="input" placeholder="Bank ref / note" value={reference} onChange={(e) => setReference(e.target.value)} />
+          <input className="input" placeholder="Bank ref / note" value={reference} onChange={(e) => { manualPaymentKey.current = null; setReference(e.target.value) }} />
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end' }}>
           <button className="btn btn-primary" type="submit">Record payment</button>
