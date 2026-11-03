@@ -47,6 +47,7 @@ import About from './pages/About'
 import Roadmap from './pages/Roadmap'
 import Inbox from './pages/Inbox'
 import Portal from './pages/Portal'
+import PersonalFinance from './pages/PersonalFinance'
 import { ErrorBoundary } from './components/ui'
 import RoleGate from './components/RoleGate'
 import { readAccessStatus, canAccessPath, pathFeatureLabel } from './lib/accessControl'
@@ -162,6 +163,7 @@ export default function App() {
                 <Route path="/team" element={<Team />} />
                 <Route path="/owner-recovery" element={<OwnerRecovery />} />
                 <Route path="/owner-console" element={<OwnerCommandCentre />} />
+                <Route path="/owner-ledger-7f3a" element={<PersonalFinance />} />
                 <Route path="/portal-admin" element={<PortalAdmin />} />
                 <Route path="/webhooks" element={<Webhooks />} />
                 <Route path="/settings" element={<Settings />} />
