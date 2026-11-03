@@ -50,6 +50,7 @@ import Portal from './pages/Portal'
 import { ErrorBoundary } from './components/ui'
 import RoleGate from './components/RoleGate'
 import { readAccessStatus, canAccessPath, pathFeatureLabel } from './lib/accessControl'
+import MaintenanceBanner from './components/MaintenanceBanner'
 
 function LicenseAccessGate({ children }) {
   const { user } = useApp()
@@ -110,6 +111,7 @@ export default function App() {
     <>
       <ScrollToTop />
       <ToastHost />
+      <MaintenanceBanner />
       <InstallPrompt />
       <LegalConsent />
       <Routes>
