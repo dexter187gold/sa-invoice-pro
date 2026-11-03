@@ -9,6 +9,7 @@ const NAV = [
   { id: 'overview', label: 'Command overview', icon: '◈' },
   { id: 'releases', label: 'Releases & beta', icon: '⇧' },
   { id: 'broadcasts', label: 'User broadcasts', icon: '◉' },
+  { id: 'push', label: 'Device push', icon: '⌁' },
   { id: 'operations', label: 'Operations', icon: '⌁' },
   { id: 'services', label: 'Services & endpoints', icon: '◎' },
   { id: 'vault', label: 'Secrets & security', icon: '▣' },
@@ -74,13 +75,14 @@ export default function DevPortal() {
   const [broadcast, setBroadcast] = useState({ title: '', body: '', severity: 'info', expiresAt: '' })
   const [releaseChannel, setReleaseChannel] = useState('beta')
   const [serviceChecks, setServiceChecks] = useState([])
+  const [pushStatus, setPushStatus] = useState({ configured: false, subscriptions: 0 })
 
   const notify = (message) => { setToast(message); setError('') }
   const fail = (message) => { setError(message); setToast('') }
 
   const loadOverview = useCallback(async () => {
     const [o, a] = await Promise.all([devRequest('/api/dev/overview'), devRequest('/api/dev/announcements')])
-    setOverview(o.overview); setAnnouncements(a.announcements || [])
+    setOverview(o.overview); setAnnouncements(a.announcements || []); setPushStatus(o.overview?.push || { configured: false, subscriptions: 0 })
   }, [])
   useEffect(() => {
     let alive = true
@@ -210,6 +212,7 @@ export default function DevPortal() {
             <Metric label="Active broadcasts" value={overview?.announcements} detail="Visible to app users" />
             <Metric label="Release automation" value={overview?.githubConfigured ? 'Connected' : 'Setup required'} detail={overview?.githubConfigured ? 'GitHub API ready' : 'Needs Render secret'} />
             <Metric label="App version" value={APP_VERSION} detail="Current frontend build" />
+            <Metric label="Device push" value={pushStatus.configured ? 'Configured' : 'Setup required'} detail={`${pushStatus.subscriptions || 0} subscribed devices`} />
           </div>
           <div style={{ ...panel, marginBottom: 16 }}>
             <h3 style={{ marginTop: 0 }}>Release pipeline</h3>
@@ -238,8 +241,24 @@ export default function DevPortal() {
           </div>
         </section>}
 
+        {section === 'push' && <section>
+          <SectionHead eyebrow="Background notifications" title="Device push delivery" detail="Send global alerts to Android and browser devices, including when users have closed the app." />
+          <div style={panel}>
+            <h3 style={{ marginTop: 0 }}>Web Push service status</h3>
+            <p><strong>{pushStatus.configured ? 'Configured' : 'Not configured'}</strong> · {pushStatus.subscriptions || 0} registered device subscriptions</p>
+            <p style={muted}>To activate delivery, generate a VAPID key pair with the web-push package and add these values to the Render service <strong>saip-sync</strong> environment. Keep the private key server-side and never add it to the frontend or GitHub.</p>
+            <div style={{ display: 'grid', gap: 8 }}>
+              <code>VAPID_PUBLIC_KEY</code>
+              <code>VAPID_PRIVATE_KEY</code>
+              <code>VAPID_SUBJECT=mailto:sainvoicepro@gmail.com</code>
+            </div>
+            <p style={muted}>After saving the variables, redeploy saip-sync. The device opt-in button will become available in each signed-in user's notification bell. Users must grant notification permission separately on each device.</p>
+            <p style={muted}>Subscriptions are stored in the existing Git-backed data store. Expired browser endpoints are automatically removed when push providers return 404 or 410.</p>
+          </div>
+        </section>}
+
         {section === 'broadcasts' && <section>
-          <SectionHead eyebrow="Customer communications" title="Broadcast centre" detail="Publish in-app alerts to every registered app account. Users see them in their notification bell." />
+          <SectionHead eyebrow="Customer communications" title="Broadcast centre" detail="Publish global alerts to every registered app account. Delivery uses the in-app notification bell and subscribed devices when Web Push is configured." />
           <div style={{ ...panel, marginBottom: 16 }}>
             <form onSubmit={createBroadcast} style={{ display: 'grid', gap: 12 }}>
               <h3 style={{ margin: 0 }}>Compose global alert</h3>
@@ -249,7 +268,7 @@ export default function DevPortal() {
                 <label className="label">Alert type<select className="input" style={field} value={broadcast.severity} onChange={e => setBroadcast({ ...broadcast, severity: e.target.value })}>{severityOptions.map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}</select></label>
                 <label className="label">Optional expiry<input className="input" style={field} type="datetime-local" value={broadcast.expiresAt} onChange={e => setBroadcast({ ...broadcast, expiresAt: e.target.value })} /></label>
               </div>
-              <p style={muted}>Audience is all registered app users. Broadcasts are saved on the sync server and appear in the in-app notification centre (not native OS push notifications yet).</p>
+              <p style={muted}>Audience is all registered app users. Broadcasts are saved on the sync server and appear in-app. Subscribed devices also receive OS-level alerts once VAPID is configured.</p>
               <div><button className="btn btn-primary" disabled={busy}>Publish to all app users</button></div>
             </form>
           </div>

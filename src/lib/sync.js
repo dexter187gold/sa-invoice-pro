@@ -236,6 +236,50 @@ export const Sync = {
 
   lastPushAt() { return _lastPushAt },
 
+  async getPushConfig() { return request('/api/push/config') },
+
+  async enablePushNotifications() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+      throw new Error('This browser does not support web push notifications')
+    }
+    const permission = await Notification.requestPermission()
+    if (permission !== 'granted') throw new Error('Notification permission was not granted')
+    const config = await Sync.getPushConfig()
+    if (!config.enabled || !config.publicKey) throw new Error('Browser push is not configured on the server yet')
+    const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+    const existing = await registration.pushManager.getSubscription()
+    const subscription = existing || await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: (() => {
+        const raw = String(config.publicKey).replace(/-/g, '+').replace(/_/g, '/')
+        const padded = raw + '='.repeat((4 - raw.length % 4) % 4)
+        const binary = atob(padded)
+        return Uint8Array.from(binary, (char) => char.charCodeAt(0))
+      })(),
+    })
+    await request('/api/push/subscribe', { method: 'POST', body: JSON.stringify({ subscription: subscription.toJSON() }) })
+    return { ok: true }
+  },
+
+  async disablePushNotifications() {
+    if (!('serviceWorker' in navigator)) return { ok: true }
+    const registration = await navigator.serviceWorker.getRegistration('/')
+    const subscription = await registration?.pushManager?.getSubscription()
+    if (subscription) {
+      await request('/api/push/subscribe', { method: 'DELETE', body: JSON.stringify({ endpoint: subscription.endpoint }) })
+      await subscription.unsubscribe()
+    }
+    return { ok: true }
+  },
+
+  async getPushStatus() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return { supported: false, subscribed: false, enabled: false }
+    const config = await Sync.getPushConfig()
+    const registration = await navigator.serviceWorker.getRegistration('/')
+    const subscription = await registration?.pushManager?.getSubscription()
+    return { supported: true, subscribed: !!subscription, enabled: !!config.enabled }
+  },
+
   async getNotifications() { return request('/api/notifications') },
   async markNotificationsRead() { return request('/api/notifications/read', { method: 'POST', body: JSON.stringify({ all: true }) }) },
 

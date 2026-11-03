@@ -7,6 +7,8 @@ export default function NotificationBell() {
   const [unread, setUnread] = useState(0)
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState([])
+  const [pushStatus, setPushStatus] = useState({ supported: false, subscribed: false, enabled: false })
+  const [pushBusy, setPushBusy] = useState(false)
 
   const load = useCallback(async () => {
     if (!Sync.isLoggedIn()) {
@@ -25,9 +27,30 @@ export default function NotificationBell() {
 
   useEffect(() => {
     load()
+    Sync.getPushStatus().then(setPushStatus).catch(() => {})
     const t = setInterval(load, 25000)
     return () => clearInterval(t)
   }, [load])
+
+  const enablePush = async () => {
+    setPushBusy(true)
+    try {
+      await Sync.enablePushNotifications()
+      setPushStatus(await Sync.getPushStatus())
+    } catch (e) {
+      window.dispatchEvent(new CustomEvent('sa-toast', { detail: { message: e.message || 'Could not enable notifications', type: 'error' } }))
+    } finally { setPushBusy(false) }
+  }
+
+  const disablePush = async () => {
+    setPushBusy(true)
+    try {
+      await Sync.disablePushNotifications()
+      setPushStatus(await Sync.getPushStatus())
+    } catch (e) {
+      window.dispatchEvent(new CustomEvent('sa-toast', { detail: { message: e.message || 'Could not disable notifications', type: 'error' } }))
+    } finally { setPushBusy(false) }
+  }
 
   const markAll = async () => {
     try {
@@ -89,6 +112,10 @@ export default function NotificationBell() {
             <strong>Notifications</strong>
             <button type="button" className="btn btn-outline btn-sm" onClick={markAll}>Mark all read</button>
           </div>
+          {pushStatus.supported && <div style={{ padding: '9px 0', borderBottom: '1px solid var(--border)', marginBottom: 8 }}>
+            <div style={{ fontSize: 12, marginBottom: 6 }}>{pushStatus.subscribed ? 'Device alerts are enabled' : 'Get alerts when the app is closed'}</div>
+            {!pushStatus.subscribed ? <button type="button" className="btn btn-primary btn-sm" disabled={pushBusy || !pushStatus.enabled} onClick={enablePush}>{pushBusy ? 'Working…' : pushStatus.enabled ? 'Enable device alerts' : 'Push setup required'}</button> : <button type="button" className="btn btn-outline btn-sm" disabled={pushBusy} onClick={disablePush}>Disable device alerts</button>}
+          </div>}
           {!items.length && <p className="muted" style={{ fontSize: 13 }}>No notifications yet.</p>}
           {items.slice(0, 12).map((n) => (
             <div

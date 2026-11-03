@@ -1,5 +1,5 @@
 /* SA Invoice Pro — installable shell cache */
-const CACHE = 'saip-shell-v7'
+const CACHE = 'saip-shell-v8'
 const PRECACHE = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg', '/icon.svg']
 
 self.addEventListener('install', (event) => {
@@ -47,4 +47,36 @@ self.addEventListener('fetch', (event) => {
       return cached || fetched
     }),
   )
+})
+
+
+self.addEventListener('push', (event) => {
+  let payload = {}
+  try { payload = event.data ? event.data.json() : {} } catch {}
+  const title = String(payload.title || 'SA Invoice Pro alert').slice(0, 120)
+  const options = {
+    body: String(payload.body || 'You have a new update.').slice(0, 240),
+    icon: '/icon.svg',
+    badge: '/icon.svg',
+    tag: String(payload.tag || 'saip-notification').slice(0, 100),
+    renotify: true,
+    data: { url: typeof payload.url === 'string' && payload.url.startsWith('/') ? payload.url : '/' },
+  }
+  event.waitUntil(self.registration.showNotification(title, options))
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const target = new URL(event.notification.data?.url || '/', self.location.origin).href
+  event.waitUntil((async () => {
+    const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    for (const client of clientsList) {
+      if (client.url.startsWith(self.location.origin) && 'focus' in client) {
+        await client.focus()
+        if ('navigate' in client && client.url !== target) await client.navigate(target)
+        return
+      }
+    }
+    if (self.clients.openWindow) await self.clients.openWindow(target)
+  })())
 })
