@@ -51,7 +51,7 @@ import PersonalFinance from './pages/PersonalFinance'
 import { ErrorBoundary } from './components/ui'
 import RoleGate from './components/RoleGate'
 import { readAccessStatus, canAccessPath, pathFeatureLabel } from './lib/accessControl'
-import { currentRoleId } from './lib/roleGate'
+import { Sync } from './lib/sync'
 import MaintenanceBanner from './components/MaintenanceBanner'
 
 function LicenseAccessGate({ children }) {
@@ -63,13 +63,23 @@ function LicenseAccessGate({ children }) {
   React.useEffect(() => {
     let alive = true
     const refresh = async () => {
-      const [status, role] = await Promise.all([readAccessStatus(), currentRoleId()])
-      if (alive) setState({ loading: false, status, isOwner: role === 'owner' })
+      try {
+        const [status, team] = await Promise.all([readAccessStatus(), Sync.getTeam()])
+        if (alive) setState({ loading: false, status, isOwner: team?.isOwner === true })
+      } catch {
+        if (alive) setState({ loading: false, status: await readAccessStatus(), isOwner: false })
+      }
     }
     refresh()
     window.addEventListener('sa-license-updated', refresh)
     window.addEventListener('sa-active-seat', refresh)
-    return () => { alive = false; window.removeEventListener('sa-license-updated', refresh); window.removeEventListener('sa-active-seat', refresh) }
+    window.addEventListener('sa-team-updated', refresh)
+    return () => {
+      alive = false
+      window.removeEventListener('sa-license-updated', refresh)
+      window.removeEventListener('sa-active-seat', refresh)
+      window.removeEventListener('sa-team-updated', refresh)
+    }
   }, [location.pathname, user?.email])
 
   const isOwner = state.isOwner
