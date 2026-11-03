@@ -239,10 +239,18 @@ export function matchBankToInvoices(txns = [], invoices = [], clients = []) {
 }
 
 export async function applyBankMatch(txn, invoice, opts = {}) {
-  if (!invoice) throw new Error('No invoice selected')
+  if (!txn || !invoice?.id) throw new Error('A bank transaction and invoice are required')
+  if (txn.isCredit === false || Number(txn.amount) <= 0) throw new Error('Debit transactions cannot be applied to invoices')
   const amount = Number(opts.amount != null ? opts.amount : txn.amount) || 0
   if (!(amount > 0)) throw new Error('Payment amount must be positive')
-  return recordPayment({ invoiceId: invoice.id, amount, date: txn.date || new Date().toISOString().slice(0, 10), method: opts.method || 'EFT', reference: txn.reference || txn.description || '', notes: opts.notes || ('Bank statement · ' + (txn.description || '')).trim() })
+  const existingRows = await db.getAll(STORES.bankTxns)
+  const prior = findBankTxnForMatch(txn, existingRows)
+  if (prior.alreadyApplied) return { duplicate: true, bankTxn: prior.row, paymentId: prior.row.paymentId }
+  const stableKey = 'bank-' + txnFingerprint(txn)
+  const result = await recordPayment({ invoice, amount, date: txn.date || new Date().toISOString().slice(0, 10), method: opts.method || 'EFT', reference: txn.reference || txn.description || '', idempotencyKey: stableKey })
+  const bankRow = { ...(prior.row || txn), id: prior.row?.id || txn.id || stableKey, matchedInvoiceId: invoice.id, paymentId: result.payment.id, reconciled: true, bookkeepingStatus: 'matched', matchedAt: new Date().toISOString() }
+  await db.put(STORES.bankTxns, bankRow)
+  return { ...result, bankTxn: bankRow }
 }
 
 export function txnFingerprint(t) {

@@ -423,13 +423,18 @@ export async function withTransaction(storeNames, handler) {
   return new Promise((resolve, reject) => {
     const names = Array.isArray(storeNames) ? storeNames : [storeNames]
     const transaction = dbi.transaction(names, 'readwrite')
-    transaction.oncomplete = () => resolve(true)
-    transaction.onerror = () => reject(transaction.error)
+    let result
+    const setResult = (value) => { result = value }
+    const failure = () => transaction.__failure || transaction.error || new Error('IndexedDB transaction failed')
+    transaction.oncomplete = () => resolve(result === undefined ? true : result)
+    transaction.onerror = () => reject(failure())
+    transaction.onabort = () => reject(failure())
     try {
       const stores = {}
       for (const n of names) stores[n] = transaction.objectStore(n)
-      handler(stores, transaction)
+      handler(stores, transaction, setResult)
     } catch (e) {
+      transaction.__failure = e
       try { transaction.abort() } catch {}
       reject(e)
     }

@@ -92,13 +92,14 @@ export async function recordPayment({
   let outcome
   await db.withTransaction(
     [STORES.invoices, STORES.payments, STORES.journal],
-    (transaction, setResult) => {
-      const invoicesStore = transaction.objectStore(STORES.invoices)
-      const paymentsStore = transaction.objectStore(STORES.payments)
-      const journalStore = transaction.objectStore(STORES.journal)
+    (stores, transaction, setResult) => {
+      const invoicesStore = stores[STORES.invoices]
+      const paymentsStore = stores[STORES.payments]
+      const journalStore = stores[STORES.journal]
       const invoiceRequest = invoicesStore.get(invoice.id)
       const paymentsRequest = paymentsStore.getAll()
       let currentInvoice
+      let allPayments
       let linkedPayments
       let invoiceReady = false
       let paymentsReady = false
@@ -108,8 +109,9 @@ export async function recordPayment({
         try {
           if (!currentInvoice) throw new Error('Invoice no longer exists')
           if (idempotencyKey) {
-            const prior = linkedPayments.find((p) => p.idempotencyKey === idempotencyKey)
+            const prior = allPayments.find((p) => p.idempotencyKey === idempotencyKey)
             if (prior) {
+              if (String(prior.invoiceId) !== String(currentInvoice.id)) throw new Error('This payment reference has already been applied to a different invoice')
               outcome = { payment: prior, invoice: currentInvoice, duplicate: true }
               setResult(outcome)
               return
@@ -163,7 +165,8 @@ export async function recordPayment({
         commit()
       }
       paymentsRequest.onsuccess = () => {
-        linkedPayments = (paymentsRequest.result || []).filter(
+        allPayments = paymentsRequest.result || []
+        linkedPayments = allPayments.filter(
           (p) => String(p.invoiceId) === String(invoice.id)
         )
         paymentsReady = true
@@ -183,10 +186,10 @@ export async function deletePayment(payment) {
   let updatedInvoice = null
   await db.withTransaction(
     [STORES.invoices, STORES.payments, STORES.journal],
-    (transaction, setResult) => {
-      const invoicesStore = transaction.objectStore(STORES.invoices)
-      const paymentsStore = transaction.objectStore(STORES.payments)
-      const journalStore = transaction.objectStore(STORES.journal)
+    (stores, transaction, setResult) => {
+      const invoicesStore = stores[STORES.invoices]
+      const paymentsStore = stores[STORES.payments]
+      const journalStore = stores[STORES.journal]
       const paymentRequest = paymentsStore.get(payment.id)
       const paymentsRequest = paymentsStore.getAll()
       const journalsRequest = journalStore.getAll()
