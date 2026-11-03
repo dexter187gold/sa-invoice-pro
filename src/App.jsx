@@ -47,29 +47,42 @@ import About from './pages/About'
 import Roadmap from './pages/Roadmap'
 import Inbox from './pages/Inbox'
 import Portal from './pages/Portal'
+import PersonalFinance from './pages/PersonalFinance'
 import { ErrorBoundary } from './components/ui'
 import RoleGate from './components/RoleGate'
 import { readAccessStatus, canAccessPath, pathFeatureLabel } from './lib/accessControl'
+import { Sync } from './lib/sync'
 import MaintenanceBanner from './components/MaintenanceBanner'
 
 function LicenseAccessGate({ children }) {
   const { user } = useApp()
   const location = useLocation()
   const navigate = useNavigate()
-  const [state, setState] = React.useState({ loading: true, status: null })
+  const [state, setState] = React.useState({ loading: true, status: null, isOwner: false })
 
   React.useEffect(() => {
     let alive = true
     const refresh = async () => {
-      const status = await readAccessStatus()
-      if (alive) setState({ loading: false, status })
+      try {
+        const [status, team] = await Promise.all([readAccessStatus(), Sync.getTeam()])
+        if (alive) setState({ loading: false, status, isOwner: team?.isOwner === true })
+      } catch {
+        if (alive) setState({ loading: false, status: await readAccessStatus(), isOwner: false })
+      }
     }
     refresh()
     window.addEventListener('sa-license-updated', refresh)
-    return () => { alive = false; window.removeEventListener('sa-license-updated', refresh) }
+    window.addEventListener('sa-active-seat', refresh)
+    window.addEventListener('sa-team-updated', refresh)
+    return () => {
+      alive = false
+      window.removeEventListener('sa-license-updated', refresh)
+      window.removeEventListener('sa-active-seat', refresh)
+      window.removeEventListener('sa-team-updated', refresh)
+    }
   }, [location.pathname, user?.email])
 
-  const isOwner = !!(user?.isOwner || user?.role === 'owner' || user?.role === 'Owner')
+  const isOwner = state.isOwner
   if (state.loading) return <div className="muted" style={{ padding: 24 }}>Checking licence access…</div>
   if (!state.status?.licensed && Number(state.status?.trialDaysLeft || 0) > 0 && location.pathname === '/') {
     return <Navigate to="/clients" replace />
@@ -162,6 +175,7 @@ export default function App() {
                 <Route path="/team" element={<Team />} />
                 <Route path="/owner-recovery" element={<OwnerRecovery />} />
                 <Route path="/owner-console" element={<OwnerCommandCentre />} />
+                <Route path="/owner-ledger-7f3a" element={<PersonalFinance />} />
                 <Route path="/portal-admin" element={<PortalAdmin />} />
                 <Route path="/webhooks" element={<Webhooks />} />
                 <Route path="/settings" element={<Settings />} />

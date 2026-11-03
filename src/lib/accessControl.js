@@ -28,7 +28,7 @@ const PLAN_FEATURES = {
   ]),
 }
 
-const OWNER_ONLY = new Set(['/owner-console', '/owner-recovery', '/dev-portal'])
+const OWNER_ONLY = new Set(['/owner-console', '/owner-recovery', '/dev-portal', '/owner-ledger-7f3a'])
 
 export function normalizedPlan(status) {
   const raw = status?.meta?.plan || status?.meta?.planId || status?.meta?.tier || ''
