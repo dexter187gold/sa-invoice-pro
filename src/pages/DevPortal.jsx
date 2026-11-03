@@ -11,6 +11,7 @@ const NAV = [
   { id: 'broadcasts', label: 'User broadcasts', icon: '◉' },
   { id: 'push', label: 'Device push', icon: '⌁' },
   { id: 'operations', label: 'Operations', icon: '⌁' },
+  { id: 'incidents', label: 'Incident log', icon: '⚑' },
   { id: 'services', label: 'Services & endpoints', icon: '◎' },
   { id: 'vault', label: 'Secrets & security', icon: '▣' },
 ]
@@ -78,13 +79,15 @@ export default function DevPortal() {
   const [pushStatus, setPushStatus] = useState({ configured: false, subscriptions: 0 })
   const [opsControls, setOpsControls] = useState({ maintenance: { enabled: false, message: 'SA Invoice Pro is undergoing scheduled maintenance. Please try again shortly.' }, flags: { bankImport: true, clientPortal: true, betaFeatures: false, newDashboard: false } })
   const [opsAudit, setOpsAudit] = useState([])
+  const [incidents, setIncidents] = useState([])
+  const [incidentDraft, setIncidentDraft] = useState({ title: '', summary: '', severity: 'medium' })
 
   const notify = (message) => { setToast(message); setError('') }
   const fail = (message) => { setError(message); setToast('') }
 
   const loadOverview = useCallback(async () => {
-    const [o, a, c] = await Promise.all([devRequest('/api/dev/overview'), devRequest('/api/dev/announcements'), devRequest('/api/dev/controls')])
-    setOverview(o.overview); setAnnouncements(a.announcements || []); setPushStatus(o.overview?.push || { configured: false, subscriptions: 0 }); setOpsControls(c.controls); setOpsAudit(c.audit || [])
+    const [o, a, c, i] = await Promise.all([devRequest('/api/dev/overview'), devRequest('/api/dev/announcements'), devRequest('/api/dev/controls'), devRequest('/api/dev/incidents')])
+    setOverview(o.overview); setAnnouncements(a.announcements || []); setPushStatus(o.overview?.push || { configured: false, subscriptions: 0 }); setOpsControls(c.controls); setOpsAudit(c.audit || []); setIncidents(i.incidents || [])
   }, [])
   useEffect(() => {
     let alive = true
@@ -325,6 +328,41 @@ export default function DevPortal() {
           <div style={{ ...panel, marginTop: 16 }}><h3 style={{ marginTop: 0 }}>Operational controls</h3><div style={{ display: 'grid', gap: 10 }}><a href="https://dashboard.render.com/web/srv-db5k07vlk1mc73a9dtb0" target="_blank" rel="noreferrer">Render · saip-sync service dashboard ↗</a><a href="https://github.com/dexter187gold/sa-invoice-pro/actions" target="_blank" rel="noreferrer">GitHub · app build and deploy workflows ↗</a><a href="https://github.com/dexter187gold/saip-sync/actions" target="_blank" rel="noreferrer">GitHub · sync server workflows ↗</a><a href="https://dash.cloudflare.com/" target="_blank" rel="noreferrer">Cloudflare dashboard ↗</a></div></div>
         </section>}
 
+        {section === 'incidents' && <section>
+          <SectionHead eyebrow="Incident response" title="Incident register" detail="Track service incidents, impact, severity, investigation and resolution. Every change is also recorded in the operational audit trail." />
+          <form style={{ ...panel, marginBottom: 16, display: 'grid', gap: 12 }} onSubmit={async (e) => {
+            e.preventDefault()
+            setBusy(true)
+            try {
+              const result = await devRequest('/api/dev/incidents', { method: 'POST', body: JSON.stringify(incidentDraft) })
+              setIncidents(result.incidents || [result.incident, ...incidents])
+              setIncidentDraft({ title: '', summary: '', severity: 'medium' })
+              setOpsAudit(prev => [{ action: 'incident.created', actor: 'sainvoicepro@gmail.com', createdAt: new Date().toISOString(), id: result.incident.id, details: { title: result.incident.title, severity: result.incident.severity } }, ...prev])
+              notify('Incident recorded')
+            } catch (e) { fail(e.message) }
+            finally { setBusy(false) }
+          }}>
+            <h3 style={{ margin: 0 }}>Record an incident</h3>
+            <label className="label">Title<input className="input" style={field} required minLength={4} maxLength={140} value={incidentDraft.title} onChange={e => setIncidentDraft(prev => ({ ...prev, title: e.target.value }))} placeholder="e.g. Sync API elevated latency" /></label>
+            <label className="label">Impact and details<textarea className="input" style={field} required minLength={10} maxLength={2000} rows={3} value={incidentDraft.summary} onChange={e => setIncidentDraft(prev => ({ ...prev, summary: e.target.value }))} placeholder="Affected service, users, start time and symptoms…" /></label>
+            <label className="label">Severity<select className="input" style={field} value={incidentDraft.severity} onChange={e => setIncidentDraft(prev => ({ ...prev, severity: e.target.value }))}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select></label>
+            <div><button className="btn btn-primary" disabled={busy}>Save incident</button></div>
+          </form>
+          <div style={panel}>
+            <h3 style={{ marginTop: 0 }}>Incident history ({incidents.length})</h3>
+            {!incidents.length && <p style={muted}>No incidents recorded.</p>}
+            {incidents.map(item => <article key={item.id} style={{ padding: '13px 0', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}><strong>{item.title}</strong><span style={muted}>{item.severity.toUpperCase()} · {item.status.toUpperCase()}</span></div>
+              <p style={{ whiteSpace: 'pre-wrap' }}>{item.summary}</p><p style={muted}>Opened by {item.createdBy} · {new Date(item.createdAt).toLocaleString()}</p>
+              {item.resolution && <p style={muted}>Resolution: {item.resolution}</p>}
+              {item.status !== 'resolved' && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                <button className="btn btn-outline btn-sm" disabled={busy} onClick={async () => { const result = await devRequest('/api/dev/incidents/' + item.id, { method: 'PATCH', body: JSON.stringify({ status: 'investigating' }) }); setIncidents(result.incidents); setOpsAudit(prev => prev); notify('Incident marked investigating') }}>Investigating</button>
+                <button className="btn btn-outline btn-sm" disabled={busy} onClick={async () => { const result = await devRequest('/api/dev/incidents/' + item.id, { method: 'PATCH', body: JSON.stringify({ status: 'monitoring' }) }); setIncidents(result.incidents); notify('Incident moved to monitoring') }}>Monitoring</button>
+                <button className="btn btn-primary btn-sm" disabled={busy} onClick={async () => { const resolution = window.prompt('Enter the resolution summary:'); if (!resolution || resolution.trim().length < 5) return; const result = await devRequest('/api/dev/incidents/' + item.id, { method: 'PATCH', body: JSON.stringify({ status: 'resolved', resolution }) }); setIncidents(result.incidents); notify('Incident resolved') }}>Resolve</button>
+              </div>}
+            </article>)}
+          </div>
+        </section>}
         {section === 'services' && <section>
           <SectionHead eyebrow="Environment map" title="Services & endpoints" detail="These endpoint overrides are local to this browser. They do not silently reconfigure production." />
           <form onSubmit={saveUrls} style={panel}>
