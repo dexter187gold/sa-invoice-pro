@@ -166,7 +166,7 @@ export const PayFast = {
       merchant_key: cfg.merchantKey,
       return_url: base + (base.includes('?') ? '&' : '?') + 'payfast=return&ref=' + encodeURIComponent(mPaymentId || ''),
       cancel_url: base + (base.includes('?') ? '&' : '?') + 'payfast=cancel&ref=' + encodeURIComponent(mPaymentId || ''),
-      // notify_url requires public HTTPS server — optional for sandbox manual check
+      notify_url: 'https://saip-sync.onrender.com/api/payfast/itn',
       name_first: (nameFirst || 'Customer').slice(0, 100),
       name_last: (nameLast || '').slice(0, 100),
       email_address: (email || '').slice(0, 100),
