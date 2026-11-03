@@ -2,6 +2,7 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { createVault, getVaultUsername, saveVault, unlockVault, vaultExists } from '../lib/personalFinanceVault'
+import { currentRoleId } from '../lib/roleGate'
 
 const money = (n) => new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR' }).format(Number(n) || 0)
 const today = () => new Date().toISOString().slice(0, 10)
@@ -22,8 +23,10 @@ export default function PersonalFinance() {
   const [budget, setBudget] = React.useState({ month: today().slice(0, 7), category: 'Groceries', amount: '' })
   const [goal, setGoal] = React.useState({ name: '', target: '', saved: '' })
   const [tab, setTab] = React.useState('overview')
+  const [ownerRole, setOwnerRole] = React.useState(null)
+  React.useEffect(() => { let alive = true; currentRoleId().then(role => { if (alive) setOwnerRole(role) }); return () => { alive = false } }, [])
 
-  const isOwner = !!(user?.isOwner || ['owner', 'Owner'].includes(user?.role))
+  const isOwner = ownerRole === 'owner'
   const persist = async (next) => { setData(next); await saveVault(key, next) }
   const signOut = () => { setUnlocked(false); setKey(null); setData(null); setPassword('') }
   React.useEffect(() => {
