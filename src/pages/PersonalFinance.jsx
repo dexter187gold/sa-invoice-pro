@@ -43,6 +43,7 @@ export default function PersonalFinance() {
     return () => document.removeEventListener('visibilitychange', onHide)
   }, [unlocked])
 
+  if (!ownerChecked) return <main className="page"><section className="card">Verifying workspace owner with the cloud server…</section></main>
   if (!isOwner) return <main className="page"><section className="card"><h2>Private area</h2><p>This personal finance area is restricted to the owner account.</p><Link to="/">Return to workspace</Link></section></main>
   if (!unlocked) return <main className="page" style={{ maxWidth: 520, margin: '32px auto', padding: 16 }}>
     <section className="card" style={{ padding: 24 }}>
