@@ -186,7 +186,7 @@ export async function deletePayment(payment) {
   let updatedInvoice = null
   await db.withTransaction(
     [STORES.invoices, STORES.payments, STORES.journal],
-    (transaction, setResult) => {
+    (stores, transaction, setResult) => {
       const invoicesStore = stores[STORES.invoices]
       const paymentsStore = stores[STORES.payments]
       const journalStore = stores[STORES.journal]
