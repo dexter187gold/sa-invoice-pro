@@ -51,26 +51,28 @@ import PersonalFinance from './pages/PersonalFinance'
 import { ErrorBoundary } from './components/ui'
 import RoleGate from './components/RoleGate'
 import { readAccessStatus, canAccessPath, pathFeatureLabel } from './lib/accessControl'
+import { currentRoleId } from './lib/roleGate'
 import MaintenanceBanner from './components/MaintenanceBanner'
 
 function LicenseAccessGate({ children }) {
   const { user } = useApp()
   const location = useLocation()
   const navigate = useNavigate()
-  const [state, setState] = React.useState({ loading: true, status: null })
+  const [state, setState] = React.useState({ loading: true, status: null, isOwner: false })
 
   React.useEffect(() => {
     let alive = true
     const refresh = async () => {
-      const status = await readAccessStatus()
-      if (alive) setState({ loading: false, status })
+      const [status, role] = await Promise.all([readAccessStatus(), currentRoleId()])
+      if (alive) setState({ loading: false, status, isOwner: role === 'owner' })
     }
     refresh()
     window.addEventListener('sa-license-updated', refresh)
-    return () => { alive = false; window.removeEventListener('sa-license-updated', refresh) }
+    window.addEventListener('sa-active-seat', refresh)
+    return () => { alive = false; window.removeEventListener('sa-license-updated', refresh); window.removeEventListener('sa-active-seat', refresh) }
   }, [location.pathname, user?.email])
 
-  const isOwner = !!(user?.isOwner || user?.role === 'owner' || user?.role === 'Owner')
+  const isOwner = state.isOwner
   if (state.loading) return <div className="muted" style={{ padding: 24 }}>Checking licence access…</div>
   if (!state.status?.licensed && Number(state.status?.trialDaysLeft || 0) > 0 && location.pathname === '/') {
     return <Navigate to="/clients" replace />
