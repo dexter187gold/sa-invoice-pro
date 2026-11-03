@@ -1,6 +1,5 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { useApp } from '../context/AppContext'
 import { createVault, getVaultUsername, saveVault, unlockVault, vaultExists } from '../lib/personalFinanceVault'
 import { currentRoleId } from '../lib/roleGate'
 
@@ -9,7 +8,6 @@ const today = () => new Date().toISOString().slice(0, 10)
 const categories = ['Groceries', 'Household', 'Transport', 'Utilities', 'Medical', 'Personal', 'Electronics', 'Income', 'Deposit', 'Other']
 
 export default function PersonalFinance() {
-  const { user } = useApp()
   const [configured, setConfigured] = React.useState(vaultExists())
   const [unlocked, setUnlocked] = React.useState(false)
   const [key, setKey] = React.useState(null)
