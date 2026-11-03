@@ -217,6 +217,18 @@ export default function Shell({ children, sections: sectionsProp }) {
                 <span className="nav-label">{item.label}</span>
               </NavLink>
             ))}
+            {user?.email?.trim?.().toLowerCase() === 'pcrepairdex@gmail.com' ? (
+              <a
+                className="side-link"
+                href="https://sa-invoice-personal-vault.pcrepairdex.workers.dev/"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setOpen(false)}
+              >
+                <span className="ico" aria-hidden>🔐</span>
+                <span className="nav-label">Personal Finance Vault</span>
+              </a>
+            ) : null}
           </nav>
         </aside>
 
