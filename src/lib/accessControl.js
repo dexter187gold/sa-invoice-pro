@@ -51,7 +51,7 @@ export function canAccessPath(pathname, status, isOwner = false) {
 
   // Keep licence checkout reachable so a trial user can upgrade, but expose
   // no other modules beyond the three trial workflow areas.
-  if (path === '/license') return true
+  if (path === '/license' || path === '/settings') return true
   return TRIAL_PATHS.has(path) && Number(status?.trialDaysLeft || 0) > 0
 }
 
