@@ -7,7 +7,6 @@ export const SESSION_KEY = 'sa_session_v2'
 export async function unlockVisibility(page) {
   await page.addInitScript(() => {
     try {
-      // Prevent SW from serving stale shells on deep routes
       if (navigator.serviceWorker) {
         Object.defineProperty(navigator, 'serviceWorker', {
           configurable: true,
@@ -36,9 +35,44 @@ export async function unlockVisibility(page) {
   })
 }
 
+/** Default rich portal payload for quote / pay smoke. */
+export function portalFixture(overrides = {}) {
+  return {
+    company: { name: 'E2E Shop' },
+    client: { name: 'E2E Client', email: 'client@test.local', phone: '0821234567' },
+    quotes: [
+      {
+        id: 'q-e2e-1',
+        number: 'QT-E2E-1',
+        status: 'sent',
+        total: 1500,
+        date: '2026-10-01',
+        lines: [{ description: 'Screen repair', qty: 1, unitPrice: 1500 }],
+      },
+    ],
+    invoices: [
+      {
+        id: 'inv-e2e-1',
+        number: 'INV-E2E-1',
+        status: 'unpaid',
+        total: 1500,
+        amountDue: 1500,
+        date: '2026-10-05',
+        dueDate: '2026-10-12',
+      },
+    ],
+    tickets: [],
+    payments: [],
+    ...overrides,
+  }
+}
+
 /** Mock saip-sync portal API so token routes always render error or data shell. */
 export async function mockPortalApi(page, payload) {
-  await page.route(/\/api\/portal\//, async (route) => {
+  await page.route(/\/api\/(portal|client-portal)\//, async (route) => {
+    const url = route.request().url()
+    const method = route.request().method()
+
     if (payload === 'not_found') {
       await route.fulfill({
         status: 404,
@@ -47,19 +81,37 @@ export async function mockPortalApi(page, payload) {
       })
       return
     }
+
+    // Decision endpoints
+    if (method === 'POST' && /decision|approve|reject|accept/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true, status: 'accepted' }),
+      })
+      return
+    }
+
+    // Paystack init (test)
+    if (method === 'POST' && /pay|init|payment/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          authorization_url: 'https://checkout.paystack.com/test-e2e',
+          access_code: 'test_access',
+          reference: 'e2e-ref-1',
+          publicKey: 'pk_test_e2e',
+        }),
+      })
+      return
+    }
+
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(
-        payload || {
-          company: { name: 'E2E Shop' },
-          client: { name: 'E2E Client', email: 'client@test.local' },
-          quotes: [],
-          invoices: [],
-          tickets: [],
-          payments: [],
-        },
-      ),
+      body: JSON.stringify(payload || portalFixture()),
     })
   })
 }
@@ -142,7 +194,6 @@ export async function expectPageAlive(page, { minChars = 8 } = {}) {
       el.removeAttribute('hidden')
     }
   })
-  // Wait briefly for React paint
   await page.waitForTimeout(300)
   const text =
     (await page.locator('body').evaluate((el) => el.textContent || '').catch(() => '')) ||
