@@ -1,6 +1,6 @@
 /** Overdue / collection chase messages — dual path ready (wa.me + Cloud) */
 import { formatMoney } from './money.js'
-import { toWaNumber } from './share'
+import { toWaNumber } from './share.js'
 
 export function isOpenInvoice(inv) {
   return ['unpaid', 'partial', 'overdue'].includes(String(inv?.status || 'unpaid'))
