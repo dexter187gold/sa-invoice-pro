@@ -335,6 +335,8 @@ export async function replaceAllAtomic(data, { allowPartial = false } = {}) {
 }
 
 
+const DEVICE_LICENSE_SETTING_KEYS = new Set(['licenseKey', 'licenseMeta', 'activationToken', 'licenseOfflineBlob', 'licenseEmail', 'licenseServerUrl', 'hwid', 'handshakeOk', 'lastLicenseExchange', 'pendingLicenseKey', 'trialStartedAt'])
+
 const ACCOUNT_WORKSPACE_STORES = Object.keys(STORES).filter(
   (key) => !['users', 'autoBackups', 'accountWorkspaces'].includes(key),
 )
@@ -347,6 +349,7 @@ export async function saveAccountWorkspace(accountEmail) {
   let rows = 0
   for (const key of ACCOUNT_WORKSPACE_STORES) {
     data[key] = await getAll(STORES[key])
+    if (key === 'settings') data[key] = data[key].filter((row) => !DEVICE_LICENSE_SETTING_KEYS.has(String(row.key)))
     rows += data[key].length
   }
   if (!rows) return false
@@ -357,10 +360,16 @@ export async function saveAccountWorkspace(accountEmail) {
 /** Start with an isolated workspace; account and recovery records remain on device. */
 export async function clearActiveWorkspace() {
   const database = await openDB()
-  const names = ACCOUNT_WORKSPACE_STORES.map((key) => STORES[key])
+  const names = ACCOUNT_WORKSPACE_STORES.filter((key) => key !== 'settings').map((key) => STORES[key])
   return new Promise((resolve, reject) => {
     const transaction = database.transaction(names, 'readwrite')
-    transaction.oncomplete = () => resolve(true)
+    transaction.oncomplete = async () => {
+      try {
+        const settings = await getAll(STORES.settings)
+        for (const row of settings) if (!DEVICE_LICENSE_SETTING_KEYS.has(String(row.key))) await remove(STORES.settings, row.key)
+        resolve(true)
+      } catch (error) { reject(error) }
+    }
     transaction.onerror = () => reject(transaction.error || new Error('Could not isolate account workspace'))
     transaction.onabort = () => reject(transaction.error || new Error('Account workspace isolation was aborted'))
     for (const name of names) transaction.objectStore(name).clear()
@@ -373,7 +382,9 @@ export async function restoreAccountWorkspace(accountEmail) {
   if (!id) return false
   const saved = await get(STORES.accountWorkspaces, id)
   if (!saved?.data) return false
-  await importAll(saved.data, { wipe: true })
+  const data = { ...saved.data }
+  if (Array.isArray(data.settings)) data.settings = data.settings.filter((row) => !DEVICE_LICENSE_SETTING_KEYS.has(String(row.key)))
+  await importAll(data, { wipe: false })
   return true
 }
 
