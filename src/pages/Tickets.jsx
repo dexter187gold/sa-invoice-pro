@@ -28,7 +28,7 @@ const PRIORITIES = [
 const EMPTY_FORM = {
   title: '', clientId: '', status: 'open', priority: 'normal',
   notes: '', description: '', workDone: '', contactName: '', contactPhone: '',
-  contactEmail: '', category: '', dueDate: '', assignee: '', supportType: 'remote',
+  contactEmail: '', category: '', jobType: 'it-repair', dueDate: '', assignee: '', supportType: 'remote',
 }
 
 function slaInfo(t) {
@@ -154,7 +154,9 @@ export default function Tickets() {
 
   const openNew = () => {
     setEditing('new')
-    setForm({ ...EMPTY_FORM })
+    let jobType = 'it-repair'
+    try { jobType = JSON.parse(localStorage.getItem('sa_owner_defaults') || '{}').jobCardType || jobType } catch {}
+    setForm({ ...EMPTY_FORM, jobType })
     setSelectedId(null)
   }
 
@@ -173,6 +175,7 @@ export default function Tickets() {
       contactPhone: t.contactPhone || '',
       contactEmail: t.contactEmail || '',
       category: t.category || '',
+      jobType: t.jobType || t.category || 'it-repair',
       dueDate: (t.dueDate || '').slice(0, 10),
       assignee: t.assignee || '',
       supportType: t.supportType || 'remote',
@@ -371,6 +374,7 @@ export default function Tickets() {
               <select className="input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
                 {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
               </select>
+              <select className="input" value={form.jobType || 'it-repair'} onChange={(e) => setForm({ ...form, jobType: e.target.value })} aria-label="Job card type"><option value="it-repair">IT repair / diagnostics</option><option value="onsite-service">On-site service call</option><option value="maintenance">Maintenance / service</option><option value="installation">Installation / setup</option><option value="collection-delivery">Collection & delivery</option><option value="general-workshop">General workshop job</option></select>
               <select className="input" value={form.supportType} onChange={(e) => setForm({ ...form, supportType: e.target.value })}>
                 <option value="remote">Remote</option>
                 <option value="onsite">On-site</option>
