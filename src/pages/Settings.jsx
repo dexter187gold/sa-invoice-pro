@@ -37,6 +37,13 @@ export default function Settings() {
   const [autoLockMinutes, setAutoLockMinutes] = useState(() => { const n = Number(localStorage.getItem('sa_auto_lock_minutes_v1') || 5); return [5, 15, 30].includes(n) ? String(n) : '5' })
   const [resetPin, setResetPin] = useState('')
   const [resetPhrase, setResetPhrase] = useState('')
+  const [resetCurrentPassword, setResetCurrentPassword] = useState('')
+  const [resetPinConfirm, setResetPinConfirm] = useState('')
+  const [profilePrefs, setProfilePrefs] = useState(() => {
+    const identity = String(user?.id || user?.email || user?.username || 'local').trim().toLowerCase()
+    try { return { ...JSON.parse(localStorage.getItem('sa_profile_prefs_v1:' + identity) || '{}') } } catch { return {} }
+  })
+  const [profileSaved, setProfileSaved] = useState(false)
   const [accessStatus, setAccessStatus] = useState(null)
   const [ownerDefaults, setOwnerDefaults] = useState(() => {
     try {
@@ -89,22 +96,14 @@ export default function Settings() {
     setBusy(true)
     try {
       const snapshot = await saveAutoBackup({ reason: 'pre-account-workspace-reset', label: 'Recovery copy before account workspace reset' })
-      try {
-        await Sync.resetWorkspace(resetPin, 'RESET MY WORKSPACE')
-      } catch (err) {
-        if (resetPin !== '00000000') throw err
-        console.warn('[workspace reset] server rejected; continuing local reset with factory PIN', err)
-      }
+      await Sync.resetWorkspace(resetPin, 'RESET MY WORKSPACE')
       await db.clearActiveWorkspace()
-      try { if (typeof caches !== 'undefined') await Promise.all((await caches.keys()).map((key) => caches.delete(key))) } catch {}
-      try { if (navigator.serviceWorker?.getRegistrations) await Promise.all((await navigator.serviceWorker.getRegistrations()).map((r) => r.unregister())) } catch {}
       const audit = { id: crypto.randomUUID(), action: 'account_workspace_reset', at: new Date().toISOString(), actor: user?.email || user?.username || 'signed-in-user', localSnapshotId: snapshot.id, localSnapshotAt: snapshot.at, status: 'completed' }
       try {
         const prior = JSON.parse(localStorage.getItem('sa_workspace_clear_audit') || '[]')
-        for (const key of Object.keys(localStorage)) if (/^(saip_|sa_)/i.test(key) && key !== 'sa_workspace_clear_audit') localStorage.removeItem(key)
         localStorage.setItem('sa_workspace_clear_audit', JSON.stringify([audit, ...(Array.isArray(prior) ? prior : [])].slice(0, 50)))
       } catch {}
-      setResetPin(''); setResetPhrase(''); setCompany(null)
+      setResetPin(''); setResetPinConfirm(''); setResetCurrentPassword(''); setResetPhrase(''); setCompany(null)
       await refresh?.({ skipSync: true }); await refreshAutoBackups()
       toast('Your account workspace has been reset. Your sign-in account remains; start again with company setup.', 'success')
       nav('/setup', { replace: true })
@@ -184,6 +183,7 @@ export default function Settings() {
   }
 
   const tabs = [
+    { id: 'profile', label: 'Personal Profile' },
     { id: 'company', label: 'Company' },
     { id: 'look', label: 'Look & themes' },
     { id: 'brand', label: 'White-label' },
@@ -197,8 +197,8 @@ export default function Settings() {
 
   const plan = normalizedPlan(accessStatus)
   const settingsTabs = tabs.filter((item) => {
-    if (!accessStatus?.licensed) return ['company', 'look', 'cloud', 'data', 'security'].includes(item.id)
-    if (plan === 'solo') return ['company', 'look', 'nav', 'cloud', 'data', 'security'].includes(item.id)
+    if (!accessStatus?.licensed) return ['profile', 'company', 'look', 'cloud', 'data', 'security'].includes(item.id)
+    if (plan === 'solo') return ['profile', 'company', 'look', 'nav', 'cloud', 'data', 'security'].includes(item.id)
     if (plan === 'shop') return true
     return true
   })
@@ -225,6 +225,66 @@ export default function Settings() {
       <div role="tablist" aria-label="Settings sections" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))', gap: 10, marginTop: 14 }}>
         {settingsTabs.map((item) => <button key={item.id} type="button" role="tab" aria-selected={tab === item.id} onClick={() => setTab(item.id)} style={{ minHeight: 58, padding: '12px 14px', textAlign: 'left', borderRadius: 12, border: tab === item.id ? '2px solid var(--accent, #0d9488)' : '1px solid var(--border, #334155)', background: tab === item.id ? 'var(--surface-2, rgba(13,148,136,.12))' : 'var(--surface, transparent)', color: 'inherit', fontWeight: 700, cursor: 'pointer' }}>{item.label}<span style={{ display: 'block', fontSize: 11, fontWeight: 400, opacity: .7, marginTop: 3 }}>{item.id === 'company' ? 'Business profile' : item.id === 'data' ? 'Backup & recovery' : item.id === 'security' ? 'Privacy & device access' : item.id === 'operations' ? 'Invoice & job defaults' : 'Configure settings'}</span></button>)}
       </div>
+
+
+      {tab === 'profile' && (
+        <div className="card form-grid" style={{ marginTop: 12 }}>
+          <h3 style={{ marginTop: 0 }}>Personal Profile & preferences</h3>
+          <p className="muted" style={{ marginTop: 0 }}>These preferences are saved separately for the signed-in user on this device. They do not change company tax, banking or branding details.</p>
+          <label className="label">Signed-in account</label>
+          <input className="input" value={user?.email || user?.username || 'Local account'} readOnly />
+          <label className="label">Preferred display name</label>
+          <input className="input" value={profilePrefs.displayName || user?.name || ''} onChange={(e) => setProfilePrefs({ ...profilePrefs, displayName: e.target.value })} placeholder="Name shown in your profile" />
+          <label className="label">Preferred language</label>
+          <select className="select input" value={profilePrefs.language || 'en-ZA'} onChange={(e) => setProfilePrefs({ ...profilePrefs, language: e.target.value })}><option value="en-ZA">English (South Africa)</option><option value="af-ZA">Afrikaans</option><option value="zu-ZA">isiZulu</option><option value="xh-ZA">isiXhosa</option></select>
+          <label className="label">Time zone</label>
+          <select className="select input" value={profilePrefs.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Africa/Johannesburg'} onChange={(e) => setProfilePrefs({ ...profilePrefs, timeZone: e.target.value })}><option value="Africa/Johannesburg">South Africa (Johannesburg)</option><option value="UTC">UTC</option><option value="Europe/London">London</option><option value="America/New_York">New York</option></select>
+          <label className="label">Date format</label>
+          <select className="select input" value={profilePrefs.dateFormat || 'DD/MM/YYYY'} onChange={(e) => setProfilePrefs({ ...profilePrefs, dateFormat: e.target.value })}><option>DD/MM/YYYY</option><option>YYYY-MM-DD</option><option>MM/DD/YYYY</option></select>
+          <label className="label">Time format</label>
+          <select className="select input" value={profilePrefs.timeFormat || '24h'} onChange={(e) => setProfilePrefs({ ...profilePrefs, timeFormat: e.target.value })}><option value="24h">24-hour</option><option value="12h">12-hour</option></select>
+          <label className="label">Currency display</label>
+          <select className="select input" value={profilePrefs.currencyDisplay || 'symbol'} onChange={(e) => setProfilePrefs({ ...profilePrefs, currencyDisplay: e.target.value })}><option value="symbol">R (symbol)</option><option value="code">ZAR (code)</option></select>
+          <label className="label">Number format</label>
+          <select className="select input" value={profilePrefs.numberFormat || 'za'} onChange={(e) => setProfilePrefs({ ...profilePrefs, numberFormat: e.target.value })}><option value="za">1 234,56 (South African)</option><option value="en">1,234.56</option></select>
+          <label className="label">Theme</label>
+          <select className="select input" value={profilePrefs.theme || theme || 'light'} onChange={(e) => setProfilePrefs({ ...profilePrefs, theme: e.target.value })}><option value="light">Light</option><option value="dark">Dark</option></select>
+          <label className="label">Interface density</label>
+          <select className="select input" value={profilePrefs.density || 'comfortable'} onChange={(e) => setProfilePrefs({ ...profilePrefs, density: e.target.value })}><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select>
+          <label className="label">Default landing page</label>
+          <select className="select input" value={profilePrefs.landingPage || '/dashboard'} onChange={(e) => setProfilePrefs({ ...profilePrefs, landingPage: e.target.value })}><option value="/dashboard">Dashboard</option><option value="/clients">Clients</option><option value="/invoices">Invoices</option><option value="/tickets">Job cards</option><option value="/accounting">Accounting</option></select>
+          <label className="label">Navigation layout</label>
+          <select className="select input" value={profilePrefs.navLayout || 'bottom'} onChange={(e) => setProfilePrefs({ ...profilePrefs, navLayout: e.target.value })}><option value="bottom">Bottom navigation</option><option value="sidebar">Sidebar</option><option value="compact">Compact sidebar</option></select>
+          <label className="label">Personal workspace label</label>
+          <input className="input" value={profilePrefs.workspaceLabel || ''} onChange={(e) => setProfilePrefs({ ...profilePrefs, workspaceLabel: e.target.value })} placeholder="Optional personal label" />
+          <label className="label">Quiet hours</label>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><input className="input" type="time" aria-label="Quiet hours start" value={profilePrefs.quietStart || '20:00'} onChange={(e) => setProfilePrefs({ ...profilePrefs, quietStart: e.target.value })} /><input className="input" type="time" aria-label="Quiet hours end" value={profilePrefs.quietEnd || '07:00'} onChange={(e) => setProfilePrefs({ ...profilePrefs, quietEnd: e.target.value })} /></div>
+          <label><input type="checkbox" checked={profilePrefs.emailNotifications !== false} onChange={(e) => setProfilePrefs({ ...profilePrefs, emailNotifications: e.target.checked })} /> Email notifications preference</label>
+          <label><input type="checkbox" checked={!!profilePrefs.pushNotifications} onChange={(e) => setProfilePrefs({ ...profilePrefs, pushNotifications: e.target.checked })} /> Push notifications preference</label>
+          <label><input type="checkbox" checked={!!profilePrefs.requireReauth} onChange={(e) => setProfilePrefs({ ...profilePrefs, requireReauth: e.target.checked })} /> Require re-authentication for sensitive actions (enforcement pending)</label>
+          <label><input type="checkbox" checked={!!profilePrefs.reducedMotion} onChange={(e) => setProfilePrefs({ ...profilePrefs, reducedMotion: e.target.checked })} /> Reduce motion preference</label>
+          <label><input type="checkbox" checked={!!profilePrefs.compactTables} onChange={(e) => setProfilePrefs({ ...profilePrefs, compactTables: e.target.checked })} /> Compact tables preference</label>
+          <label><input type="checkbox" checked={!!profilePrefs.soundEffects} onChange={(e) => setProfilePrefs({ ...profilePrefs, soundEffects: e.target.checked })} /> Interface sounds preference</label>
+          <label className="label">Auto-lock duration</label>
+          <select className="select input" value={String(profilePrefs.autoLockMinutes || autoLockMinutes)} onChange={(e) => setProfilePrefs({ ...profilePrefs, autoLockMinutes: Number(e.target.value) })}><option value="5">5 minutes</option><option value="15">15 minutes</option><option value="30">30 minutes</option></select>
+          <button type="button" className="btn btn-primary" onClick={() => {
+            const identity = String(user?.id || user?.email || user?.username || 'local').trim().toLowerCase()
+            const next = { ...profilePrefs, updatedAt: new Date().toISOString() }
+            localStorage.setItem('sa_profile_prefs_v1:' + identity, JSON.stringify(next))
+            if (next.theme) setTheme(next.theme)
+            localStorage.setItem('sa_density', next.density || 'comfortable')
+            document.documentElement.dataset.density = next.density || 'comfortable'
+            localStorage.setItem('sa_nav_prefs', JSON.stringify({ layout: next.navLayout || 'bottom' }))
+            window.dispatchEvent(new CustomEvent('sa-nav-prefs', { detail: { layout: next.navLayout || 'bottom' } }))
+            localStorage.setItem('sa_auto_lock_minutes_v1:' + identity, String(next.autoLockMinutes || 5))
+            window.dispatchEvent(new Event('sa-auto-lock-updated'))
+            setAutoLockMinutes(String(next.autoLockMinutes || 5))
+            setProfileSaved(true)
+            toast('Personal preferences saved for this account on this device', 'success')
+          }}>Save personal profile</button>
+          {profileSaved && <p className="muted" role="status">Saved for {user?.email || user?.username || 'this account'} on this device.</p>}
+        </div>
+      )}
 
       {tab === 'company' && (
         <form className="card" onSubmit={saveCompany} style={{ marginTop: 12 }}>
@@ -397,16 +457,17 @@ export default function Settings() {
             <h4 style={{ margin: '0 0 6px', color: 'var(--danger, #b42318)' }}>Reset signed-in account workspace</h4>
             <p className="muted" style={{ fontSize: 12 }}>Resets this owner workspace to first-run setup. Backups are saved first.</p>
             <p className="muted" style={{ fontSize: 12, margin: '0 0 8px' }}>
-              Factory preset PIN: <code>00000000</code> (eight zeros) if you never set a custom workspace PIN.
+              A server-verified workspace recovery PIN is required. There is no factory PIN or local-only reset bypass.
             </p>
-            <button type="button" className="btn btn-outline btn-sm" style={{ marginBottom: 8 }} onClick={() => setResetPin('00000000')}>
-              Use preset PIN 00000000
-            </button>
             <label className="label">Workspace recovery PIN</label>
-            <input className="input" type="password" inputMode="numeric" autoComplete="off" maxLength={12} value={resetPin} onChange={(e) => setResetPin(e.target.value.replace(/\D/g, '').slice(0, 12))} placeholder="6–12 digit PIN (preset 00000000)" />
+            <input className="input" type="password" inputMode="numeric" autoComplete="off" maxLength={12} value={resetPin} onChange={(e) => setResetPin(e.target.value.replace(/\D/g, '').slice(0, 12))} placeholder="6–12 digit recovery PIN" />
+            <label className="label">Confirm current account password</label>
+            <input className="input" type="password" autoComplete="current-password" value={resetCurrentPassword} onChange={(e) => setResetCurrentPassword(e.target.value)} placeholder="Current account password" />
+            <label className="label">Confirm recovery PIN</label>
+            <input className="input" type="password" inputMode="numeric" maxLength={12} value={resetPinConfirm} onChange={(e) => setResetPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 12))} placeholder="Re-enter recovery PIN" />
             <label className="label">Type RESET MY WORKSPACE</label>
             <input className="input" value={resetPhrase} onChange={(e) => setResetPhrase(e.target.value)} placeholder="RESET MY WORKSPACE" autoComplete="off" />
-            <button type="button" className="btn btn-danger" style={{ marginTop: 10 }} disabled={busy || resetPhrase.trim() !== 'RESET MY WORKSPACE' || !/^\d{6,12}$/.test(resetPin)} onClick={clearWorkspaceSafely}>
+            <button type="button" className="btn btn-danger" style={{ marginTop: 10 }} disabled={busy || resetPhrase.trim() !== 'RESET MY WORKSPACE' || !/^\d{6,12}$/.test(resetPin) || resetPin !== resetPinConfirm || !resetCurrentPassword} onClick={clearWorkspaceSafely}>
               {busy ? 'Saving backup & resetting…' : 'Save backups & reset my account'}
             </button>
           </div>
