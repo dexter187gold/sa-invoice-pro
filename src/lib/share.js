@@ -1,6 +1,6 @@
 /** WhatsApp / email share helpers for statements, reports, reminders */
-import { formatMoney } from './money'
-import { buildClientLedger } from './payments'
+import { formatMoney } from './money.js'
+import { buildClientLedger } from './payments.js'
 
 export function toWaNumber(phone) {
   let d = String(phone || '').replace(/\D/g, '')
