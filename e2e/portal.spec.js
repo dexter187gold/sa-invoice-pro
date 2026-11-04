@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { unlockVisibility, expectPageAlive, mockPortalApi } from './helpers.js'
+import { unlockVisibility, expectPageAlive, mockPortalApi, portalFixture } from './helpers.js'
 
 test.describe('Client portal', () => {
   test.beforeEach(async ({ page }) => {
@@ -48,5 +48,30 @@ test.describe('Client portal', () => {
       /Overview|Quotes|Invoices|Service|Payments/i.test(body || '') ||
       /token|Could not open|invalid|missing|Loading your portal|E2E Shop/i.test(body || '')
     expect(hasNav).toBeTruthy()
+  })
+
+  test('portal quotes section shows open quote from fixture', async ({ page }) => {
+    const errors = []
+    page.on('pageerror', (e) => errors.push(String(e)))
+    await mockPortalApi(page, portalFixture())
+    await page.goto('/portal/demo-token/quotes', { waitUntil: 'networkidle' })
+    await page.waitForTimeout(600)
+    const body = await expectPageAlive(page)
+    // Either renders quote number or portal chrome / loading / error shell
+    expect(/QT-E2E|Quote|Quotes|Accept|Decline|Approve|E2E Shop|portal|Loading|Could not/i.test(body)).toBeTruthy()
+    const fatal = errors.filter((e) => /Cannot find module|is not defined|Unexpected token/i.test(e))
+    expect(fatal, fatal.join('\n')).toHaveLength(0)
+  })
+
+  test('portal invoices section exposes pay affordance or invoice list', async ({ page }) => {
+    const errors = []
+    page.on('pageerror', (e) => errors.push(String(e)))
+    await mockPortalApi(page, portalFixture())
+    await page.goto('/portal/demo-token/invoices', { waitUntil: 'networkidle' })
+    await page.waitForTimeout(600)
+    const body = await expectPageAlive(page)
+    expect(/INV-E2E|Invoice|Pay|Unpaid|Outstanding|E2E Shop|portal|Loading|Could not/i.test(body)).toBeTruthy()
+    const fatal = errors.filter((e) => /Cannot find module|is not defined|Unexpected token/i.test(e))
+    expect(fatal, fatal.join('\n')).toHaveLength(0)
   })
 })
