@@ -1,3 +1,10 @@
+## 6.51.0 — Professional Pay Now foundation
+
+- **Payments (Paystack primary)**: Server routes for init / verify / webhook + payments ledger.
+- **Client portal**: Professional **Pay Now** button on unpaid invoices, Paystack Inline popup, verify + thank-you flow, success toast.
+- Dual-rail ready (PayFast stub in config). Env: `PAYSTACK_PUBLIC_KEY`, `PAYSTACK_SECRET_KEY`.
+- Roadmap elevated: trusted payment experience is now a north-star.
+
 ## 6.50.0 — Smart inbound WhatsApp suggest
 
 - **Inbox**: Paste the client's inbound message → **Smart suggest** (local keyword match) fills the best ZA-tone reply. No network needed.
