@@ -11,21 +11,49 @@ import {
 } from '../lib/chasePack'
 import { sendWhatsAppText, hasCloudCredentials } from '../lib/whatsapp'
 import { toWaNumber } from '../lib/share'
+import { CLIENT_PORTAL_URL } from '../config'
 import PageInsightsBar from '../components/PageInsightsBar'
+
+const CHASE_LOG_KEY = 'saip_chase_log_v1'
+
+function loadChaseLog() {
+  try {
+    return JSON.parse(localStorage.getItem(CHASE_LOG_KEY) || '{}') || {}
+  } catch {
+    return {}
+  }
+}
+
+function saveChaseLog(map) {
+  try {
+    localStorage.setItem(CHASE_LOG_KEY, JSON.stringify(map))
+  } catch {}
+}
+
+function ageBucket(days) {
+  if (days >= 30) return '30+'
+  if (days >= 14) return '14+'
+  if (days >= 7) return '7+'
+  return '0-6'
+}
 
 /**
  * Staff-assisted WhatsApp chase queue.
  * - Opens wa.me with pre-filled text (staff taps Send), OR
  * - Sends via Meta Cloud API when Dev Portal / settings credentials exist.
+ * - Age filters · portal/pay line · persisted last-chased timestamps
  */
 export default function WaChase() {
   const { invoices, tickets, clients, company, toast } = useApp()
   const [tab, setTab] = useState('invoices')
+  const [age, setAge] = useState('all') // all | 7+ | 14+ | 30+
   const [q, setQ] = useState('')
   const [done, setDone] = useState(() => new Set())
+  const [chaseLog, setChaseLog] = useState(() => loadChaseLog())
   const [busyId, setBusyId] = useState(null)
   const [modeInfo, setModeInfo] = useState(null)
   const [preview, setPreview] = useState(null)
+  const [includePortal, setIncludePortal] = useState(true)
 
   React.useEffect(() => {
     let alive = true
@@ -40,9 +68,15 @@ export default function WaChase() {
     return () => { alive = false }
   }, [])
 
+  const portalUrl = CLIENT_PORTAL_URL || ''
+  const chaseOpts = useMemo(
+    () => (includePortal && portalUrl ? { portalUrl } : {}),
+    [includePortal, portalUrl],
+  )
+
   const invoiceRows = useMemo(
-    () => buildChaseList(invoices || [], clients || [], company || {}),
-    [invoices, clients, company],
+    () => buildChaseList(invoices || [], clients || [], company || {}, chaseOpts),
+    [invoices, clients, company, chaseOpts],
   )
   const jobRows = useMemo(
     () => buildCollectionChaseList(tickets || [], clients || [], company || {}),
@@ -50,7 +84,10 @@ export default function WaChase() {
   )
 
   const rows = useMemo(() => {
-    const base = tab === 'jobs' ? jobRows : invoiceRows
+    let base = tab === 'jobs' ? jobRows : invoiceRows
+    if (age === '7+') base = base.filter((r) => (r.days || 0) >= 7)
+    else if (age === '14+') base = base.filter((r) => (r.days || 0) >= 14)
+    else if (age === '30+') base = base.filter((r) => (r.days || 0) >= 30)
     if (!q.trim()) return base
     return base.filter((r) =>
       matchesQuery(
@@ -64,11 +101,21 @@ export default function WaChase() {
         ['name', 'phone', 'num', 'msg'],
       ),
     )
-  }, [tab, invoiceRows, jobRows, q])
+  }, [tab, invoiceRows, jobRows, q, age])
 
   const pending = rows.filter((r) => !done.has(r.id))
   const withPhone = pending.filter((r) => r.hasPhone)
   const noPhone = pending.filter((r) => !r.hasPhone)
+
+  const ageCounts = useMemo(() => {
+    const src = tab === 'jobs' ? jobRows : invoiceRows
+    return {
+      all: src.length,
+      '7+': src.filter((r) => (r.days || 0) >= 7).length,
+      '14+': src.filter((r) => (r.days || 0) >= 14).length,
+      '30+': src.filter((r) => (r.days || 0) >= 30).length,
+    }
+  }, [tab, invoiceRows, jobRows])
 
   const exampleMsg = useMemo(() => buildLiveExampleMessage(company || {}), [company])
   const exampleUrl = useMemo(() => waMeUrl('0821234567', exampleMsg), [exampleMsg])
@@ -79,7 +126,24 @@ export default function WaChase() {
       n.add(id)
       return n
     })
+    const at = new Date().toISOString()
+    setChaseLog((prev) => {
+      const next = { ...prev, [id]: { at, count: (prev[id]?.count || 0) + 1 } }
+      saveChaseLog(next)
+      return next
+    })
   }, [])
+
+  const lastChasedLabel = (id) => {
+    const row = chaseLog[id]
+    if (!row?.at) return null
+    try {
+      const d = new Date(row.at)
+      return d.toLocaleString('en-ZA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    } catch {
+      return row.at.slice(0, 16)
+    }
+  }
 
   const sendOne = async (row) => {
     if (!row) return
@@ -126,7 +190,7 @@ export default function WaChase() {
         <div>
           <h1>WhatsApp chase</h1>
           <p className="subtitle">
-            Staff queue · overdue invoices & collection jobs · dual path (wa.me + Cloud)
+            Overdue invoices & collection jobs · filters · portal/pay line · dual path (wa.me + Cloud)
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -134,7 +198,7 @@ export default function WaChase() {
             Open next ({withPhone.length})
           </button>
           <Link className="btn btn-outline" to="/payments">Payments</Link>
-          <Link className="btn btn-outline" to="/reports">Reports</Link>
+          <Link className="btn btn-outline" to="/invoices?status=overdue">Overdue</Link>
           <Link className="btn btn-outline" to="/clients">Clients</Link>
         </div>
       </div>
@@ -151,8 +215,16 @@ export default function WaChase() {
       >
         <strong>Channel:</strong> {channelLabel}
         <div className="muted" style={{ marginTop: 6 }}>
-          wa.me never auto-sends — WhatsApp opens with the message filled in. Cloud API sends without a tap when Meta credentials are set in Dev Portal / Settings.
+          wa.me never auto-sends — WhatsApp opens with the message filled in. Include portal link so clients can pay online when Paystack test/live keys are set.
         </div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={includePortal}
+            onChange={(e) => setIncludePortal(e.target.checked)}
+          />
+          <span>Append portal / pay-online link on invoice chases</span>
+        </label>
       </div>
 
       <div className="grid-stats" style={{ marginBottom: '1rem' }}>
@@ -160,53 +232,6 @@ export default function WaChase() {
         <StatCard label="With phone" value={withPhone.length} tone="good" />
         <StatCard label="No phone" value={noPhone.length} tone={noPhone.length ? 'warn' : 'good'} />
         <StatCard label="Done this session" value={done.size} />
-      </div>
-
-      <div className="card" style={{ marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-          <div>
-            <h3 style={{ margin: 0 }}>Live example (demo number)</h3>
-            <p className="muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
-              Opens WhatsApp to <code>082 123 4567</code> → <code>27…</code> with a sample chase. Use real clients below.
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => setPreview(preview === 'example' ? null : 'example')}
-            >
-              {preview === 'example' ? 'Hide text' : 'Preview text'}
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              onClick={() => {
-                window.open(exampleUrl, '_blank', 'noopener,noreferrer')
-                toast('Demo wa.me opened — change number in Clients for real sends', 'info')
-              }}
-            >
-              Open demo wa.me
-            </button>
-          </div>
-        </div>
-        {preview === 'example' && (
-          <pre
-            style={{
-              marginTop: 12,
-              padding: 12,
-              background: 'var(--surface-2, #0f172a0d)',
-              borderRadius: 8,
-              whiteSpace: 'pre-wrap',
-              fontSize: 13,
-            }}
-          >
-            {exampleMsg}
-          </pre>
-        )}
-        <p className="muted" style={{ marginTop: 8, fontSize: 12, wordBreak: 'break-all' }}>
-          Link: {exampleUrl.slice(0, 120)}…
-        </p>
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -224,6 +249,17 @@ export default function WaChase() {
         >
           Collection jobs ({jobRows.length})
         </button>
+        {['all', '7+', '14+', '30+'].map((a) => (
+          <button
+            key={a}
+            type="button"
+            className={`btn btn-sm ${age === a ? 'btn-primary' : 'btn-outline'}`}
+            onClick={() => setAge(a)}
+            title={a === 'all' ? 'All ages' : `${a} days past due`}
+          >
+            {a === 'all' ? `All (${ageCounts.all})` : `${a} (${ageCounts[a] || 0})`}
+          </button>
+        ))}
         <div style={{ flex: 1, minWidth: 160 }}>
           <SearchInput value={q} onChange={setQ} placeholder="Filter name, phone, invoice…" />
         </div>
@@ -236,8 +272,8 @@ export default function WaChase() {
 
       {!rows.length && (
         <EmptyState
-          title={tab === 'jobs' ? 'No collection jobs' : 'No open invoices'}
-          hint={tab === 'jobs' ? 'Mark jobs ready for collection on Tickets.' : 'Record invoices that are unpaid / partial / overdue.'}
+          title={tab === 'jobs' ? 'No collection jobs' : 'No open invoices in this filter'}
+          hint={tab === 'jobs' ? 'Mark jobs ready for collection on Tickets.' : 'Record invoices that are unpaid / partial / overdue, or widen the age filter.'}
           action={<Link className="btn btn-primary btn-sm" to={tab === 'jobs' ? '/tickets' : '/invoices/new'}>{tab === 'jobs' ? 'Jobs' : 'New invoice'}</Link>}
         />
       )}
@@ -252,6 +288,9 @@ export default function WaChase() {
           r.kind === 'invoice'
             ? formatMoney(Number(r.inv?.amountDue ?? r.inv?.total) || 0)
             : null
+        const last = lastChasedLabel(r.id)
+        const bucket = ageBucket(r.days || 0)
+        const hot = (r.days || 0) >= 14
         return (
           <div
             key={r.id}
@@ -263,6 +302,7 @@ export default function WaChase() {
               gap: 8,
               flexWrap: 'wrap',
               alignItems: 'center',
+              borderLeft: hot ? '3px solid #f59e0b' : undefined,
             }}
           >
             <div style={{ minWidth: 180 }}>
@@ -272,7 +312,8 @@ export default function WaChase() {
               <div className="muted" style={{ fontSize: 13 }}>
                 {r.hasPhone ? toWaNumber(r.phone) : '⚠ No phone on client'}
                 {bal ? ` · ${bal}` : ''}
-                {r.days > 0 ? ` · ${r.days}d overdue` : ''}
+                {r.days > 0 ? ` · ${r.days}d overdue (${bucket})` : ''}
+                {last ? ` · last chase ${last}` : ''}
                 {isDone ? ' · done' : ''}
               </div>
             </div>
@@ -316,6 +357,50 @@ export default function WaChase() {
           </div>
         )
       })}
+
+      <div className="card" style={{ marginTop: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+          <div>
+            <h3 style={{ margin: 0 }}>Live example (demo number)</h3>
+            <p className="muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+              Opens WhatsApp to <code>082 123 4567</code> with a sample chase.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setPreview(preview === 'example' ? null : 'example')}
+            >
+              {preview === 'example' ? 'Hide text' : 'Preview text'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => {
+                window.open(exampleUrl, '_blank', 'noopener,noreferrer')
+                toast('Demo wa.me opened — change number in Clients for real sends', 'info')
+              }}
+            >
+              Open demo wa.me
+            </button>
+          </div>
+        </div>
+        {preview === 'example' && (
+          <pre
+            style={{
+              marginTop: 12,
+              padding: 12,
+              background: 'var(--surface-2, #0f172a0d)',
+              borderRadius: 8,
+              whiteSpace: 'pre-wrap',
+              fontSize: 13,
+            }}
+          >
+            {exampleMsg}
+          </pre>
+        )}
+      </div>
     </PageFade>
   )
 }
