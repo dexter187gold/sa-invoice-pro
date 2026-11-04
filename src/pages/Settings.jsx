@@ -19,9 +19,13 @@ import {
   isLoadSheddingMode, setLoadSheddingMode, listOutboundQueue, clearSentFromQueue,
 } from '../lib/loadShedding'
 import { loadCommsPrefs, saveCommsPrefs, addOptOut } from '../lib/quietHours'
-import { loadWhiteLabel, saveWhiteLabel, applyWhiteLabel, fileToLogoDataUrl } from '../lib/whiteLabel'
+import {
+  loadWhiteLabel, saveWhiteLabel, applyWhiteLabel, fileToLogoDataUrl, WHITE_LABEL_DEFAULTS, softAccent,
+} from '../lib/whiteLabel'
 import { readAccessStatus, normalizedPlan } from '../lib/accessControl'
 import Sync from '../lib/sync'
+
+const ACCENT_PRESETS = ['#0d9488', '#2563eb', '#7c3aed', '#dc2626', '#ea580c', '#059669', '#0ea5e9']
 
 export default function Settings() {
   const {
@@ -154,8 +158,18 @@ export default function Settings() {
 
   const saveWl = (e) => {
     e?.preventDefault?.()
-    setWl(saveWhiteLabel(wl))
-    toast('White-label applied', 'success')
+    const next = saveWhiteLabel({
+      ...wl,
+      accentSoft: wl.accent ? softAccent(wl.accent) : '',
+    })
+    setWl(next)
+    toast('White-label applied — accent & name update across the desk', 'success')
+  }
+
+  const resetWl = () => {
+    const next = saveWhiteLabel({ ...WHITE_LABEL_DEFAULTS })
+    setWl(next)
+    toast('White-label reset to product defaults', 'info')
   }
 
   const onLogo = async (e) => {
@@ -171,7 +185,7 @@ export default function Settings() {
   const tabs = [
     { id: 'company', label: 'Company' },
     { id: 'look', label: 'Look & themes' },
-    { id: 'brand', label: 'White-label' },
+    { id: 'brand', label: 'WhiteWhite-label' },
     { id: 'nav', label: 'Navigation' },
     { id: 'cloud', label: 'Cloud' },
     { id: 'data', label: 'Data' },
@@ -184,12 +198,18 @@ export default function Settings() {
   const settingsTabs = tabs.filter((item) => {
     if (!accessStatus?.licensed) return ['company', 'look', 'cloud', 'data'].includes(item.id)
     if (plan === 'solo') return ['company', 'look', 'nav', 'cloud', 'data', 'security'].includes(item.id)
-    if (plan === 'shop') return item.id !== 'brand'
+    if (plan === 'shop') return true // pilot: allow white-label on shop+
     return true
   })
   useEffect(() => {
     if (!settingsTabs.some((item) => item.id === tab)) setTab('company')
   }, [accessStatus?.licensed, plan, tab])
+
+  const accentHex = (() => {
+    const a = String(wl.accent || '').trim()
+    if (/^#?[0-9a-fA-F]{6}$/.test(a.replace('#', ''))) return a.startsWith('#') ? a : `#${a}`
+    return '#0d9488'
+  })()
 
   return (
     <PageFade>
@@ -239,13 +259,109 @@ export default function Settings() {
       {tab === 'brand' && (
         <form className="card form-grid" onSubmit={saveWl} style={{ marginTop: 12 }}>
           <h3 style={{ marginTop: 0 }}>White-label pilot</h3>
+          <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
+            Brand the desk for your shop or reseller. Accent drives primary buttons; name appears in the shell header.
+            Stored locally on this device (sync later).
+          </p>
+
+          <div
+            className="wl-preview"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: 12,
+              borderRadius: 12,
+              border: '1px solid var(--border, #334155)',
+              background: 'var(--surface-2, rgba(15,23,42,.4))',
+              marginBottom: 8,
+            }}
+          >
+            {wl.logoDataUrl ? (
+              <img src={wl.logoDataUrl} alt="" width={40} height={40} style={{ borderRadius: 8, objectFit: 'cover' }} />
+            ) : (
+              <div style={{ width: 40, height: 40, borderRadius: 8, background: accentHex }} />
+            )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <strong style={{ display: 'block' }}>{wl.brandName?.trim() || 'SA Invoice Pro'}</strong>
+              <span className="muted" style={{ fontSize: 12 }}>{wl.portalTagline?.trim() || 'Client portal'}</span>
+            </div>
+            <button type="button" className="btn btn-sm" style={{ background: accentHex, color: '#fff', border: 0 }}>Sample CTA</button>
+          </div>
+
           <label className="label">Brand name</label>
-          <input className="input" value={wl.brandName} onChange={(e) => setWl({ ...wl, brandName: e.target.value })} />
-          <label className="label">Logo</label>
+          <input
+            className="input"
+            value={wl.brandName}
+            onChange={(e) => setWl({ ...wl, brandName: e.target.value })}
+            placeholder="e.g. Midrand PC Desk"
+          />
+
+          <label className="label">Portal tagline</label>
+          <input
+            className="input"
+            value={wl.portalTagline || ''}
+            onChange={(e) => setWl({ ...wl, portalTagline: e.target.value })}
+            placeholder="e.g. Track jobs & pay invoices"
+          />
+
+          <label className="label">Logo (optional)</label>
           <input type="file" accept="image/*" className="input" onChange={onLogo} />
+          {wl.logoDataUrl ? (
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => setWl({ ...wl, logoDataUrl: '' })}>
+              Clear logo
+            </button>
+          ) : null}
+
           <label className="label">Accent colour</label>
-          <input className="input" value={wl.accent} onChange={(e) => setWl({ ...wl, accent: e.target.value })} />
-          <button type="submit" className="btn btn-primary">Apply white-label</button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <input
+              type="color"
+              value={accentHex}
+              onChange={(e) => setWl({ ...wl, accent: e.target.value })}
+              aria-label="Accent colour picker"
+              style={{ width: 44, height: 36, padding: 0, border: 0, background: 'transparent', cursor: 'pointer' }}
+            />
+            <input
+              className="input"
+              value={wl.accent}
+              onChange={(e) => setWl({ ...wl, accent: e.target.value })}
+              placeholder="#0d9488"
+              style={{ maxWidth: 140 }}
+            />
+            {ACCENT_PRESETS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                title={c}
+                onClick={() => setWl({ ...wl, accent: c })}
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 8,
+                  border: wl.accent === c || accentHex === c ? '2px solid #fff' : '1px solid var(--border)',
+                  background: c,
+                  cursor: 'pointer',
+                  padding: 0,
+                }}
+              />
+            ))}
+          </div>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={!!wl.hidePoweredBy}
+              onChange={(e) => setWl({ ...wl, hidePoweredBy: e.target.checked })}
+            />
+            <span>Hide “Powered by SA Invoice Pro” on portal / PDFs (pilot)</span>
+          </label>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+            <button type="submit" className="btn btn-primary">Apply white-label</button>
+            <button type="button" className="btn btn-outline" onClick={resetWl}>Reset defaults</button>
+            <Link className="btn btn-outline" to="/team">Team & seats</Link>
+          </div>
         </form>
       )}
 
