@@ -34,14 +34,15 @@ export default function Settings() {
   } = useApp()
   const nav = useNavigate()
   const [tab, setTab] = useState('company')
+  const [autoLockMinutes, setAutoLockMinutes] = useState(() => { const n = Number(localStorage.getItem('sa_auto_lock_minutes_v1') || 5); return [5, 15, 30].includes(n) ? String(n) : '5' })
   const [resetPin, setResetPin] = useState('')
   const [resetPhrase, setResetPhrase] = useState('')
   const [accessStatus, setAccessStatus] = useState(null)
   const [ownerDefaults, setOwnerDefaults] = useState(() => {
     try {
-      return { currency: 'ZAR', invoicePrefix: 'INV', quoteValidityDays: 14, paymentTermsDays: 7, lowStockThreshold: 3, fiscalYearStart: '03-01', ...JSON.parse(localStorage.getItem('sa_owner_defaults') || '{}') }
+      return { currency: 'ZAR', invoicePrefix: 'INV', quoteValidityDays: 14, paymentTermsDays: 7, lowStockThreshold: 3, fiscalYearStart: '03-01', invoiceDocumentType: 'tax-invoice', jobCardType: 'it-repair', ...JSON.parse(localStorage.getItem('sa_owner_defaults') || '{}') }
     } catch {
-      return { currency: 'ZAR', invoicePrefix: 'INV', quoteValidityDays: 14, paymentTermsDays: 7, lowStockThreshold: 3, fiscalYearStart: '03-01' }
+      return { currency: 'ZAR', invoicePrefix: 'INV', quoteValidityDays: 14, paymentTermsDays: 7, lowStockThreshold: 3, fiscalYearStart: '03-01', invoiceDocumentType: 'tax-invoice', jobCardType: 'it-repair' }
     }
   })
   const [form, setForm] = useState(() => companyToForm(company))
@@ -221,8 +222,8 @@ export default function Settings() {
         </div>
       </div>
 
-      <div className="settings-tabs-scroll" role="tablist" aria-label="Settings sections">
-        {settingsTabs.map((item) => <button key={item.id} type="button" role="tab" aria-selected={tab === item.id} className={`settings-tab ${tab === item.id ? 'active' : ''}`} onClick={() => setTab(item.id)}>{item.label}</button>)}
+      <div role="tablist" aria-label="Settings sections" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))', gap: 10, marginTop: 14 }}>
+        {settingsTabs.map((item) => <button key={item.id} type="button" role="tab" aria-selected={tab === item.id} onClick={() => setTab(item.id)} style={{ minHeight: 58, padding: '12px 14px', textAlign: 'left', borderRadius: 12, border: tab === item.id ? '2px solid var(--accent, #0d9488)' : '1px solid var(--border, #334155)', background: tab === item.id ? 'var(--surface-2, rgba(13,148,136,.12))' : 'var(--surface, transparent)', color: 'inherit', fontWeight: 700, cursor: 'pointer' }}>{item.label}<span style={{ display: 'block', fontSize: 11, fontWeight: 400, opacity: .7, marginTop: 3 }}>{item.id === 'company' ? 'Business profile' : item.id === 'data' ? 'Backup & recovery' : item.id === 'security' ? 'Privacy & device access' : item.id === 'operations' ? 'Invoice & job defaults' : 'Configure settings'}</span></button>)}
       </div>
 
       {tab === 'company' && (
@@ -428,13 +429,26 @@ export default function Settings() {
           <h3 style={{ marginTop: 0 }}>Owner defaults</h3>
           <label className="label">Invoice prefix</label>
           <input className="input" value={ownerDefaults.invoicePrefix} onChange={(e) => setOwnerDefaults({ ...ownerDefaults, invoicePrefix: e.target.value })} />
-          <button type="button" className="btn btn-primary" onClick={() => { localStorage.setItem('sa_owner_defaults', JSON.stringify(ownerDefaults)); toast('Defaults saved', 'success') }}>Save defaults</button>
+          <label className="label">Default invoice document type</label>
+          <select className="select input" value={ownerDefaults.invoiceDocumentType || 'tax-invoice'} onChange={(e) => setOwnerDefaults({ ...ownerDefaults, invoiceDocumentType: e.target.value })}><option value="tax-invoice">Tax invoice</option><option value="invoice">Standard invoice</option><option value="proforma">Pro-forma invoice</option><option value="deposit">Deposit invoice</option><option value="credit-note">Credit note</option><option value="statement">Customer statement</option></select>
+          <label className="label">Default job card type</label>
+          <select className="select input" value={ownerDefaults.jobCardType || 'it-repair'} onChange={(e) => setOwnerDefaults({ ...ownerDefaults, jobCardType: e.target.value })}><option value="it-repair">IT repair / diagnostics</option><option value="onsite-service">On-site service call</option><option value="maintenance">Maintenance / service</option><option value="installation">Installation / setup</option><option value="collection-delivery">Collection & delivery</option><option value="general-workshop">General workshop job</option></select>
+          <label className="label">Quote validity</label>
+          <select className="select input" value={String(ownerDefaults.quoteValidityDays || 14)} onChange={(e) => setOwnerDefaults({ ...ownerDefaults, quoteValidityDays: Number(e.target.value) })}><option value="7">7 days</option><option value="14">14 days</option><option value="30">30 days</option><option value="60">60 days</option></select>
+          <label className="label">Payment terms</label>
+          <select className="select input" value={String(ownerDefaults.paymentTermsDays || 7)} onChange={(e) => setOwnerDefaults({ ...ownerDefaults, paymentTermsDays: Number(e.target.value) })}><option value="0">Due immediately</option><option value="7">7 days</option><option value="14">14 days</option><option value="30">30 days</option></select>
+          <button type="button" className="btn btn-primary" onClick={() => { localStorage.setItem('sa_owner_defaults', JSON.stringify(ownerDefaults)); toast('Operational defaults saved', 'success') }}>Save operational defaults</button>
         </div>
       )}
 
       {tab === 'security' && (
-        <div style={{ marginTop: 12 }}>
-          <DeviceAccessPanel toast={toast} />
+        <div className="card form-grid" style={{ marginTop: 12 }}>
+          <h3 style={{ marginTop: 0 }}>Privacy & automatic workspace lock</h3>
+          <p className="muted" style={{ marginTop: 0 }}>Automatically lock the workspace after inactivity. Your subscription and device activation stay intact; signing back in unlocks the workspace.</p>
+          <label className="label" htmlFor="auto-lock-minutes">Lock after</label>
+          <select id="auto-lock-minutes" className="select input" value={autoLockMinutes} onChange={(e) => { const next = [5, 15, 30].includes(Number(e.target.value)) ? e.target.value : '5'; setAutoLockMinutes(next); localStorage.setItem('sa_auto_lock_minutes_v1', next); toast('Automatic lock set to ' + next + ' minutes', 'success') }}><option value="5">5 minutes</option><option value="15">15 minutes</option><option value="30">30 minutes</option></select>
+          <p className="muted" style={{ fontSize: 12 }}>Activity resets the timer. When it expires, the local workspace locks and requires sign-in again without revoking the cloud session or licence.</p>
+          <DeviceAccessPanel toast={toast} userLabel={user?.email} />
         </div>
       )}
 
