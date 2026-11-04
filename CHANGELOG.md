@@ -1,20 +1,17 @@
+## 6.56.0 — Seats + white-label pilot
+
+- **White-label**: Live preview, portal tagline, accent presets + colour picker, hide powered-by, reset defaults; Shop+ access.
+- **Docs**: Dual-rail seats (local + cloud) and white-label patterns in `docs/SEATS_AND_WHITE_LABEL.md`.
+- CSS hooks for `data-hide-powered`.
+
 ## 6.55.0 — Playwright + unit coverage
 
-- **Unit**: chase pack (portal pay line, age sort); bank match ranked alternatives.
-- **E2E**: portal quotes/invoices with fixture data; wa-chase + payments route smoke; richer portal API mock.
+- Chase pack, bank alternatives, portal quote/pay fixture, wa-chase smoke.
 
 ## 6.54.0 — Bank credit → invoice suggest
 
-- Ranked invoice alternatives on money-in; picker + reasons; one-click apply.
+- Ranked alternatives, picker, one-click apply.
 
 ## 6.53.0 — Collections chase UI
 
-- Age filters, portal/pay toggle, persisted last-chased, Pulse links.
-
-## 6.52.0 — Portal quote polish
-
-- Decline reason; accept toast; dual API paths; chase portal line.
-
-## 6.51.0 — Pay Now foundation
-
-- Paystack init / verify / webhook + portal Pay Now (test-key ready).
+- Age filters, portal/pay toggle, last-chased log.
