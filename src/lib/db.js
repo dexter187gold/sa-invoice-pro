@@ -409,6 +409,28 @@ export async function restoreAccountWorkspace(accountEmail) {
   return true
 }
 
+export async function recoverDeviceLicenseSettings() {
+  try {
+    const current = await getAll(STORES.settings)
+    const hasProof = current.some((row) => row.key === 'licenseKey' && row.value) && current.some((row) => row.key === 'activationToken' && row.value)
+    if (hasProof) return true
+    const deviceId = localStorage.getItem('saip_hwid') || current.find((row) => row.key === 'hwid')?.value
+    if (!deviceId) return false
+    const snapshots = await getAll(STORES.accountWorkspaces)
+    for (const snapshot of snapshots) {
+      const rows = snapshot?.data?.settings || []
+      const meta = rows.find((row) => row.key === 'licenseMeta')?.value
+      const key = rows.find((row) => row.key === 'licenseKey')?.value
+      const token = rows.find((row) => row.key === 'activationToken')?.value
+      if (meta?.server === true && meta?.hwid === deviceId && key && token) {
+        for (const row of rows.filter((item) => DEVICE_LICENSE_SETTING_KEYS.has(String(item.key)))) await setSetting(row.key, row.value)
+        return true
+      }
+    }
+  } catch (error) { console.warn('[license recovery] device proof', error?.message || error) }
+  return false
+}
+
 export async function listTicketComments(ticketId) {
   const all = await getAll(STORES.ticketComments)
   return all
