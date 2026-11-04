@@ -2,7 +2,7 @@
 **Target:** ~10 000 capability units across user · app · server · client portal  
 **Positioning:** The operating system for **Southern African IT / mobile repair / MSP benches** — not a generic invoice clone.
 
-**Current baseline (shipped):** ~6.9.x · offline-first SPA · cloud sync · team link · portal · SMS proxy · device bind · roles · tickets/Kanban · themes · Google OAuth hooks · admin multi-tenant
+**Current baseline (shipped):** ~6.50.x · offline-first SPA · cloud sync · team link · portal · SMS proxy · device bind · roles · tickets/Kanban · themes · Google OAuth hooks · admin multi-tenant
 
 **Effort model:** Each phase lists **themes**; each theme expands into many concrete updates (UI states, API fields, edge cases, tests, docs). Sum of themes ≈ **10 000 update-units** when fully executed.
 
@@ -18,6 +18,7 @@
 6. **One profile, many devices** — Google/email + team link skips JSON backup after first sync  
 7. **Pulse desk** — cash + SLA + collection ring in one glance  
 8. **SA tax/invoice habits** — VAT 15%, quote→invoice, proforma culture  
+9. **Trusted payment experience** — professional Pay Now flow, Instant EFT, card & Apple Pay, automatic reconciliation, WhatsApp-shareable payment links
 
 ---
 
@@ -58,38 +59,41 @@
 ---
 
 ## P3 — Money loop (invoice → cash → bank)
-**Goal:** Close the till without Excel. ~1 000 units
+**Goal:** Close the till without Excel. Professional, trusted, low-friction money movement. ~1 100 units
 
 | # | Theme |
 |---|--------|
 | 3.1 | Quote → job → invoice chain with one-click convert |
-| 3.2 | Partial payments, tips, COD flags |
-| 3.3 | Bank CSV match (ZA banks) + apply |
-| 3.4 | Overdue chase pack (WA + SMS + email) |
+| 3.2 | Partial payments, tips, COD flags, deposit handling |
+| 3.3 | Bank CSV match (ZA banks) + intelligent apply |
+| 3.4 | Overdue chase pack (WA + SMS + email) with professional tone |
 | 3.5 | Collection ring on Pulse |
 | 3.6 | Deposit / retention / warranty hold |
 | 3.7 | Multi-currency later; ZAR-first polish now |
-| 3.8 | PDF themes per brand (white-label) |
-| 3.9 | Signature + portal “approve quote” |
-| 3.10 | Tax invoice compliance checklist (VAT fields) |
+| 3.8 | PDF themes per brand (white-label) — tax-invoice ready |
+| 3.9 | Signature + portal “approve quote” → seamless pay |
+| 3.10 | Tax invoice compliance checklist (VAT fields, SARS-ready) |
+| 3.11 | **Professional payment rails** — Paystack (primary) + PayFast/Ozow support, Instant EFT, cards, Apple Pay |
+| 3.12 | Automatic payment reconciliation + webhook-driven status updates |
 
 ---
 
 ## P4 — Client experience (customer portal)
-**Goal:** Clients feel a premium shop. ~900 units
+**Goal:** Clients feel they are dealing with a premium, modern workshop. ~950 units
 
 | # | Theme |
 |---|--------|
 | 4.1 | Portal: invoices, balances, job status (read) |
 | 4.2 | Approve quote / reject with reason |
-| 4.3 | Pay link stub (PayFast / Ozow / Peach) |
+| 4.3 | **Professional Pay Now experience** — Paystack Inline / Payment Pages + PayFast fallback. Secure, branded, mobile-first checkout. Support Instant EFT (Ozow), cards, Capitec Pay, Apple Pay. Generate WhatsApp-shareable payment links and portal buttons. Auto-mark paid via webhook. |
 | 4.4 | Upload photo of issue from phone |
 | 4.5 | Magic link login (no password) |
 | 4.6 | Branding: logo, colours, domain |
 | 4.7 | POPIA consent capture |
-| 4.8 | SMS/WA “portal ready” notifications |
+| 4.8 | SMS/WA “portal ready” + “payment received” notifications |
 | 4.9 | Public booking request → ticket draft |
 | 4.10 | NPS after collection |
+| 4.11 | Payment receipt & thank-you experience (branded) |
 
 ---
 
@@ -168,7 +172,7 @@
 
 | # | Theme |
 |---|--------|
-| 9.1 | Playwright expanded (invoice, job, team join) |
+| 9.1 | Playwright expanded (invoice, job, team join, payment flow) |
 | 9.2 | Load test workspace push |
 | 9.3 | Git durable store monitoring |
 | 9.4 | Encrypted field store (passcodes) |
@@ -206,13 +210,13 @@
 | User-facing UI states | 2 500 | empty, loading, error, offline, permission denied per screen |
 | Interactions | 2 000 | gestures, bulk actions, keyboard shortcuts, WA shares |
 | Server endpoints & validation | 1 500 | every field, authz, rate limit, audit |
-| Client portal | 1 000 | public pages, magic links, branding |
+| Client portal | 1 100 | public pages, magic links, branding, **professional Pay Now** |
 | Data model & migrations | 800 | indexes, merge, branch keys |
-| Tests & CI | 700 | unit + e2e + smoke |
+| Tests & CI | 700 | unit + e2e + smoke + payment flow |
 | Docs & license packaging | 500 | runbooks, reseller kit |
 | Polish & a11y | 500 | contrast, touch targets, screen reader |
-| Integrations | 500 | SMS, WA, PayFast, webhooks |
-| **Total** | **~10 000** | |
+| Integrations | 600 | SMS, WA, **Paystack + PayFast**, webhooks, bank CSV |
+| **Total** | **~10 200** | |
 
 ---
 
@@ -220,13 +224,13 @@
 
 | Sprint | Focus |
 |--------|--------|
-| Now | Google secrets on Render · invite persistence · cloud restore soak |
-| +2 w | Job device passport + FRP checklist + WA deep link polish |
-| +4 w | Portal approve-quote + PayFast stub |
-| +6 w | Bank CSV + chase pack |
-| +8 w | Postgres migration design · seat enforcement server-side |
-| +10 w | AI desk assistant v1 · load-shedding mode |
-| +12 w | White-label pilot with 1 partner shop |
+| **Now** | **Professional payments foundation** — Paystack account setup, Payment Pages pilot, portal Pay Now stub, roadmap alignment |
+| +1–2 w | Portal approve-quote polish + full Paystack Inline / webhook flow (auto-mark paid) |
+| +3–4 w | Bank CSV match UX depth + collections chase pack |
+| +5–6 w | Job device passport + FRP checklist + WA deep-link polish |
+| +7–8 w | Seat multi-user polish + white-label CSS pilot |
+| +9–10 w | Playwright coverage expansion (including payment paths) |
+| +11–12 w | AI desk assistant v1 · load-shedding mode · partner shop pilot |
 
 ---
 
@@ -236,6 +240,8 @@
 - Restore on new phone without JSON > 95% success  
 - Job → invoice conversion taps ≤ 2  
 - Portal open rate from WA link  
+- **Payment conversion** (quote/invoice → paid)  
+- Time from “Pay Now” click to money in merchant account  
 - Paid licenses (other IT companies)  
 
 ---
@@ -245,5 +251,6 @@
 - Editable Markdown: `SA-Invoice-Pro-Roadmap-P1-P10.md`  
 - Phase board in-app can mirror P1–P10 checkboxes  
 - Revisit uniqueness pack (P10) every quarter — this is the moat  
+- Payment rails reviewed whenever new SA gateways mature (Paystack primary, PayFast strong secondary)
 
-*Execute in slices; measure; keep the bench feeling faster than the competition.*
+*Execute in slices; measure; keep the bench feeling faster — and more professional — than the competition.*
