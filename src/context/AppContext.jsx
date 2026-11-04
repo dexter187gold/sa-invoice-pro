@@ -165,6 +165,7 @@ export function AppProvider({ children }) {
     }
     const activityEvents = ['pointerdown', 'keydown', 'touchstart', 'scroll', 'click']
     activityEvents.forEach((eventName) => window.addEventListener(eventName, resetTimer, { passive: true }))
+    window.addEventListener('sa-auto-lock-updated', resetTimer)
     const onVisibility = () => {
       if (document.visibilityState !== 'visible' || expired) return
       if (Date.now() - lastActivityAt >= getAutoLockMs()) signOutForInactivity()
@@ -175,6 +176,7 @@ export function AppProvider({ children }) {
     return () => {
       clearTimeout(timer)
       activityEvents.forEach((eventName) => window.removeEventListener(eventName, resetTimer))
+      window.removeEventListener('sa-auto-lock-updated', resetTimer)
       document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [ready, user?.id, user?.email, toast])
