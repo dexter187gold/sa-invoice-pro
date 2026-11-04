@@ -17,7 +17,8 @@ import { audit } from '../lib/auditLog'
 function confidenceMeta(score) {
   if (score >= 70) return { label: 'Strong', bg: 'rgba(16,185,129,.15)', color: '#059669' }
   if (score >= 40) return { label: 'Possible', bg: 'rgba(245,158,11,.15)', color: '#b45309' }
-  return { label: 'Weak', bg: 'rgba(148,163,184,.15)', color: '#64748b' }
+  if (score > 0) return { label: 'Weak', bg: 'rgba(148,163,184,.15)', color: '#64748b' }
+  return { label: '—', bg: 'rgba(148,163,184,.1)', color: '#64748b' }
 }
 
 export default function BankImport() {
@@ -43,6 +44,8 @@ export default function BankImport() {
     () => (invoices || []).filter((i) => !['paid', 'cancelled', 'void'].includes(String(i.status || '').toLowerCase())),
     [invoices],
   )
+
+  const clientName = (id) => (clients || []).find((c) => String(c.id) === String(id))?.name || ''
 
   const classifyDescription = (txn) => {
     const d = String(txn?.description || '').toLowerCase()
@@ -119,9 +122,9 @@ export default function BankImport() {
       setTxns(imported)
       const matched = matchBankToInvoices(imported, openInvoices, clients)
       const debits = imported.filter((t) => !t.isCredit).map((txn) => ({
-        txn, invoice: null, score: 0, reasons: ['Debit — classify in bookkeeping'], suggested: false,
+        txn, invoice: null, score: 0, reasons: ['Debit — classify in bookkeeping'], suggested: false, alternatives: [],
       }))
-      setMatches([...matched, ...debits])
+      setMatches([...matched.filter((m) => Number(m.txn?.amount) > 0), ...debits])
       setCategories(Object.fromEntries(imported.map((t) => [t.id, t.suggestedCategory || classifyDescription(t)])))
       setSkipped({})
       setManualPick({})
@@ -160,15 +163,25 @@ export default function BankImport() {
     }
   }
 
+  const resolveInvoiceForRow = (row) => {
+    const pickId = manualPick[row.txn?.id]
+    if (pickId) {
+      return openInvoices.find((i) => String(i.id) === String(pickId)) || row.invoice
+    }
+    return row.invoice
+  }
+
   const applyPaymentMatch = async (row) => {
-    if (!row?.invoice || !row?.txn) return toast('No invoice match on this line', 'error')
+    const inv = resolveInvoiceForRow(row)
+    if (!inv || !row?.txn) return toast('Pick an invoice first', 'error')
     if (!(Number(row.txn.amount) > 0)) return toast('Only money-in lines can be applied as payments', 'error')
     setApplyingId(row.txn.id)
     try {
-      await applyBankMatch(row.txn, row.invoice)
+      await applyBankMatch(row.txn, inv)
       setSavedCount((n) => n + 1)
       await refresh?.()
-      toast(`Payment applied to ${row.invoice.number}`, 'success')
+      toast(`Payment applied to ${inv.number}`, 'success')
+      setMatches((list) => list.filter((m) => m.txn?.id !== row.txn.id))
     } catch (e) {
       toast(e?.message || 'Could not apply payment', 'error')
     } finally {
@@ -190,9 +203,9 @@ export default function BankImport() {
       setTxns(normalized)
       const m = matchBankToInvoices(normalized, openInvoices, clients)
       const debits = normalized.filter((t) => !t.isCredit).map((txn) => ({
-        txn, invoice: null, score: 0, reasons: ['Debit — classify in bookkeeping'], suggested: false,
+        txn, invoice: null, score: 0, reasons: ['Debit — classify in bookkeeping'], suggested: false, alternatives: [],
       }))
-      setMatches([...m, ...debits])
+      setMatches([...m.filter((x) => Number(x.txn?.amount) > 0), ...debits])
       setSkipped({})
       setManualPick({})
       toast(`${normalized.length} transactions · review compare panel before saving`, 'success')
@@ -214,12 +227,17 @@ export default function BankImport() {
     }
   }, [txns, openingBalance, closingBalance])
 
+  const creditMatches = useMemo(
+    () => (matches || []).filter((r) => Number(r.txn?.amount) > 0),
+    [matches],
+  )
+
   return (
     <PageFade>
       <div className="page-header">
         <div>
           <h1>Bank import</h1>
-          <p className="subtitle">CSV / Excel / PDF statements · date · amount in/out · description · safe compare before save</p>
+          <p className="subtitle">CSV / Excel / PDF · safe compare · ranked invoice suggestions on money-in</p>
         </div>
       </div>
 
@@ -239,7 +257,7 @@ export default function BankImport() {
           <div className="card" style={{ padding: 12 }}><div className="muted" style={{ fontSize: 11 }}>Money in</div><strong style={{ color: 'var(--success)' }}>{formatMoney(statementTotals.credits)}</strong></div>
           <div className="card" style={{ padding: 12 }}><div className="muted" style={{ fontSize: 11 }}>Money out</div><strong style={{ color: 'var(--danger)' }}>{formatMoney(statementTotals.debits)}</strong></div>
           <div className="card" style={{ padding: 12 }}><div className="muted" style={{ fontSize: 11 }}>Net</div><strong>{formatMoney(statementTotals.net)}</strong></div>
-          <div className="card" style={{ padding: 12 }}><div className="muted" style={{ fontSize: 11 }}>Lines</div><strong>{txns.length}</strong></div>
+          <div className="card" style={{ padding: 12 }}><div className="muted" style={{ fontSize: 11 }}>Suggested matches</div><strong>{creditMatches.filter((m) => m.suggested || manualPick[m.txn?.id]).length}</strong></div>
         </div>
       ) : null}
 
@@ -285,8 +303,10 @@ export default function BankImport() {
         <EmptyState title="No transactions yet" hint="Export CSV or Excel from your bank app, then upload it here. You will review duplicates before anything is saved." />
       ) : (
         <div className="card" style={{ marginTop: 12 }}>
-          <h3 style={{ marginTop: 0 }}>Statement lines & invoice match suggestions</h3>
-          <p className="muted" style={{ fontSize: 13 }}>Matching is a suggestion only. Apply payments one at a time after review. Statement import itself does not change invoice statuses.</p>
+          <h3 style={{ marginTop: 0 }}>Money-in → invoice suggestions</h3>
+          <p className="muted" style={{ fontSize: 13 }}>
+            Ranked by amount, date, invoice number, and client name. Pick another open invoice from the list if the suggestion is wrong, then apply.
+          </p>
           <div style={{ overflowX: 'auto' }}>
             <table className="data-table" style={{ width: '100%', fontSize: 13 }}>
               <thead>
@@ -294,13 +314,14 @@ export default function BankImport() {
                   <th>Date</th>
                   <th>Description</th>
                   <th>Amount</th>
-                  <th>Suggested invoice</th>
+                  <th>Invoice</th>
+                  <th>Why</th>
                   <th>Confidence</th>
                   <th>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {(matches.length ? matches : txns.map((txn) => ({ txn, invoice: null, score: 0 })))
+                {(matches.length ? matches : txns.map((txn) => ({ txn, invoice: null, score: 0, alternatives: [] })))
                   .filter((row) => {
                     const a = Number((row.txn || row).amount) || 0
                     if (dirFilter === 'in') return a > 0
@@ -311,26 +332,56 @@ export default function BankImport() {
                   const t = row.txn || row
                   const conf = confidenceMeta(row.score)
                   const amt = Number(t.amount) || 0
+                  const alts = row.alternatives || []
+                  const selectedId = manualPick[t.id] || (row.invoice?.id ? String(row.invoice.id) : '')
                   return (
                     <tr key={t.id || idx}>
                       <td>{t.date ? formatDateZA(t.date) : '—'}</td>
-                      <td style={{ maxWidth: 240 }}>
+                      <td style={{ maxWidth: 220 }}>
                         <div>{t.description || '—'}</div>
                         <div className="muted" style={{ fontSize: 11 }}>
                           <span style={{ color: amt >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 700 }}>{amt >= 0 ? 'IN' : 'OUT'}</span>
+                          {t.reference ? ` · ${t.reference}` : ''}
                         </div>
                       </td>
                       <td style={{ fontWeight: 600, color: amt >= 0 ? 'var(--success)' : 'var(--danger)' }}>{formatMoney(amt)}</td>
-                      <td>{row.invoice ? <strong>{row.invoice.number}</strong> : <span className="muted">—</span>}</td>
+                      <td style={{ minWidth: 200 }}>
+                        {amt > 0 ? (
+                          <select
+                            className="input"
+                            style={{ minWidth: 180, fontSize: 12 }}
+                            value={selectedId}
+                            onChange={(e) => setManualPick((m) => ({ ...m, [t.id]: e.target.value }))}
+                          >
+                            <option value="">Choose invoice…</option>
+                            {alts.length
+                              ? alts.map((a) => (
+                                  <option key={a.invoice.id} value={a.invoice.id}>
+                                    {a.label} ({a.score})
+                                  </option>
+                                ))
+                              : openInvoices.slice(0, 40).map((inv) => (
+                                  <option key={inv.id} value={inv.id}>
+                                    {inv.number} · {clientName(inv.clientId)} · R{(Number(inv.amountDue != null ? inv.amountDue : inv.total) || 0).toFixed(2)}
+                                  </option>
+                                ))}
+                          </select>
+                        ) : (
+                          <span className="muted">—</span>
+                        )}
+                      </td>
+                      <td style={{ maxWidth: 160, fontSize: 11 }} className="muted">
+                        {(row.reasons || []).slice(0, 3).join(' · ') || (amt > 0 ? 'Pick manually' : '—')}
+                      </td>
                       <td>
                         <span style={{ padding: '2px 8px', borderRadius: 999, fontSize: 11, background: conf.bg, color: conf.color }}>{conf.label}</span>
                       </td>
                       <td>
-                        {row.invoice && amt > 0 ? (
+                        {amt > 0 ? (
                           <button
                             type="button"
                             className="btn btn-primary btn-sm"
-                            disabled={applyingId === t.id}
+                            disabled={applyingId === t.id || !selectedId}
                             onClick={() => applyPaymentMatch(row)}
                           >
                             {applyingId === t.id ? '…' : 'Apply payment'}
@@ -347,7 +398,7 @@ export default function BankImport() {
               </tbody>
             </table>
           </div>
-          {savedCount ? <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>Books updated {savedCount} time(s) this session via compare panel.</p> : null}
+          {savedCount ? <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>Books updated {savedCount} time(s) this session.</p> : null}
         </div>
       )}
     </PageFade>
