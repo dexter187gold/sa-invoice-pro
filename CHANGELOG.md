@@ -1,3 +1,9 @@
+## 6.52.0 — Portal quote polish + chase portal line
+
+- **Client portal**: Decline quote prompts for optional reason; accept shows toast and jumps to Invoices when open balance exists; dual API path for decisions.
+- **Chase pack**: Optional portal / pay-online line on collection messages.
+- Pay Now remains test-key ready until live keys arrive.
+
 ## 6.51.0 — Professional Pay Now foundation
 
 - **Payments (Paystack primary)**: Server routes for init / verify / webhook + payments ledger.
@@ -21,19 +27,3 @@
 
 - **Inbox**: Expanded QUICK_REPLIES — ready for collection, waiting on parts, quote follow-up, payment received, bring ID + accessories, price/diagnose next, booking confirmed (ZA tone).
 - Desk can respond to pending WhatsApp clients faster without leaving the app (Cloud or wa.me).
-
-## 6.47.0 — Edge reliability + license health + Tech Diagnose
-
-- **Documents**: Tech Diagnose Report template (Hardware, 12 sections)
-- **License server**: `license_health.py` + `start_license.py` registers `/health` and `/api/health`
-- **Cloudflare**: `cloudflare/edge-proxy` Worker — aggregate health, proxy WA / PayFast / license API
-- **Website**: `APP_LINKS.website` → https://sa-invoice-pro.pages.dev
-- **saip-sync** (separate repo): 6.46.1, `/api/health`, dual `/api/whatsapp/*` routes
-
-## 6.46.1 — Tech Diagnose Report
-
-- Documents generator template + sections
-
-## 6.46.0 — WhatsApp chase queue
-
-- `/wa-chase` dual path wa.me + Cloud
