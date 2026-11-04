@@ -189,7 +189,7 @@ export default function Shell({ children, sections: sectionsProp }) {
         </div>
         <NotificationBell />
         <button type="button" className="shell-account-action" onClick={handleLock} title="Lock workspace" aria-label="Lock workspace">🔒</button>
-        <button type="button" className="shell-account-action" onClick={handleSignOut} title="Sign out" aria-label="Sign out">↪</button>
+        <button type="button" className="shell-account-action" onClick={handleSignOut} title="Sign out" aria-label="Sign out" style={{ minWidth: 74, padding: '6px 9px', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>Sign out</button>
         <span className={`status-dot ${online ? 'on' : 'off'}`} title={online ? 'Online' : 'Offline'} />
       </div>
 
@@ -218,6 +218,9 @@ export default function Shell({ children, sections: sectionsProp }) {
               </NavLink>
             ))}
           </nav>
+          <div style={{ padding: '12px 14px', borderTop: '1px solid var(--border, #334155)' }}>
+            <button type="button" className="btn btn-outline" onClick={handleSignOut} style={{ width: '100%', justifyContent: 'center' }} aria-label="Sign out of SA Invoice Pro">↪ Sign out</button>
+          </div>
         </aside>
 
         {open ? <div className="sidebar-backdrop show" onClick={() => setOpen(false)} aria-hidden="true" /> : null}
