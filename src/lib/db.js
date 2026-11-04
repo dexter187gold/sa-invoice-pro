@@ -385,6 +385,27 @@ export async function restoreAccountWorkspace(accountEmail) {
   const data = { ...saved.data }
   if (Array.isArray(data.settings)) data.settings = data.settings.filter((row) => !DEVICE_LICENSE_SETTING_KEYS.has(String(row.key)))
   await importAll(data, { wipe: false })
+
+  // Recover a previously isolated device activation from legacy account snapshots,
+  // but only when its recorded hardware ID matches this browser's device ID.
+  try {
+    const current = await getAll(STORES.settings)
+    const hasProof = current.some((row) => row.key === 'licenseKey' && row.value) && current.some((row) => row.key === 'activationToken' && row.value)
+    const deviceId = localStorage.getItem('saip_hwid') || current.find((row) => row.key === 'hwid')?.value
+    if (!hasProof && deviceId) {
+      const snapshots = await getAll(STORES.accountWorkspaces)
+      for (const snapshot of snapshots) {
+        const rows = snapshot?.data?.settings || []
+        const meta = rows.find((row) => row.key === 'licenseMeta')?.value
+        const key = rows.find((row) => row.key === 'licenseKey')?.value
+        const token = rows.find((row) => row.key === 'activationToken')?.value
+        if (meta?.server === true && meta?.hwid === deviceId && key && token) {
+          for (const row of rows.filter((item) => DEVICE_LICENSE_SETTING_KEYS.has(String(item.key)))) await setSetting(row.key, row.value)
+          break
+        }
+      }
+    }
+  } catch (error) { console.warn('[license recovery] legacy device proof', error?.message || error) }
   return true
 }
 
