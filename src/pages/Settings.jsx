@@ -191,13 +191,13 @@ export default function Settings() {
     { id: 'cloud', label: 'Cloud' },
     { id: 'data', label: 'Data' },
     { id: 'comms', label: 'Comms' },
-    { id: 'operations', label: 'Owner defaults' },
+    { id: 'operations', label: 'Invoice & job settings' },
     { id: 'security', label: 'Security & access' },
   ]
 
   const plan = normalizedPlan(accessStatus)
   const settingsTabs = tabs.filter((item) => {
-    if (!accessStatus?.licensed) return ['company', 'look', 'cloud', 'data'].includes(item.id)
+    if (!accessStatus?.licensed) return ['company', 'look', 'cloud', 'data', 'security'].includes(item.id)
     if (plan === 'solo') return ['company', 'look', 'nav', 'cloud', 'data', 'security'].includes(item.id)
     if (plan === 'shop') return true
     return true
