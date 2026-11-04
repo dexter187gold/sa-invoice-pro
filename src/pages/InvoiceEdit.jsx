@@ -32,6 +32,7 @@ export default function InvoiceEdit() {
   const [status, setStatus] = useState('unpaid')
   const [notes, setNotes] = useState('')
   const [templateId, setTemplateId] = useState('standard')
+  const [documentType, setDocumentType] = useState(() => { try { return JSON.parse(localStorage.getItem('sa_owner_defaults') || '{}').invoiceDocumentType || 'tax-invoice' } catch { return 'tax-invoice' } })
   const [devices, setDevices] = useState('')
   const [serviceType, setServiceType] = useState('')
   const [accountType, setAccountType] = useState('COD Account')
@@ -101,6 +102,7 @@ export default function InvoiceEdit() {
     setStatus(existing.status || 'unpaid')
     setNotes(existing.notes || '')
     setTemplateId(existing.templateId || 'standard')
+    setDocumentType(existing.documentType || 'tax-invoice')
     setDevices(existing.devices || '')
     setServiceType(existing.serviceType || '')
     setAccountType(existing.accountType || 'COD Account')
@@ -148,6 +150,7 @@ export default function InvoiceEdit() {
       status,
       notes,
       templateId,
+      documentType,
       devices,
       serviceType,
       accountType,
@@ -301,6 +304,8 @@ export default function InvoiceEdit() {
               </select>
             </div>
             <div>
+              <label className="label">Invoice type</label>
+              <select className="select" value={documentType} onChange={(e) => setDocumentType(e.target.value)}><option value="tax-invoice">Tax invoice</option><option value="invoice">Standard invoice</option><option value="proforma">Pro-forma invoice</option><option value="deposit">Deposit invoice</option><option value="credit-note">Credit note</option><option value="statement">Customer statement</option></select>
               <label className="label">Style</label>
               <select className="select" value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
                 {TEMPLATE_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
