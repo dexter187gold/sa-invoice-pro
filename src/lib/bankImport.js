@@ -209,32 +209,73 @@ function daysBetween(a, b) {
   } catch { return 999 }
 }
 
+/** Score one invoice against a credit txn. */
+export function scoreInvoiceMatch(txn, inv, clientName = '') {
+  const due = Number(inv.amountDue != null ? inv.amountDue : inv.total) || 0
+  if (due <= 0) return { score: 0, reasons: [] }
+  let score = 0
+  const rs = []
+  const amt = Number(txn.amount) || 0
+  if (Math.abs(amt - due) < 0.05) { score += 50; rs.push('Exact amount') }
+  else if (Math.abs(amt - due) / Math.max(due, 1) < 0.02) { score += 35; rs.push('Amount close') }
+  else if (Math.abs(amt - due) / Math.max(due, 1) < 0.1) { score += 12; rs.push('Amount nearby') }
+  const d = daysBetween(txn.date, inv.dueDate || inv.date)
+  if (d <= 3) { score += 20; rs.push('Date near due') }
+  else if (d <= 14) { score += 10; rs.push('Date within 2 weeks') }
+  else if (d <= 45) { score += 4; rs.push('Date within 6 weeks') }
+  const desc = String(txn.description || '').toLowerCase()
+  const ref = String(txn.reference || '').toLowerCase()
+  const num = String(inv.number || '').toLowerCase()
+  const name = String(clientName || '').toLowerCase()
+  if (num && (desc.includes(num) || ref.includes(num))) { score += 25; rs.push('Invoice number in description') }
+  if (name && name.length > 3) {
+    const token = name.slice(0, Math.min(12, name.length))
+    if (desc.includes(token) || ref.includes(token)) { score += 15; rs.push('Client name hinted') }
+  }
+  return { score, reasons: rs }
+}
+
+/**
+ * Match credits to open invoices.
+ * Returns best match + ranked alternatives (top 5) for picker UX.
+ */
 export function matchBankToInvoices(txns = [], invoices = [], clients = []) {
   const open = invoices.filter((i) => ['unpaid', 'partial', 'overdue'].includes(i.status || 'unpaid'))
   const clientName = (id) => clients.find((c) => String(c.id) === String(id))?.name || ''
   return txns.map((txn) => {
-    if (!(Number(txn.amount) > 0)) return { txn, invoice: null, score: 0, reasons: ['Debit — not matched to invoices'], suggested: false }
-    let best = null, bestScore = 0, reasons = []
-    for (const inv of open) {
-      const due = Number(inv.amountDue != null ? inv.amountDue : inv.total) || 0
-      if (due <= 0) continue
-      let score = 0
-      const rs = []
-      const amt = Number(txn.amount) || 0
-      if (Math.abs(amt - due) < 0.05) { score += 50; rs.push('Exact amount') }
-      else if (Math.abs(amt - due) / Math.max(due, 1) < 0.02) { score += 35; rs.push('Amount close') }
-      const d = daysBetween(txn.date, inv.dueDate || inv.date)
-      if (d <= 3) { score += 20; rs.push('Date near due') }
-      else if (d <= 14) { score += 10; rs.push('Date within 2 weeks') }
-      const desc = String(txn.description || '').toLowerCase()
-      const ref = String(txn.reference || '').toLowerCase()
-      const num = String(inv.number || '').toLowerCase()
-      const name = String(clientName(inv.clientId) || '').toLowerCase()
-      if (num && (desc.includes(num) || ref.includes(num))) { score += 25; rs.push('Invoice number in description') }
-      if (name && name.length > 3 && desc.includes(name.slice(0, Math.min(12, name.length)))) { score += 15; rs.push('Client name hinted') }
-      if (score > bestScore) { bestScore = score; best = inv; reasons = rs }
+    if (!(Number(txn.amount) > 0)) {
+      return {
+        txn,
+        invoice: null,
+        score: 0,
+        reasons: ['Debit — not matched to invoices'],
+        suggested: false,
+        alternatives: [],
+      }
     }
-    return { txn, invoice: bestScore >= 40 ? best : null, score: bestScore, reasons, suggested: bestScore >= 40 }
+    const ranked = []
+    for (const inv of open) {
+      const { score, reasons } = scoreInvoiceMatch(txn, inv, clientName(inv.clientId))
+      if (score > 0) {
+        ranked.push({
+          invoice: inv,
+          score,
+          reasons,
+          label: `${inv.number || inv.id} · ${clientName(inv.clientId) || 'Client'} · R${(Number(inv.amountDue != null ? inv.amountDue : inv.total) || 0).toFixed(2)}`,
+        })
+      }
+    }
+    ranked.sort((a, b) => b.score - a.score)
+    const best = ranked[0] || null
+    const bestScore = best?.score || 0
+    return {
+      txn,
+      invoice: bestScore >= 40 ? best.invoice : null,
+      score: bestScore,
+      reasons: best?.reasons || [],
+      suggested: bestScore >= 40,
+      alternatives: ranked.slice(0, 5),
+    }
   })
 }
 
@@ -247,8 +288,23 @@ export async function applyBankMatch(txn, invoice, opts = {}) {
   const prior = findBankTxnForMatch(txn, existingRows)
   if (prior.alreadyApplied) return { duplicate: true, bankTxn: prior.row, paymentId: prior.row.paymentId }
   const stableKey = 'bank-' + txnFingerprint(txn)
-  const result = await recordPayment({ invoice, amount, date: txn.date || new Date().toISOString().slice(0, 10), method: opts.method || 'EFT', reference: txn.reference || txn.description || '', idempotencyKey: stableKey })
-  const bankRow = { ...(prior.row || txn), id: prior.row?.id || txn.id || stableKey, matchedInvoiceId: invoice.id, paymentId: result.payment.id, reconciled: true, bookkeepingStatus: 'matched', matchedAt: new Date().toISOString() }
+  const result = await recordPayment({
+    invoice,
+    amount,
+    date: txn.date || new Date().toISOString().slice(0, 10),
+    method: opts.method || 'EFT',
+    reference: txn.reference || txn.description || '',
+    idempotencyKey: stableKey,
+  })
+  const bankRow = {
+    ...(prior.row || txn),
+    id: prior.row?.id || txn.id || stableKey,
+    matchedInvoiceId: invoice.id,
+    paymentId: result.payment.id,
+    reconciled: true,
+    bookkeepingStatus: 'matched',
+    matchedAt: new Date().toISOString(),
+  }
   await db.put(STORES.bankTxns, bankRow)
   return { ...result, bankTxn: bankRow }
 }
