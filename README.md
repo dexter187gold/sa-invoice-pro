@@ -1,4 +1,4 @@
-# SA Invoice Pro 6.50.0
+# SA Invoice Pro 6.56.0
 
 Smart inbound WhatsApp suggest · Bench pack for repair shops.
 
