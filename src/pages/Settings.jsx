@@ -93,9 +93,12 @@ export default function Settings() {
   const clearWorkspaceSafely = async () => {
     if (resetPhrase.trim() !== 'RESET MY WORKSPACE') return toast('Type RESET MY WORKSPACE exactly to confirm.', 'error')
     if (!/^\d{6,12}$/.test(resetPin)) return toast('Enter your 6–12 digit workspace recovery PIN.', 'error')
+    if (resetPin !== resetPinConfirm) return toast('Recovery PIN entries do not match.', 'error')
+    if (!resetCurrentPassword) return toast('Confirm your current account password.', 'error')
     setBusy(true)
     try {
       const snapshot = await saveAutoBackup({ reason: 'pre-account-workspace-reset', label: 'Recovery copy before account workspace reset' })
+      await Sync.setWorkspaceResetPin(resetPin, resetPinConfirm, resetCurrentPassword)
       await Sync.resetWorkspace(resetPin, 'RESET MY WORKSPACE')
       await db.clearActiveWorkspace()
       const audit = { id: crypto.randomUUID(), action: 'account_workspace_reset', at: new Date().toISOString(), actor: user?.email || user?.username || 'signed-in-user', localSnapshotId: snapshot.id, localSnapshotAt: snapshot.at, status: 'completed' }
