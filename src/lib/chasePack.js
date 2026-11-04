@@ -13,7 +13,13 @@ export function daysPastDue(inv, now = Date.now()) {
   return Math.max(0, Math.floor((now - d) / 86400000))
 }
 
-export function buildChaseMessage(inv, client = {}, company = {}) {
+/** Optional second line: portal URL or “pay online” hint */
+function portalPayBit(portalUrl) {
+  if (!portalUrl) return ''
+  return `\n\nView or pay online: ${portalUrl}`
+}
+
+export function buildChaseMessage(inv, client = {}, company = {}, opts = {}) {
   const name = client.name || inv.clientName || 'there'
   const co = company.name || 'us'
   const num = inv.number || inv.id || ''
@@ -24,7 +30,8 @@ export function buildChaseMessage(inv, client = {}, company = {}) {
   return (
     `Hi ${name}, hope you are well.\n\n` +
     `Friendly reminder from *${co}* regarding invoice *${num}* — balance *${formatMoney(bal)}*${ageBit}.\n\n` +
-    `Please arrange payment or reply here if you need a copy / payment details. Thank you.`
+    `Please arrange payment or reply here if you need a copy / payment details. Thank you.` +
+    portalPayBit(opts.portalUrl)
   )
 }
 
@@ -56,12 +63,12 @@ export function waMeUrl(phone, text) {
   return `https://wa.me/${wa}?text=${encodeURIComponent(text || '')}`
 }
 
-export function buildChaseList(invoices, clients = [], company = {}) {
+export function buildChaseList(invoices, clients = [], company = {}, opts = {}) {
   return (invoices || [])
     .filter(isOpenInvoice)
     .map((inv) => {
       const client = (clients || []).find((c) => String(c.id) === String(inv.clientId)) || {}
-      const message = buildChaseMessage(inv, client, company)
+      const message = buildChaseMessage(inv, client, company, opts)
       const phone = client.phone || inv.clientPhone || ''
       return {
         id: String(inv.id),
@@ -98,8 +105,8 @@ export function buildCollectionChaseList(tickets, clients = [], company = {}) {
     })
 }
 
-export function buildInvoiceReminder(inv, client, company) {
-  return buildChaseMessage(inv, client, company)
+export function buildInvoiceReminder(inv, client, company, opts) {
+  return buildChaseMessage(inv, client, company, opts)
 }
 export function buildJobUpdate(ticket, client, company) {
   const name = client?.name || ticket?.contactName || 'there'
@@ -141,6 +148,6 @@ export function buildPortalShare(client, company, url) {
   return (
     `Hi ${name},\n\n` +
     `*${co}* shared your client portal:\n${url || ''}\n\n` +
-    `You can view quotes and invoices there.`
+    `You can view quotes, accept them, and pay invoices online.`
   )
 }
