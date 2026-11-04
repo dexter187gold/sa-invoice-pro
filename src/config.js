@@ -1,7 +1,7 @@
-export const APP_VERSION = '6.53.0'
+export const APP_VERSION = '6.54.0'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
-export const APP_CODENAME = '6.53.0 · Chase age filters · Portal pay line · Persisted chase log'
+export const APP_CODENAME = '6.54.0 · Bank credit → ranked invoice suggest · Manual picker'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
 export const DEFAULT_VAT_RATE = 0.15
@@ -22,7 +22,6 @@ export const LICENSE_API_URL =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_LICENSE_API_URL) ||
   'https://saip-license.onrender.com'
 
-/** Optional Cloudflare edge proxy (after wrangler deploy) */
 export const EDGE_PROXY_URL =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_EDGE_PROXY_URL) ||
   ''
