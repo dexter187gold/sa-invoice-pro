@@ -1,5 +1,5 @@
 /** Overdue / collection chase messages — dual path ready (wa.me + Cloud) */
-import { formatMoney } from './money'
+import { formatMoney } from './money.js'
 import { toWaNumber } from './share'
 
 export function isOpenInvoice(inv) {
