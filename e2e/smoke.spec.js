@@ -79,4 +79,22 @@ test.describe('SA Invoice Pro smoke', () => {
     const fatal = errors.filter((e) => /Cannot find module|is not defined|Unexpected token/i.test(e))
     expect(fatal, fatal.join('\n')).toHaveLength(0)
   })
+
+  test('wa-chase route no module crash', async ({ page }) => {
+    const errors = []
+    page.on('pageerror', (e) => errors.push(String(e)))
+    await page.goto('/wa-chase')
+    await page.waitForTimeout(800)
+    const fatal = errors.filter((e) => /Cannot find module|is not defined|Unexpected token/i.test(e))
+    expect(fatal, fatal.join('\n')).toHaveLength(0)
+  })
+
+  test('payments route no module crash', async ({ page }) => {
+    const errors = []
+    page.on('pageerror', (e) => errors.push(String(e)))
+    await page.goto('/payments')
+    await page.waitForTimeout(800)
+    const fatal = errors.filter((e) => /Cannot find module|is not defined|Unexpected token/i.test(e))
+    expect(fatal, fatal.join('\n')).toHaveLength(0)
+  })
 })
