@@ -84,3 +84,31 @@ test('bank matching blocks a duplicate payment when the statement line was alrea
   assert.equal(found.row.id, 'bank-row-1')
   assert.equal(found.alreadyApplied, true)
 })
+
+test('credit match returns ranked alternatives', () => {
+  const invoices = [
+    { id: 'i1', number: 'INV-100', status: 'unpaid', amountDue: 500, total: 500, clientId: 'c1', dueDate: '2026-10-01' },
+    { id: 'i2', number: 'INV-200', status: 'unpaid', amountDue: 480, total: 480, clientId: 'c1', dueDate: '2026-09-15' },
+    { id: 'i3', number: 'INV-300', status: 'unpaid', amountDue: 900, total: 900, clientId: 'c2', dueDate: '2026-08-01' },
+  ]
+  const clients = [
+    { id: 'c1', name: 'Acme Corp' },
+    { id: 'c2', name: 'Other' },
+  ]
+  const txn = {
+    id: 't1',
+    isCredit: true,
+    amount: 500,
+    description: 'EFT from Acme Corp INV-100',
+    reference: 'INV-100',
+    date: '2026-10-02',
+  }
+  const result = matchBankToInvoices([txn], invoices, clients)
+  assert.equal(result.length, 1)
+  assert.ok(result[0].suggested)
+  assert.equal(result[0].invoice?.id, 'i1')
+  assert.ok(Array.isArray(result[0].alternatives))
+  assert.ok(result[0].alternatives.length >= 2)
+  assert.ok(result[0].alternatives[0].score >= result[0].alternatives[1].score)
+  assert.ok(result[0].reasons.some((r) => /amount|invoice|client/i.test(r)))
+})
