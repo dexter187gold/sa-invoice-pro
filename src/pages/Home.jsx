@@ -174,6 +174,7 @@ export default function Home() {
         <Link className="btn btn-outline btn-sm" to="/sync">Sync health</Link>
         <Link className="btn btn-outline btn-sm" to="/settings">Settings · Cloud</Link>
         <Link className="btn btn-outline btn-sm" to="/accounting">Accounting</Link>
+        <Link className="btn btn-outline btn-sm" to="/wa-chase">WhatsApp chase</Link>
         <Link className="btn btn-outline btn-sm" to="/bank">Bank import</Link>
       </div>
 
@@ -281,7 +282,7 @@ export default function Home() {
         <section className="pulse-section">
           <div className="pulse-section-head">
             <h2>Chase list</h2>
-            <span className="muted">WhatsApp-first</span>
+            <Link className="btn btn-outline btn-sm" to="/wa-chase">Full queue</Link>
           </div>
           <div className="pulse-chase">
             {needsChase.map((row) => (
@@ -295,7 +296,7 @@ export default function Home() {
                 </div>
                 <div className="pulse-chase-btns">
                   <button type="button" className="btn btn-primary btn-sm" onClick={() => chaseWhatsApp(row.client, row.total, row.count)}>WhatsApp</button>
-                  <Link className="btn btn-outline btn-sm" to="/invoices?status=overdue">View</Link>
+                  <Link className="btn btn-outline btn-sm" to="/wa-chase">Queue</Link>
                 </div>
               </div>
             ))}
@@ -322,6 +323,7 @@ export default function Home() {
                 {a.title}
               </Link>
             ))}
+            <Link className="btn btn-outline btn-sm" to="/wa-chase">WhatsApp chase</Link>
             <Link className="btn btn-outline btn-sm" to="/quotes">Quotes · pull cloud decisions</Link>
           </div>
         </div>
