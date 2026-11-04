@@ -1,4 +1,4 @@
-import { getSetting, setSetting } from './db.js'
+import { getSetting, setSetting, recoverDeviceLicenseSettings } from './db.js'
 import { SA_CONFIG } from '../config.js'
 
 /** Alpha soft trial length (days). Matches deviceLicense SOFT_LIMITS. */
@@ -189,6 +189,7 @@ export async function ensureTrialStarted() {
 }
 
 export async function getLicenseStatus() {
+  await recoverDeviceLicenseSettings()
   const trialStart = await ensureTrialStarted()
   const key = await getSetting('licenseKey', null)
   const meta = await getSetting('licenseMeta', null)
