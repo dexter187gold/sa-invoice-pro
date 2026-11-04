@@ -33,6 +33,7 @@ import './styles.modern-ux.css'
 import './styles.pulse.css'
 import './styles.nav-comfort.css'
 import './styles.glass.css'
+import './styles.white-label.css'
 
 // Apply theme once, after styles load — never force-overwrite user choice
 try { loadSavedTheme() } catch {}
