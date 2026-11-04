@@ -101,7 +101,7 @@
       await loadPaystackScript()
       var cfg = await fetchPayConfig()
       if (!cfg.enabled || !cfg.publicKey) {
-        throw new Error('Online payments are not enabled for this workshop yet. Please pay via EFT or contact the shop.')
+        throw new Error('Online payments are not enabled for this workshop yet (test or live keys). Please pay via EFT or contact the shop.')
       }
 
       var init = await api('/api/portal/pay/init', {
@@ -158,9 +158,8 @@
       })
       if (v.ok) {
         showToast('Payment received — thank you!')
-        if (token()) {
-          showApp()
-        } else {
+        if (token()) showApp()
+        else {
           app.innerHTML =
             '<div class="shell"><div class="card login-card">' +
             '<div class="eyebrow">Payment successful</div>' +
@@ -171,14 +170,14 @@
             '</div></div>'
         }
       } else {
-        alert(v.message || 'Payment could not be confirmed. Please contact the workshop with your reference.')
+        alert(v.message || 'Payment could not be confirmed.')
         if (btn) {
           btn.disabled = false
           btn.textContent = 'Pay Now'
         }
       }
     } catch (e) {
-      alert(e.message || 'Verification failed. If money left your account, contact the workshop with the reference.')
+      alert(e.message || 'Verification failed.')
       if (btn) {
         btn.disabled = false
         btn.textContent = 'Pay Now'
@@ -196,6 +195,43 @@
       t.classList.remove('show')
       setTimeout(function () { t.remove() }, 300)
     }, 3200)
+  }
+
+  /** Professional quote decision — optional reason on decline */
+  async function decideQuote(quoteId, decision, dash, paint, tabRef) {
+    var note = ''
+    if (decision === 'rejected' || decision === 'reject' || decision === 'decline') {
+      note = window.prompt('Optional: reason for declining (sent to the workshop)', '') || ''
+      note = String(note).slice(0, 500)
+    }
+    var body = {
+      quoteId: quoteId,
+      decision: decision,
+      action: decision === 'accepted' || decision === 'accept' ? 'approve' : 'reject',
+      note: note,
+      token: portalViewToken() || token(),
+    }
+    try {
+      try {
+        await api('/api/client-portal/quote-decision', { method: 'POST', body: JSON.stringify(body) })
+      } catch (e1) {
+        await api('/api/portal/quote-decision', { method: 'POST', body: JSON.stringify(body) })
+      }
+      if (decision === 'accepted' || decision === 'accept') {
+        showToast('Quote accepted — thank you')
+      } else {
+        showToast('Quote declined' + (note ? ' (note sent)' : ''))
+      }
+      var fresh = await api('/api/client-portal/dashboard')
+      Object.assign(dash, fresh)
+      if ((decision === 'accepted' || decision === 'accept') && (dash.invoices || []).some(function (i) { return isUnpaid(i.status) })) {
+        tabRef.current = 'invoices'
+      }
+      paint()
+    } catch (e) {
+      alert(e.message || 'Could not save decision')
+      throw e
+    }
   }
 
   function renderLogin(err) {
@@ -247,10 +283,11 @@
   async function showApp() {
     try {
       var dash = await api('/api/client-portal/dashboard')
-      var tab = 'overview'
+      var tabRef = { current: 'overview' }
       fetchPayConfig().catch(function () {})
 
       function paint() {
+        var tab = tabRef.current
         var client = dash.client || {}
         var company = (dash.company && dash.company.name) || 'Your workshop'
         var sum = dash.summary || {}
@@ -276,7 +313,7 @@
             '<div class="stat"><b>' + (sum.quotes || 0) + '</b><span class="muted">Quotes</span></div>' +
             '<div class="stat"><b>' + (sum.tickets || 0) + '</b><span class="muted">Service jobs</span></div>' +
             '</div>' +
-            '<div class="card"><p class="muted" style="margin:0">Review invoices, accept quotes, track jobs, and pay securely online.</p></div>'
+            '<div class="card"><p class="muted" style="margin:0">Review invoices, accept quotes, track jobs, and pay securely online (test or live).</p></div>'
         }
 
         if (tab === 'invoices') {
@@ -299,7 +336,7 @@
         }
 
         if (tab === 'quotes') {
-          html += '<div class="card"><strong>Quotes</strong>'
+          html += '<div class="card"><strong>Quotes</strong><p class="muted" style="font-size:13px;margin:6px 0 0">Accept to notify the workshop. Decline can include a short reason.</p>'
           var qs = dash.quotes || []
           if (!qs.length) html += '<p class="muted">No quotes waiting.</p>'
           qs.forEach(function (q) {
@@ -313,7 +350,7 @@
                   '<button class="btn btn-ok btn-sm" data-q="' + q.id + '" data-d="accepted">Accept</button>' +
                   '<button class="btn btn-bad btn-sm" data-q="' + q.id + '" data-d="rejected">Decline</button>' +
                   '</div>'
-                : '') +
+                : (q.portalNote ? '<div class="muted" style="font-size:12px;margin-top:4px">Note: ' + q.portalNote + '</div>' : '')) +
               '</div>' + pill(q.status) + '</div>'
           })
           html += '</div>'
@@ -355,7 +392,7 @@
         document.getElementById('out').onclick = logout
         app.querySelectorAll('[data-tab]').forEach(function (el) {
           el.onclick = function () {
-            tab = el.getAttribute('data-tab')
+            tabRef.current = el.getAttribute('data-tab')
             paint()
           }
         })
@@ -363,14 +400,8 @@
           el.onclick = async function () {
             el.disabled = true
             try {
-              await api('/api/client-portal/quote-decision', {
-                method: 'POST',
-                body: JSON.stringify({ quoteId: el.getAttribute('data-q'), decision: el.getAttribute('data-d') }),
-              })
-              dash = await api('/api/client-portal/dashboard')
-              paint()
+              await decideQuote(el.getAttribute('data-q'), el.getAttribute('data-d'), dash, paint, tabRef)
             } catch (e) {
-              alert(e.message || 'Could not save decision')
               el.disabled = false
             }
           }
