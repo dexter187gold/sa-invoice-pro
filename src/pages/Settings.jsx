@@ -24,6 +24,7 @@ import {
 } from '../lib/whiteLabel'
 import { readAccessStatus, normalizedPlan } from '../lib/accessControl'
 import Sync from '../lib/sync'
+import { readProfilePrefs, saveProfilePrefs } from '../lib/profilePreferences'
 
 const ACCENT_PRESETS = ['#0d9488', '#2563eb', '#7c3aed', '#dc2626', '#ea580c', '#059669', '#0ea5e9']
 
@@ -34,14 +35,14 @@ export default function Settings() {
   } = useApp()
   const nav = useNavigate()
   const [tab, setTab] = useState('company')
-  const [autoLockMinutes, setAutoLockMinutes] = useState(() => { const n = Number(localStorage.getItem('sa_auto_lock_minutes_v1') || 5); return [5, 15, 30].includes(n) ? String(n) : '5' })
+  const [autoLockMinutes, setAutoLockMinutes] = useState(() => { const n = Number(readProfilePrefs(user).autoLockMinutes || 5); return [5, 15, 30].includes(n) ? String(n) : '5' })
   const [resetPin, setResetPin] = useState('')
   const [resetPhrase, setResetPhrase] = useState('')
   const [resetCurrentPassword, setResetCurrentPassword] = useState('')
   const [resetPinConfirm, setResetPinConfirm] = useState('')
   const [profilePrefs, setProfilePrefs] = useState(() => {
     const identity = String(user?.id || user?.email || user?.username || 'local').trim().toLowerCase()
-    try { return { ...JSON.parse(localStorage.getItem('sa_profile_prefs_v1:' + identity) || '{}') } } catch { return {} }
+    try { return { ...readProfilePrefs(user) } } catch { return {} }
   })
   const [profileSaved, setProfileSaved] = useState(false)
   const [accessStatus, setAccessStatus] = useState(null)
@@ -273,13 +274,13 @@ export default function Settings() {
           <button type="button" className="btn btn-primary" onClick={() => {
             const identity = String(user?.id || user?.email || user?.username || 'local').trim().toLowerCase()
             const next = { ...profilePrefs, updatedAt: new Date().toISOString() }
-            localStorage.setItem('sa_profile_prefs_v1:' + identity, JSON.stringify(next))
+            saveProfilePrefs(user, next)
             if (next.theme) setTheme(next.theme)
             localStorage.setItem('sa_density', next.density || 'comfortable')
             document.documentElement.dataset.density = next.density || 'comfortable'
             localStorage.setItem('sa_nav_prefs', JSON.stringify({ layout: next.navLayout || 'bottom' }))
             window.dispatchEvent(new CustomEvent('sa-nav-prefs', { detail: { layout: next.navLayout || 'bottom' } }))
-            localStorage.setItem('sa_auto_lock_minutes_v1:' + identity, String(next.autoLockMinutes || 5))
+            saveProfilePrefs(user, { autoLockMinutes: Number(next.autoLockMinutes || 5) })
             window.dispatchEvent(new Event('sa-auto-lock-updated'))
             setAutoLockMinutes(String(next.autoLockMinutes || 5))
             setProfileSaved(true)
@@ -510,7 +511,7 @@ export default function Settings() {
           <h3 style={{ marginTop: 0 }}>Privacy & automatic workspace lock</h3>
           <p className="muted" style={{ marginTop: 0 }}>Automatically lock the workspace after inactivity. Your subscription and device activation stay intact; signing back in unlocks the workspace.</p>
           <label className="label" htmlFor="auto-lock-minutes">Lock after</label>
-          <select id="auto-lock-minutes" className="select input" value={autoLockMinutes} onChange={(e) => { const next = [5, 15, 30].includes(Number(e.target.value)) ? e.target.value : '5'; setAutoLockMinutes(next); localStorage.setItem('sa_auto_lock_minutes_v1', next); window.dispatchEvent(new Event('sa-auto-lock-updated')); toast('Automatic lock set to ' + next + ' minutes', 'success') }}><option value="5">5 minutes</option><option value="15">15 minutes</option><option value="30">30 minutes</option></select>
+          <select id="auto-lock-minutes" className="select input" value={autoLockMinutes} onChange={(e) => { const next = [5, 15, 30].includes(Number(e.target.value)) ? e.target.value : '5'; setAutoLockMinutes(next); saveProfilePrefs(user, { autoLockMinutes: Number(next) }); window.dispatchEvent(new Event('sa-auto-lock-updated')); toast('Automatic lock set to ' + next + ' minutes', 'success') }}><option value="5">5 minutes</option><option value="15">15 minutes</option><option value="30">30 minutes</option></select>
           <p className="muted" style={{ fontSize: 12 }}>Activity resets the timer. When it expires, the local workspace locks and requires sign-in again without revoking the cloud session or licence.</p>
           <DeviceAccessPanel toast={toast} userLabel={user?.email} />
         </div>
