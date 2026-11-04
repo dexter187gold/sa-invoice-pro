@@ -185,7 +185,7 @@ export default function Settings() {
   const tabs = [
     { id: 'company', label: 'Company' },
     { id: 'look', label: 'Look & themes' },
-    { id: 'brand', label: 'WhiteWhite-label' },
+    { id: 'brand', label: 'White-label' },
     { id: 'nav', label: 'Navigation' },
     { id: 'cloud', label: 'Cloud' },
     { id: 'data', label: 'Data' },
@@ -198,7 +198,7 @@ export default function Settings() {
   const settingsTabs = tabs.filter((item) => {
     if (!accessStatus?.licensed) return ['company', 'look', 'cloud', 'data'].includes(item.id)
     if (plan === 'solo') return ['company', 'look', 'nav', 'cloud', 'data', 'security'].includes(item.id)
-    if (plan === 'shop') return true // pilot: allow white-label on shop+
+    if (plan === 'shop') return true
     return true
   })
   useEffect(() => {
@@ -354,7 +354,7 @@ export default function Settings() {
               checked={!!wl.hidePoweredBy}
               onChange={(e) => setWl({ ...wl, hidePoweredBy: e.target.checked })}
             />
-            <span>Hide “Powered by SA Invoice Pro” on portal / PDFs (pilot)</span>
+            <span>Hide "Powered by SA Invoice Pro" on portal / PDFs (pilot)</span>
           </label>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
