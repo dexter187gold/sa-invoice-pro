@@ -12,8 +12,13 @@ import { cloudLogin, cloudRegister } from '../lib/cloudAuth'
 const AppCtx = createContext(null)
 const FIVE_MIN_MS = 5 * 60 * 1000
 const AUTO_LOCK_OPTIONS = [5, 15, 30]
-function getAutoLockMs() {
-  try { const n = Number(localStorage.getItem('sa_auto_lock_minutes_v1') || 5); return AUTO_LOCK_OPTIONS.includes(n) ? n * 60000 : 300000 } catch { return 300000 }
+function getAutoLockMs(user) {
+  try {
+    const identity = encodeURIComponent(String(user?.id || user?.email || user?.username || 'local').trim().toLowerCase())
+    const prefs = JSON.parse(localStorage.getItem('sa_profile_prefs_v1:' + identity) || '{}')
+    const n = Number(prefs.autoLockMinutes || 5)
+    return AUTO_LOCK_OPTIONS.includes(n) ? n * 60000 : 300000
+  } catch { return 300000 }
 }
 const syncActivity = (state) => { try { document.documentElement.dataset.saipSyncState = state; window.dispatchEvent(new CustomEvent('saip-sync-state', { detail: state })) } catch {} }
 
@@ -161,14 +166,14 @@ export function AppProvider({ children }) {
       if (expired) return
       lastActivityAt = Date.now()
       clearTimeout(timer)
-      timer = setTimeout(signOutForInactivity, getAutoLockMs())
+      timer = setTimeout(signOutForInactivity, getAutoLockMs(user))
     }
     const activityEvents = ['pointerdown', 'keydown', 'touchstart', 'scroll', 'click']
     activityEvents.forEach((eventName) => window.addEventListener(eventName, resetTimer, { passive: true }))
     window.addEventListener('sa-auto-lock-updated', resetTimer)
     const onVisibility = () => {
       if (document.visibilityState !== 'visible' || expired) return
-      if (Date.now() - lastActivityAt >= getAutoLockMs()) signOutForInactivity()
+      if (Date.now() - lastActivityAt  >= getAutoLockMs(user)) signOutForInactivity()
       else resetTimer()
     }
     document.addEventListener('visibilitychange', onVisibility)
