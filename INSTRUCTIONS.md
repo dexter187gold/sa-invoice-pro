@@ -23,6 +23,7 @@ North stars:
 5. POPIA-aware defaults
 6. Pulse desk: cash + SLA + collection ring in one glance
 7. SA tax habits: VAT 15%, quote→invoice, proforma culture
+8. **Trusted, professional payment experience** (Paystack primary + PayFast secondary)
 
 ---
 
@@ -50,6 +51,15 @@ Offline: SPA queues decisions in `localStorage` (`saip_portal_decisions_v1`); Qu
 
 ---
 
+## Current priority slice (Nov 2026)
+
+**Professional payments foundation**
+- Paystack is the primary rail (Payment Pages for fast start, Inline JS + webhooks for portal).
+- PayFast remains a strong secondary option for shops that already have merchant accounts.
+- Goal: clients experience a clean, branded, mobile-first Pay Now that feels like a premium workshop.
+
+---
+
 ## Slice workflow (always)
 
 1. Read current `package.json` version + `ROADMAP_STATUS.md`.
@@ -68,9 +78,10 @@ Offline: SPA queues decisions in `localStorage` (`saip_portal_decisions_v1`); Qu
 - Render: saip-sync + license server env (`DATA_DIR` for portal-store)
 - Google OAuth client for production login (if enabled)
 - Product mailbox: **sainvoicepro@gmail.com**
+- **Paystack** business account + public/secret keys (test + live)
 
 Grok does not store passwords; ask owner to set secrets in host dashboards.
 
 ---
 
-*Last updated with release 6.50.0 — smart inbound WhatsApp suggest + expanded bench replies.*
+*Last updated with roadmap elevation for professional payments (Paystack primary) — 6.50.0 base.*
