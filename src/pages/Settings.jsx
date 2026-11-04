@@ -147,10 +147,12 @@ export default function Settings() {
     if (errors.length) return toast(errors[0], 'error')
     setBusy(true)
     try {
-      const payload = formToCompanyPayload(form)
-      const row = { ...(company || {}), ...payload, updatedAt: new Date().toISOString() }
-      if (company?.id) await db.put(db.STORES.company || 'company', row)
-      else await db.add(db.STORES.company || 'company', row)
+      const payload = { ...formToCompanyPayload(form), updatedAt: new Date().toISOString() }
+      // Use the shared company persistence path used by first-run setup. It
+      // preserves the active company ID and avoids creating a second profile
+      // when Settings is opened before AppContext has finished hydrating.
+      const row = await db.saveCompany(payload)
+      await db.setActiveCompany(row.id)
       setCompany?.(row)
       try { applyBusinessType(form.businessType) } catch {}
       await refresh?.()
