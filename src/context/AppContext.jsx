@@ -11,6 +11,10 @@ import { cloudLogin, cloudRegister } from '../lib/cloudAuth'
 
 const AppCtx = createContext(null)
 const FIVE_MIN_MS = 5 * 60 * 1000
+const AUTO_LOCK_OPTIONS = [5, 15, 30]
+function getAutoLockMs() {
+  try { const n = Number(localStorage.getItem('sa_auto_lock_minutes_v1') || 5); return AUTO_LOCK_OPTIONS.includes(n) ? n * 60000 : 300000 } catch { return 300000 }
+}
 const syncActivity = (state) => { try { document.documentElement.dataset.saipSyncState = state; window.dispatchEvent(new CustomEvent('saip-sync-state', { detail: state })) } catch {} }
 
 export function AppProvider({ children }) {
@@ -140,7 +144,7 @@ export function AppProvider({ children }) {
     return () => clearInterval(id)
   }, [ready, toast])
 
-  // Lock the authenticated workspace after five minutes without user input.
+  // Lock the local app session after the configured period without user input.
   useEffect(() => {
     if (!ready || !user) return
     let timer
@@ -149,22 +153,21 @@ export function AppProvider({ children }) {
     const signOutForInactivity = () => {
       if (expired) return
       expired = true
-      try { Sync.logout() } catch {}
       try { setSession(null) } catch {}
       setUser(null)
-      toast('Signed out after 5 minutes of inactivity. Sign in again to continue.', 'info')
+      toast('Workspace locked after inactivity. Sign in again to continue.', 'info')
     }
     const resetTimer = () => {
       if (expired) return
       lastActivityAt = Date.now()
       clearTimeout(timer)
-      timer = setTimeout(signOutForInactivity, FIVE_MIN_MS)
+      timer = setTimeout(signOutForInactivity, getAutoLockMs())
     }
     const activityEvents = ['pointerdown', 'keydown', 'touchstart', 'scroll', 'click']
     activityEvents.forEach((eventName) => window.addEventListener(eventName, resetTimer, { passive: true }))
     const onVisibility = () => {
       if (document.visibilityState !== 'visible' || expired) return
-      if (Date.now() - lastActivityAt >= FIVE_MIN_MS) signOutForInactivity()
+      if (Date.now() - lastActivityAt >= getAutoLockMs()) signOutForInactivity()
       else resetTimer()
     }
     document.addEventListener('visibilitychange', onVisibility)
