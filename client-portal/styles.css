@@ -106,6 +106,12 @@ input:focus {
 .btn-sm { padding: 0.4rem 0.85rem; font-size: 0.85rem; }
 .btn-ok { background: linear-gradient(135deg, #34d399, #10b981); color: #042f2e; }
 .btn-bad { background: linear-gradient(135deg, #f87171, #ef4444); color: #fff; }
+.btn-pay {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #1c1917;
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.25);
+}
+.btn-pay:hover { filter: brightness(1.05); box-shadow: 0 0 28px rgba(251, 191, 36, 0.4); }
 .err { color: var(--bad); font-size: 0.9rem; margin-top: 0.75rem; }
 .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1rem; }
 .tab {
@@ -129,7 +135,18 @@ input:focus {
 }
 .pill.warn { background: rgba(251, 191, 36, 0.12); color: var(--warn); }
 .pill.bad { background: rgba(244, 63, 94, 0.12); color: var(--bad); }
+.pill.ok { background: rgba(52, 211, 153, 0.15); color: var(--ok); }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: linear-gradient(135deg, #134e4a, #0f766e);
+  color: #ecfdf5; padding: 0.75rem 1.4rem; border-radius: 999px;
+  font-weight: 600; font-size: 0.95rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 24px rgba(20,184,166,0.3);
+  opacity: 0; transition: opacity 0.25s ease, transform 0.25s var(--ease);
+  z-index: 9999; pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 @media (prefers-reduced-motion: reduce) {
-  .card, .btn { animation: none !important; transition: none !important; }
+  .card, .btn, .toast { animation: none !important; transition: none !important; }
 }
