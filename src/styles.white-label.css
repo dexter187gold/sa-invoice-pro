@@ -1,0 +1,13 @@
+/* White-label pilot — driven by applyWhiteLabel() data attributes */
+:root[data-hide-powered="1"] .powered-by,
+:root[data-hide-powered="1"] [data-powered-by] {
+  display: none !important;
+}
+
+:root[data-brand-logo="1"] .app-logo-default-mark {
+  /* Optional: hide default mark when custom logo is set */
+}
+
+.wl-preview .btn-sm {
+  font-weight: 650;
+}
