@@ -87,7 +87,8 @@ test.describe('Security regression — device entitlement and profile access', (
       return rows.length === 1 && rows[0]?.name === 'E2E Company Persistence Check'
     }, { timeout: 10000 })
 
-    await page.reload()
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.waitForFunction(() => document.querySelector('.company-profile-form input')?.value === 'E2E Company Persistence Check', null, { timeout: 15000 })
     await expect(page.locator('.company-profile-form input').first()).toHaveValue('E2E Company Persistence Check')
     const companyCount = await page.evaluate(async () => {
       const db = await new Promise((resolve, reject) => {
