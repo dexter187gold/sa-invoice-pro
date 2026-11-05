@@ -181,8 +181,27 @@ filterRecords();
 
 @app.after_request
 def add_cors_headers(response):
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    origin = (request.headers.get("Origin") or "").strip()
+    allowed = {
+        item.strip()
+        for item in (os.environ.get("CORS_ORIGINS") or "").split(",")
+        if item.strip()
+    }
+    if not allowed:
+        allowed = {
+            "https://sa-invoice-pro.pages.dev",
+            "https://sa-invoice-pro-client-portal.pages.dev",
+            "https://saip-license.onrender.com",
+            "https://sa-invoice-license.onrender.com",
+            "capacitor://localhost",
+            "ionic://localhost",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+        }
+    if origin and origin in allowed:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Vary"] = "Origin"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Owner-Token"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     return response
 
