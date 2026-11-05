@@ -70,3 +70,17 @@ def test_portal_payfast_signature_is_server_signed_and_amount_bound():
         assert "private-passphrase" not in response.get_data(as_text=True)
         bad = client.post(f"/api/portal/{token}/payfast-signature", json={"fields": {**fields, "amount": "1.00"}})
         assert bad.status_code == 403
+
+
+def test_owner_token_header_can_authorize_protected_json_actions():
+    client = license_server.app.test_client()
+    db = {"users": {}, "requests": {}}
+    with patch.dict(os.environ, {"SA_OWNER_TOKEN": "owner-test-token"}):
+        with patch.object(license_server, "load", return_value=db), patch.object(license_server, "save"):
+            response = client.post(
+                "/api/set-status",
+                headers={"X-Owner-Token": "owner-test-token"},
+                json={"hwid": "HWID-1", "status": "blocked"},
+            )
+    assert response.status_code == 200
+    assert db["users"]["HWID-1"]["mode"] == "blocked"
