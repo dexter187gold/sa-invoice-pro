@@ -182,3 +182,26 @@ def test_owner_release_key_revokes_every_device_on_multiseat_key():
     assert db["users"]["device-b"]["activationToken"] is None
     assert db["requests"]["device-a"]["status"] == "issued"
     assert db["requests"]["device-b"]["status"] == "issued"
+
+
+def test_owner_publish_strips_payfast_passphrase_from_public_portal():
+    client = license_server.app.test_client()
+    saved = {}
+    config = {"payfast": {"merchantId": "merchant-id", "merchantKey": "merchant-key", "passphrase": "private-passphrase", "sandbox": True}}
+    payload = {
+        "client": {"name": "Client", "email": "client@example.com"},
+        "invoices": [{"id": "inv-1", "number": "INV-1", "status": "unpaid", "total": 10}],
+        "payfast": {"merchantId": "merchant-id", "merchantKey": "merchant-key", "passphrase": "attacker-supplied"},
+    }
+    with patch.dict(os.environ, {"SA_OWNER_TOKEN": "owner-test-token"}):
+        with patch.object(license_server, "load_owner_config", return_value=config), patch.object(license_server, "save_portals", side_effect=lambda db: saved.update(db)):
+            response = client.post(
+                "/api/portal/publish",
+                headers={"X-Owner-Token": "owner-test-token"},
+                json={"payload": payload},
+            )
+    assert response.status_code == 200
+    portal_token = response.get_json()["token"]
+    public_payfast = saved[portal_token]["payload"]["payfast"]
+    assert public_payfast["merchantId"] == "merchant-id"
+    assert "passphrase" not in public_payfast
