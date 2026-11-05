@@ -81,8 +81,8 @@ def register_v24(app):
             return jsonify({
                 "ok": True,
                 "status": "issued",
-                "key": existing["key"],
-                "message": "Key already issued for this device",
+                "keyAvailable": True,
+                "message": "A key has already been issued. Retrieve it from the verified delivery channel or enter it manually.",
             })
         reqs[hwid] = {
             **existing,
