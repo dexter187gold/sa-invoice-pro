@@ -722,6 +722,13 @@ def portal_payfast_signature(token):
     passphrase = str(pf.get("passphrase") or "").strip()
     if not merchant_id or not merchant_key:
         return jsonify({"ok": False, "error": "PayFast is not configured"}), 503
+    allowed_fields = {
+        "merchant_id", "merchant_key", "return_url", "cancel_url",
+        "name_first", "name_last", "email_address", "m_payment_id",
+        "amount", "item_name", "item_description",
+    }
+    if set(fields) - allowed_fields:
+        return jsonify({"ok": False, "error": "Unsupported payment fields"}), 400
     if str(fields.get("merchant_id") or "").strip() != merchant_id or str(fields.get("merchant_key") or "").strip() != merchant_key:
         return jsonify({"ok": False, "error": "Invalid merchant details"}), 403
 
@@ -759,8 +766,14 @@ def portal_payfast_signature(token):
         return jsonify({"ok": False, "error": "Payment amount does not match the invoice balance"}), 403
 
     base_url = request.host_url.rstrip("/") + "/portal/" + token
-    if not str(fields.get("return_url") or "").startswith(base_url) or not str(fields.get("cancel_url") or "").startswith(base_url):
+    return_url = str(fields.get("return_url") or "")
+    cancel_url = str(fields.get("cancel_url") or "")
+    if not (return_url == base_url or return_url.startswith(base_url + "?")) or not (cancel_url == base_url or cancel_url.startswith(base_url + "?")):
         return jsonify({"ok": False, "error": "Invalid payment return URL"}), 400
+    client_email = str((payload.get("client") or {}).get("email") or "").strip().lower()
+    submitted_email = str(fields.get("email_address") or "").strip().lower()
+    if client_email and submitted_email and client_email != submitted_email:
+        return jsonify({"ok": False, "error": "Payment email does not match the portal client"}), 403
     payment_id = str(fields.get("m_payment_id") or "")
     if not payment_id.startswith("P-" + payment_ref):
         return jsonify({"ok": False, "error": "Invalid payment reference"}), 400
