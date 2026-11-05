@@ -14,6 +14,7 @@ Configure these as **encrypted secrets** for the Pages project in both Productio
 - `SIMULATOR_ADMIN_PASSWORD`: a strong unique password you choose for this private lab.
 - `SESSION_SECRET`: a random secret of at least 32 bytes.
 - `PAYSTACK_SECRET_KEY`: your Paystack test secret key only (`sk_test_...`).
+- `PAYSTACK_WEBHOOK_SECRET`: the Paystack Test Mode webhook signing secret (`whsec_...`).
 
 The Paystack public key is not required because checkout is initialised server-side and the hosted authorization URL is used. Do not place a secret key in browser code.
 
@@ -21,7 +22,7 @@ The Paystack public key is not required because checkout is initialised server-s
 Set the Test Mode webhook URL to:
 `https://saip-licence-simulator.pages.dev/api/paystack/webhook`
 
-The current webhook handler verifies the legacy `x-paystack-signature` HMAC-SHA512 header using the test secret, then re-verifies the transaction against Paystack and checks amount, currency and reference before granting a synthetic licence. Confirm the webhook signing mode used by the Paystack test integration before relying on webhook-only results; the browser callback also performs server-side transaction verification.
+The webhook handler supports the current `Paystack-Signature` format using `PAYSTACK_WEBHOOK_SECRET` (`whsec_...`), enforces a 300-second timestamp window, and also supports legacy `x-paystack-signature` while Paystack still sends it. It then re-verifies the transaction against Paystack and checks amount, currency and reference before granting a synthetic licence.
 
 ## Local safety tests
 The existing Python simulator remains the deterministic reference harness:
