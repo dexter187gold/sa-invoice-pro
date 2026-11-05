@@ -276,8 +276,28 @@ def register_owner_ops(app):
                 users[hwid]["key"] = None
                 users[hwid]["activationToken"] = None
                 kr = db.setdefault("keys", {}).get(key)
-                if kr and (kr.get("hwid") or "") == hwid:
-                    db["keys"][key] = {**kr, "hwid": None, "used": False, "releasedAt": _now()}
+                if kr:
+                    devices = [str(value).strip() for value in (kr.get("devices") or []) if str(value).strip()]
+                    bound = (kr.get("hwid") or "").strip()
+                    if bound and bound not in devices:
+                        devices.append(bound)
+                    if hwid in devices:
+                        devices = [device for device in devices if device != hwid]
+                        db["keys"][key] = {
+                            **kr,
+                            "hwid": devices[0] if devices else None,
+                            "devices": devices,
+                            "used": bool(devices),
+                            "releasedAt": _now(),
+                        }
+                email = (prev.get("email") or "").strip().lower()
+                account = (db.get("accounts") or {}).get(email)
+                if account and _keys_equal(account.get("key") or "", key):
+                    account_devices = [value for value in (account.get("devices") or []) if value != hwid]
+                    db.setdefault("accounts", {})[email] = {
+                        **account, "devices": account_devices,
+                        "status": "active" if account_devices else "released",
+                    }
         req = (db.get("requests") or {}).get(hwid)
         if req:
             db.setdefault("requests", {})[hwid] = {**req, "status": status, "statusUpdatedAt": _now()}
@@ -329,18 +349,24 @@ def register_owner_ops(app):
         key_rec = keys.get(key)
         if not key_rec:
             return jsonify({"ok": False, "error": "Key not found"}), 404
+        old_devices = [str(value).strip() for value in (key_rec.get("devices") or []) if str(value).strip()]
         old_hwid = (key_rec.get("hwid") or "").strip()
-        keys[key] = {**key_rec, "hwid": None, "used": False, "releasedAt": _now(), "releasedBy": "owner"}
+        if old_hwid and old_hwid not in old_devices:
+            old_devices.append(old_hwid)
+        keys[key] = {**key_rec, "hwid": None, "devices": [], "used": False, "releasedAt": _now(), "releasedBy": "owner"}
         users = db.setdefault("users", {})
-        if old_hwid and old_hwid in users:
-            u = users[old_hwid]
+        for device_hwid in old_devices:
+            u = users.get(device_hwid) or {}
             if _keys_equal(u.get("key") or "", key):
-                users[old_hwid] = {
+                users[device_hwid] = {
                     **u, "mode": "trial", "status": "released", "key": None,
                     "activationToken": None,
                     "adminNote": "Key released by owner for re-activation on another device",
                     "statusSetAt": _now(),
                 }
+        for email, account in list((db.get("accounts") or {}).items()):
+            if _keys_equal(account.get("key") or "", key):
+                db.setdefault("accounts", {})[email] = {**account, "devices": [], "status": "released"}
         for hid, req in list((db.get("requests") or {}).items()):
             if req and _keys_equal(req.get("key") or "", key):
                 db.setdefault("requests", {})[hid] = {**req, "status": "issued", "releasedAt": _now()}
