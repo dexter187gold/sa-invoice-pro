@@ -1,3 +1,9 @@
+## 6.57.0 — WhatsApp response pack
+
+- **Inbound suggestions**: Keyword-aware replies for common client messages (status, pricing, payment, collection, greeting).
+- ZA tone EN/AF options, ready for desk one-tap wa.me.
+- Aligns with P6 communications stack.
+
 ## 6.56.0 — Seats + white-label pilot
 
 - **White-label**: Live preview, portal tagline, accent presets + colour picker, hide powered-by, reset defaults; Shop+ access.

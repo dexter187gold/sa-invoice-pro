@@ -1,7 +1,8 @@
 /**
- * WhatsApp suggested replies for SA Invoice Pro (P7).
+ * WhatsApp suggested replies for SA Invoice Pro (P6/P7).
  * Pure helpers — open wa.me with pre-filled ZA-tone messages.
  * Tone: friendly, clear, English-first with short Afrikaans options.
+ * Supports both outbound status and inbound message response suggestions.
  */
 import { formatMoney } from './money'
 import { buildChaseMessage } from './chasePack'
@@ -81,6 +82,73 @@ export function suggestReplies({ type = 'general', job, invoice, client = {}, co
     text: `Hi ${name}, thanks for the message.\n\nHow can I help you today at *${shop}*?`,
     af: `Hi ${name}, dankie vir die boodskap. Hoe kan ek help?`,
   })
+
+  return replies.map((r) => ({
+    ...r,
+    wa: waLink(client.phone || client.mobile || '', r.text),
+    waAf: r.af ? waLink(client.phone || client.mobile || '', r.af) : '',
+  }))
+}
+
+/**
+ * Keyword-aware suggestions for inbound WhatsApp messages from clients.
+ * Use when the desk receives a message and needs a quick professional reply.
+ */
+export function suggestInboundReplies({ message = '', client = {}, company = {}, job, invoice } = {}) {
+  const text = String(message || '').toLowerCase()
+  const name = clientName(client)
+  const shop = shopName(company)
+  const device = deviceLabel(job)
+  const replies = []
+
+  if (/where|status|update|progress|how long|when ready|is it done|finish/.test(text)) {
+    replies.push({
+      label: 'Status check',
+      text: `Hi ${name}, thanks for checking in.\n\nYour *${device}* is currently *${job?.status || 'in progress'}* at *${shop}*. I will update you as soon as there is more news.\n\nAny questions, just reply here.`,
+      af: `Hi ${name}, jou *${device}* is tans *${job?.status || 'besig'}*. Ek stuur ’n update sodra daar nuus is.`,
+    })
+  }
+
+  if (/how much|price|cost|quote|quotation|screen|battery|charge/.test(text)) {
+    replies.push({
+      label: 'Pricing / quote',
+      text: `Hi ${name}, happy to help with a price.\n\nPlease send the model of the *${device || 'phone'}* and what is wrong (e.g. cracked screen, not charging). I will send a proper quote shortly.\n\nThanks!`,
+      af: `Hi ${name}, stuur asseblief die model en wat fout is, dan stuur ek ’n kwotasie.`,
+    })
+  }
+
+  if (/paid|payment|eft|transferred|deposited|paid in/.test(text)) {
+    replies.push({
+      label: 'Payment received',
+      text: `Hi ${name}, thank you for the payment.\n\nWe have noted it for *${invoice?.number || 'your account'}*. If there is a balance left we will confirm shortly.\n\nAppreciate the business!`,
+      af: `Hi ${name}, dankie vir die betaling. Ons het dit aangeteken.`,
+    })
+  }
+
+  if (/collect|pickup|pick up|ready|when can i|come get/.test(text)) {
+    replies.push({
+      label: 'Collection',
+      text: `Hi ${name}, your *${device}* is ready for collection at *${shop}* (or will be shortly).\n\nPlease bring ID and quote the job number. We are open during normal hours.\n\nSee you soon!`,
+      af: `Hi ${name}, jou *${device}* is gereed vir afhaal. Bring asseblief ID saam.`,
+    })
+  }
+
+  if (/hello|hi|hey|good morning|good afternoon|howzit/.test(text) && replies.length === 0) {
+    replies.push({
+      label: 'Greeting',
+      text: `Hi ${name}, hope you are well.\n\nHow can *${shop}* help you today?`,
+      af: `Hi ${name}, hoe kan ek help vandag?`,
+    })
+  }
+
+  // Fallback general
+  if (replies.length === 0) {
+    replies.push({
+      label: 'General',
+      text: `Hi ${name}, thanks for the message.\n\nHow can I help you at *${shop}*?`,
+      af: `Hi ${name}, dankie vir die boodskap. Hoe kan ek help?`,
+    })
+  }
 
   return replies.map((r) => ({
     ...r,
