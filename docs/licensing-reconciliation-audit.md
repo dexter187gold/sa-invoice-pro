@@ -1,8 +1,8 @@
 # SA Invoice Pro licensing reconciliation audit
 
-Audit baseline: main branch commit c391b163cb3bb3e13361cf8518f1ee4a9f84961f (6 November 2026 review context).
+Audit baseline: main branch commit c391b163cb3bb3e13361cf8518f1ee4a9f84961f (5 November 2026 review context).
 
-## Approved direction for the next implementation phase
+## Proposed direction for the next implementation phase
 
 - Trial: 14 calendar days from first server-recorded account registration.
 - Introductory offer: 7 days from registration, once per immutable account; annual purchase only.
