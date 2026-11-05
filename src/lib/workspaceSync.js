@@ -4,6 +4,7 @@
 import * as db from './db.js'
 import { STORES } from './db.js'
 import { Sync } from './sync.js'
+import { getSession } from './storage.js'
 
 const QUEUE_KEY = 'saip_sync_push_queue'
 const LAST_KEY = 'saip_workspace_sync_meta'
@@ -19,8 +20,26 @@ function readQueue() {
 
 function writeQueue(q) {
   try {
-    localStorage.setItem(QUEUE_KEY, JSON.stringify(q.slice(-10)))
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(q.slice(-100)))
   } catch {}
+}
+
+function activeQueueOwner() {
+  const session = getSession()
+  const id = String(session?.id || '').trim()
+  const email = String(session?.email || '').trim().toLowerCase()
+  return id ? 'id:' + id : email ? 'email:' + email : null
+}
+
+/** Keep pending writes isolated; legacy unscoped entries are quarantined, never replayed. */
+export function partitionPushQueue(queue, ownerKey) {
+  const ready = []
+  const deferred = []
+  for (const item of queue || []) {
+    if (ownerKey && item?.ownerKey === ownerKey) ready.push(item)
+    else deferred.push(item)
+  }
+  return { ready, deferred }
 }
 
 function setMeta(patch) {
@@ -105,9 +124,12 @@ export async function flushPushQueue() {
   if (!Sync.isLoggedIn()) return { flushed: 0 }
   const q = readQueue()
   if (!q.length) return { flushed: 0 }
+  const ownerKey = activeQueueOwner()
+  if (!ownerKey) return { flushed: 0, remaining: q.length, skipped: true }
+  const { ready, deferred } = partitionPushQueue(q, ownerKey)
   let flushed = 0
-  const remain = []
-  for (const item of q) {
+  const remain = [...deferred]
+  for (const item of ready) {
     try {
       await Sync.push(item.data)
       flushed += 1
@@ -120,9 +142,14 @@ export async function flushPushQueue() {
 }
 
 function enqueuePush(data) {
+  const ownerKey = activeQueueOwner()
+  // An authenticated cloud token without an active local identity is not enough
+  // to safely associate a workspace payload with an account.
+  if (!ownerKey) return false
   const q = readQueue()
-  q.push({ at: new Date().toISOString(), data })
+  q.push({ at: new Date().toISOString(), ownerKey, data })
   writeQueue(q)
+  return true
 }
 
 /**
