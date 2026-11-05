@@ -66,3 +66,20 @@ def test_key_seat_limit_is_enforced_without_account_record():
             assert third.status_code == 403
             assert third.get_json()["code"] == "KEY_SEAT_LIMIT_REACHED"
             assert "device-c" not in db["keys"][key]["devices"]
+
+
+def test_legacy_key_record_uses_purchased_account_seat_limit():
+    key = "SAIP-P-AAAA-BBBB-CCCC"
+    db = {
+        "users": {"device-a": {"hwid": "device-a", "mode": "licensed", "key": key}},
+        "keys": {key: {"key": key, "plan": "P", "hwid": "device-a"}},
+        "requests": {},
+        "accounts": {"owner@example.com": {"email": "owner@example.com", "key": key, "seats": 2, "devices": ["device-a"]}},
+    }
+    app = make_app()
+    with patch.dict(os.environ, {"LICENSE_SIGNING_SECRET": "test-license-signing-secret-at-least-32-chars"}):
+        with patch.object(routes, "_load", return_value=db), patch.object(routes, "_save"):
+            client = app.test_client()
+            response = client.post("/api/license/activate", json={"hwid": "device-b", "key": key, "email": "owner@example.com"})
+            assert response.status_code == 200
+            assert sorted(db["keys"][key]["devices"]) == ["device-a", "device-b"]
