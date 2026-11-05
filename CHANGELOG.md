@@ -1,3 +1,8 @@
+## 6.58.0 — Website access shortcut
+
+- Added a direct link to the public SA Invoice Pro website in the orb Main Menu.
+- Aligned the app release metadata and version references.
+
 ## 6.57.0 — WhatsApp response pack
 
 - **Inbound suggestions**: Keyword-aware replies for common client messages (status, pricing, payment, collection, greeting).
