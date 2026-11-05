@@ -297,7 +297,7 @@ export default function Settings() {
           <h3 style={{ marginTop: 0 }}>Company & account profile</h3>
           <p className="muted" style={{ marginTop: 0 }}>Legal identity, contact, tax, banking and workspace details for your business type.</p>
           <CompanyProfileForm form={form} setForm={setForm} mode="full" showModuleSetup toast={toast} refresh={refresh} />
-          <LoadingButton loading={busy} className="btn btn-primary" style={{ marginTop: 12 }}>{busy ? 'Saving…' : 'Save company profile'}</LoadingButton>
+          <LoadingButton type="button" onClick={saveCompany} loading={busy} className="btn btn-primary" style={{ marginTop: 12 }}>{busy ? 'Saving…' : 'Save company profile'}</LoadingButton>
         </form>
       )}
 
