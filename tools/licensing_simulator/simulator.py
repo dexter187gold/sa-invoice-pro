@@ -17,8 +17,8 @@ TRANSITION_HOURS = 24
 REMINDER_DAYS = (7, 5, 3, 1)
 
 PLANS = {
-    "solo": {"name": "Solo", "monthly_zar": 189, "seats": 1, "branches": 1},
-    "shop": {"name": "Shop", "monthly_zar": 379, "seats": 5, "branches": 1},
+    "solo": {"name": "Solo", "monthly_zar": 187, "seats": 1, "branches": 1},
+    "shop": {"name": "Shop", "monthly_zar": 374, "seats": 5, "branches": 1},
     "multi": {"name": "Multi-Branch", "monthly_zar": 749, "seats": 25, "branches": 25},
     "enterprise": {"name": "Enterprise", "monthly_zar": 1499, "seats": None, "branches": None},
 }
