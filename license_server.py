@@ -17,7 +17,11 @@ def app_root():
 
 BASE = app_root()
 DATA = os.path.join(BASE, "users.json")
-SECRET = "SAIP-ZA-2026-V1"
+SECRET = (os.environ.get('LICENSE_KEY_CHECKSUM_SECRET') or '').strip()
+if not SECRET:
+    if os.environ.get('RENDER'):
+        raise RuntimeError('LICENSE_KEY_CHECKSUM_SECRET must be configured in production')
+    SECRET = secrets.token_urlsafe(32)
 HWID_MAX = 256
 KEY_MAX = 128
 
@@ -807,7 +811,7 @@ load();
 
 # ---- Owner remote config (Google + PayFast pushed to all clients) ----
 CONFIG_FILE = os.path.join(BASE, "owner_config.json")
-OWNER_TOKEN = os.environ.get("SA_OWNER_TOKEN", "sa-owner-2026")
+OWNER_TOKEN = (os.environ.get("SA_OWNER_TOKEN") or "").strip()
 
 def load_owner_config():
     if os.path.exists(CONFIG_FILE):
