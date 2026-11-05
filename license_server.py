@@ -361,18 +361,14 @@ def api_device_status():
 
 @app.post("/api/claim")
 def api_claim():
-    data = request.get_json(force=True, silent=True) or {}
-    hwid = _valid_hwid(data.get("hwid"))
-    if not hwid:
-        return jsonify({"error": "hwid required", "ok": False}), 400
-    db = load()
-    req = db.get("requests", {}).get(hwid)
-    if not req or not req.get("key"):
-        return jsonify({"error": "No key issued yet", "message": "Vendor has not approved this request"}), 404
-    req["status"] = "claimed"
-    req["claimedAt"] = _now()
-    save(db)
-    return jsonify({"ok": True, "key": req["key"], "plan": req.get("plan"), "status": "claimed"})
+    # Legacy HWID-only claim exposed issued licence keys to anyone who knew
+    # the device identifier. Device identifiers are not authentication secrets.
+    # Modern clients use the signed activation flow and owner-issued key.
+    return jsonify({
+        "ok": False,
+        "error": "Legacy HWID-only key claiming is disabled. Use the signed licence activation flow.",
+        "code": "CLAIM_PROOF_REQUIRED",
+    }), 410
 
 @app.post("/api/activate-validate")
 def api_activate_validate():
