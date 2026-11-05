@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "license_routes_v24.py"
+      - "license_server.py"
+      - "license_dashboard_fix.py"
       - "license_owner_ops.py"
       - "tests/test_license*.py"
       - ".github/workflows/licence-security-tests.yml"
