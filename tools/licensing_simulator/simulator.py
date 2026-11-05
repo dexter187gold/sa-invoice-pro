@@ -215,6 +215,18 @@ class SimulatedLicenseEnvironment:
             "transition_ends_at": transition_end,
         }
 
+    def access_mode(self, user_id: str) -> str:
+        active = [
+            item for item in self.licenses.values()
+            if item["user_id"] == user_id and item["status"] == "active"
+            and item.get("expires_at") and item["expires_at"] > self.now
+        ]
+        if active:
+            return "licensed"
+        state = self.trial_state(user_id)["status"]
+        return {"trial": "trial_full", "transition": "transition_read_only",
+                "limited": "limited_read_only"}[state]
+
     def can_access(self, user_id: str, path: str) -> bool:
         active = [
             item for item in self.licenses.values()
@@ -228,6 +240,15 @@ class SimulatedLicenseEnvironment:
         if state == "trial":
             return path in TRIAL_PATHS
         return path in LIMITED_PATHS
+
+    def can_mutate(self, user_id: str, path: str) -> bool:
+        """Mutation rights are removed at trial expiry; export remains read-only."""
+        mode = self.access_mode(user_id)
+        if mode == "licensed":
+            return self.can_access(user_id, path)
+        if mode == "trial_full":
+            return path in TRIAL_PATHS
+        return False
 
     def due_reminders(self, user_id: str) -> list[dict]:
         account = self.accounts[user_id]
