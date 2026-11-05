@@ -680,6 +680,80 @@ def portal_get(token):
         payload["payfast"] = public_pf
     return jsonify({"ok": True, "payload": payload})
 
+
+@app.post("/api/portal/<token>/payfast-signature")
+def portal_payfast_signature(token):
+    data = request.get_json(silent=True) or {}
+    fields = data.get("fields") or {}
+    if not isinstance(fields, dict):
+        return jsonify({"ok": False, "error": "Payment fields required"}), 400
+    portals = load_portals()
+    row = portals.get(token)
+    if not row:
+        return jsonify({"ok": False, "error": "Portal not found or expired"}), 404
+    expires = row.get("expiresAt")
+    if expires:
+        try:
+            if datetime.fromisoformat(expires.replace("Z", "+00:00")) < datetime.now(timezone.utc):
+                return jsonify({"ok": False, "error": "Portal link expired"}), 410
+        except Exception:
+            return jsonify({"ok": False, "error": "Invalid portal expiry"}), 400
+    payload = row.get("payload") or {}
+    config = load_owner_config() or {}
+    pf = config.get("payfast") or {}
+    merchant_id = str(pf.get("merchantId") or "").strip()
+    merchant_key = str(pf.get("merchantKey") or "").strip()
+    passphrase = str(pf.get("passphrase") or "").strip()
+    if not merchant_id or not merchant_key:
+        return jsonify({"ok": False, "error": "PayFast is not configured"}), 503
+    if str(fields.get("merchant_id") or "").strip() != merchant_id or str(fields.get("merchant_key") or "").strip() != merchant_key:
+        return jsonify({"ok": False, "error": "Invalid merchant details"}), 403
+
+    item_name = str(fields.get("item_name") or "").strip()
+    open_invoices = [
+        invoice for invoice in (payload.get("invoices") or [])
+        if str(invoice.get("status") or "").lower() not in ("paid", "cancelled")
+    ]
+    expected_amount = None
+    payment_ref = None
+    if item_name == "All open invoices":
+        expected_amount = sum(
+            (Decimal(str(invoice.get("amountDue") if invoice.get("amountDue") is not None else invoice.get("total") or 0)) for invoice in open_invoices),
+            Decimal("0.00"),
+        )
+        payment_ref = "BULK-"
+    elif item_name.startswith("Invoice "):
+        invoice_ref = item_name[len("Invoice "):].strip()
+        invoice = next((item for item in open_invoices if
+            str(item.get("number") or item.get("id") or "") == invoice_ref or
+            str(item.get("id") or "") == invoice_ref), None)
+        if invoice is None:
+            return jsonify({"ok": False, "error": "Invoice is not payable through this portal"}), 403
+        expected_amount = Decimal(str(invoice.get("amountDue") if invoice.get("amountDue") is not None else invoice.get("total") or 0))
+        payment_ref = invoice_ref
+    else:
+        return jsonify({"ok": False, "error": "Unknown payment reference"}), 400
+
+    try:
+        submitted_amount = Decimal(str(fields.get("amount") or "")).quantize(Decimal("0.01"))
+        expected_amount = expected_amount.quantize(Decimal("0.01"))
+    except (InvalidOperation, ValueError):
+        return jsonify({"ok": False, "error": "Invalid payment amount"}), 400
+    if expected_amount <= 0 or submitted_amount != expected_amount:
+        return jsonify({"ok": False, "error": "Payment amount does not match the invoice balance"}), 403
+
+    base_url = request.host_url.rstrip("/") + "/portal/" + token
+    if not str(fields.get("return_url") or "").startswith(base_url) or not str(fields.get("cancel_url") or "").startswith(base_url):
+        return jsonify({"ok": False, "error": "Invalid payment return URL"}), 400
+    payment_id = str(fields.get("m_payment_id") or "")
+    if not payment_id.startswith("P-" + payment_ref):
+        return jsonify({"ok": False, "error": "Invalid payment reference"}), 400
+
+    from license_billing import _pf_signature
+    signature = _pf_signature(fields, passphrase)
+    return jsonify({"ok": True, "signature": signature})
+
+
 @app.get("/portal/<token>")
 def portal_page(token):
     """Minimal public HTML shell — loads JSON and renders pay buttons client-side."""
@@ -855,11 +929,21 @@ async function load(){
         email_address: String(cl.email||'').slice(0,100),
         m_payment_id: String('P-'+ref+'-'+Date.now().toString(36)).slice(0,100),
         amount: amt.toFixed(2),
-        item_name: String('Invoice '+ref).slice(0,100),
+        item_name: String(String(ref).startsWith('BULK-') ? 'All open invoices' : 'Invoice '+ref).slice(0,100),
         item_description: String((co.name||'')+' — '+(cl.name||'')).slice(0,255)
       };
       Object.keys(data).forEach(k => { if(data[k]===''||data[k]==null) delete data[k]; });
-      data.signature = buildSignature(data, pf.passphrase||'');
+      const signedResponse = await fetch(location.origin + '/api/portal/' + TOKEN + '/payfast-signature', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ fields: data })
+      });
+      const signed = await signedResponse.json().catch(() => ({}));
+      if (!signedResponse.ok || !signed.signature) {
+        alert(signed.error || 'Could not securely prepare the payment. Please use EFT or contact the business.');
+        return;
+      }
+      data.signature = signed.signature;
       postPayFast(pf, data);
     };
     el.querySelectorAll('[data-pay]').forEach(btn=>{
