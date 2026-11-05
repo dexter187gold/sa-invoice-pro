@@ -8,6 +8,12 @@ import { getSession } from './storage.js'
 
 const QUEUE_KEY = 'saip_sync_push_queue'
 const LAST_KEY = 'saip_workspace_sync_meta'
+let workspaceGeneration = 0
+
+/** Invalidate in-flight reads/writes as soon as an account switch starts. */
+export function invalidateWorkspaceSync() {
+  workspaceGeneration += 1
+}
 
 function readQueue() {
   try {
@@ -126,15 +132,22 @@ export async function flushPushQueue() {
   if (!q.length) return { flushed: 0 }
   const ownerKey = activeQueueOwner()
   if (!ownerKey) return { flushed: 0, remaining: q.length, skipped: true }
+  const generation = workspaceGeneration
+  const token = Sync.getToken()
+  const isCurrent = () => generation === workspaceGeneration && ownerKey === activeQueueOwner() && token === Sync.getToken()
   const { ready, deferred } = partitionPushQueue(q, ownerKey)
   let flushed = 0
   const remain = [...deferred]
-  for (const item of ready) {
+  for (let i = 0; i < ready.length; i += 1) {
+    if (!isCurrent()) {
+      remain.push(...ready.slice(i))
+      break
+    }
     try {
-      await Sync.push(item.data)
+      await Sync.push(ready[i].data)
       flushed += 1
     } catch {
-      remain.push(item)
+      remain.push(ready[i])
     }
   }
   writeQueue(remain)
@@ -160,7 +173,15 @@ export async function ensureWorkspaceSynced({ forcePush = false } = {}) {
     return { ok: false, action: 'none', reason: 'not_logged_in' }
   }
 
+  const ownerKey = activeQueueOwner()
+  if (!ownerKey) return { ok: false, action: 'none', reason: 'missing_account_identity' }
+  const generation = workspaceGeneration
+  const token = Sync.getToken()
+  const isCurrent = () => generation === workspaceGeneration && ownerKey === activeQueueOwner() && token === Sync.getToken()
+  const stale = () => ({ ok: false, action: 'stale', reason: 'account_changed' })
+
   const local = await localSnapshot()
+  if (!isCurrent()) return stale()
   const localScore = scoreWorkspace(local)
 
   let cloudRow = null
@@ -168,25 +189,31 @@ export async function ensureWorkspaceSynced({ forcePush = false } = {}) {
   let cloudScore = 0
   try {
     cloudRow = await Sync.pull()
+    if (!isCurrent()) return stale()
     cloudData = Sync.workspaceToImportShape(cloudRow) || {}
     cloudScore = scoreWorkspace(cloudData)
   } catch (e) {
+    if (!isCurrent()) return stale()
     const msg = String(e.message || e)
     if (!msg.includes('No workspace') && !msg.includes('404')) {
-      // offline or auth error — queue local if we have data
-      if (localScore > 0) enqueuePush(local)
+      if (localScore > 0 && isCurrent()) enqueuePush(local)
       return { ok: false, action: 'queued', reason: msg, localScore }
     }
   }
+
+  if (!isCurrent()) return stale()
 
   // Both empty
   if (localScore === 0 && cloudScore === 0) {
     if (forcePush) {
       try {
+        if (!isCurrent()) return stale()
         await Sync.push(local)
+        if (!isCurrent()) return stale()
         setMeta({ action: 'seed_empty', version: 1 })
         return { ok: true, action: 'seed_empty', localScore, cloudScore }
       } catch (e) {
+        if (!isCurrent()) return stale()
         enqueuePush(local)
         return { ok: false, action: 'queued', reason: e.message }
       }
@@ -197,10 +224,13 @@ export async function ensureWorkspaceSynced({ forcePush = false } = {}) {
   // Cloud empty, local has data → seed
   if (cloudScore === 0 && localScore > 0) {
     try {
+      if (!isCurrent()) return stale()
       const r = await Sync.push(local)
+      if (!isCurrent()) return stale()
       setMeta({ action: 'seed', version: r.version })
       return { ok: true, action: 'seed', localScore, cloudScore, version: r.version }
     } catch (e) {
+      if (!isCurrent()) return stale()
       enqueuePush(local)
       return { ok: false, action: 'queued', reason: e.message, localScore }
     }
@@ -209,10 +239,13 @@ export async function ensureWorkspaceSynced({ forcePush = false } = {}) {
   // Local empty, cloud has data → restore
   if (localScore === 0 && cloudScore > 0) {
     try {
+      if (!isCurrent()) return stale()
       await db.importAll(cloudData, { wipe: false })
+      if (!isCurrent()) return stale()
       setMeta({ action: 'restore', version: cloudRow?.version })
       return { ok: true, action: 'restore', localScore, cloudScore, version: cloudRow?.version }
     } catch (e) {
+      if (!isCurrent()) return stale()
       return { ok: false, action: 'restore_failed', reason: e.message }
     }
   }
@@ -220,11 +253,15 @@ export async function ensureWorkspaceSynced({ forcePush = false } = {}) {
   // Both have data → merge then push
   const merged = mergeWorkspaces(local, cloudData)
   try {
+    if (!isCurrent()) return stale()
     await db.importAll(merged, { wipe: false })
+    if (!isCurrent()) return stale()
     const r = await Sync.push(merged)
+    if (!isCurrent()) return stale()
     setMeta({ action: 'merge', version: r.version })
     return { ok: true, action: 'merge', localScore, cloudScore, version: r.version }
   } catch (e) {
+    if (!isCurrent()) return stale()
     enqueuePush(merged)
     return { ok: false, action: 'queued', reason: e.message }
   }
