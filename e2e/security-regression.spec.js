@@ -59,4 +59,52 @@ test.describe('Security regression — device entitlement and profile access', (
     await expect(lock.locator('option').nth(1)).toHaveAttribute('value', '15')
     await expect(lock.locator('option').nth(2)).toHaveAttribute('value', '30')
   })
+  test('company profile saves to the active record and survives reload', async ({ page }) => {
+    await injectSession(page)
+    await page.goto('/login')
+    await seedIndexedDbCompany(page)
+    await page.goto('/settings')
+    await expect(page.getByRole('heading', { name: /settings/i }).first()).toBeVisible()
+
+    const legalName = page.getByLabel(/Legal \/ registered name/)
+    await expect(legalName).toBeVisible()
+    await legalName.fill('E2E Company Persistence Check')
+    await page.getByRole('button', { name: 'Save company profile' }).click()
+
+    await page.waitForFunction(async () => {
+      const db = await new Promise((resolve, reject) => {
+        const req = indexedDB.open('SAInvoicePro_v2', 6)
+        req.onsuccess = () => resolve(req.result)
+        req.onerror = () => reject(req.error)
+      })
+      const rows = await new Promise((resolve, reject) => {
+        const tx = db.transaction('company', 'readonly')
+        const req = tx.objectStore('company').getAll()
+        req.onsuccess = () => resolve(req.result || [])
+        req.onerror = () => reject(req.error)
+      })
+      db.close()
+      return rows.length === 1 && rows[0]?.name === 'E2E Company Persistence Check'
+    }, { timeout: 10000 })
+
+    await page.reload()
+    await expect(page.getByLabel(/Legal \/ registered name/)).toHaveValue('E2E Company Persistence Check')
+    const companyCount = await page.evaluate(async () => {
+      const db = await new Promise((resolve, reject) => {
+        const req = indexedDB.open('SAInvoicePro_v2', 6)
+        req.onsuccess = () => resolve(req.result)
+        req.onerror = () => reject(req.error)
+      })
+      const rows = await new Promise((resolve, reject) => {
+        const tx = db.transaction('company', 'readonly')
+        const req = tx.objectStore('company').getAll()
+        req.onsuccess = () => resolve(req.result || [])
+        req.onerror = () => reject(req.error)
+      })
+      db.close()
+      return rows.length
+    })
+    expect(companyCount).toBe(1)
+  })
+
 })
