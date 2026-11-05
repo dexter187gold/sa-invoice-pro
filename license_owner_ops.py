@@ -71,11 +71,10 @@ def _keys_equal(a: str, b: str) -> bool:
 
 
 def _activation_token(hwid: str, key: str, activated_at: str) -> str:
-    secret = (
-        os.environ.get("LICENSE_SIGNING_SECRET")
-        or os.environ.get("SA_OWNER_TOKEN")
-        or "SAIP-ZA-2026-V1"
-    ).encode()
+    secret_value = (os.environ.get("LICENSE_SIGNING_SECRET") or "").strip()
+    if len(secret_value) < 32:
+        raise RuntimeError("LICENSE_SIGNING_SECRET must be configured with at least 32 characters")
+    secret = secret_value.encode()
     msg = f"{hwid}|{key}|{activated_at}".encode()
     return hmac.new(secret, msg, hashlib.sha256).hexdigest()
 
