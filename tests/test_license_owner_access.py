@@ -115,3 +115,70 @@ def test_safe_dashboard_variant_also_requires_owner_cookie():
         response = client.get("/")
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/login")
+
+
+def test_releasing_one_device_frees_only_that_seat():
+    from flask import Flask
+    import license_owner_ops
+
+    key = "SAIP-P-AAAA-BBBB-CCCC"
+    db = {
+        "users": {
+            "device-a": {"hwid": "device-a", "key": key, "activationToken": "token-a", "mode": "licensed", "email": "owner@example.com"},
+            "device-b": {"hwid": "device-b", "key": key, "activationToken": "token-b", "mode": "licensed", "email": "owner@example.com"},
+        },
+        "keys": {key: {"key": key, "hwid": "device-a", "devices": ["device-a", "device-b"], "seats": 5, "used": True}},
+        "accounts": {"owner@example.com": {"key": key, "devices": ["device-a", "device-b"], "seats": 5, "status": "active"}},
+        "requests": {},
+    }
+    app = Flask(__name__)
+    license_owner_ops.register_owner_ops(app)
+    client = app.test_client()
+    with patch.dict(os.environ, {"SA_OWNER_TOKEN": "owner-test-token"}):
+        with patch.object(license_owner_ops, "_load", return_value=db), patch.object(license_owner_ops, "_save"):
+            response = client.post("/api/owner/set-status", json={
+                "ownerToken": "owner-test-token", "hwid": "device-a", "status": "trial",
+            })
+    assert response.status_code == 200
+    assert db["keys"][key]["devices"] == ["device-b"]
+    assert db["keys"][key]["hwid"] == "device-b"
+    assert db["accounts"]["owner@example.com"]["devices"] == ["device-b"]
+    assert db["users"]["device-a"]["key"] is None
+    assert db["users"]["device-a"]["activationToken"] is None
+    assert db["users"]["device-b"]["key"] == key
+    assert db["users"]["device-b"]["activationToken"] == "token-b"
+
+
+def test_owner_release_key_revokes_every_device_on_multiseat_key():
+    from flask import Flask
+    import license_owner_ops
+
+    key = "SAIP-P-AAAA-BBBB-CCCC"
+    db = {
+        "users": {
+            "device-a": {"hwid": "device-a", "key": key, "activationToken": "token-a", "mode": "licensed"},
+            "device-b": {"hwid": "device-b", "key": key, "activationToken": "token-b", "mode": "licensed"},
+        },
+        "keys": {key: {"key": key, "hwid": "device-a", "devices": ["device-a", "device-b"], "seats": 5, "used": True}},
+        "accounts": {"owner@example.com": {"key": key, "devices": ["device-a", "device-b"], "status": "active"}},
+        "requests": {
+            "device-a": {"key": key, "status": "activated"},
+            "device-b": {"key": key, "status": "activated"},
+        },
+    }
+    app = Flask(__name__)
+    license_owner_ops.register_owner_ops(app)
+    client = app.test_client()
+    with patch.dict(os.environ, {"SA_OWNER_TOKEN": "owner-test-token"}):
+        with patch.object(license_owner_ops, "_load", return_value=db), patch.object(license_owner_ops, "_save"):
+            response = client.post("/api/owner/release-key", json={
+                "ownerToken": "owner-test-token", "key": key,
+            })
+    assert response.status_code == 200
+    assert db["keys"][key]["devices"] == []
+    assert db["keys"][key]["hwid"] is None
+    assert db["accounts"]["owner@example.com"]["devices"] == []
+    assert db["users"]["device-a"]["activationToken"] is None
+    assert db["users"]["device-b"]["activationToken"] is None
+    assert db["requests"]["device-a"]["status"] == "issued"
+    assert db["requests"]["device-b"]["status"] == "issued"
