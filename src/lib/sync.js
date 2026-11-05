@@ -53,7 +53,7 @@ async function request(path, opts = {}, attempt = 1, authToken = getToken()) {
     const err = data.error || data.message || res.statusText || 'Request failed'
     if ((res.status === 502 || res.status === 503) && attempt < maxAttempts) {
       await sleep(2000 * attempt)
-      return request(path, opts, attempt + 1)
+      return request(path, opts, attempt + 1, authToken)
     }
     const e = new Error(err)
     e.status = res.status
@@ -75,6 +75,11 @@ export function isSameSyncIdentity(scheduledToken, currentToken) {
 function cancelAutoPush() {
   if (_autoTimer) clearTimeout(_autoTimer)
   _autoTimer = null
+}
+
+function replaceAuthToken(token) {
+  if (getToken() !== (token || null)) cancelAutoPush()
+  setToken(token)
 }
 
 function normalizePortalResponse(data, clientId) {
@@ -115,7 +120,7 @@ export const Sync = {
       method: 'POST',
       body: JSON.stringify({ email, password, name }),
     })
-    setToken(data.token)
+    replaceAuthToken(data.token)
     return data
   },
 
@@ -125,8 +130,7 @@ export const Sync = {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     })
-    cancelAutoPush()
-    setToken(data.token)
+    replaceAuthToken(data.token)
     _lastError = null
     return data
   },
@@ -147,7 +151,7 @@ export const Sync = {
         password: newPassword,
       }),
     })
-    if (data.token) setToken(data.token)
+    if (data.token) replaceAuthToken(data.token)
     return data
   },
 
