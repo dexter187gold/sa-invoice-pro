@@ -288,16 +288,15 @@ def api_handshake():
         "lastSeen": _now(),
         "handshakeAt": _now(),
     }
-    # If key already issued, return it
+    # Never disclose an issued key from an unauthenticated HWID-only handshake.
     req = db.get("requests", {}).get(hwid) or {}
     out = {
         "ok": True,
         "message": "Handshake successful – device registered on server",
         "hwid": hwid,
+        "status": req.get("status") or "registered",
+        "keyAvailable": bool(req.get("key")),
     }
-    if req.get("key") and req.get("status") in ("issued", "claimed", "activated"):
-        out["key"] = req["key"]
-        out["status"] = req["status"]
     save(db)
     return jsonify(out)
 
@@ -318,8 +317,8 @@ def api_request():
         return jsonify({
             "ok": True,
             "status": "already_issued",
-            "message": "Key already issued – use Claim / key will appear",
-            "key": existing["key"],
+            "keyAvailable": True,
+            "message": "A key has been issued. Retrieve it from the verified delivery channel or enter it manually.",
         })
     reqs[hwid] = {
         "hwid": hwid,
@@ -384,6 +383,10 @@ def api_activate_validate():
         return jsonify({"valid": False, "ok": False, "error": f"Device licence status is {device_mode}. Contact SA Invoice Pro support.", "mode": device_mode}), 403
     key_rec = db.get("keys", {}).get(key)
     req = db.get("requests", {}).get(hwid)
+    supplied_token = str(data.get("activationToken") or "").strip()
+    expected_token = str(device.get("activationToken") or "").strip()
+    if not expected_token or not supplied_token or not __import__("hmac").compare_digest(expected_token, supplied_token):
+        return jsonify({"valid": False, "ok": False, "error": "Signed activation proof required; use the current activation endpoint"}), 403
     # Key must exist on server and match this HWID
     if not key_rec and req and req.get("key") == key:
         key_rec = {
