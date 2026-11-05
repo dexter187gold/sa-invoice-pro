@@ -38,7 +38,6 @@ async function isolateWorkspaceForAccount(targetEmail) {
   if (!previous) {
     try { previous = String(localStorage.getItem('sa_active_workspace_account') || '').trim().toLowerCase() } catch {}
   }
-  if (previous !== target) invalidateWorkspaceSync()
   if (!previous || previous === target) {
     const localUsers = (await db.getAll(STORES.users)) || []
     if (localUsers.length === 1) {
@@ -46,6 +45,7 @@ async function isolateWorkspaceForAccount(targetEmail) {
       if (candidate && candidate !== target) previous = candidate
     }
   }
+  if (previous !== target) invalidateWorkspaceSync()
   if (previous && previous !== target) {
     await db.saveAccountWorkspace(previous)
     await db.clearActiveWorkspace()
