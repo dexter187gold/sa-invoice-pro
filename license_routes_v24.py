@@ -167,15 +167,19 @@ def register_v24(app):
             }), 400
 
         seats = 1
+        key_devices = []
         if key_rec:
-            seats = int(key_rec.get("seats") or 1)
+            seats = max(1, int(key_rec.get("seats") or 1))
+            key_devices = [str(value).strip() for value in (key_rec.get("devices") or []) if str(value).strip()]
             bound = (key_rec.get("hwid") or "").strip()
-            if bound and bound != hwid and seats <= 1:
+            if bound and bound not in key_devices:
+                key_devices.append(bound)
+            if hwid not in key_devices and len(key_devices) >= seats:
                 return jsonify({
                     "ok": False, "activated": False, "valid": False,
-                    "error": "This key is already activated on another device",
-                    "code": "KEY_BOUND_OTHER_DEVICE",
-                    "hint": "Owner: POST /api/owner/release-key or /api/owner/transfer-key",
+                    "error": f"Seat limit reached ({seats}). Release a device or upgrade.",
+                    "code": "KEY_SEAT_LIMIT_REACHED",
+                    "seats": seats,
                 }), 403
         if account:
             seats = int(account.get("seats") or seats or 1)
@@ -191,7 +195,15 @@ def register_v24(app):
         plan = "S"
         if key_rec:
             plan = key_rec.get("plan") or key_rec.get("planId") or plan
-            key_rec = {**key_rec, "used": True, "activatedAt": now, "hwid": hwid}
+            if hwid not in key_devices:
+                key_devices.append(hwid)
+            key_rec = {
+                **key_rec,
+                "used": True,
+                "activatedAt": now,
+                "hwid": key_devices[0] if key_devices else hwid,
+                "devices": key_devices,
+            }
             keys[key] = key_rec
         if account:
             plan = account.get("plan") or plan
@@ -254,9 +266,11 @@ def register_v24(app):
         stored_key = (user.get("key") or "").strip().upper()
         if not stored_key or not _keys_equal(stored_key, key):
             return jsonify({"ok": False, "licensed": False, "error": "Key not bound to this device"}), 403
-        expected = user.get("activationToken") or ""
-        if expected and token and not hmac.compare_digest(str(expected), str(token)):
-            return jsonify({"ok": False, "licensed": False, "error": "Activation token mismatch"}), 403
+        expected = str(user.get("activationToken") or "")
+        if not expected:
+            return jsonify({"ok": False, "licensed": False, "error": "Activation token missing; reactivate this device"}), 403
+        if not token or not hmac.compare_digest(expected, str(token)):
+            return jsonify({"ok": False, "licensed": False, "error": "Activation token missing or mismatched"}), 403
         if mode != "licensed":
             return jsonify({"ok": False, "licensed": False, "status": mode or "unknown", "error": "Device is not licensed"}), 403
         return jsonify({
