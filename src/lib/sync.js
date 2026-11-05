@@ -169,7 +169,14 @@ export const Sync = {
     return data
   },
 
-  logout() { cancelAutoPush(); setToken(null) },
+  async logout() {
+    const token = getToken()
+    cancelAutoPush()
+    if (token) {
+      try { await request('/api/auth/logout', { method: 'POST' }, 1, token) } catch {}
+    }
+    replaceAuthToken(null)
+  },
   async me() { return request('/api/auth/me') },
   async pull() { return request('/api/workspace') },
 
