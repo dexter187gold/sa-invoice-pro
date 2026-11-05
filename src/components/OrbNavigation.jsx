@@ -136,6 +136,9 @@ export default function OrbNavigation({ onCommand, accessStatus, isOwner = false
                     <span aria-hidden="true">{item.icon}</span><span>{item.label}</span>
                   </NavLink>
                 ))}
+                <a href="https://sa-invoice.pages.dev/" target="_blank" rel="noopener noreferrer" onClick={() => setMenuOpen(false)}>
+                  <span aria-hidden="true">🌐</span><span>SA Invoice Pro website</span>
+                </a>
               </div>
             </div>
           ) : null}
