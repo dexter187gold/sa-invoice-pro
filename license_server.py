@@ -854,7 +854,7 @@ def admin_page():
 @app.post("/admin/save")
 def admin_save():
     token = request.form.get("token") or ""
-    if token != OWNER_TOKEN:
+    if not OWNER_TOKEN or not token or not secrets.compare_digest(token, OWNER_TOKEN):
         return "Unauthorized — wrong owner token", 401
     cfg = load_owner_config()
     cfg["googleClientId"] = (request.form.get("googleClientId") or "").strip()
