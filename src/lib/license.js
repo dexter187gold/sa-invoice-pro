@@ -115,7 +115,7 @@ export async function activate(key) {
 
   const j = await postJson(
     base,
-    ['/api/activate', '/api/license/activate', '/api/activate-validate'],
+    ['/api/activate', '/api/license/activate'],
     { hwid, key: k, email, app: 'sa-invoice-pro' },
   )
 
@@ -154,7 +154,7 @@ export async function revalidateLicense() {
   const hwid = await getHardwareId()
   if (!base || !key) return { ok: false, licensed: false, reason: 'missing' }
   try {
-    const j = await postJson(base, ['/api/license/verify', '/api/device-status'], {
+    const j = await postJson(base, ['/api/license/verify'], {
       hwid,
       key,
       activationToken: token,
@@ -175,6 +175,14 @@ export async function fullActivate() {
   const hs = await handshake()
   const req = await requestLicense()
   const key = req.key || req.licenseKey || req.license_key || hs.key
+  if (!key) {
+    return {
+      handshake: hs,
+      request: req,
+      activationRequired: true,
+      message: 'The server has a key available, but will not disclose it using a hardware ID alone. Enter the key delivered to your verified email or by the owner.',
+    }
+  }
   const act = await activate(key)
   return { handshake: hs, request: req, activate: act }
 }
