@@ -7,7 +7,7 @@ import { canUseCloudSync } from './soloMode.js'
 import * as db from './db.js'
 import { STORES } from './db.js'
 import { hashPassword } from './hash.js'
-import { ensureWorkspaceSynced, flushPushQueue, clearPushQueue, describeEnsureResult } from './workspaceSync.js'
+import { ensureWorkspaceSynced, flushPushQueue, describeEnsureResult } from './workspaceSync.js'
 import { getSession } from './storage.js'
 
 function isEmail(s) {
@@ -48,12 +48,10 @@ async function isolateWorkspaceForAccount(targetEmail) {
   if (previous && previous !== target) {
     await db.saveAccountWorkspace(previous)
     await db.clearActiveWorkspace()
-    clearPushQueue()
   }
   if (previous !== target) {
     const restored = await db.restoreAccountWorkspace(target)
     if (!restored) await db.clearActiveWorkspace()
-    clearPushQueue()
   }
   try { localStorage.setItem('sa_active_workspace_account', target) } catch {}
 }
@@ -199,6 +197,8 @@ export async function cloudLogin(username, password, ctx = {}) {
     name: local.name || local.username,
     cloud: false,
   }
+  // A previous cloud token must never sync this local-only account's workspace.
+  Sync.logout()
   await isolateWorkspaceForAccount(session.email)
   setSession?.(session)
   setUser?.(session)
