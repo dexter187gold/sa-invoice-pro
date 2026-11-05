@@ -8,7 +8,7 @@ gateways. All IDs, references and payments are simulation-only.
 
 From the repository root:
 
-    python -m unittest tests.test_licensing_simulator -v
+    python -m pytest -q tests/test_license_simulator.py
 
 No production credentials or external services are required.
 
