@@ -45,11 +45,10 @@ def _secret():
 
 
 def _sign(token: str) -> str:
-    return hmac.new(
-        (os.environ.get("LICENSE_SIGNING_SECRET") or _secret() or "SAIP").encode(),
-        token.encode(),
-        hashlib.sha256,
-    ).hexdigest()
+    secret = (os.environ.get("LICENSE_SIGNING_SECRET") or "").strip()
+    if len(secret) < 32:
+        return ""
+    return hmac.new(secret.encode(), token.encode(), hashlib.sha256).hexdigest()
 
 
 def cookie_value_for_token(token: str) -> str:
