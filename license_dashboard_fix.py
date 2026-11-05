@@ -36,6 +36,10 @@ PLAN_OPTS = (
 
 def register_safe_dashboard(app, load_fn, dash_template=None, now_display_fn=None):
     def dashboard():
+        from flask import redirect
+        from license_server import owner_cookie_authenticated
+        if not owner_cookie_authenticated():
+            return redirect("/login")
         msg = request.args.get("msg") or ""
         err = None
         db = {}
@@ -278,6 +282,9 @@ a {{ color:var(--accent) }}
             _now,
         )
 
+        from license_server import owner_cookie_authenticated
+        if not owner_cookie_authenticated():
+            return redirect("/login")
         token = (request.form.get("token") or "").strip()
         if not _owner_ok(token):
             return redirect("/?msg=" + html.escape("Owner token rejected", quote=True))
