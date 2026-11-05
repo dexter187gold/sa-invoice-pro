@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { partitionPushQueue } from '../src/lib/workspaceSync.js'
+import { isSameSyncIdentity } from '../src/lib/sync.js'
 
 test('only flushes queued writes owned by the currently signed-in account', () => {
   const queue = [
@@ -26,4 +27,11 @@ test('missing active identity cannot release any queued account data', () => {
   const { ready, deferred } = partitionPushQueue(queue, null)
   assert.equal(ready.length, 0)
   assert.deepEqual(deferred, queue)
+})
+
+test('scheduled sync cannot run after the cloud identity token changes', () => {
+  assert.equal(isSameSyncIdentity('token-account-a', 'token-account-a'), true)
+  assert.equal(isSameSyncIdentity('token-account-a', 'token-account-b'), false)
+  assert.equal(isSameSyncIdentity('token-account-a', null), false)
+  assert.equal(isSameSyncIdentity(null, 'token-account-b'), false)
 })
