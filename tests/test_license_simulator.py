@@ -32,12 +32,16 @@ class LicenseSimulatorTests(unittest.TestCase):
         expiry = self.env.accounts["acct-a"]["trial_expires_at"]
         self.env.now = expiry
         self.assertEqual(self.env.trial_state("acct-a")["status"], "transition")
+        self.assertEqual(self.env.access_mode("acct-a"), "transition_read_only")
         self.assertTrue(self.env.can_access("acct-a", "/export"))
         self.assertFalse(self.env.can_access("acct-a", "/invoices"))
+        self.assertFalse(self.env.can_mutate("acct-a", "/dashboard"))
         self.env.now = expiry + timedelta(hours=24)
         self.assertEqual(self.env.trial_state("acct-a")["status"], "limited")
+        self.assertEqual(self.env.access_mode("acct-a"), "limited_read_only")
         self.assertTrue(self.env.can_access("acct-a", "/settings"))
         self.assertFalse(self.env.can_access("acct-a", "/tickets"))
+        self.assertFalse(self.env.can_mutate("acct-a", "/settings"))
 
     def test_trial_access_is_softened_without_paid_modules(self):
         for path in ("/dashboard", "/clients", "/invoices", "/quotes", "/tickets",
@@ -60,6 +64,10 @@ class LicenseSimulatorTests(unittest.TestCase):
         self.assertEqual(updated["expires_at"] - updated["activated_at"], timedelta(hours=6))
         updated = self.env.set_duration(issued["license_id"], 2, "month")
         self.assertEqual(updated["expires_at"], add_duration(updated["activated_at"], 2, "month"))
+        expired = self.env.set_duration(issued["license_id"], 1, "hour")
+        self.env.advance(hours=2)
+        self.assertFalse(self.env.can_access("acct-a", "/accounting"))
+        self.assertEqual(expired["status"], "active")
 
     def test_calendar_month_clamps_month_end(self):
         result = add_duration(datetime(2026, 1, 31, 12, tzinfo=timezone.utc), 1, "month")
