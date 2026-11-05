@@ -103,6 +103,8 @@ async function localRegister(form, ctx = {}) {
     name,
     cloud: false,
   }
+  // Local-only registration must not inherit a previous account's cloud token.
+  Sync.logout()
   await isolateWorkspaceForAccount(email)
   await mirrorLocalUser(session, password, { username })
   setSession?.(session)
