@@ -87,7 +87,7 @@ export async function requestLicense() {
   const base = await getServerUrl()
   if (!base) throw new Error('License server URL not set')
   const hwid = await getHardwareId()
-  const j = await postJson(base, ['/api/request-license', '/api/license/request', '/api/request', '/api/claim'], {
+  const j = await postJson(base, ['/api/request-license', '/api/license/request', '/api/request'], {
     hwid,
     app: 'sa-invoice-pro',
     version: SA_CONFIG.appVersion,
