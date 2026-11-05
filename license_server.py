@@ -6,6 +6,7 @@ safe load defaults, consistent ISO-Z times.
 """
 from flask import Flask, request, jsonify, render_template_string, redirect, url_for
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal, InvalidOperation
 import json, os, secrets, string, sys
 
 app = Flask(__name__)
@@ -68,6 +69,31 @@ def _valid_key(key):
     if not k or len(k) > KEY_MAX:
         return None
     return k
+
+def owner_cookie_authenticated():
+    expected = (os.environ.get("SA_OWNER_TOKEN") or "").strip()
+    cookie = request.cookies.get("saip_owner") or ""
+    if not expected or not cookie:
+        return False
+    try:
+        from license_owner_login import token_from_cookie
+        return bool(token_from_cookie(cookie, expected))
+    except Exception:
+        return False
+
+
+def _owner_page_guard():
+    if owner_cookie_authenticated():
+        return None
+    return redirect("/login")
+
+
+def _owner_api_guard():
+    if owner_cookie_authenticated():
+        return None
+    return jsonify({"ok": False, "error": "Owner login required"}), 401
+
+
 
 def checksum_js(body: str) -> str:
     s = body + SECRET
@@ -220,6 +246,9 @@ def cors_preflight(path=None):
 
 @app.get("/")
 def dashboard():
+    denied = _owner_page_guard()
+    if denied:
+        return denied
     db = load()
     users = list(db.get("users", {}).values())
     reqs = list(db.get("requests", {}).values())
@@ -244,6 +273,9 @@ def dashboard():
 
 @app.post("/issue")
 def issue():
+    denied = _owner_page_guard()
+    if denied:
+        return denied
     hwid = _valid_hwid(request.form.get("hwid"))
     plan = (request.form.get("plan") or "T").strip().upper()[:1]
     if not hwid:
@@ -453,11 +485,17 @@ def heartbeat():
 
 @app.post("/set-status")
 def set_status_form():
+    denied = _owner_page_guard()
+    if denied:
+        return denied
     return api_set_status()
 
 @app.post("/api/set-status")
 def api_set_status():
-    """JSON from automation OR form from dashboard."""
+    """Owner-only status changes; public device status is read-only."""
+    denied = _owner_api_guard()
+    if denied:
+        return denied
     if request.is_json:
         data = request.get_json(force=True, silent=True) or {}
         hwid = _valid_hwid(data.get("hwid")) or ""
@@ -500,6 +538,9 @@ def api_set_status():
 @app.post("/owner/reset-for-repurchase")
 def owner_reset_for_repurchase():
     """Owner-only entitlement reset; retain the payment audit trail."""
+    denied = _owner_page_guard()
+    if denied:
+        return denied
     from hmac import compare_digest
     token = (request.form.get("token") or "").strip()
     expected = (os.environ.get("SA_OWNER_TOKEN") or "").strip()
@@ -584,23 +625,30 @@ def save_portals(db):
 
 @app.post("/api/portal/publish")
 def portal_publish():
+    denied = _owner_api_guard()
+    if denied:
+        return denied
     data = request.get_json(force=True, silent=True) or {}
     token = (data.get("token") or secrets.token_urlsafe(16))[:48]
     payload = data.get("payload") or data
     if not payload.get("client") and not payload.get("invoices"):
         return jsonify({"ok": False, "error": "payload required"}), 400
-    # Attach owner PayFast config so public portal can checkout
+    # Keep only browser-safe PayFast identifiers in public portal payloads.
+    # The passphrase remains server-side and signatures are minted by the API.
     try:
         oc = load_owner_config()
         pf = (oc.get("payfast") or {}) if isinstance(oc, dict) else {}
-        if pf.get("merchantId") and not (payload.get("payfast") or {}).get("merchantId"):
-            payload = dict(payload)
-            payload["payfast"] = {
-                "merchantId": pf.get("merchantId") or "",
-                "merchantKey": pf.get("merchantKey") or "",
-                "passphrase": pf.get("passphrase") or "",
-                "sandbox": pf.get("sandbox", True),
-            }
+        supplied_pf = payload.get("payfast") if isinstance(payload, dict) else {}
+        public_pf = {
+            "merchantId": pf.get("merchantId") or supplied_pf.get("merchantId") or "",
+            "merchantKey": pf.get("merchantKey") or supplied_pf.get("merchantKey") or "",
+            "sandbox": pf.get("sandbox", supplied_pf.get("sandbox", True)),
+        }
+        payload = dict(payload)
+        if public_pf["merchantId"]:
+            payload["payfast"] = public_pf
+        else:
+            payload.pop("payfast", None)
     except Exception:
         pass
     db = load_portals()
@@ -625,7 +673,12 @@ def portal_get(token):
                 return jsonify({"ok": False, "error": "Portal link expired"}), 410
         except Exception:
             pass
-    return jsonify({"ok": True, "payload": row.get("payload") or row})
+    payload = dict(row.get("payload") or row)
+    public_pf = dict(payload.get("payfast") or {})
+    public_pf.pop("passphrase", None)
+    if public_pf:
+        payload["payfast"] = public_pf
+    return jsonify({"ok": True, "payload": payload})
 
 @app.get("/portal/<token>")
 def portal_page(token):
@@ -853,24 +906,35 @@ def save_owner_config(cfg):
 
 @app.get("/api/public-config")
 def public_config():
-    """Clients pull this on startup — no auth (only non-secret or owner-chosen secrets for sandbox)."""
+    """Clients pull only browser-safe payment identifiers; private passphrases stay server-side."""
     cfg = load_owner_config()
+    pf = cfg.get("payfast") or {}
     return jsonify({
         "ok": True,
         "googleClientId": cfg.get("googleClientId") or "",
-        "payfast": cfg.get("payfast") or {},
+        "payfast": {
+            "merchantId": pf.get("merchantId") or "",
+            "merchantKey": pf.get("merchantKey") or "",
+            "sandbox": pf.get("sandbox", True),
+        },
         "licenseServerUrl": cfg.get("licenseServerUrl") or "",
         "updatedAt": cfg.get("updatedAt")
     })
 
 @app.get("/admin")
 def admin_page():
+    denied = _owner_page_guard()
+    if denied:
+        return denied
     cfg = load_owner_config()
     pf = cfg.get("payfast") or {}
     return render_template_string(ADMIN_HTML, cfg=cfg, pf=pf, paystack=cfg.get("paystack") or {})
 
 @app.post("/admin/save")
 def admin_save():
+    denied = _owner_page_guard()
+    if denied:
+        return denied
     token = request.form.get("token") or ""
     if not OWNER_TOKEN or not token or not secrets.compare_digest(token, OWNER_TOKEN):
         return "Unauthorized — wrong owner token", 401
