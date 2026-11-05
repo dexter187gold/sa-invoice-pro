@@ -60,13 +60,31 @@ async function tx(store, mode, fn) {
     const t = db.transaction(store, mode)
     const s = t.objectStore(store)
     let req
-    try { req = fn(s) } catch (err) { reject(err); return }
-    if (req && typeof req === 'object' && 'onsuccess' in req) {
-      req.onsuccess = () => resolve(req.result)
-      req.onerror = () => reject(req.error)
-    } else {
-      t.oncomplete = () => resolve(req)
-      t.onerror = () => reject(t.error)
+    let result
+    let settled = false
+    const fail = (error) => {
+      if (settled) return
+      settled = true
+      reject(error || t.error || new Error('IndexedDB transaction failed'))
+    }
+    t.oncomplete = () => {
+      if (settled) return
+      settled = true
+      resolve(result)
+    }
+    t.onerror = () => fail(t.error)
+    t.onabort = () => fail(t.error || new Error('IndexedDB transaction aborted'))
+    try {
+      req = fn(s)
+      if (req && typeof req === 'object' && 'onsuccess' in req) {
+        req.onsuccess = () => { result = req.result }
+        req.onerror = () => fail(req.error)
+      } else {
+        result = req
+      }
+    } catch (err) {
+      try { t.abort() } catch {}
+      fail(err)
     }
   })
 }
