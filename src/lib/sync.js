@@ -165,7 +165,7 @@ export const Sync = {
         password: newPassword,
       }),
     })
-    if (data.token) setToken(data.token)
+    if (data.token) replaceAuthToken(data.token)
     return data
   },
 
@@ -328,7 +328,7 @@ export const Sync = {
       _maxAttempts: 1,
     })
     // Stop background sync immediately so pre-reset local data cannot repopulate the empty cloud workspace.
-    setToken(null)
+    replaceAuthToken(null)
     return result
   },
 
