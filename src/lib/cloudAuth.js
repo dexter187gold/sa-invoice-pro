@@ -7,7 +7,7 @@ import { canUseCloudSync } from './soloMode.js'
 import * as db from './db.js'
 import { STORES } from './db.js'
 import { hashPassword } from './hash.js'
-import { ensureWorkspaceSynced, flushPushQueue, describeEnsureResult } from './workspaceSync.js'
+import { ensureWorkspaceSynced, flushPushQueue, describeEnsureResult, invalidateWorkspaceSync } from './workspaceSync.js'
 import { getSession } from './storage.js'
 
 function isEmail(s) {
@@ -38,6 +38,7 @@ async function isolateWorkspaceForAccount(targetEmail) {
   if (!previous) {
     try { previous = String(localStorage.getItem('sa_active_workspace_account') || '').trim().toLowerCase() } catch {}
   }
+  if (previous !== target) invalidateWorkspaceSync()
   if (!previous || previous === target) {
     const localUsers = (await db.getAll(STORES.users)) || []
     if (localUsers.length === 1) {
