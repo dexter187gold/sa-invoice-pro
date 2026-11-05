@@ -66,7 +66,7 @@ test.describe('Security regression — device entitlement and profile access', (
     await page.goto('/settings')
     await expect(page.getByRole('heading', { name: /settings/i }).first()).toBeVisible()
 
-    const legalName = page.getByLabel(/Legal \/ registered name/)
+    const legalName = page.locator('.company-profile-form input').first()
     await expect(legalName).toBeVisible()
     await legalName.fill('E2E Company Persistence Check')
     await page.getByRole('button', { name: 'Save company profile' }).click()
@@ -88,7 +88,7 @@ test.describe('Security regression — device entitlement and profile access', (
     }, { timeout: 10000 })
 
     await page.reload()
-    await expect(page.getByLabel(/Legal \/ registered name/)).toHaveValue('E2E Company Persistence Check')
+    await expect(page.locator('.company-profile-form input').first()).toHaveValue('E2E Company Persistence Check')
     const companyCount = await page.evaluate(async () => {
       const db = await new Promise((resolve, reject) => {
         const req = indexedDB.open('SAInvoicePro_v2', 6)
