@@ -84,3 +84,34 @@ def test_owner_token_header_can_authorize_protected_json_actions():
             )
     assert response.status_code == 200
     assert db["users"]["HWID-1"]["mode"] == "blocked"
+
+
+def test_existing_public_portal_records_are_sanitized_before_delivery():
+    token = "legacy-public-portal"
+    client = license_server.app.test_client()
+    row = {
+        "payload": {
+            "client": {"name": "Client"},
+            "payfast": {"merchantId": "merchant-id", "merchantKey": "merchant-key", "passphrase": "old-secret"},
+        },
+        "expiresAt": "2099-01-01T00:00:00Z",
+    }
+    with patch.object(license_server, "load_portals", return_value={token: row}):
+        response = client.get(f"/api/portal/{token}")
+    assert response.status_code == 200
+    payfast = response.get_json()["payload"]["payfast"]
+    assert payfast["merchantId"] == "merchant-id"
+    assert "passphrase" not in payfast
+
+
+def test_safe_dashboard_variant_also_requires_owner_cookie():
+    from flask import Flask
+    from license_dashboard_fix import register_safe_dashboard
+
+    app = Flask(__name__)
+    register_safe_dashboard(app, lambda: {"users": {}, "requests": {}, "keys": {}}, now_display_fn=lambda: "test")
+    client = app.test_client()
+    with patch.dict(os.environ, {"SA_OWNER_TOKEN": "owner-test-token"}):
+        response = client.get("/")
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/login")
