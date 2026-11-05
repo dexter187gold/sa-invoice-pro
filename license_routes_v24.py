@@ -169,7 +169,7 @@ def register_v24(app):
         seats = 1
         key_devices = []
         if key_rec:
-            seats = max(1, int(key_rec.get("seats") or 1))
+            seats = max(1, int(key_rec.get("seats") or (account.get("seats") if account else 1) or 1))
             key_devices = [str(value).strip() for value in (key_rec.get("devices") or []) if str(value).strip()]
             bound = (key_rec.get("hwid") or "").strip()
             if bound and bound not in key_devices:
