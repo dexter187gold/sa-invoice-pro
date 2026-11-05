@@ -82,6 +82,22 @@ def owner_cookie_authenticated():
         return False
 
 
+def owner_api_authenticated():
+    if owner_cookie_authenticated():
+        return True
+    expected = (os.environ.get("SA_OWNER_TOKEN") or "").strip()
+    if not expected:
+        return False
+    data = request.get_json(silent=True) or {}
+    supplied = str(
+        request.headers.get("X-Owner-Token")
+        or data.get("ownerToken")
+        or data.get("token")
+        or ""
+    ).strip()
+    return bool(supplied and secrets.compare_digest(supplied, expected))
+
+
 def _owner_page_guard():
     if owner_cookie_authenticated():
         return None
@@ -89,9 +105,9 @@ def _owner_page_guard():
 
 
 def _owner_api_guard():
-    if owner_cookie_authenticated():
+    if owner_api_authenticated():
         return None
-    return jsonify({"ok": False, "error": "Owner login required"}), 401
+    return jsonify({"ok": False, "error": "Owner authentication required"}), 401
 
 
 
