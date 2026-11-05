@@ -27,11 +27,10 @@ def _save(db):
 
 
 def _server_secret():
-    return (
-        os.environ.get("LICENSE_SIGNING_SECRET")
-        or os.environ.get("SA_OWNER_TOKEN")
-        or "SAIP-ZA-2026-V1"
-    ).encode("utf-8")
+    secret = (os.environ.get("LICENSE_SIGNING_SECRET") or "").strip()
+    if len(secret) < 32:
+        raise RuntimeError("LICENSE_SIGNING_SECRET must be configured with at least 32 characters")
+    return secret.encode("utf-8")
 
 
 def _activation_token(hwid: str, key: str, activated_at: str) -> str:
