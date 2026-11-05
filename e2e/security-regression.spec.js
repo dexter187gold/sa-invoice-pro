@@ -63,8 +63,12 @@ test.describe('Security regression — device entitlement and profile access', (
     await injectSession(page)
     await page.goto('/login')
     await seedIndexedDbCompany(page)
+    // The app may have completed its first IndexedDB read before the fixture is seeded.
+    // Reboot once so AppContext hydrates the seeded company deterministically.
+    await page.reload({ waitUntil: 'networkidle' })
     await page.goto('/settings')
     await expect(page.getByRole('heading', { name: /settings/i }).first()).toBeVisible()
+    await expect(page.locator('.company-profile-form')).toBeVisible()
 
     const legalName = page.locator('.company-profile-form input').first()
     await expect(legalName).toBeVisible()
