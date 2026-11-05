@@ -11,6 +11,10 @@ class LicenseSimulatorTests(unittest.TestCase):
         self.env = SimulatedLicenseEnvironment(datetime(2026, 1, 31, 12, 0, tzinfo=timezone.utc))
         self.env.register("acct-a", "a@example.test")
 
+    def test_price_points_reflect_exact_25_percent_reduction(self):
+        from tools.licensing_simulator.simulator import PLANS
+        self.assertEqual([PLANS[p]['monthly_zar'] for p in ('solo', 'shop', 'multi', 'enterprise')], [187, 374, 749, 1499])
+
     def test_trial_is_14_days_and_offer_is_7_days(self):
         account = self.env.accounts["acct-a"]
         self.assertEqual((account["trial_expires_at"] - account["trial_starts_at"]).days, TRIAL_DAYS)
@@ -69,9 +73,9 @@ class LicenseSimulatorTests(unittest.TestCase):
 
     def test_seven_day_annual_offer_equals_two_months_saving(self):
         quote = self.env.annual_quote("acct-a", "shop")
-        self.assertEqual(quote["annual_standard_zar"], 379 * 12)
-        self.assertEqual(quote["annual_offer_zar"], 379 * 10)
-        self.assertEqual(quote["saving_zar"], 379 * 2)
+        self.assertEqual(quote["annual_standard_zar"], 374 * 12)
+        self.assertEqual(quote["annual_offer_zar"], 374 * 10)
+        self.assertEqual(quote["saving_zar"], 374 * 2)
         self.env.advance(days=7)
         self.assertFalse(self.env.annual_quote("acct-a", "shop")["offer_active"])
 
