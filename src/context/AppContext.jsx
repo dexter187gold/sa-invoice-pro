@@ -159,6 +159,7 @@ export function AppProvider({ children }) {
       if (expired) return
       expired = true
       try { setSession(null) } catch {}
+      try { Sync.logout() } catch {}
       setUser(null)
       toast('Workspace locked after inactivity. Sign in again to continue.', 'info')
     }
@@ -250,7 +251,7 @@ export function AppProvider({ children }) {
     return { cloud: false }
   }
 
-  const lock = () => { setSession(null); setUser(null) }
+  const lock = () => { try { Sync.logout() } catch {}; setSession(null); setUser(null) }
 
   const logout = () => { try { Sync.logout() } catch {}; setSession(null); setUser(null) }
 
