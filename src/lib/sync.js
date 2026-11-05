@@ -21,9 +21,9 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms))
 }
 
-async function request(path, opts = {}, attempt = 1) {
+async function request(path, opts = {}, attempt = 1, authToken = getToken()) {
   const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) }
-  const token = getToken()
+  const token = authToken
   if (token) headers['Authorization'] = 'Bearer ' + token
   const maxAttempts = opts._maxAttempts || 3
   let res
@@ -40,7 +40,7 @@ async function request(path, opts = {}, attempt = 1) {
     const isNet = /abort|Failed to fetch|NetworkError|network|timeout|interrupted/i.test(msg)
     if (isNet && attempt < maxAttempts) {
       await sleep(1800 * attempt)
-      return request(path, opts, attempt + 1)
+      return request(path, opts, attempt + 1, authToken)
     }
     throw new Error(
       isNet
@@ -66,6 +66,16 @@ async function request(path, opts = {}, attempt = 1) {
 let _autoTimer = null
 let _lastPushAt = 0
 let _lastError = null
+
+/** Prevent delayed auto-pushes from crossing a login/logout boundary. */
+export function isSameSyncIdentity(scheduledToken, currentToken) {
+  return !!scheduledToken && scheduledToken === currentToken
+}
+
+function cancelAutoPush() {
+  if (_autoTimer) clearTimeout(_autoTimer)
+  _autoTimer = null
+}
 
 function normalizePortalResponse(data, clientId) {
   const token = data.token || data.portalToken || data.id || ''
@@ -115,6 +125,7 @@ export const Sync = {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     })
+    cancelAutoPush()
     setToken(data.token)
     _lastError = null
     return data
@@ -154,7 +165,7 @@ export const Sync = {
     return data
   },
 
-  logout() { setToken(null) },
+  logout() { cancelAutoPush(); setToken(null) },
   async me() { return request('/api/auth/me') },
   async pull() { return request('/api/workspace') },
 
@@ -229,9 +240,15 @@ export const Sync = {
   },
 
   scheduleAutoPush(snapshot, delayMs = 2000) {
-    if (!getToken()) return
-    if (_autoTimer) clearTimeout(_autoTimer)
-    _autoTimer = setTimeout(() => { _autoTimer = null; Sync.pushAll(snapshot) }, delayMs)
+    const scheduledToken = getToken()
+    if (!scheduledToken) return
+    cancelAutoPush()
+    _autoTimer = setTimeout(() => {
+      _autoTimer = null
+      // A delayed snapshot belongs only to the identity that scheduled it.
+      if (!isSameSyncIdentity(scheduledToken, getToken())) return
+      Sync.pushAll(snapshot)
+    }, delayMs)
   },
 
   lastPushAt() { return _lastPushAt },
