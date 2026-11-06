@@ -1,9 +1,8 @@
-"""Self-serve PayFast billing for SA Invoice Pro.
+"""Billing plan catalogue for SA Invoice Pro.
 
-Account model: payment → seats on email (not IP/MAC).
-Soft device ids are bound later on activate.
-
-PLANS live in license_plans.py (annual subscription ZAR prices).
+Checkout and payment callbacks are intentionally disabled in this build while
+provider approval and payment configuration are pending. PLANS live in
+license_plans.py (annual subscription ZAR prices).
 """
 from __future__ import annotations
 
@@ -48,11 +47,7 @@ def _pf_signature(fields: dict, passphrase: str) -> str:
 
 
 def register_billing(app, load, save, load_owner_config):
-    """Minimal billing registration — full PayFast/Paystack handlers require complete module.
-
-    This stub exposes /api/billing/plans so the app and dashboard can show subscription prices
-    while the full checkout file is restored from git history if needed.
-    """
+    """Expose the read-only plan catalogue; payment checkout is not enabled."""
     from flask import request, jsonify
 
     @app.get("/api/billing/plans")
@@ -69,4 +64,4 @@ def register_billing(app, load, save, load_owner_config):
             })
         return jsonify({"ok": True, "plans": plans})
 
-    print("[billing] plans endpoint registered (full checkout: restore license_billing from pre-placeholder commit if missing)")
+    print("[billing] plans endpoint registered; payment checkout is not enabled in this build")
