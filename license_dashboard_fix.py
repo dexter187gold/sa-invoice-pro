@@ -169,7 +169,7 @@ a {{ color:var(--accent) }}
   <div style="display:flex;gap:12px;align-items:center;font-size:13px">
     <a href="/login">Login</a>
     <a href="/logout">Logout</a>
-    <a href="/admin">Payment admin</a>
+    <a href="/admin">Payment settings</a>
     <span style="color:var(--muted)">{_esc(now)}</span>
   </div>
 </header>
@@ -209,7 +209,7 @@ a {{ color:var(--accent) }}
           <select name="plan">{PLAN_OPTS}</select>
         </div>
       </div>
-      <label>Owner token (SA_OWNER_TOKEN)</label>
+      <label>Developer access token (SA_OWNER_TOKEN)</label>
       <input name="token" type="password" required autocomplete="current-password"/>
       <button type="submit">Issue bound key &amp; activate device</button>
     </form>
@@ -300,7 +300,7 @@ a {{ color:var(--accent) }}
             return redirect("/login")
         token = (request.form.get("token") or "").strip()
         if not _owner_ok(token):
-            return redirect("/?msg=" + html.escape("Owner token rejected", quote=True))
+            return redirect("/?msg=" + html.escape("Developer access token rejected", quote=True))
         email = (request.form.get("email") or "").strip().lower()
         phone = "".join(c for c in str(request.form.get("phone") or "") if c.isdigit() or c == "+")
         hwid = (request.form.get("hwid") or "").strip()
