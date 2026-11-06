@@ -45,6 +45,12 @@ try:
 except Exception as e:
     print("[billing-ledger] not registered:", e)
 
+try:
+    from license_duration_admin import register_duration_admin
+    register_duration_admin(app)
+except Exception as e:
+    print("[duration-controls] not registered:", e)
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "5055"))
