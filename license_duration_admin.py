@@ -71,6 +71,8 @@ def register_duration_admin(app):
             "durationUpdatedAt": stamp(),
             "adminNote": "Developer set licence duration: " + str(amount) + " " + unit,
         })
+        if str(user.get("mode") or "").lower() == "trial":
+            user["trialEndsAt"] = expiry
         key = str(user.get("key") or "").strip().upper()
         if key:
             key_record = (db.get("keys") or {}).get(key)
