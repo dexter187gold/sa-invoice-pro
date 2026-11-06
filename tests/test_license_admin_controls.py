@@ -197,3 +197,35 @@ def test_legacy_expiry_is_not_enforced_until_developer_manages_it(monkeypatch):
     )
     assert response.status_code != 500
     assert db["users"]["legacy-device"]["mode"] == "licensed"
+
+
+def test_billing_ledger_deduplicates_shared_payment_references():
+    from license_billing_admin import _rows
+
+    rows = _rows({
+        "transactions": {
+            "transaction-1": {
+                "reference": "pay-ref-1",
+                "email": "demo@example.test",
+                "status": "success",
+                "amount": "299.00",
+            }
+        },
+        "pending_payments": {
+            "pay-ref-1": {
+                "reference": "pay-ref-1",
+                "email": "demo@example.test",
+                "status": "paid",
+                "amount": "299.00",
+            },
+            "pay-ref-2": {
+                "reference": "pay-ref-2",
+                "email": "other@example.test",
+                "status": "paid",
+                "amount": "599.00",
+            },
+        },
+    })
+    assert len(rows) == 2
+    assert len([row for row in rows if row["reference"] == "pay-ref-1"]) == 1
+    assert next(row for row in rows if row["reference"] == "pay-ref-1")["source"] == "transactions"
