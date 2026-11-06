@@ -558,6 +558,8 @@ def api_set_status():
         "statusSetAt": _now(),
         "lastSeen": previous.get("lastSeen") or _now(),
     }
+    if status == "trial" and previous.get("expiryEnforced") and previous.get("expiresAt"):
+        users[hwid]["trialEndsAt"] = previous["expiresAt"]
     # Keep the request/issued-key record in step with the owner status change.
     req = (db.get("requests") or {}).get(hwid)
     if req:
