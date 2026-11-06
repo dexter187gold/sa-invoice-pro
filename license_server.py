@@ -1093,12 +1093,12 @@ button{margin-top:1rem;width:100%;padding:.75rem;border:0;border-radius:10px;bac
 </style></head><body>
 <div class="wrap">
   <div class="card">
-    <h1>Admin portal</h1>
-    <p class="muted">Manage payment credentials securely. Secret keys remain server-side and are never returned to the browser.</p>
+    <h1>Developer payment settings</h1>
+    <p class="muted">Developer-only payment configuration. Secret keys remain server-side. Secret keys remain server-side and are never returned to the browser.</p>
     <p class="muted">After save, users pick up config on next app launch.</p>
     <p><a href="/admin/billing" style="color:#6ee7b7;font-weight:700">Open billing & activation ledger →</a></p>
     <form method="post" action="/admin/save">
-      <label>Owner token</label>
+      <label>Developer access token</label>
       <input type="password" name="token" placeholder="Enter owner token" autocomplete="current-password" required/>
       <label>Google OAuth Web Client ID</label>
       <input type="text" name="googleClientId" value="{{ cfg.googleClientId or '' }}" placeholder="….apps.googleusercontent.com"/>
@@ -1124,7 +1124,7 @@ button{margin-top:1rem;width:100%;padding:.75rem;border:0;border-radius:10px;bac
       <button type="submit">Save payment settings</button>
     </form>
   </div>
-  <p class="muted">Open this page at <code>/admin</code> on your license server host. Set env <code>SA_OWNER_TOKEN</code> in production.</p>
+  <p class="muted">Developer settings · <a href="/">Return to developer control centre</a> · <a href="/admin/billing">Billing ledger</a>. Access is protected by the developer login and SA_OWNER_TOKEN.</p>
 </div>
 </body></html>
 """
