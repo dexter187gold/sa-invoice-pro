@@ -274,3 +274,26 @@ def test_duration_admin_sets_trial_end_date(monkeypatch):
     user = db["users"]["trial-device"]
     assert user["expiryEnforced"] is True
     assert user["trialEndsAt"] == user["expiresAt"]
+
+
+def test_switching_managed_device_to_trial_preserves_trial_expiry(monkeypatch):
+    import license_server
+
+    db = {
+        "users": {
+            "device-3": {
+                "hwid": "device-3",
+                "mode": "licensed",
+                "expiresAt": "2026-12-01T00:00:00Z",
+                "expiryEnforced": True,
+            }
+        }
+    }
+    monkeypatch.setattr(license_server, "_owner_api_guard", lambda: None)
+    monkeypatch.setattr(license_server, "load", lambda: db)
+    monkeypatch.setattr(license_server, "save", lambda value: None)
+    response = license_server.app.test_client().post(
+        "/api/set-status", data={"hwid": "device-3", "status": "trial"}
+    )
+    assert response.status_code == 302
+    assert db["users"]["device-3"]["trialEndsAt"] == "2026-12-01T00:00:00Z"
