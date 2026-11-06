@@ -38,7 +38,7 @@ export function publicLinks() {
     syncApi: SYNC_API_URL,
     licenseApi: LICENSE_API_URL,
     edgeProxy: EDGE_PROXY_URL,
-    website: 'https://sa-invoice-pro.pages.dev',
+    website: 'https://sa-invoice.pages.dev',
     supportEmail: SUPPORT_EMAIL,
   }
 }
@@ -48,7 +48,7 @@ export const APP_LINKS = {
   licenseServer: LICENSE_API_URL,
   updatesServer: LICENSE_API_URL,
   clientPortal: CLIENT_PORTAL_URL,
-  website: 'https://sa-invoice-pro.pages.dev',
+  website: 'https://sa-invoice.pages.dev',
   edgeProxy: EDGE_PROXY_URL,
   supportEmail: SUPPORT_EMAIL,
 }

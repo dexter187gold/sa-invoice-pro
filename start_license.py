@@ -39,6 +39,25 @@ try:
 except Exception as e:
     print("[delivery] not applied:", e)
 
+try:
+    from license_billing_admin import register_billing_admin
+    register_billing_admin(app, ls.load)
+except Exception as e:
+    print("[billing-ledger] not registered:", e)
+
+try:
+    from license_duration_admin import register_duration_admin
+    register_duration_admin(app)
+except Exception as e:
+    print("[duration-controls] not registered:", e)
+
+try:
+    from license_developer_console import register_developer_console
+    register_developer_console(app, ls.load, ls._now_display)
+except Exception as e:
+    print("[developer-console] not registered:", e)
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "5055"))
     app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)

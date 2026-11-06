@@ -1,4 +1,4 @@
-"""Owner control centre dashboard for saip-license — devices, status, admin issue."""
+"""Developer control centre dashboard for saip-license — devices, status, admin issue."""
 import html
 from flask import request
 
@@ -76,6 +76,7 @@ def register_safe_dashboard(app, load_fn, dash_template=None, now_display_fn=Non
                 f"<br><span style='color:#9bb7aa;font-size:12px'>{_esc(email or 'No email')}</span>"
                 f"<br><span style='color:#9bb7aa;font-size:12px'>{_esc(phone or 'No phone')}</span></td>"
                 f"<td>{_badge(u.get('mode'))}</td>"
+                f"<td style='font-size:12px'>{_esc(u.get('expiresAt') or u.get('expiry') or '—')}</td>"
                 f"<td><strong>{_esc(plan)}</strong>"
                 f"<br><span style='font-size:11px;color:#9bb7aa'>seats {_esc(u.get('seats') or '—')}</span></td>"
                 f"<td style='font-size:12px'>{_esc(u.get('lastSeen') or '—')}</td>"
@@ -86,11 +87,12 @@ def register_safe_dashboard(app, load_fn, dash_template=None, now_display_fn=Non
                 "<button name='status' value='licensed'>Licensed</button>"
                 "<button name='status' value='suspended'>Suspend</button>"
                 "<button name='status' value='blocked'>Block</button>"
+                "<button name='status' value='expired'>Expire</button>"
                 "</form></td></tr>"
             )
         if not device_rows:
             device_rows.append(
-                "<tr><td colspan='5' style='color:#9bb7aa'>No devices yet — run Handshake from the desk app.</td></tr>"
+                "<tr><td colspan='6' style='color:#9bb7aa'>No devices yet — run Handshake from the desk app.</td></tr>"
             )
 
         pending_rows = []
@@ -165,11 +167,12 @@ a {{ color:var(--accent) }}
 .inline {{ display:inline }}
 </style></head><body>
 <header>
-  <div class="brand">SA INVOICE PRO <small>OWNER CONTROL CENTRE · devices · keys · plans</small></div>
+  <div class="brand">SA INVOICE PRO <small>DEVELOPER CONTROL CENTRE · devices · keys · plans</small></div>
   <div style="display:flex;gap:12px;align-items:center;font-size:13px">
     <a href="/login">Login</a>
     <a href="/logout">Logout</a>
-    <a href="/admin">Payment admin</a>
+    <a href="/admin">Payment settings</a>
+    <a href="/admin/billing">Billing ledger</a>
     <span style="color:var(--muted)">{_esc(now)}</span>
   </div>
 </header>
@@ -186,7 +189,7 @@ a {{ color:var(--accent) }}
   </div>
 
   <div class="card">
-    <h2>Admin issue key (email + phone + HWID bound)</h2>
+    <h2>Developer issue key (email + phone + HWID bound)</h2>
     <p style="color:var(--muted);font-size:13px;margin:0 0 12px">
       Generates a unique key that can only activate when the app sends the same email, phone and HWID.
     </p>
@@ -209,12 +212,25 @@ a {{ color:var(--accent) }}
           <select name="plan">{PLAN_OPTS}</select>
         </div>
       </div>
-      <label>Owner token (SA_OWNER_TOKEN)</label>
+      <label>Developer access token (SA_OWNER_TOKEN)</label>
       <input name="token" type="password" required autocomplete="current-password"/>
       <button type="submit">Issue bound key &amp; activate device</button>
     </form>
   </div>
 
+  <div class="card">
+    <h2>Adjust licence duration</h2>
+    <p style="color:var(--muted);font-size:13px;margin:0 0 12px">Set a new expiry from now or extend the existing expiry. Supports hours, days, months and years. This changes the selected device expiry; it does not alter payment history.</p>
+    <form method="post" action="/owner/set-duration">
+      <label>Device HWID</label><input name="hwid" required maxlength="256" placeholder="Copy the device HWID from the register"/>
+      <div class="grid2">
+        <div><label>Duration</label><input name="duration" type="number" min="1" max="36500" value="30" required/></div>
+        <div><label>Unit</label><select name="unit"><option value="hours">Hours</option><option value="days" selected>Days</option><option value="months">Months</option><option value="years">Years</option></select></div>
+        <div><label>Apply method</label><select name="action"><option value="set">Set expiry from now</option><option value="extend">Extend current expiry</option></select></div>
+      </div>
+      <button type="submit">Save licence duration</button>
+    </form>
+  </div>
   <div class="card">
     <h2>Devices &amp; licence status</h2>
     <div style="overflow:auto">
@@ -287,17 +303,17 @@ a {{ color:var(--accent) }}
             return redirect("/login")
         token = (request.form.get("token") or "").strip()
         if not _owner_ok(token):
-            return redirect("/?msg=" + html.escape("Owner token rejected", quote=True))
+            return redirect("/keys?msg=" + html.escape("Developer access token rejected", quote=True))
         email = (request.form.get("email") or "").strip().lower()
         phone = "".join(c for c in str(request.form.get("phone") or "") if c.isdigit() or c == "+")
         hwid = (request.form.get("hwid") or "").strip()
         plan = request.form.get("plan") or "S"
         if not email or "@" not in email or not phone or not hwid:
-            return redirect("/?msg=email%2C%20phone%20and%20hwid%20required")
+            return redirect("/keys?msg=email%2C%20phone%20and%20hwid%20required")
         try:
             plan_info = _resolve_plan(plan)
         except ValueError as e:
-            return redirect("/?msg=" + html.escape(str(e), quote=True))
+            return redirect("/keys?msg=" + html.escape(str(e), quote=True))
         db = _load()
         key = _mint_key(plan_info["code"])
         _apply_plan_to_device(
@@ -333,6 +349,6 @@ a {{ color:var(--accent) }}
         })
         db["activation_log"] = logs[:200]
         _save(db)
-        return redirect("/?msg=" + html.escape(f"Issued {key} for {email}", quote=True))
+        return redirect("/keys?msg=" + html.escape(f"Issued {key} for {email}", quote=True))
 
     print("[dashboard] safe control centre registered")
