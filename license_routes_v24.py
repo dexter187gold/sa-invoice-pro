@@ -194,7 +194,8 @@ def register_v24(app):
         now = _now()
         plan = "S"
         existing_expiry = str((device or {}).get("expiresAt") or (key_rec or {}).get("expiresAt") or "").strip()
-        if existing_expiry:
+        expiry_is_managed = bool((device or {}).get("expiryEnforced") or (key_rec or {}).get("expiryEnforced"))
+        if existing_expiry and expiry_is_managed:
             expiry = existing_expiry
         else:
             try:
@@ -211,6 +212,7 @@ def register_v24(app):
                 "used": True,
                 "activatedAt": now,
                 "expiresAt": expiry,
+                "expiryEnforced": True,
                 "hwid": key_devices[0] if key_devices else hwid,
                 "devices": key_devices,
             }
@@ -237,6 +239,7 @@ def register_v24(app):
             "email": email or device.get("email") or (account or {}).get("email"),
             "activatedAt": now,
             "expiresAt": expiry,
+            "expiryEnforced": True,
             "lastSeen": now,
             "activationToken": token,
         }
@@ -273,7 +276,7 @@ def register_v24(app):
         user = (db.get("users") or {}).get(hwid) or {}
         mode = str(user.get("mode") or "").lower()
         expires_at = str(user.get("expiresAt") or "").strip()
-        if expires_at and mode == "licensed":
+        if expires_at and user.get("expiryEnforced") and mode == "licensed":
             try:
                 expiry_dt = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
                 if expiry_dt.tzinfo is None:
