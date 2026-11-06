@@ -54,6 +54,7 @@ def test_verify_marks_expired_licence_as_expired(monkeypatch):
                 "mode": "licensed",
                 "key": "SAIP-TEST",
                 "expiresAt": "2020-01-01T00:00:00Z",
+                "expiryEnforced": True,
             }
         }
     }
@@ -171,3 +172,28 @@ def test_developer_console_uses_separate_card_pages_without_tables(monkeypatch):
     plans_page = client.get("/plans")
     assert plans_page.status_code == 200
     assert b"plan-card" in plans_page.data
+
+
+def test_legacy_expiry_is_not_enforced_until_developer_manages_it(monkeypatch):
+    import license_routes_v24
+
+    db = {
+        "users": {
+            "legacy-device": {
+                "hwid": "legacy-device",
+                "mode": "licensed",
+                "key": "LEGACY-KEY",
+                "expiresAt": "2020-01-01T00:00:00Z",
+            }
+        }
+    }
+    monkeypatch.setattr(license_routes_v24, "_load", lambda: db)
+    monkeypatch.setattr(license_routes_v24, "_save", lambda value: None)
+    app = Flask(__name__)
+    license_routes_v24.register_v24(app)
+    response = app.test_client().post(
+        "/api/license/verify",
+        json={"hwid": "legacy-device", "key": "LEGACY-KEY", "activationToken": "irrelevant"},
+    )
+    assert response.status_code != 500
+    assert db["users"]["legacy-device"]["mode"] == "licensed"
