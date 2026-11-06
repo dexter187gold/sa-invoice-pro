@@ -1143,7 +1143,7 @@ except Exception as _e:
 # Register self-serve billing endpoints after owner configuration is available.
 from license_billing import register_billing
 register_billing(app, load, save, load_owner_config)
-print("[billing] PayFast checkout + verified ITN + account claim registered")
+print("[billing] plans endpoint registered; payment checkout is not enabled in this build")
 
 
 if __name__ == "__main__":
