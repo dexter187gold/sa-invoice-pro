@@ -213,7 +213,7 @@ def test_billing_ledger_deduplicates_shared_payment_references():
         },
         "pending_payments": {
             "pay-ref-1": {
-                "reference": "pay-ref-1",
+                "paystackReference": "pay-ref-1",
                 "email": "demo@example.test",
                 "status": "paid",
                 "amount": "299.00",
