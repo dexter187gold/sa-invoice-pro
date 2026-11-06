@@ -68,3 +68,44 @@ def test_verify_marks_expired_licence_as_expired(monkeypatch):
     assert response.status_code == 403
     assert response.get_json()["status"] == "expired"
     assert db["users"]["device-1"]["mode"] == "expired"
+
+
+def test_billing_ledger_route_is_developer_gated_and_renders_rows(monkeypatch):
+    import license_server
+    from license_billing_admin import register_billing_admin
+
+    monkeypatch.setattr(license_server, "owner_cookie_authenticated", lambda: False)
+    app = Flask(__name__)
+    register_billing_admin(app, lambda: {"transactions": {"tx-1": {"email": "demo@example.test", "status": "paid", "amount": "50"}}})
+    client = app.test_client()
+    assert client.get("/admin/billing").status_code == 302
+
+    monkeypatch.setattr(license_server, "owner_cookie_authenticated", lambda: True)
+    response = client.get("/admin/billing")
+    assert response.status_code == 200
+    assert b"Billing &amp; activation ledger" in response.data or b"Billing & activation ledger" in response.data
+    assert b"demo@example.test" in response.data
+    export = client.get("/admin/billing/export.csv")
+    assert export.status_code == 200
+    assert b"demo@example.test" in export.data
+
+
+def test_duration_form_updates_existing_device_expiry(monkeypatch):
+    import license_server
+    import license_owner_ops
+    from license_duration_admin import register_duration_admin
+
+    db = {"users": {"device-2": {"hwid": "device-2", "mode": "licensed", "key": "SAIP-TEST"}}}
+    monkeypatch.setattr(license_server, "owner_cookie_authenticated", lambda: True)
+    monkeypatch.setattr(license_owner_ops, "_load", lambda: db)
+    monkeypatch.setattr(license_owner_ops, "_save", lambda value: None)
+    app = Flask(__name__)
+    register_duration_admin(app)
+    response = app.test_client().post(
+        "/owner/set-duration",
+        data={"hwid": "device-2", "duration": "2", "unit": "months", "action": "set"},
+    )
+    assert response.status_code == 302
+    expiry = datetime.fromisoformat(db["users"]["device-2"]["expiresAt"].replace("Z", "+00:00"))
+    assert expiry > datetime.now(timezone.utc) + __import__("datetime").timedelta(days=50)
+    assert db["users"]["device-2"]["durationUnit"] == "months"
