@@ -34,8 +34,9 @@ def _rows(db):
             if not isinstance(rec, dict):
                 continue
             tx = rec.get("transaction") if isinstance(rec.get("transaction"), dict) else {}
-            ref = _text(rec.get("reference") or rec.get("ref") or tx.get("reference") or record_id)
-            identity = (section, ref)
+            raw_ref = rec.get("reference") or rec.get("ref") or tx.get("reference")
+            ref = _text(raw_ref or record_id)
+            identity = ("reference", _text(raw_ref)) if raw_ref else (section, _text(record_id))
             if identity in seen:
                 continue
             seen.add(identity)
