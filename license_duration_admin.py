@@ -65,6 +65,7 @@ def register_duration_admin(app):
         expiry = _add_duration(base, amount, unit).strftime("%Y-%m-%dT%H:%M:%SZ")
         user.update({
             "expiresAt": expiry,
+            "expiryEnforced": True,
             "durationValue": amount,
             "durationUnit": unit,
             "durationUpdatedAt": stamp(),
@@ -74,7 +75,7 @@ def register_duration_admin(app):
         if key:
             key_record = (db.get("keys") or {}).get(key)
             if isinstance(key_record, dict):
-                key_record.update({"expiresAt": expiry, "durationValue": amount, "durationUnit": unit})
+                key_record.update({"expiresAt": expiry, "expiryEnforced": True, "durationValue": amount, "durationUnit": unit})
         log = db.setdefault("activation_log", [])
         if not isinstance(log, list):
             log = []
