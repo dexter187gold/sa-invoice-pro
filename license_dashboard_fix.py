@@ -303,17 +303,17 @@ a {{ color:var(--accent) }}
             return redirect("/login")
         token = (request.form.get("token") or "").strip()
         if not _owner_ok(token):
-            return redirect("/?msg=" + html.escape("Developer access token rejected", quote=True))
+            return redirect("/keys?msg=" + html.escape("Developer access token rejected", quote=True))
         email = (request.form.get("email") or "").strip().lower()
         phone = "".join(c for c in str(request.form.get("phone") or "") if c.isdigit() or c == "+")
         hwid = (request.form.get("hwid") or "").strip()
         plan = request.form.get("plan") or "S"
         if not email or "@" not in email or not phone or not hwid:
-            return redirect("/?msg=email%2C%20phone%20and%20hwid%20required")
+            return redirect("/keys?msg=email%2C%20phone%20and%20hwid%20required")
         try:
             plan_info = _resolve_plan(plan)
         except ValueError as e:
-            return redirect("/?msg=" + html.escape(str(e), quote=True))
+            return redirect("/keys?msg=" + html.escape(str(e), quote=True))
         db = _load()
         key = _mint_key(plan_info["code"])
         _apply_plan_to_device(
@@ -349,6 +349,6 @@ a {{ color:var(--accent) }}
         })
         db["activation_log"] = logs[:200]
         _save(db)
-        return redirect("/?msg=" + html.escape(f"Issued {key} for {email}", quote=True))
+        return redirect("/keys?msg=" + html.escape(f"Issued {key} for {email}", quote=True))
 
     print("[dashboard] safe control centre registered")
