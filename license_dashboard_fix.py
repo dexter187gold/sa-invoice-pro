@@ -1,4 +1,4 @@
-"""Owner control centre dashboard for saip-license — devices, status, admin issue."""
+"""Developer control centre dashboard for saip-license — devices, status, admin issue."""
 import html
 from flask import request
 
@@ -165,7 +165,7 @@ a {{ color:var(--accent) }}
 .inline {{ display:inline }}
 </style></head><body>
 <header>
-  <div class="brand">SA INVOICE PRO <small>OWNER CONTROL CENTRE · devices · keys · plans</small></div>
+  <div class="brand">SA INVOICE PRO <small>DEVELOPER CONTROL CENTRE · devices · keys · plans</small></div>
   <div style="display:flex;gap:12px;align-items:center;font-size:13px">
     <a href="/login">Login</a>
     <a href="/logout">Logout</a>
@@ -186,7 +186,7 @@ a {{ color:var(--accent) }}
   </div>
 
   <div class="card">
-    <h2>Admin issue key (email + phone + HWID bound)</h2>
+    <h2>Developer issue key (email + phone + HWID bound)</h2>
     <p style="color:var(--muted);font-size:13px;margin:0 0 12px">
       Generates a unique key that can only activate when the app sends the same email, phone and HWID.
     </p>
@@ -215,6 +215,19 @@ a {{ color:var(--accent) }}
     </form>
   </div>
 
+  <div class="card">
+    <h2>Adjust licence duration</h2>
+    <p style="color:var(--muted);font-size:13px;margin:0 0 12px">Set a new expiry from now or extend the existing expiry. Supports hours, days, months and years. This changes the selected device expiry; it does not alter payment history.</p>
+    <form method="post" action="/owner/set-duration">
+      <label>Device HWID</label><input name="hwid" required maxlength="256" placeholder="Copy the device HWID from the register"/>
+      <div class="grid2">
+        <div><label>Duration</label><input name="duration" type="number" min="1" max="36500" value="30" required/></div>
+        <div><label>Unit</label><select name="unit"><option value="hours">Hours</option><option value="days" selected>Days</option><option value="months">Months</option><option value="years">Years</option></select></div>
+        <div><label>Apply method</label><select name="action"><option value="set">Set expiry from now</option><option value="extend">Extend current expiry</option></select></div>
+      </div>
+      <button type="submit">Save licence duration</button>
+    </form>
+  </div>
   <div class="card">
     <h2>Devices &amp; licence status</h2>
     <div style="overflow:auto">
