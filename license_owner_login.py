@@ -1,4 +1,4 @@
-"""Owner browser login for licence control centre.
+"""Developer browser login for licence control centre.
 
 Uses SA_OWNER_TOKEN (same secret as API X-Owner-Token).
 Cookie: saip_owner (signed, httpOnly, Secure when HTTPS).
@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 LOGIN_HTML = """<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>SA Invoice Pro · Owner login</title>
+<title>SA Invoice Pro · Developer login</title>
 <style>
 body{font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;margin:0;min-height:100vh;display:grid;place-items:center;padding:1rem}
 .card{background:#1e293b;border-radius:14px;padding:1.5rem;max-width:400px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.35)}
@@ -26,15 +26,15 @@ button{margin-top:1rem;width:100%;padding:.75rem;border:0;border-radius:10px;bac
 a{color:#6ee7b7}
 </style></head><body>
 <div class="card">
-  <h1>Owner login</h1>
-  <p class="muted">Licence control · enter the same token as <code>SA_OWNER_TOKEN</code> on Render.</p>
+  <h1>Developer login</h1>
+  <p class="muted">Developer licence operations · enter the developer access token as <code>SA_OWNER_TOKEN</code> on Render.</p>
   {% if error %}<div class="err">{{ error }}</div>{% endif %}
   <form method="post" action="/login">
-    <label>Owner token</label>
+    <label>Developer access token</label>
     <input type="password" name="token" required autocomplete="current-password" placeholder="SA_OWNER_TOKEN"/>
     <button type="submit">Sign in</button>
   </form>
-  <p class="muted" style="margin-top:1rem">After login: <a href="/">Control centre</a> · <a href="/admin">Payment admin</a></p>
+  <p class="muted" style="margin-top:1rem">After login: <a href="/">Developer control centre</a> · <a href="/admin">Payment settings</a></p>
 </div>
 </body></html>
 """
