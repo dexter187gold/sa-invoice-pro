@@ -137,6 +137,7 @@ def register_developer_console(app, load_fn, now_display_fn=None):
             )
         )
         overview = """
+          <section class="panel-card"><h2>Developer quick access</h2><p class="muted-line">Choose a separate workspace below. Device and key controls are not shown on this overview page.</p></section>
           <section class="quick-grid">
             <a class="quick-card" href="/devices"><strong>Manage device licences</strong><span>Activate, suspend, block, expire and adjust duration</span></a>
             <a class="quick-card" href="/requests"><strong>Review licence requests</strong><span>Review pending requests and issue bound keys</span></a>
