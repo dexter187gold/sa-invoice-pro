@@ -382,6 +382,29 @@ def api_request():
     save(db)
     return jsonify({"ok": True, "status": "pending", "message": "Request received – vendor must issue a key on the server"})
 
+def _enforce_managed_expiry(db, user):
+    """Expire only records explicitly managed by the developer duration controls."""
+    mode = str(user.get("mode") or "unknown").lower()
+    if not user.get("expiryEnforced") or mode not in ("licensed", "trial"):
+        return mode
+    expiry_value = user.get("trialEndsAt") if mode == "trial" else user.get("expiresAt")
+    if not expiry_value:
+        return mode
+    try:
+        expiry_dt = datetime.fromisoformat(str(expiry_value).replace("Z", "+00:00"))
+        if expiry_dt.tzinfo is None:
+            expiry_dt = expiry_dt.replace(tzinfo=timezone.utc)
+    except (TypeError, ValueError):
+        expiry_dt = datetime.min.replace(tzinfo=timezone.utc)
+    if datetime.now(timezone.utc) >= expiry_dt:
+        user["mode"] = "expired"
+        user["status"] = "expired"
+        user["statusSetAt"] = _now()
+        save(db)
+        return "expired"
+    return mode
+
+
 @app.post("/api/device-status")
 def api_device_status():
     """Return the current server-authoritative device licence state."""
@@ -392,7 +415,7 @@ def api_device_status():
     db = load()
     user = (db.get("users") or {}).get(hwid) or {}
     req = (db.get("requests") or {}).get(hwid) or {}
-    mode = str(user.get("mode") or "unknown").lower()
+    mode = _enforce_managed_expiry(db, user)
     return jsonify({
         "ok": True,
         "hwid": hwid,
@@ -426,7 +449,7 @@ def api_activate_validate():
         return jsonify({"valid": False, "error": "hwid and key required", "ok": False}), 400
     db = load()
     device = (db.get("users") or {}).get(hwid) or {}
-    device_mode = str(device.get("mode") or "").lower()
+    device_mode = _enforce_managed_expiry(db, device)
     if device_mode in ("suspended", "blocked", "expired"):
         return jsonify({"valid": False, "ok": False, "error": f"Device licence status is {device_mode}. Contact SA Invoice Pro support.", "mode": device_mode}), 403
     key_rec = db.get("keys", {}).get(key)
