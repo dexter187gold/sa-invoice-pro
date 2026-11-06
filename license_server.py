@@ -1054,10 +1054,11 @@ def admin_save():
     cfg = load_owner_config()
     cfg["googleClientId"] = (request.form.get("googleClientId") or "").strip()
     cfg["licenseServerUrl"] = (request.form.get("licenseServerUrl") or "").strip().rstrip("/")
+    current_payfast = cfg.get("payfast") or {}
     cfg["payfast"] = {
-        "merchantId": (request.form.get("merchantId") or "").strip(),
-        "merchantKey": (request.form.get("merchantKey") or "").strip(),
-        "passphrase": (request.form.get("passphrase") or "").strip(),
+        "merchantId": (request.form.get("merchantId") or "").strip() or current_payfast.get("merchantId", ""),
+        "merchantKey": (request.form.get("merchantKey") or "").strip() or current_payfast.get("merchantKey", ""),
+        "passphrase": (request.form.get("passphrase") or "").strip() or current_payfast.get("passphrase", ""),
         "sandbox": request.form.get("sandbox") == "on"
     }
     # Secret stays server-side; it is never included in public config or HTML.
@@ -1107,9 +1108,9 @@ button{margin-top:1rem;width:100%;padding:.75rem;border:0;border-radius:10px;bac
       <label>PayFast Merchant ID</label>
       <input type="text" name="merchantId" value="{{ pf.merchantId or '' }}"/>
       <label>PayFast Merchant Key</label>
-      <input type="text" name="merchantKey" value="{{ pf.merchantKey or '' }}"/>
+      <input type="text" name="merchantKey" placeholder="Saved securely — leave blank to keep current key"/>
       <label>PayFast Passphrase</label>
-      <input type="password" name="passphrase" value="{{ pf.passphrase or '' }}"/>
+      <input type="password" name="passphrase" placeholder="Saved securely — leave blank to keep current passphrase"/>
       <label><input type="checkbox" name="sandbox" {% if pf.sandbox != False %}checked{% endif %}/> PayFast sandbox mode</label>
       <hr style="border:0;border-top:1px solid #334155;margin:1.2rem 0"/>
       <h2 style="font-size:1rem;color:#6ee7b7">Paystack checkout</h2>
