@@ -34,7 +34,7 @@ def _rows(db):
             if not isinstance(rec, dict):
                 continue
             tx = rec.get("transaction") if isinstance(rec.get("transaction"), dict) else {}
-            raw_ref = rec.get("reference") or rec.get("ref") or tx.get("reference")
+            raw_ref = rec.get("reference") or rec.get("ref") or rec.get("paystackReference") or tx.get("reference")
             ref = _text(raw_ref or record_id)
             identity = ("reference", _text(raw_ref)) if raw_ref else (section, _text(record_id))
             if identity in seen:
@@ -56,7 +56,7 @@ def _rows(db):
                 "currency": _text(rec.get("currency") or tx.get("currency") or "ZAR"),
                 "status": status,
                 "source": section.replace("_", " "),
-                "payment_id": _text(rec.get("paymentId") or rec.get("id") or record_id),
+                "payment_id": _text(rec.get("paymentId") or rec.get("gatewayTransactionId") or rec.get("id") or record_id),
                 "delivery": _text((rec.get("delivery") or {}).get("status") if isinstance(rec.get("delivery"), dict) else ""),
             })
     rows.sort(key=lambda row: row["date"], reverse=True)
