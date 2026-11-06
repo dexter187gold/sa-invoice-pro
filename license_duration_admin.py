@@ -81,4 +81,4 @@ def register_duration_admin(app):
         log.insert(0, {"at": stamp(), "action": "developer_set_duration", "hwid": hwid, "duration": amount, "unit": unit, "method": action, "expiresAt": expiry})
         db["activation_log"] = log[:200]
         _save(db)
-        return redirect("/?msg=" + __import__("urllib.parse", fromlist=["quote"]).quote("Licence expiry updated to " + expiry))
+        return redirect("/devices?msg=" + __import__("urllib.parse", fromlist=["quote"]).quote("Licence expiry updated to " + expiry))
