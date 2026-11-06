@@ -8,7 +8,7 @@ from __future__ import annotations
 import csv
 import io
 from datetime import datetime, timezone
-from flask import Response, redirect, render_template_string, request
+from flask import Response, make_response, redirect, render_template_string, request
 
 
 def _text(value):
@@ -89,7 +89,9 @@ def register_billing_admin(app, load_fn):
 <section class="card"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center"><div><strong>Payment history</strong><p class="muted" style="margin:4px 0">No payment records are created or changed by viewing this page.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="search" type="search" placeholder="Search email, reference, plan or status" oninput="filterRows()"><a class="btn" href="/admin/billing/export.csv">Export CSV</a></div></div>
 <div class="tablewrap" style="margin-top:14px"><table><thead><tr><th>Date</th><th>Reference</th><th>Customer</th><th>Plan</th><th>Amount</th><th>Status</th><th>Source</th></tr></thead><tbody id="ledger">{% for row in rows %}<tr><td>{{ row.date or "—" }}</td><td>{{ row.reference or "—" }}</td><td>{{ row.email or "—" }}</td><td>{{ row.plan or "—" }}</td><td>{{ row.currency }} {{ row.amount }}</td><td><span class="status {{ row.status }}">{{ row.status or "recorded" }}</span></td><td>{{ row.source }}</td></tr>{% else %}<tr><td colspan="7" class="empty">No payment records were found in the current Git-backed licence data. This does not mean there were no historical payments; the older billing implementation or data source may need to be restored.</td></tr>{% endfor %}</tbody></table></div></section>
 <p class="muted" style="font-size:11px">Developer-only · read-only ledger · transaction verification remains server-side.</p></main><script>function filterRows(){const q=(document.getElementById('search').value||'').toLowerCase();document.querySelectorAll('#ledger tr').forEach(r=>r.hidden=!r.innerText.toLowerCase().includes(q))}</script></body></html>"""
-        return render_template_string(template, rows=rows, paid=paid, pending=pending, failed=failed, error=error)
+        response = make_response(render_template_string(template, rows=rows, paid=paid, pending=pending, failed=failed, error=error))
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
     @app.get("/admin/billing/export.csv")
     def developer_billing_export():
@@ -105,7 +107,8 @@ def register_billing_admin(app, load_fn):
         writer = csv.writer(stream)
         writer.writerow(["date", "reference", "email", "plan", "amount", "currency", "status", "source", "payment_id"])
         for row in rows:
-            writer.writerow([row[k] for k in ("date", "reference", "email", "plan", "amount", "currency", "status", "source", "payment_id")])
+            values = [row[k] for k in ("date", "reference", "email", "plan", "amount", "currency", "status", "source", "payment_id")]
+            writer.writerow([("'" + str(value)) if str(value).startswith(("=", "+", "-", "@", "\\t", "\\r")) else value for value in values])
         return Response(stream.getvalue(), mimetype="text/csv", headers={"Content-Disposition": "attachment; filename=saip-billing-ledger.csv", "Cache-Control": "no-store"})
 
     print("[billing-ledger] developer-only read-only /admin/billing and CSV export registered")
