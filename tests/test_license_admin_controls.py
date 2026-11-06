@@ -109,3 +109,65 @@ def test_duration_form_updates_existing_device_expiry(monkeypatch):
     expiry = datetime.fromisoformat(db["users"]["device-2"]["expiresAt"].replace("Z", "+00:00"))
     assert expiry > datetime.now(timezone.utc) + __import__("datetime").timedelta(days=50)
     assert db["users"]["device-2"]["durationUnit"] == "months"
+
+
+def test_developer_console_uses_separate_card_pages_without_tables(monkeypatch):
+    import license_server
+    from license_developer_console import register_developer_console
+
+    monkeypatch.setattr(license_server, "owner_cookie_authenticated", lambda: True)
+    app = Flask(__name__)
+    app.add_url_rule("/", endpoint="dashboard", view_func=lambda: "old dashboard")
+    state = {
+        "users": {
+            "device-1": {
+                "hwid": "device-1",
+                "email": "demo@example.test",
+                "phone": "0800000000",
+                "mode": "licensed",
+                "plan": "Solo",
+                "expiresAt": "2026-12-01T00:00:00Z",
+            }
+        },
+        "requests": {
+            "device-2": {
+                "hwid": "device-2",
+                "email": "pending@example.test",
+                "status": "pending",
+                "plan": "Solo",
+            }
+        },
+        "keys": {
+            "SAIP-TEST-1": {
+                "plan": "Solo",
+                "boundEmail": "demo@example.test",
+                "hwid": "device-1",
+                "used": True,
+            }
+        },
+    }
+    register_developer_console(app, lambda: state, lambda: "2026-11-06")
+    client = app.test_client()
+
+    overview = client.get("/")
+    assert overview.status_code == 200
+    assert b"Developer quick access" in overview.data
+
+    devices = client.get("/devices")
+    assert devices.status_code == 200
+    assert b"device-card" in devices.data
+    assert b"Adjust licence duration" in devices.data
+    assert b"<table" not in devices.data
+
+    requests_page = client.get("/requests")
+    assert requests_page.status_code == 200
+    assert b"request-card" in requests_page.data
+
+    keys_page = client.get("/keys")
+    assert keys_page.status_code == 200
+    assert b"key-card" in keys_page.data
+    assert b"Issue a customer-bound licence" in keys_page.data
+
+    plans_page = client.get("/plans")
+    assert plans_page.status_code == 200
+    assert b"plan-card" in plans_page.data
