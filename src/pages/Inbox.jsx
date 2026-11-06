@@ -6,6 +6,7 @@ import { STORES } from '../lib/db'
 import { Sync } from '../lib/sync'
 import { PageFade, EmptyState } from '../components/ui'
 import { QUICK_REPLIES, suggestFromInbound } from '../lib/waTemplates'
+import { suggestInboundReplies } from '../lib/whatsappResponder'
 import { sendWhatsAppText, getWhatsAppConfigStatus } from '../lib/waBusiness'
 
 function urgencyToPriority(u) {
@@ -25,6 +26,7 @@ export default function Inbox() {
   const [replyFor, setReplyFor] = useState(null)
   const [replyText, setReplyText] = useState('')
   const [inboundText, setInboundText] = useState('')
+  const [smartSuggestions, setSmartSuggestions] = useState([])
   const [waStatus, setWaStatus] = useState(null)
 
   const load = useCallback(async () => {
@@ -60,6 +62,7 @@ export default function Inbox() {
     const first = QUICK_REPLIES[0]
     setReplyText(first.build(clientStub, company))
     setInboundText('')
+    setSmartSuggestions([])
   }
 
   const applyQuick = (qr) => {
@@ -70,11 +73,26 @@ export default function Inbox() {
 
   const doSmartSuggest = () => {
     if (!replyFor) return
-    const id = suggestFromInbound(inboundText)
-    const qr = QUICK_REPLIES.find((q) => q.id === id) || QUICK_REPLIES[0]
     const clientStub = { name: replyFor.name, phone: replyFor.phone }
-    setReplyText(qr.build(clientStub, company))
-    toast?.(`Suggested: ${qr.label}`, 'info')
+    const suggestions = suggestInboundReplies({
+      message: inboundText,
+      client: clientStub,
+      company,
+    })
+    setSmartSuggestions(suggestions)
+    if (suggestions.length) {
+      setReplyText(suggestions[0].text)
+      toast?.(`Suggested ${suggestions.length} reply option${suggestions.length > 1 ? 's' : ''}`, 'info')
+    } else {
+      const id = suggestFromInbound(inboundText)
+      const qr = QUICK_REPLIES.find((q) => q.id === id) || QUICK_REPLIES[0]
+      setReplyText(qr.build(clientStub, company))
+      toast?.(`Suggested: ${qr.label}`, 'info')
+    }
+  }
+
+  const applySuggestion = (sug, lang = 'en') => {
+    setReplyText(lang === 'af' && sug.af ? sug.af : sug.text)
   }
 
   const sendReply = async () => {
@@ -90,6 +108,7 @@ export default function Inbox() {
       setReplyFor(null)
       setReplyText('')
       setInboundText('')
+      setSmartSuggestions([])
     } catch (e) {
       toast?.(e.message || 'Could not send', 'error')
     } finally {
@@ -247,7 +266,7 @@ export default function Inbox() {
           <h3 style={{ marginTop: 0 }}>Reply to {replyFor.name || replyFor.phone}</h3>
 
           <label className="stack" style={{ gap: 4, marginBottom: 8 }}>
-            <span className="muted" style={{ fontSize: 12 }}>Paste inbound message (optional) — Smart suggest fills a ZA-tone reply</span>
+            <span className="muted" style={{ fontSize: 12 }}>Paste inbound message — Smart suggest builds ZA-tone replies (EN + AF)</span>
             <textarea
               className="input"
               rows={3}
@@ -259,6 +278,19 @@ export default function Inbox() {
               Smart suggest
             </button>
           </label>
+
+          {smartSuggestions.length > 0 && (
+            <div style={{ marginBottom: 12, padding: 8, background: 'var(--surface-2)', borderRadius: 6 }}>
+              <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>Contextual suggestions</div>
+              {smartSuggestions.map((sug, i) => (
+                <div key={i} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6, alignItems: 'center' }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, minWidth: 120 }}>{sug.label}</span>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => applySuggestion(sug, 'en')}>Use EN</button>
+                  {sug.af && <button type="button" className="btn btn-outline btn-sm" onClick={() => applySuggestion(sug, 'af')}>Use AF</button>}
+                </div>
+              ))}
+            </div>
+          )}
 
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
             {QUICK_REPLIES.map((qr) => (
@@ -276,7 +308,7 @@ export default function Inbox() {
           />
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <button type="button" className="btn btn-primary" disabled={busy} onClick={sendReply}>{sendLabel}</button>
-            <button type="button" className="btn btn-outline" onClick={() => { setReplyFor(null); setReplyText(''); setInboundText('') }}>Cancel</button>
+            <button type="button" className="btn btn-outline" onClick={() => { setReplyFor(null); setReplyText(''); setInboundText(''); setSmartSuggestions([]) }}>Cancel</button>
           </div>
           {waStatus && !waStatus.configured ? (
             <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>
