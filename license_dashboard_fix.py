@@ -76,6 +76,7 @@ def register_safe_dashboard(app, load_fn, dash_template=None, now_display_fn=Non
                 f"<br><span style='color:#9bb7aa;font-size:12px'>{_esc(email or 'No email')}</span>"
                 f"<br><span style='color:#9bb7aa;font-size:12px'>{_esc(phone or 'No phone')}</span></td>"
                 f"<td>{_badge(u.get('mode'))}</td>"
+                f"<td style='font-size:12px'>{_esc(u.get('expiresAt') or u.get('expiry') or '—')}</td>"
                 f"<td><strong>{_esc(plan)}</strong>"
                 f"<br><span style='font-size:11px;color:#9bb7aa'>seats {_esc(u.get('seats') or '—')}</span></td>"
                 f"<td style='font-size:12px'>{_esc(u.get('lastSeen') or '—')}</td>"
@@ -86,11 +87,12 @@ def register_safe_dashboard(app, load_fn, dash_template=None, now_display_fn=Non
                 "<button name='status' value='licensed'>Licensed</button>"
                 "<button name='status' value='suspended'>Suspend</button>"
                 "<button name='status' value='blocked'>Block</button>"
+                "<button name='status' value='expired'>Expire</button>"
                 "</form></td></tr>"
             )
         if not device_rows:
             device_rows.append(
-                "<tr><td colspan='5' style='color:#9bb7aa'>No devices yet — run Handshake from the desk app.</td></tr>"
+                "<tr><td colspan='6' style='color:#9bb7aa'>No devices yet — run Handshake from the desk app.</td></tr>"
             )
 
         pending_rows = []
