@@ -1,3 +1,9 @@
+## 6.59.0 — Smarter inbound WhatsApp replies
+
+- Inbox now surfaces multiple contextual suggestions from `suggestInboundReplies` (status, pricing, payment, collection, greeting) with one-tap EN / AF.
+- Falls back to the existing quick-reply keyword pack.
+- Better desk flow for responding to real client WhatsApp messages.
+
 ## 6.58.0 — Website access shortcut
 
 - Added a direct link to the public SA Invoice Pro website in the orb Main Menu.
