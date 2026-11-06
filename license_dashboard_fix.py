@@ -172,6 +172,7 @@ a {{ color:var(--accent) }}
     <a href="/login">Login</a>
     <a href="/logout">Logout</a>
     <a href="/admin">Payment settings</a>
+    <a href="/admin/billing">Billing ledger</a>
     <span style="color:var(--muted)">{_esc(now)}</span>
   </div>
 </header>
