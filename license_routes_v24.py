@@ -275,8 +275,9 @@ def register_v24(app):
         db = _load()
         user = (db.get("users") or {}).get(hwid) or {}
         mode = str(user.get("mode") or "").lower()
-        expires_at = str(user.get("expiresAt") or "").strip()
-        if expires_at and user.get("expiryEnforced") and mode == "licensed":
+        expiry_value = user.get("trialEndsAt") if mode == "trial" else user.get("expiresAt")
+        expires_at = str(expiry_value or "").strip()
+        if expires_at and user.get("expiryEnforced") and mode in ("licensed", "trial"):
             try:
                 expiry_dt = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
                 if expiry_dt.tzinfo is None:

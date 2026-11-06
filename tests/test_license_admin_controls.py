@@ -197,3 +197,103 @@ def test_legacy_expiry_is_not_enforced_until_developer_manages_it(monkeypatch):
     )
     assert response.status_code != 500
     assert db["users"]["legacy-device"]["mode"] == "licensed"
+
+
+def test_billing_ledger_deduplicates_shared_payment_references():
+    from license_billing_admin import _rows
+
+    rows = _rows({
+        "transactions": {
+            "transaction-1": {
+                "reference": "pay-ref-1",
+                "email": "demo@example.test",
+                "status": "success",
+                "amount": "299.00",
+            }
+        },
+        "pending_payments": {
+            "pay-ref-1": {
+                "paystackReference": "pay-ref-1",
+                "email": "demo@example.test",
+                "status": "paid",
+                "amount": "299.00",
+            },
+            "pay-ref-2": {
+                "reference": "pay-ref-2",
+                "email": "other@example.test",
+                "status": "paid",
+                "amount": "599.00",
+            },
+        },
+    })
+    assert len(rows) == 2
+    assert len([row for row in rows if row["reference"] == "pay-ref-1"]) == 1
+    assert next(row for row in rows if row["reference"] == "pay-ref-1")["source"] == "transactions"
+
+
+def test_managed_trial_expiry_is_enforced_by_device_status_api(monkeypatch):
+    import license_server
+
+    db = {
+        "users": {
+            "trial-device": {
+                "hwid": "trial-device",
+                "mode": "trial",
+                "expiryEnforced": True,
+                "trialEndsAt": "2020-01-01T00:00:00Z",
+            }
+        }
+    }
+    monkeypatch.setattr(license_server, "load", lambda: db)
+    monkeypatch.setattr(license_server, "save", lambda value: None)
+    response = license_server.app.test_client().post(
+        "/api/device-status", json={"hwid": "trial-device"}
+    )
+    assert response.status_code == 200
+    assert response.get_json()["mode"] == "expired"
+    assert response.get_json()["allowed"] is False
+    assert db["users"]["trial-device"]["mode"] == "expired"
+
+
+def test_duration_admin_sets_trial_end_date(monkeypatch):
+    import license_server
+    import license_owner_ops
+    from license_duration_admin import register_duration_admin
+
+    db = {"users": {"trial-device": {"hwid": "trial-device", "mode": "trial"}}}
+    monkeypatch.setattr(license_server, "owner_cookie_authenticated", lambda: True)
+    monkeypatch.setattr(license_owner_ops, "_load", lambda: db)
+    monkeypatch.setattr(license_owner_ops, "_save", lambda value: None)
+    app = Flask(__name__)
+    register_duration_admin(app)
+    response = app.test_client().post(
+        "/owner/set-duration",
+        data={"hwid": "trial-device", "duration": "6", "unit": "hours", "action": "set"},
+    )
+    assert response.status_code == 302
+    user = db["users"]["trial-device"]
+    assert user["expiryEnforced"] is True
+    assert user["trialEndsAt"] == user["expiresAt"]
+
+
+def test_switching_managed_device_to_trial_preserves_trial_expiry(monkeypatch):
+    import license_server
+
+    db = {
+        "users": {
+            "device-3": {
+                "hwid": "device-3",
+                "mode": "licensed",
+                "expiresAt": "2026-12-01T00:00:00Z",
+                "expiryEnforced": True,
+            }
+        }
+    }
+    monkeypatch.setattr(license_server, "_owner_api_guard", lambda: None)
+    monkeypatch.setattr(license_server, "load", lambda: db)
+    monkeypatch.setattr(license_server, "save", lambda value: None)
+    response = license_server.app.test_client().post(
+        "/api/set-status", data={"hwid": "device-3", "status": "trial"}
+    )
+    assert response.status_code == 302
+    assert db["users"]["device-3"]["trialEndsAt"] == "2026-12-01T00:00:00Z"
