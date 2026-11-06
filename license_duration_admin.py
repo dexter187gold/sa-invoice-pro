@@ -42,7 +42,8 @@ def register_duration_admin(app):
             amount = int(raw_amount)
         except (TypeError, ValueError):
             return redirect("/?msg=Duration%20must%20be%20a%20whole%20number")
-        if amount < 1 or amount > 36500 or unit not in ("hours", "days", "months", "years") or action not in ("set", "extend"):
+        limits = {"hours": 87600, "days": 36500, "months": 1200, "years": 100}
+        if unit not in limits or amount < 1 or amount > limits[unit] or action not in ("set", "extend"):
             return redirect("/?msg=Invalid%20duration%20or%20action")
         from license_owner_ops import _load, _save, _now as stamp
         db = _load()
