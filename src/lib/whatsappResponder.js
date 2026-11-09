@@ -92,6 +92,7 @@ export function suggestReplies({ type = 'general', job, invoice, client = {}, co
 /**
  * Keyword-aware suggestions for inbound WhatsApp messages from clients.
  * Context-aware when job / invoice are passed.
+ * Expanded pack for common SA phone / IT repair desk queries.
  */
 export function suggestInboundReplies({ message = '', client = {}, company = {}, job, invoice } = {}) {
   const text = String(message || '').toLowerCase()
@@ -202,6 +203,55 @@ export function suggestInboundReplies({ message = '', client = {}, company = {},
       label: 'Warranty',
       text: `Hi ${name}, from *${shop}*: warranty note.\n\nOur repairs carry a 90-day workmanship warranty on the part we fitted. Accidental damage or new issues are not covered. Reply with the original job number if you need a check.`,
       af: `Hi ${name}, waarborg. Stuur die oorspronklike job nommer.`,
+    })
+  }
+
+  // New expanded keywords for common desk queries
+  if (/speaker|sound|audio|silent|no sound|mic|microphone|voice|call sound/.test(text)) {
+    replies.push({
+      label: 'Speaker / sound',
+      text: `Hi ${name}, from *${shop}*: speaker / microphone issue.\n\nReply with the exact model and whether it is no sound on calls, music, or both, plus if the mic works. We can test and quote a repair or replacement.`,
+      af: `Hi ${name}, luidspreker / mikrofoon. Stuur model en of dit op oproepe of musiek is.`,
+    })
+  }
+
+  if (/wifi|wi-fi|internet|network|not connecting|bluetooth|bt |pairing/.test(text)) {
+    replies.push({
+      label: 'WiFi / Bluetooth',
+      text: `Hi ${name}, from *${shop}*: WiFi or Bluetooth issue.\n\nReply with the model and what happens (can't see networks, drops, won't pair). Often software or antenna related — we can diagnose.`,
+      af: `Hi ${name}, WiFi of Bluetooth probleem. Stuur model en wat gebeur.`,
+    })
+  }
+
+  if (/software|update|stuck|bootloop|logo|apple logo|samsung logo|restarting/.test(text)) {
+    replies.push({
+      label: 'Software / boot',
+      text: `Hi ${name}, from *${shop}*: software or boot issue.\n\nIf it is stuck on the logo or keeps restarting, bring it in. We can try recovery or flash. Reply with model + iOS/Android version if known, and whether you have a backup.`,
+      af: `Hi ${name}, sagteware / boot probleem. Bring dit in, ons kan herstel probeer.`,
+    })
+  }
+
+  if (/password|pin|pattern|forgot|unlock|can't open|lock screen/.test(text) && !/frp|google|icloud|samsung/.test(text)) {
+    replies.push({
+      label: 'Lock / password',
+      text: `Hi ${name}, from *${shop}*: lock screen / password.\n\nWe can help with pattern/PIN if the device is yours. For Google/Apple account locks see the FRP note. Reply with model and confirm ownership.`,
+      af: `Hi ${name}, slotskerm. Bevestig eienaarskap en stuur model.`,
+    })
+  }
+
+  if (/icloud|apple id|samsung account|find my|activation/.test(text)) {
+    replies.push({
+      label: 'iCloud / account lock',
+      text: `Hi ${name}, from *${shop}*: iCloud / Samsung account lock.\n\nThese require the original account credentials or proof of ownership. Bring proof of purchase if possible. Reply with model and whether you know the account details.`,
+      af: `Hi ${name}, iCloud of Samsung-rekening. Bring bewys van eienaarskap.`,
+    })
+  }
+
+  if (/face id|touch id|fingerprint|faceid|touchid/.test(text)) {
+    replies.push({
+      label: 'Face ID / Touch ID',
+      text: `Hi ${name}, from *${shop}*: Face ID or Touch ID issue.\n\nReply with the model and whether it stopped working after a drop, screen repair, or software update. We can diagnose sensor or software.`,
+      af: `Hi ${name}, Face ID / Touch ID. Stuur model en wanneer dit opgehou werk het.`,
     })
   }
 
