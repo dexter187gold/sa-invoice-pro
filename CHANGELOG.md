@@ -1,3 +1,10 @@
+## 6.60.0 — Contextual desk WhatsApp replies
+
+- Smart suggest now looks up the real client by phone and injects open job + invoice context into replies.
+- Expanded keyword pack: water damage, charging port, camera, dead/no power, FRP, data recovery, warranty, screen, battery.
+- One-tap Copy on the reply box. Context hint shows when a job/invoice was matched.
+- ZA tone EN/AF preserved.
+
 ## 6.59.0 — Smarter inbound WhatsApp replies
 
 - Inbox now surfaces multiple contextual suggestions from `suggestInboundReplies` (status, pricing, payment, collection, greeting) with one-tap EN / AF.
