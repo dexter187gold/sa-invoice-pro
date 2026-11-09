@@ -1,6 +1,6 @@
-# SA Invoice Pro 6.59.0
+# SA Invoice Pro 6.60.0
 
-Smarter inbound WhatsApp reply suggestions · Bench pack for repair shops.
+Contextual desk WhatsApp replies · Bench pack for repair shops.
 
 ```bash
 npm install && npm run dev
