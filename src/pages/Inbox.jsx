@@ -16,8 +16,12 @@ function urgencyToPriority(u) {
   return 'normal'
 }
 
+function phoneKey(p) {
+  return String(p || '').replace(/\D/g, '')
+}
+
 export default function Inbox() {
-  const { clients, company, refresh, toast } = useApp()
+  const { clients, company, invoices = [], tickets = [], refresh, toast } = useApp()
   const nav = useNavigate()
   const [pending, setPending] = useState([])
   const [intake, setIntake] = useState([])
@@ -28,6 +32,7 @@ export default function Inbox() {
   const [inboundText, setInboundText] = useState('')
   const [smartSuggestions, setSmartSuggestions] = useState([])
   const [waStatus, setWaStatus] = useState(null)
+  const [contextHint, setContextHint] = useState('')
 
   const load = useCallback(async () => {
     if (!Sync.isLoggedIn()) return
@@ -63,6 +68,7 @@ export default function Inbox() {
     setReplyText(first.build(clientStub, company))
     setInboundText('')
     setSmartSuggestions([])
+    setContextHint('')
   }
 
   const applyQuick = (qr) => {
@@ -73,26 +79,47 @@ export default function Inbox() {
 
   const doSmartSuggest = () => {
     if (!replyFor) return
-    const clientStub = { name: replyFor.name, phone: replyFor.phone }
+    const pk = phoneKey(replyFor.phone)
+    const realClient = clients.find((c) => phoneKey(c.phone) === pk || phoneKey(c.mobile) === pk) || { name: replyFor.name, phone: replyFor.phone }
+    const openJob = tickets.find((t) => String(t.clientId) === String(realClient.id) && !['resolved', 'collected', 'cancelled'].includes(String(t.status || '')))
+    const openInv = invoices.find((i) => String(i.clientId) === String(realClient.id) && ['unpaid', 'partial', 'overdue'].includes(String(i.status || '')))
+
     const suggestions = suggestInboundReplies({
       message: inboundText,
-      client: clientStub,
+      client: realClient,
       company,
+      job: openJob,
+      invoice: openInv,
     })
     setSmartSuggestions(suggestions)
+    const bits = []
+    if (openJob) bits.push(`job ${openJob.number || openJob.id?.slice?.(0, 6) || ''}`)
+    if (openInv) bits.push(`invoice ${openInv.number || ''}`)
+    setContextHint(bits.length ? `Using open ${bits.join(' + ')}` : 'No open job/invoice matched — generic replies')
+
     if (suggestions.length) {
       setReplyText(suggestions[0].text)
       toast?.(`Suggested ${suggestions.length} reply option${suggestions.length > 1 ? 's' : ''}`, 'info')
     } else {
       const id = suggestFromInbound(inboundText)
       const qr = QUICK_REPLIES.find((q) => q.id === id) || QUICK_REPLIES[0]
-      setReplyText(qr.build(clientStub, company))
+      setReplyText(qr.build(realClient, company))
       toast?.(`Suggested: ${qr.label}`, 'info')
     }
   }
 
   const applySuggestion = (sug, lang = 'en') => {
     setReplyText(lang === 'af' && sug.af ? sug.af : sug.text)
+  }
+
+  const copyReply = async () => {
+    if (!replyText) return
+    try {
+      await navigator.clipboard.writeText(replyText)
+      toast?.('Reply copied', 'success')
+    } catch {
+      toast?.('Could not copy', 'error')
+    }
   }
 
   const sendReply = async () => {
@@ -109,6 +136,7 @@ export default function Inbox() {
       setReplyText('')
       setInboundText('')
       setSmartSuggestions([])
+      setContextHint('')
     } catch (e) {
       toast?.(e.message || 'Could not send', 'error')
     } finally {
@@ -119,10 +147,10 @@ export default function Inbox() {
   const importClient = async (wa) => {
     setBusy(true)
     try {
-      const phoneKey = String(wa.phone || '').replace(/\D/g, '')
-      const exists = clients.find((c) => String(c.phone || '').replace(/\D/g, '') === phoneKey)
+      const phoneKeyVal = phoneKey(wa.phone)
+      const exists = clients.find((c) => phoneKey(c.phone) === phoneKeyVal)
 
-      setPending((prev) => prev.filter((c) => String(c.phone || '').replace(/\D/g, '') !== phoneKey))
+      setPending((prev) => prev.filter((c) => phoneKey(c.phone) !== phoneKeyVal))
 
       if (exists) {
         await Sync.markWaClientImported(wa.phone, exists.id)
@@ -157,9 +185,9 @@ export default function Inbox() {
       setIntake((prev) => prev.filter((j) => j.id !== job.id))
 
       let clientId = null
-      const phoneKey = String(job.customer_phone || '').replace(/\D/g, '')
-      if (phoneKey) {
-        const exists = clients.find((c) => String(c.phone || '').replace(/\D/g, '') === phoneKey)
+      const phoneKeyVal = phoneKey(job.customer_phone)
+      if (phoneKeyVal) {
+        const exists = clients.find((c) => phoneKey(c.phone) === phoneKeyVal)
         if (exists) clientId = exists.id
         else {
           const row = await db.add(STORES.clients, {
@@ -266,7 +294,7 @@ export default function Inbox() {
           <h3 style={{ marginTop: 0 }}>Reply to {replyFor.name || replyFor.phone}</h3>
 
           <label className="stack" style={{ gap: 4, marginBottom: 8 }}>
-            <span className="muted" style={{ fontSize: 12 }}>Paste inbound message — Smart suggest builds ZA-tone replies (EN + AF)</span>
+            <span className="muted" style={{ fontSize: 12 }}>Paste inbound message — Smart suggest builds ZA-tone replies (EN + AF) using open job/invoice when matched</span>
             <textarea
               className="input"
               rows={3}
@@ -277,6 +305,7 @@ export default function Inbox() {
             <button type="button" className="btn btn-outline btn-sm" onClick={doSmartSuggest} disabled={!inboundText.trim()}>
               Smart suggest
             </button>
+            {contextHint ? <span className="muted" style={{ fontSize: 12 }}>{contextHint}</span> : null}
           </label>
 
           {smartSuggestions.length > 0 && (
@@ -306,9 +335,10 @@ export default function Inbox() {
             onChange={(e) => setReplyText(e.target.value)}
             placeholder="Type or pick a quick reply…"
           />
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
             <button type="button" className="btn btn-primary" disabled={busy} onClick={sendReply}>{sendLabel}</button>
-            <button type="button" className="btn btn-outline" onClick={() => { setReplyFor(null); setReplyText(''); setInboundText(''); setSmartSuggestions([]) }}>Cancel</button>
+            <button type="button" className="btn btn-outline" onClick={copyReply}>Copy</button>
+            <button type="button" className="btn btn-outline" onClick={() => { setReplyFor(null); setReplyText(''); setInboundText(''); setSmartSuggestions([]); setContextHint('') }}>Cancel</button>
           </div>
           {waStatus && !waStatus.configured ? (
             <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>
