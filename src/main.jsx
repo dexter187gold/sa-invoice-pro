@@ -19,6 +19,7 @@ try {
 
 import './styles.css'
 import './styles.auth.css'
+import './styles.auth-recovery.css'
 import './styles.ux.css'
 import './styles.form-scroll.css'
 import './styles.tickets.css'
