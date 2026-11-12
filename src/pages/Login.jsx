@@ -73,6 +73,13 @@ export default function Login() {
     return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [splash])
 
+  const goForgot = () => {
+    setMode('forgot')
+    setSplash(false)
+    setFade(true)
+    try { sessionStorage.setItem('sa_splash_done', '1') } catch {}
+  }
+
   const onSubmit = async (e) => {
     e.preventDefault()
     setBusy(true)
@@ -160,12 +167,12 @@ export default function Login() {
         </aside>
 
         <AuthLogoSequence />
-        <div className="auth-card-modern">
+        <div className="auth-card-modern" style={{ position: 'relative', zIndex: 20 }}>
           <div className="sniper-scanline" aria-hidden="true" />
           <div className="tabs">
             <button type="button" className={`tab ${mode === 'in' ? 'active' : ''}`} onClick={() => setMode('in')}>Sign in</button>
             <button type="button" className={`tab ${mode === 'up' ? 'active' : ''}`} onClick={() => setMode('up')}>Create account</button>
-            <button type="button" className={`tab ${mode === 'forgot' ? 'active' : ''}`} onClick={() => setMode('forgot')}>Forgot password</button>
+            <button type="button" className={`tab ${mode === 'forgot' ? 'active' : ''}`} onClick={goForgot}>Forgot password</button>
           </div>
 
           {!profileCount && mode === 'in' && (
@@ -186,11 +193,21 @@ export default function Login() {
                   disabled={busy}
                   onClick={async () => {
                     setBusy(true)
+                    setShownCode('')
                     try {
                       const email = form.emailConfirm || form.email || form.username
+                      if (!email || !String(email).includes('@')) throw new Error('Enter the full account email')
                       const res = await Sync.forgotPassword(email)
-                      if (res?.code) setShownCode(String(res.code))
-                      toast('Recovery code ready — enter it below with a new password (expires in 1 hour)', 'success')
+                      const code = res?.recovery_code || res?.code || ''
+                      if (code) {
+                        setShownCode(String(code))
+                        setForm((f) => ({ ...f, recoveryCode: String(code) }))
+                        toast(res?.delivery === 'inline'
+                          ? 'Recovery code ready below — enter a new password (expires in 1 hour)'
+                          : 'If that account exists, a recovery code was sent. Also check below if shown.', 'success')
+                      } else {
+                        toast(res?.message || 'If the account exists, recovery instructions were sent. Check your email.', 'success')
+                      }
                     } catch (err) {
                       toast(err.message || 'Could not request recovery code', 'error')
                     } finally {
@@ -200,11 +217,17 @@ export default function Login() {
                 >
                   Send recovery code
                 </button>
-                {shownCode ? <p className="muted" style={{ fontSize: 12 }}>Dev code: <strong style={{ color: '#5eead4' }}>{shownCode}</strong></p> : null}
+                {shownCode ? (
+                  <div className="auth-recovery-code" role="status" aria-live="polite">
+                    <span className="muted" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>Recovery code (valid 1 hour)</span>
+                    <strong style={{ fontSize: 22, letterSpacing: '0.2em', color: '#0f766e', fontFamily: 'ui-monospace, monospace' }}>{shownCode}</strong>
+                    <p className="muted" style={{ fontSize: 12, margin: '6px 0 0' }}>Copy this code into the field below, then set a new password.</p>
+                  </div>
+                ) : null}
                 <label className="stack" style={{ gap: 4 }}><span className="muted" style={{ fontSize: 12 }}>Recovery code</span>
-                  <input className="input" value={form.recoveryCode} onChange={(e) => setForm({ ...form, recoveryCode: e.target.value })} placeholder="6-digit code" /></label>
-                <label className="stack" style={{ gap: 4 }}><span className="muted" style={{ fontSize: 12 }}>New password (letters + numbers, min 6)</span>
-                  <input className="input" type="password" required minLength={6} value={form.newPassword} onChange={(e) => setForm({ ...form, newPassword: e.target.value })} autoComplete="new-password" /></label>
+                  <input className="input" value={form.recoveryCode} onChange={(e) => setForm({ ...form, recoveryCode: e.target.value })} placeholder="6-digit code" inputMode="numeric" autoComplete="one-time-code" /></label>
+                <label className="stack" style={{ gap: 4 }}><span className="muted" style={{ fontSize: 12 }}>New password (letters + numbers, min 8)</span>
+                  <input className="input" type="password" required minLength={8} value={form.newPassword} onChange={(e) => setForm({ ...form, newPassword: e.target.value })} autoComplete="new-password" /></label>
               </>
             )}
 
@@ -233,7 +256,7 @@ export default function Login() {
               {busy ? 'Please wait…' : mode === 'in' ? 'Sign in' : mode === 'up' ? 'Create account' : 'Reset password'}
             </button>
             {mode === 'in' && (
-              <button type="button" style={{ background: 'none', border: 0, color: '#5eead4', cursor: 'pointer', fontWeight: 600 }} onClick={() => setMode('forgot')}>Forgot password?</button>
+              <button type="button" style={{ background: 'none', border: 0, color: '#5eead4', cursor: 'pointer', fontWeight: 600 }} onClick={goForgot}>Forgot password?</button>
             )}
           </form>
 
