@@ -1,7 +1,7 @@
-export const APP_VERSION = '6.62.0'
+export const APP_VERSION = '6.63.0'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
-export const APP_CODENAME = '6.62.0 · Cloud recovery + Paystack live path'
+export const APP_CODENAME = '6.63.0 · Contribute + full licence catalogue'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
 export const DEFAULT_VAT_RATE = 0.15
