@@ -1,6 +1,6 @@
 /**
- * App license plans — aligned with server.
- * Subscriptions: Solo / Shop / Multi (annual). Lifetime/Enterprise = admin buyout.
+ * App license plans — aligned with license_plans.py / licence server.
+ * Order: Trial · Solo · Shop · Multi · Lifetime · Enterprise
  */
 
 export const PLAN_CODES = {
@@ -15,6 +15,8 @@ export const GUIDE_PRICES = {
   solo: { annual: 1999, monthlyHint: 167 },
   shop: { annual: 4999, monthlyHint: 417 },
   multi: { annual: 11999, monthlyHint: 1000 },
+  lifetime: { once: 14999 },
+  enterprise: { once: 29999 },
 }
 
 export const TIERS = [
@@ -43,14 +45,14 @@ export const TIERS = [
     features: ['Everything in Shop', 'Multi-branch workspaces', 'API / webhooks', 'Custom domain portal', 'Owner SLA pathway'],
   },
   {
-    id: 'lifetime', code: 'L', name: 'Lifetime', priceHint: 'Buyout · admin issued',
-    seats: 1, days: 36500, purchasable: false,
-    limits: ['1 seat', 'Solo feature group', 'Issued by admin only'],
-    features: ['Solo feature set', 'No renewals', 'Owner/admin activation'],
+    id: 'lifetime', code: 'L', name: 'Lifetime', priceHint: 'R 14 999 · one-time',
+    seats: 1, days: 36500, purchasable: true,
+    limits: ['1 seat', 'Solo feature group', 'No renewals'],
+    features: ['Solo feature set', 'One-time buyout', 'No annual renewal'],
   },
   {
-    id: 'enterprise', code: 'E', name: 'Enterprise', priceHint: 'Buyout · admin issued',
-    seats: 25, days: 36500, purchasable: false,
+    id: 'enterprise', code: 'E', name: 'Enterprise', priceHint: 'R 29 999 · one-time',
+    seats: 25, days: 36500, purchasable: true,
     limits: ['Up to 25 seats', 'Custom commercial terms'],
     features: ['Multi-branch feature set', 'Lifetime term', 'Priority owner support'],
   },
@@ -95,21 +97,21 @@ export function featurePlanGroup(raw) {
   return 'solo'
 }
 
-export const COMPARISON_COLUMNS = ['trial', 'solo', 'shop', 'multi']
+export const COMPARISON_COLUMNS = ['trial', 'solo', 'shop', 'multi', 'lifetime', 'enterprise']
 
 export const COMPARISON_ROWS = [
-  { id: 'price', label: 'Guide price (ZAR / year)', values: { trial: 'Free', solo: 'R 1 999', shop: 'R 4 999', multi: 'R 11 999' } },
-  { id: 'billing', label: 'Billing model', values: { trial: '7-day trial', solo: 'Annual sub', shop: 'Annual sub', multi: 'Annual sub' } },
-  { id: 'seats', label: 'Device seats', values: { trial: '1', solo: '1', shop: '5', multi: '25' } },
-  { id: 'invoices', label: 'Invoices & quotes', values: { trial: true, solo: true, shop: true, multi: true } },
-  { id: 'jobs', label: 'Job cards / tickets', values: { trial: false, solo: true, shop: true, multi: true } },
-  { id: 'whatsapp', label: 'WhatsApp & portal', values: { trial: false, solo: true, shop: true, multi: true } },
-  { id: 'cloud', label: 'Cloud restore', values: { trial: false, solo: true, shop: true, multi: true } },
-  { id: 'team', label: 'Team seats & roles', values: { trial: false, solo: false, shop: true, multi: true } },
-  { id: 'accounting', label: 'Accounting / bank / payroll', values: { trial: false, solo: false, shop: true, multi: true } },
-  { id: 'branches', label: 'Multi-branch workspaces', values: { trial: false, solo: false, shop: false, multi: true } },
-  { id: 'api', label: 'API / webhooks', values: { trial: false, solo: false, shop: false, multi: true } },
-  { id: 'sla', label: 'Priority / SLA support', values: { trial: false, solo: false, shop: true, multi: true } },
+  { id: 'price', label: 'Guide price (ZAR)', values: { trial: 'Free', solo: 'R 1 999/yr', shop: 'R 4 999/yr', multi: 'R 11 999/yr', lifetime: 'R 14 999 once', enterprise: 'R 29 999 once' } },
+  { id: 'billing', label: 'Billing model', values: { trial: '7-day trial', solo: 'Annual sub', shop: 'Annual sub', multi: 'Annual sub', lifetime: 'One-time', enterprise: 'One-time' } },
+  { id: 'seats', label: 'Device seats', values: { trial: '1', solo: '1', shop: '5', multi: '25', lifetime: '1', enterprise: '25' } },
+  { id: 'invoices', label: 'Invoices & quotes', values: { trial: true, solo: true, shop: true, multi: true, lifetime: true, enterprise: true } },
+  { id: 'jobs', label: 'Job cards / tickets', values: { trial: false, solo: true, shop: true, multi: true, lifetime: true, enterprise: true } },
+  { id: 'whatsapp', label: 'WhatsApp & portal', values: { trial: false, solo: true, shop: true, multi: true, lifetime: true, enterprise: true } },
+  { id: 'cloud', label: 'Cloud restore', values: { trial: false, solo: true, shop: true, multi: true, lifetime: true, enterprise: true } },
+  { id: 'team', label: 'Team seats & roles', values: { trial: false, solo: false, shop: true, multi: true, lifetime: false, enterprise: true } },
+  { id: 'accounting', label: 'Accounting / bank / payroll', values: { trial: false, solo: false, shop: true, multi: true, lifetime: false, enterprise: true } },
+  { id: 'branches', label: 'Multi-branch workspaces', values: { trial: false, solo: false, shop: false, multi: true, lifetime: false, enterprise: true } },
+  { id: 'api', label: 'API / webhooks', values: { trial: false, solo: false, shop: false, multi: true, lifetime: false, enterprise: true } },
+  { id: 'sla', label: 'Priority / SLA support', values: { trial: false, solo: false, shop: true, multi: true, lifetime: false, enterprise: true } },
 ]
 
 export function comparisonColumns(includeTrial = true) {
