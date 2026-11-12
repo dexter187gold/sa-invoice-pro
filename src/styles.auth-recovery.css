@@ -1,0 +1,26 @@
+/* Recovery code panel — never sit under logo/splash overlays */
+.auth-page .auth-card-modern {
+  position: relative;
+  z-index: 20;
+}
+.auth-logo-sequence,
+.auth-logo-stage,
+.auth-binary-rain {
+  pointer-events: none !important;
+}
+.auth-recovery-code {
+  margin: 10px 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 118, 110, 0.35);
+  background: rgba(204, 251, 241, 0.95);
+  color: #0f241c !important;
+  position: relative;
+  z-index: 25;
+}
+.auth-recovery-code strong {
+  color: #0f766e !important;
+}
+.login-splash.fade-out {
+  pointer-events: none !important;
+}
