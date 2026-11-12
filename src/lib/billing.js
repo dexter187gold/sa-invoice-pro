@@ -2,14 +2,19 @@
  * Self-serve billing: plans → PayFast/Paystack checkout → claim / key activate.
  * Account/email seats — not IP or MAC.
  * Contribution tips use plan ids tip_1, tip_10, tip_20, tip_30, tip_50, tip_100.
+ * Default browser return matches Paystack dashboard callback:
+ * https://sa-invoice.pages.dev/payment-success.html
  */
 import { getServerUrl, getHardwareId } from './license.js'
 import { getSetting, setSetting } from './db.js'
 import { SA_CONFIG } from '../config.js'
 
+const MARKETING_SUCCESS =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_PAYMENT_SUCCESS_URL) ||
+  'https://sa-invoice.pages.dev/payment-success.html'
+
 function defaultReturnUrl() {
-  if (typeof window === 'undefined' || !window.location?.origin) return undefined
-  return `${window.location.origin}/license?paystack=return`
+  return MARKETING_SUCCESS
 }
 
 export async function fetchBillingPlans() {
