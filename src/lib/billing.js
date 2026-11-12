@@ -1,10 +1,16 @@
 /**
  * Self-serve billing: plans → PayFast/Paystack checkout → claim / key activate.
  * Account/email seats — not IP or MAC.
+ * Contribution tips use plan ids tip_1, tip_10, tip_20, tip_30, tip_50, tip_100.
  */
 import { getServerUrl, getHardwareId } from './license.js'
 import { getSetting, setSetting } from './db.js'
 import { SA_CONFIG } from '../config.js'
+
+function defaultReturnUrl() {
+  if (typeof window === 'undefined' || !window.location?.origin) return undefined
+  return `${window.location.origin}/license?paystack=return`
+}
 
 export async function fetchBillingPlans() {
   const base = (await getServerUrl()) || SA_CONFIG.defaultLicenseServerUrl
@@ -22,8 +28,8 @@ export async function startCheckout({ plan, email, phone, returnUrl, cancelUrl }
     plan: plan || 'shop',
     email: (email || '').trim().toLowerCase(),
     phone: String(phone || '').trim(),
-    returnUrl,
-    cancelUrl,
+    returnUrl: returnUrl || defaultReturnUrl(),
+    cancelUrl: cancelUrl || defaultReturnUrl(),
   }
   const res = await fetch(`${base}/api/billing/checkout`, {
     method: 'POST',
@@ -44,6 +50,7 @@ export async function buyPlan(plan, email, provider = 'paystack', phone = '') {
       window.location.href = session.redirectUrl || session.url
       return session
     }
+    throw new Error(session.error || session.message || 'Checkout did not return a payment URL')
   }
   const base = ((await getServerUrl()) || SA_CONFIG.defaultLicenseServerUrl || '').replace(/\/$/, '')
   const res = await fetch(`${base}/api/billing/buy`, {
@@ -55,6 +62,13 @@ export async function buyPlan(plan, email, provider = 'paystack', phone = '') {
   if (!res.ok) throw new Error(j.error || 'Purchase failed')
   await setSetting('licenseEmail', (email || '').trim().toLowerCase())
   return j
+}
+
+/** Optional “buy us a coffee” contribution (ZAR). Maps to plan tip_{amount}. */
+export async function contribute(amountZar, email, phone = '', provider = 'paystack') {
+  const n = Number(amountZar)
+  if (!Number.isFinite(n) || n <= 0) throw new Error('Invalid contribution amount')
+  return buyPlan(`tip_${n}`, email, provider, phone)
 }
 
 export async function claimPaidLicense(email) {
