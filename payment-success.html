@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Payment received · SA Invoice Pro</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0; min-height: 100svh; display: grid; place-items: center;
+      font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+      background: linear-gradient(145deg, #04150f, #0b2e22 50%, #073b2a);
+      color: #ecfdf5; padding: 24px;
+    }
+    .card {
+      width: min(100%, 440px); background: rgba(8, 35, 26, 0.85);
+      border: 1px solid rgba(167, 243, 208, 0.28); border-radius: 16px;
+      padding: 28px 24px; box-shadow: 0 24px 60px rgba(0,0,0,.35);
+    }
+    h1 { margin: 0 0 8px; font-size: 1.35rem; }
+    p { margin: 0 0 12px; color: #cde9d9; line-height: 1.5; font-size: 0.95rem; }
+    .muted { color: #9ec9b3; font-size: 0.85rem; }
+    .btn {
+      display: inline-block; margin-top: 8px; padding: 12px 16px; border-radius: 10px;
+      background: linear-gradient(135deg, #08794e, #005c3a); color: #fff;
+      text-decoration: none; font-weight: 700; border: 0; cursor: pointer;
+    }
+    code { font-size: 0.8rem; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Payment received</h1>
+    <p id="status">Confirming with the licence server…</p>
+    <p class="muted" id="detail"></p>
+    <p class="muted">You will be sent to the app Licence page to activate if a key was issued.</p>
+    <a class="btn" id="openApp" href="https://sa-invoice-pro.pages.dev/license">Open Licence page</a>
+  </div>
+  <script>
+    (function () {
+      var params = new URLSearchParams(location.search);
+      var reference = params.get('reference') || params.get('trxref') || '';
+      var email = params.get('email') || '';
+      var plan = params.get('plan') || '';
+      var licenseApi = 'https://saip-license.onrender.com';
+      var appLicense = 'https://sa-invoice-pro.pages.dev/license';
+      var statusEl = document.getElementById('status');
+      var detailEl = document.getElementById('detail');
+      var link = document.getElementById('openApp');
+
+      function goApp(extra) {
+        var q = new URLSearchParams();
+        q.set('paystack', 'return');
+        if (reference) q.set('reference', reference);
+        if (email) q.set('email', email);
+        if (plan) q.set('plan', plan);
+        if (extra) Object.keys(extra).forEach(function (k) { q.set(k, extra[k]); });
+        var url = appLicense + '?' + q.toString();
+        link.href = url;
+        setTimeout(function () { location.replace(url); }, 1200);
+      }
+
+      if (!reference) {
+        statusEl.textContent = 'No payment reference in the URL.';
+        detailEl.textContent = 'If you paid successfully, open the app Licence page and use Activate with the key from email.';
+        return;
+      }
+
+      detailEl.innerHTML = 'Reference: <code>' + reference.replace(/</g, '') + '</code>';
+
+      fetch(licenseApi + '/api/billing/paystack/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ reference: reference, email: email }),
+      })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (res.j && res.j.paid) {
+            statusEl.textContent = res.j.activation
+              ? 'Payment confirmed. Redirecting to activate your licence…'
+              : 'Payment confirmed. Thank you for your contribution — redirecting…';
+            if (res.j.email) email = res.j.email;
+            goApp({ paid: '1' });
+          } else {
+            statusEl.textContent = 'Payment not confirmed yet.';
+            detailEl.textContent = (res.j && res.j.error) || 'The gateway may still be processing. Open the Licence page in a moment.';
+            goApp();
+          }
+        })
+        .catch(function (e) {
+          statusEl.textContent = 'Could not reach the licence server.';
+          detailEl.textContent = String(e && e.message || e);
+          goApp();
+        });
+    })();
+  </script>
+</body>
+</html>
