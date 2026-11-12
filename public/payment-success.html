@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Payment received · SA Invoice Pro</title>
+  <meta http-equiv="refresh" content="0;url=../license" />
+  <script>
+    (function () {
+      var q = location.search || '';
+      var params = new URLSearchParams(q);
+      if (!params.get('paystack')) params.set('paystack', 'return');
+      var ref = params.get('reference') || params.get('trxref');
+      if (ref && !params.get('reference')) params.set('reference', ref);
+      location.replace('/license?' + params.toString());
+    })();
+  </script>
+</head>
+<body>
+  <p>Redirecting to Licence… <a id="a" href="/license">Continue</a></p>
+</body>
+</html>
