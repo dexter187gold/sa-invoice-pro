@@ -8,6 +8,9 @@ import { TIERS, purchasableTiers, normalizePlanId, getTier } from '../lib/licens
 import { PageFade, StatCard, EmptyState } from '../components/ui'
 import PlanCompareTable from '../components/PlanCompareTable'
 
+/** Support-the-product amounts (ZAR) — server plan ids tip_1 … tip_100 */
+const CONTRIBUTE_AMOUNTS = [1, 10, 20, 30, 50, 100]
+
 export default function License() {
   const { toast, online } = useApp()
   const [params] = useSearchParams()
@@ -19,9 +22,11 @@ export default function License() {
   const [busy, setBusy] = useState(false)
   const [returnChecking, setReturnChecking] = useState(false)
   const [billingInfo, setBillingInfo] = useState(null)
+  const [serverPlans, setServerPlans] = useState([])
   const [planPrices, setPlanPrices] = useState({})
   const [refreshing, setRefreshing] = useState(false)
   const [splash, setSplash] = useState(null)
+  const [contactSaved, setContactSaved] = useState(false)
 
   const showSuccessSplash = (detail = {}) => {
     setSplash({
@@ -38,11 +43,14 @@ export default function License() {
       let current = await licenseApi.getLicenseStatus()
       try {
         const plans = await billing.fetchBillingPlans()
-        setPlanPrices(Object.fromEntries(plans.map((plan) => [plan.id, plan.amount])))
+        setServerPlans(Array.isArray(plans) ? plans : [])
+        setPlanPrices(Object.fromEntries((plans || []).map((plan) => [plan.id, plan.amount])))
       } catch { /* Server confirms final pricing at checkout. */ }
       const em = await billing.getLicenseEmail()
+      const ph = await billing.getLicensePhone().catch(() => '')
+      if (em) setEmail(em)
+      if (ph) setPhone(ph)
       if (em) {
-        setEmail(em)
         try {
           const remote = await billing.billingStatus(em)
           setBillingInfo(remote)
@@ -91,12 +99,62 @@ export default function License() {
     return () => { cancelled = true }
   }, [params])
 
-  const buy = async (planId) => {
+  const ensureEmail = () => {
+    const em = (email || '').trim().toLowerCase()
+    if (!em.includes('@')) {
+      toast('Enter a valid licence email above, then Save contact', 'warn')
+      return null
+    }
+    return em
+  }
+
+  const saveContact = async () => {
+    const em = ensureEmail()
+    if (!em) return
     setBusy(true)
     try {
-      await billing.buyPlan(planId, email, provider, phone)
+      await billing.saveLicenseContact(em, phone)
+      setContactSaved(true)
+      toast('Email & phone saved to this device and licence server', 'success')
+      try {
+        const remote = await billing.billingStatus(em)
+        setBillingInfo(remote)
+      } catch { /* optional */ }
+    } catch (e) {
+      toast(e.message || 'Could not save contact', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const buy = async (planId) => {
+    const em = ensureEmail()
+    if (!em) return
+    setBusy(true)
+    try {
+      await billing.buyPlan(planId, em, provider, phone)
+      // Redirect expected — if we stay on page, clear busy
+      setBusy(false)
     } catch (e) {
       toast(e.message || String(e), 'error')
+      setBusy(false)
+    }
+  }
+
+  const contribute = async (amountZar) => {
+    const em = ensureEmail()
+    if (!em) return
+    setBusy(true)
+    try {
+      // plan id tip_1, tip_10, … — licence server must map these to ZAR amounts
+      await billing.buyPlan(`tip_${amountZar}`, em, provider, phone)
+      setBusy(false)
+    } catch (e) {
+      toast(
+        e.message ||
+          `Contribution checkout failed. Ensure licence server has plan tip_${amountZar} (R${amountZar}).`,
+        'error',
+      )
       setBusy(false)
     }
   }
@@ -126,6 +184,19 @@ export default function License() {
 
   const licensed = !!status?.licensed
   const trialLeft = status?.trialDaysLeft
+  const currentPlan = normalizePlanId(billingInfo?.plan || status?.meta?.plan || status?.meta?.planId || '')
+
+  // Merge local catalogue with live server plan list (full catalogue)
+  const catalogue = TIERS.map((t) => {
+    const fromServer = serverPlans.find((p) => p.id === t.id || p.code === t.code)
+    const amount = fromServer?.amount ?? planPrices[t.id]
+    return {
+      ...t,
+      serverAmount: amount != null ? Number(amount) : null,
+      serverSeats: fromServer?.seats ?? t.seats,
+      onServer: !!fromServer,
+    }
+  })
 
   return (
     <PageFade>
@@ -168,7 +239,7 @@ export default function License() {
         <div>
           <h1>License</h1>
           <p className="subtitle">
-            {online ? 'Online' : 'Offline'} · Pay → key emailed/SMS → activate · v{APP_VERSION}
+            {online ? 'Online' : 'Offline'} · Full catalogue · Pay → key → activate · v{APP_VERSION}
           </p>
         </div>
         <button type="button" className="btn btn-outline" onClick={reload} disabled={busy || refreshing}>
@@ -176,61 +247,86 @@ export default function License() {
         </button>
       </div>
 
-      <div className="card form-grid" style={{ marginBottom: 16 }}>
+      <div className="card form-grid" style={{ marginBottom: 16, position: 'relative', zIndex: 2 }}>
         <div>
-          <label className="label">Licence account email</label>
-          <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@shop.co.za" />
-        </div>
-        <div>
-          <label className="label">Mobile (optional — SMS key delivery)</label>
-          <input className="input" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="082 123 4567" />
-        </div>
-        <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-          After PayFast/Paystack confirms payment, the licence server issues a one-time activation key and sends it to this email
-          {phone ? ' and phone' : ''}. Enter that key below to unlock this device.
-        </p>
-      </div>
-
-      <div className="card" style={{ marginBottom: 16, borderLeft: '4px solid var(--green,#22c55e)' }}>
-        <h3 style={{ marginTop: 0 }}>Activate with key from email / SMS</h3>
-        <p className="muted" style={{ fontSize: 13 }}>
-          Paste the key exactly as received (starts with <code>SAIP-</code>). The app checks the licence server and unlocks if payment was successful.
-        </p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          <label className="label" htmlFor="license-email">Licence account email</label>
           <input
+            id="license-email"
             className="input"
-            style={{ flex: '1 1 220px', fontFamily: 'ui-monospace, monospace', letterSpacing: '0.04em' }}
-            value={activationKey}
-            onChange={(e) => setActivationKey(e.target.value.toUpperCase())}
-            placeholder="SAIP-P-XXXX-XXXX-XXXX"
-            autoComplete="off"
-            spellCheck={false}
+            type="email"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); setContactSaved(false) }}
+            placeholder="you@shop.co.za"
+            autoComplete="email"
           />
-          <button type="button" className="btn btn-primary" disabled={busy || !activationKey.trim()} onClick={activateKey}>
-            {busy ? 'Checking…' : 'Activate licence'}
+        </div>
+        <div>
+          <label className="label" htmlFor="license-phone">Mobile (optional — SMS key delivery)</label>
+          <input
+            id="license-phone"
+            className="input"
+            type="tel"
+            value={phone}
+            onChange={(e) => { setPhone(e.target.value); setContactSaved(false) }}
+            placeholder="082 123 4567"
+            autoComplete="tel"
+          />
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          <button type="button" className="btn btn-primary" disabled={busy} onClick={saveContact}>
+            {busy ? 'Saving…' : contactSaved ? 'Contact saved' : 'Save email & phone'}
           </button>
+          <p className="muted" style={{ fontSize: 12, margin: 0, flex: '1 1 200px' }}>
+            Saves to this device and pushes contact to the licence server for activation keys and receipts.
+          </p>
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginTop: 0 }}>{(licensed || billingInfo?.licensed) ? 'Change or upgrade your plan' : 'Choose your licence plan'}</h3>
-        <p className="muted" style={{ fontSize: 13 }}>Plans match the licence server: Solo (S), Shop (P), Multi-branch (M), Lifetime (L), Enterprise (E).</p>
+      <div className="card" style={{ marginBottom: 16, position: 'relative', zIndex: 2 }}>
+        <h3 style={{ marginTop: 0 }}>{(licensed || billingInfo?.licensed) ? 'Change or upgrade your plan' : 'Full licence catalogue'}</h3>
+        <p className="muted" style={{ fontSize: 13 }}>
+          Same catalogue as the website and licence portal: Trial (T), Solo (S), Shop (P), Multi-branch (M), Lifetime (L), Enterprise (E).
+          Live prices load from the licence server when available.
+        </p>
         <label className="label" htmlFor="license-payment-provider">Payment provider</label>
-        <select id="license-payment-provider" className="input" value={provider} onChange={(e) => setProvider(e.target.value)} style={{ maxWidth: 320, marginBottom: 12 }}>
+        <select
+          id="license-payment-provider"
+          className="input"
+          value={provider}
+          onChange={(e) => setProvider(e.target.value)}
+          style={{ maxWidth: 320, marginBottom: 12 }}
+        >
           <option value="paystack">Paystack · Cards, eligible wallets, Capitec Pay & EFT</option>
           <option value="payfast">PayFast · Cards & Instant EFT</option>
         </select>
-        <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fill,minmax(190px,1fr))' }}>
-          {purchasableTiers().map((t) => {
-            const currentPlan = normalizePlanId(billingInfo?.plan || status?.meta?.plan || status?.meta?.planId || '')
+
+        <div
+          className="license-plan-grid"
+          style={{
+            display: 'grid',
+            gap: 10,
+            gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))',
+            position: 'relative',
+            zIndex: 2,
+          }}
+        >
+          {catalogue.map((t) => {
             const isCurrent = currentPlan === t.id
-            const currentIndex = TIERS.findIndex((x) => x.id === normalizePlanId(currentPlan))
+            const currentIndex = TIERS.findIndex((x) => x.id === currentPlan)
             const targetIndex = TIERS.findIndex((x) => x.id === t.id)
-            const action = isCurrent
-              ? 'Current plan'
-              : currentIndex < 0 || targetIndex > currentIndex
-                ? 'Upgrade to ' + t.name
-                : 'Switch to ' + t.name
+            const canBuy = t.purchasable !== false
+            const action = !canBuy
+              ? (t.id === 'trial' ? 'Included free' : 'Contact owner / admin')
+              : isCurrent
+                ? 'Current plan'
+                : currentIndex < 0 || targetIndex > currentIndex
+                  ? 'Upgrade to ' + t.name
+                  : 'Switch to ' + t.name
+            const priceLabel =
+              t.serverAmount != null
+                ? 'R ' + Number(t.serverAmount).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                : t.priceHint
+
             return (
               <div
                 key={t.id}
@@ -238,30 +334,38 @@ export default function License() {
                   border: isCurrent || t.recommended ? '2px solid var(--green,#22c55e)' : '1px solid var(--border,rgba(255,255,255,.12))',
                   borderRadius: 12,
                   padding: 12,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                  position: 'relative',
+                  zIndex: 2,
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
                   <strong>{t.name}</strong>
-                  {isCurrent && <span className="badge">Active</span>}
+                  <span className="badge">{t.code}{isCurrent ? ' · Active' : ''}{t.recommended && !isCurrent ? ' · Popular' : ''}</span>
                 </div>
-                <div className="muted" style={{ fontSize: 11, margin: '4px 0 8px' }}>
-                  {t.priceHint} ·{' '}
-                  {planPrices[t.id] != null
-                    ? 'R ' + Number(planPrices[t.id]).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                    : 'Price confirmed at checkout'}
-                  {' · code '}{t.code}
+                <div className="muted" style={{ fontSize: 11 }}>
+                  {priceLabel}
+                  {t.serverSeats != null ? ` · ${t.serverSeats} seat${t.serverSeats === 1 ? '' : 's'}` : ''}
+                  {t.onServer ? ' · live price' : ''}
                 </div>
-                <ul style={{ margin: '0 0 10px', paddingLeft: 16, fontSize: 12 }}>
-                  {t.features.map((feature) => (
+                <ul style={{ margin: '0 0 8px', paddingLeft: 16, fontSize: 12, flex: 1 }}>
+                  {(t.features || []).slice(0, 5).map((feature) => (
                     <li key={feature}>{feature}</li>
                   ))}
                 </ul>
                 <button
                   type="button"
-                  className={isCurrent ? 'btn btn-outline btn-sm' : 'btn btn-primary btn-sm'}
-                  style={{ width: '100%' }}
-                  disabled={busy || !email.includes('@') || isCurrent}
-                  onClick={() => buy(t.id)}
+                  className={isCurrent || !canBuy ? 'btn btn-outline btn-sm' : 'btn btn-primary btn-sm'}
+                  style={{ width: '100%', pointerEvents: 'auto', position: 'relative', zIndex: 3 }}
+                  disabled={busy || isCurrent || !canBuy}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    if (!canBuy || isCurrent) return
+                    buy(t.id)
+                  }}
                 >
                   {action}
                 </button>
@@ -269,6 +373,35 @@ export default function License() {
             )
           })}
         </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 16, borderLeft: '4px solid #f59e0b', position: 'relative', zIndex: 2 }}>
+        <h3 style={{ marginTop: 0 }}>Buy us a coffee · Support development</h3>
+        <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
+          Optional contribution toward ongoing app development and updates. Does not change your licence plan.
+          Choose an amount — you will be redirected to Paystack.
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {CONTRIBUTE_AMOUNTS.map((amt) => (
+            <button
+              key={amt}
+              type="button"
+              className="btn btn-outline"
+              style={{ minWidth: 88, pointerEvents: 'auto', position: 'relative', zIndex: 3 }}
+              disabled={busy}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                contribute(amt)
+              }}
+            >
+              R{amt}
+            </button>
+          ))}
+        </div>
+        <p className="muted" style={{ fontSize: 11, margin: '10px 0 0' }}>
+          Server plan codes: tip_1, tip_10, tip_20, tip_30, tip_50, tip_100. Add these on the licence server if checkout returns unknown plan.
+        </p>
       </div>
 
       <PlanCompareTable
@@ -280,7 +413,7 @@ export default function License() {
         <div className="card" style={{ marginBottom: '1rem', borderLeft: '4px solid var(--warn, #f59e0b)' }}>
           <strong>{trialLeft != null && trialLeft <= 0 ? 'Trial ended (soft)' : 'Trial / unlicensed workspace'}</strong>
           <p className="muted" style={{ margin: '0.35rem 0 0' }}>
-            Pay online → receive activation key by email{phone ? '/SMS' : ''} → enter key above. Desk stays open in soft mode until then.
+            Pay online → receive activation key by email{phone ? '/SMS' : ''} → enter key below. Desk stays open in soft mode until then.
           </p>
         </div>
       )}
@@ -307,8 +440,30 @@ export default function License() {
         <StatCard label="Connectivity" value={online ? 'Online' : 'Offline'} tone={online ? 'good' : 'warn'} />
       </div>
 
+      <div className="card" style={{ marginBottom: 16, borderLeft: '4px solid var(--green,#22c55e)', position: 'relative', zIndex: 2 }}>
+        <h3 style={{ marginTop: 0 }}>Activate with key from email / SMS</h3>
+        <p className="muted" style={{ fontSize: 13 }}>
+          After payment, paste the key exactly as received (starts with <code>SAIP-</code>). The app checks the licence server and unlocks if payment was successful.
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          <input
+            className="input"
+            style={{ flex: '1 1 220px', fontFamily: 'ui-monospace, monospace', letterSpacing: '0.04em' }}
+            value={activationKey}
+            onChange={(e) => setActivationKey(e.target.value.toUpperCase())}
+            placeholder="SAIP-P-XXXX-XXXX-XXXX"
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <button type="button" className="btn btn-primary" disabled={busy || !activationKey.trim()} onClick={activateKey}>
+            {busy ? 'Checking…' : 'Activate licence'}
+          </button>
+        </div>
+      </div>
+
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         <Link className="btn btn-outline" to="/settings">Settings / backup</Link>
+        <a className="btn btn-outline" href="https://sa-invoice.pages.dev/pricing.html" target="_blank" rel="noreferrer">Website pricing</a>
       </div>
 
       {!status && <EmptyState title="Loading license status…" hint="If this hangs, check network and server URL." />}
