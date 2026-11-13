@@ -158,6 +158,7 @@ export default function Settings() {
         localStorage.setItem('sa_vat_enabled', vatDraft.enabled ? '1' : '0')
         localStorage.setItem('sa_vat_rate', String(percent))
       } catch {}
+      await refresh?.()
       toast('VAT preferences saved for invoices and quotes', 'success')
     } catch (err) {
       toast(err?.message || 'VAT preferences could not be saved', 'error')
