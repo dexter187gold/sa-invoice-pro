@@ -13,6 +13,7 @@ import { displayAppName } from '../lib/whiteLabel'
 import GestureLayer from './GestureLayer'
 import { loadGesturePrefs } from '../lib/deviceAccess'
 import { readAccessStatus, canAccessPath } from '../lib/accessControl'
+import DonateFab from './DonateFab'
 
 export default function Shell({ children, sections: sectionsProp }) {
   const { user, online, lock, logout, syncNow, toast } = useApp() || {}
@@ -85,7 +86,7 @@ export default function Shell({ children, sections: sectionsProp }) {
         { title: 'Books', links: visibleRootNav.filter((x) => x.section === 'books') },
         { title: 'Account', links: visibleRootNav.filter((x) => x.section === 'settings' && x.to !== '/dev-portal') },
       ],
-    [sectionsProp],
+    [sectionsProp, visibleRootNav],
   )
 
   const brandLabel = displayAppName('SA Invoice Pro')
@@ -232,6 +233,7 @@ export default function Shell({ children, sections: sectionsProp }) {
 
       {useBottom ? <OrbNavigation onCommand={() => setCommandOpen((value) => !value)} accessStatus={accessStatus} isOwner={!!(user?.isOwner || user?.role === 'owner' || user?.role === 'Owner')} /> : null}
 
+      <DonateFab />
     </>
   )
 }
