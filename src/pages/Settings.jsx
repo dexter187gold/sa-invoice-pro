@@ -45,6 +45,8 @@ export default function Settings() {
     try { return { ...readProfilePrefs(user) } } catch { return {} }
   })
   const [profileSaved, setProfileSaved] = useState(false)
+  const [vatDraft, setVatDraft] = useState(() => ({ enabled: !!vatEnabled, rate: Number(vatRate ?? 0.15) * 100 }))
+  const [vatSaving, setVatSaving] = useState(false)
   const [accessStatus, setAccessStatus] = useState(null)
   const [ownerDefaults, setOwnerDefaults] = useState(() => {
     try {
@@ -54,6 +56,7 @@ export default function Settings() {
     }
   })
   const [form, setForm] = useState(() => companyToForm(company))
+  useEffect(() => { setVatDraft({ enabled: !!vatEnabled, rate: Number(vatRate ?? 0.15) * 100 }) }, [vatEnabled, vatRate])
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState(null)
   const [autoBackups, setAutoBackups] = useState([])
@@ -139,6 +142,26 @@ export default function Settings() {
     setNavPrefs(next)
     try { localStorage.setItem('sa_nav_prefs', JSON.stringify(next)) } catch {}
     window.dispatchEvent(new CustomEvent('sa-nav-prefs', { detail: next }))
+  }
+
+  const saveVatPreferences = async () => {
+    const percent = Number(vatDraft.rate)
+    if (!Number.isFinite(percent) || percent < 0 || percent > 100) return toast('Enter a VAT rate between 0 and 100%', 'error')
+    setVatSaving(true)
+    try {
+      const decimalRate = percent / 100
+      await db.setSetting('vatEnabled', !!vatDraft.enabled)
+      await db.setSetting('vatRate', decimalRate)
+      setVatEnabled?.(!!vatDraft.enabled)
+      setVatRate?.(decimalRate)
+      try {
+        localStorage.setItem('sa_vat_enabled', vatDraft.enabled ? '1' : '0')
+        localStorage.setItem('sa_vat_rate', String(percent))
+      } catch {}
+      toast('VAT preferences saved for invoices and quotes', 'success')
+    } catch (err) {
+      toast(err?.message || 'VAT preferences could not be saved', 'error')
+    } finally { setVatSaving(false) }
   }
 
   const saveCompany = async (e) => {
@@ -309,17 +332,13 @@ export default function Settings() {
           </button>
           <ThemePicker setTheme={setTheme} toast={toast} />
           <VatSelector
-            enabled={!!vatEnabled}
-            rate={vatRate}
-            onChange={({ enabled, rate }) => {
-              setVatEnabled?.(enabled)
-              setVatRate?.(rate)
-              try {
-                localStorage.setItem('sa_vat_enabled', enabled ? '1' : '0')
-                localStorage.setItem('sa_vat_rate', String(rate ?? 15))
-              } catch {}
-            }}
+            enabled={!!vatDraft.enabled}
+            rate={vatDraft.rate}
+            onChange={({ enabled, rate }) => setVatDraft({ enabled, rate })}
           />
+          <button type="button" className="btn btn-primary" onClick={saveVatPreferences} disabled={vatSaving}>
+            {vatSaving ? 'Saving VAT settings…' : 'Save VAT settings'}
+          </button>
         </div>
       )}
 
