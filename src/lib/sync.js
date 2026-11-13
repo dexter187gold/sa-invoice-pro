@@ -229,7 +229,7 @@ export const Sync = {
       products: snapshot.products || [],
       services: snapshot.services || [],
       expenses: snapshot.expenses || [],
-      settings: { pushedAt: new Date().toISOString() },
+      settings: { ...(snapshot.settings || {}), pushedAt: new Date().toISOString() },
     }
     const r = await Sync.push(data)
     Sync.setMeta({ version: r.version, updatedAt: r.updated_at, lastPush: new Date().toISOString() })
