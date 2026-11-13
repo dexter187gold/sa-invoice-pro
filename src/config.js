@@ -31,6 +31,11 @@ export const DEV_PORTAL_PATH = '/dev-portal'
 export const PAYFAST_SANDBOX =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_PAYFAST_SANDBOX) !== 'false'
 
+/** Google OAuth Web client — GIS / One Tap + ID-token exchange */
+export const GOOGLE_CLIENT_ID =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GOOGLE_CLIENT_ID) ||
+  '1035068069363-o5st6insdv9d349onoa4gqqnf5gadav8.apps.googleusercontent.com'
+
 export function publicLinks() {
   return {
     app: typeof window !== 'undefined' ? window.location.origin : '',
@@ -58,8 +63,10 @@ export const SA_CONFIG = {
   productEmail: PRODUCT_EMAIL,
   supportEmail: SUPPORT_EMAIL,
   syncServerUrl: SYNC_API_URL,
+  defaultCloudUrl: SYNC_API_URL,
   defaultLicenseServerUrl: LICENSE_API_URL,
   clientPortalUrl: CLIENT_PORTAL_URL,
   website: APP_LINKS.website,
   payfastSandbox: PAYFAST_SANDBOX,
+  googleClientId: GOOGLE_CLIENT_ID,
 }
