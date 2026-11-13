@@ -40,6 +40,7 @@ export async function buildProfessionalPdf(docData, options = {}) {
   const brand = pdfBrandMeta()
   const GREEN = brand.accentRgb
   const isQuote = !!(options.isQuote || docData.isQuote)
+  const vatEnabled = docData.vatEnabled != null ? !!docData.vatEnabled : options.vatEnabled != null ? !!options.vatEnabled : Number(docData.vatAmount || 0) > 0
   const company = {
     ...(typeof docData.company === 'object' && docData.company ? docData.company : {}),
     ...(typeof options.company === 'object' && options.company ? options.company : {}),
@@ -83,14 +84,14 @@ export async function buildProfessionalPdf(docData, options = {}) {
     doc.text(contact.slice(0, 90), 14, y)
     y += 4
   }
-  if (co.vatNumber) {
+  if (vatEnabled && co.vatNumber) {
     doc.text('VAT ' + co.vatNumber, 14, y)
     y += 4
   }
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(12)
   doc.setTextColor(...SLATE)
-  doc.text(isQuote ? 'QUOTATION' : 'TAX INVOICE', 196, 16, { align: 'right' })
+  doc.text(isQuote ? 'QUOTATION' : vatEnabled ? 'TAX INVOICE' : 'INVOICE', 196, 16, { align: 'right' })
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
   doc.text(String(number), 196, 22, { align: 'right' })
@@ -150,7 +151,7 @@ export async function buildProfessionalPdf(docData, options = {}) {
   }
 
   const vatRate = Number(docData.vatRate ?? options.vatRate ?? 0.15)
-  const vatAmount = docData.vatAmount != null ? Number(docData.vatAmount) : sub * (vatRate > 1 ? vatRate / 100 : vatRate)
+  const vatAmount = vatEnabled ? (docData.vatAmount != null ? Number(docData.vatAmount) : sub * (vatRate > 1 ? vatRate / 100 : vatRate)) : 0
   const total = docData.total != null ? Number(docData.total) : sub + vatAmount
   const paid = Number(docData.amountPaid || 0)
 
@@ -159,9 +160,11 @@ export async function buildProfessionalPdf(docData, options = {}) {
   doc.text('Subtotal', 140, y)
   doc.text(money(sub), 196, y, { align: 'right' })
   y += 5
-  doc.text('VAT', 140, y)
-  doc.text(money(vatAmount), 196, y, { align: 'right' })
-  y += 5
+  if (vatEnabled) {
+    doc.text('VAT', 140, y)
+    doc.text(money(vatAmount), 196, y, { align: 'right' })
+    y += 5
+  }
   doc.setFont('helvetica', 'bold')
   doc.text(isQuote ? 'QUOTE TOTAL' : 'TOTAL', 140, y)
   doc.text(money(total), 196, y, { align: 'right' })
