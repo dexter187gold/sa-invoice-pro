@@ -17,6 +17,7 @@ import {
   CLIENT_TAG_PRESETS, normalizeTags, filterClientsByTag, toggleClientTag, clientHasTag,
 } from '../lib/clientTags'
 import PageInsightsBar from '../components/PageInsightsBar'
+import { clientOutstanding } from '../lib/payments'
 
 export default function Clients() {
   const { clients, invoices, payments, quotes, tickets, products, services, expenses, company, refresh, toast } = useApp()
@@ -28,6 +29,14 @@ export default function Clients() {
   const [portalCreds, setPortalCreds] = useState(null)
   const [lastPortal, setLastPortal] = useState(null)
   const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', notes: '', tags: [], accountCategory: 'individual', paymentTerms: 'Due on receipt', creditLimit: '' })
+
+  const balanceByClient = useMemo(() => {
+    const map = {}
+    for (const c of clients) {
+      map[String(c.id)] = clientOutstanding(c.id, invoices, payments)
+    }
+    return map
+  }, [clients, invoices, payments])
 
   const filtered = useMemo(() => {
     let rows = filterClientsByTag(clients, tagFilter)
@@ -283,6 +292,7 @@ export default function Clients() {
               <th>Name</th>
               <th>Email</th>
               <th>Phone</th>
+              <th>Outstanding</th>
               <th>Account category</th>
               <th>Payment terms</th>
               <th>Tags</th>
@@ -290,11 +300,16 @@ export default function Clients() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((c) => (
+            {filtered.map((c) => {
+              const bal = balanceByClient[String(c.id)] || 0
+              return (
               <tr key={c.id}>
                 <td><strong>{c.name}</strong>{c.company ? <div className="muted" style={{ fontSize: 12 }}>{c.company}</div> : null}</td>
                 <td>{c.email || '—'}</td>
                 <td>{c.phone || '—'}</td>
+                <td style={{ fontWeight: bal > 0.009 ? 700 : 400, color: bal > 0.009 ? 'var(--danger, #f87171)' : undefined }}>
+                  {bal > 0.009 ? formatMoney(bal) : '—'}
+                </td>
                 <td>{CUSTOMER_ACCOUNT_CATEGORIES.find((x) => x.id === c.accountCategory)?.label || 'Individual'}{Number(c.creditLimit) > 0 ? <div className="muted" style={{ fontSize: 11 }}>Credit limit {formatMoney(c.creditLimit)}</div> : null}</td>
                 <td>{c.paymentTerms || 'Due on receipt'}</td>
                 <td>
@@ -314,7 +329,7 @@ export default function Clients() {
                 </td>
                 <td><ActionMenu items={rowActions(c)} /></td>
               </tr>
-            ))}
+            )})}
           </tbody>
         </DataTable>
       )}
