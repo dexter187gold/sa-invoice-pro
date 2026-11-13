@@ -3,6 +3,7 @@
  */
 import * as db from './db.js'
 import { STORES } from './db.js'
+import { normalizeVatEnabled, normalizeVatRate } from './vatPreferences.js'
 import { Sync } from './sync.js'
 import { getSession } from './storage.js'
 
@@ -83,7 +84,11 @@ async function localSnapshot() {
   const products = (await db.getAll(STORES.products)) || []
   const services = (await db.getAll(STORES.services)) || []
   const expenses = (await db.getAll(STORES.expenses)) || []
-  return { company, clients, invoices, quotes, tickets, payments, products, services, expenses }
+  const settings = {
+    vatEnabled: normalizeVatEnabled(await db.getSetting('vatEnabled', false), false),
+    vatRate: normalizeVatRate(await db.getSetting('vatRate', 0.15), 0.15),
+  }
+  return { company, clients, invoices, quotes, tickets, payments, products, services, expenses, settings }
 }
 
 function mergeLists(localArr, cloudArr, idKey = 'id') {
@@ -168,6 +173,17 @@ function enqueuePush(data) {
 /**
  * Core: make local and cloud converge after login / boot / manual sync.
  */
+async function applyWorkspaceSettings(data) {
+  const settings = data?.settings
+  if (!settings || typeof settings !== 'object' || Array.isArray(settings)) return
+  if (Object.prototype.hasOwnProperty.call(settings, 'vatEnabled')) {
+    await db.setSetting('vatEnabled', normalizeVatEnabled(settings.vatEnabled, false))
+  }
+  if (Object.prototype.hasOwnProperty.call(settings, 'vatRate')) {
+    await db.setSetting('vatRate', normalizeVatRate(settings.vatRate, 0.15))
+  }
+}
+
 export async function ensureWorkspaceSynced({ forcePush = false } = {}) {
   if (!Sync.isLoggedIn()) {
     return { ok: false, action: 'none', reason: 'not_logged_in' }
@@ -241,6 +257,7 @@ export async function ensureWorkspaceSynced({ forcePush = false } = {}) {
     try {
       if (!isCurrent()) return stale()
       await db.importAll(cloudData, { wipe: false })
+      await applyWorkspaceSettings(cloudData)
       if (!isCurrent()) return stale()
       setMeta({ action: 'restore', version: cloudRow?.version })
       return { ok: true, action: 'restore', localScore, cloudScore, version: cloudRow?.version }
@@ -255,6 +272,7 @@ export async function ensureWorkspaceSynced({ forcePush = false } = {}) {
   try {
     if (!isCurrent()) return stale()
     await db.importAll(merged, { wipe: false })
+    await applyWorkspaceSettings(merged)
     if (!isCurrent()) return stale()
     const r = await Sync.push(merged)
     if (!isCurrent()) return stale()
