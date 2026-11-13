@@ -244,7 +244,7 @@ export default function InvoiceEdit() {
     const c = clients.find((x) => String(x.id) === String(clientId))
     const subject = encodeURIComponent(`${vatEnabled ? 'Tax invoice' : 'Invoice'} ${invNumber} — ${company?.name || 'SA Invoice Pro'}`)
     const body = encodeURIComponent(
-      `Dear ${c?.name || 'Client'},\n\nPlease find tax invoice ${invNumber}.\nTotal: ${formatMoney(totals.total)}\nBalance due: ${formatMoney(balance)}\nDue: ${dueDate || 'on receipt'}\n\nRegards,\n${company?.name || ''}`
+      `Dear ${c?.name || 'Client'},\n\nPlease find ${vatEnabled ? 'tax invoice' : 'invoice'} ${invNumber}.\nTotal: ${formatMoney(totals.total)}\nBalance due: ${formatMoney(balance)}\nDue: ${dueDate || 'on receipt'}\n\nRegards,\n${company?.name || ''}`
     )
     window.location.href = `mailto:${c?.email || ''}?subject=${subject}&body=${body}`
   }
@@ -395,7 +395,7 @@ export default function InvoiceEdit() {
           ))}
           <div className="inv-totals" style={{ marginTop: 12 }}>
             <div className="row"><span>Exclusive</span><span>{formatMoney(totals.exclusive)}</span></div>
-            <div className="row"><span>VAT</span><span>{formatMoney(totals.vat)}</span></div>
+            {vatEnabled && <div className="row"><span>VAT</span><span>{formatMoney(totals.vat)}</span></div>}
             <div className="row grand"><span>Total</span><span>{formatMoney(totals.total)}</span></div>
           </div>
         </div>
