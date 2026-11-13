@@ -14,6 +14,22 @@ export default function ToastHost() {
             role={isError ? 'alert' : 'status'}
           >
             <span className="toast-msg">{t.message}</span>
+            {t.onAction && t.actionLabel ? (
+              <button
+                type="button"
+                className="toast-action"
+                onClick={() => {
+                  try {
+                    t.onAction()
+                  } catch (e) {
+                    console.warn('toast action', e)
+                  }
+                  dismissToast?.(t.id)
+                }}
+              >
+                {t.actionLabel}
+              </button>
+            ) : null}
             <button
               type="button"
               className="toast-dismiss"

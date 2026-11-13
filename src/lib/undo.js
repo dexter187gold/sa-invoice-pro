@@ -68,7 +68,7 @@ export async function undoLast() {
 
 /**
  * Helper: delete with undo snapshot, then show toast with Undo action if toast supports action.
- * toastFn(message, type, { onAction, actionLabel })
+ * toastFn(message, type, { onAction, actionLabel, ttlMs })
  */
 export async function deleteWithUndo({ store, rows, removeFn, toast, label }) {
   const list = Array.isArray(rows) ? rows : rows ? [rows] : []
@@ -78,9 +78,20 @@ export async function deleteWithUndo({ store, rows, removeFn, toast, label }) {
     if (typeof removeFn === 'function') await removeFn(r.id)
     else await db.remove(store, r.id)
   }
-  const msg = list.length === 1 ? `${label || 'Deleted'} — Undo available 30s` : `Deleted ${list.length} — Undo available 30s`
+  const msg =
+    list.length === 1
+      ? `${label || 'Deleted'} — Undo available 30s`
+      : `Deleted ${list.length} — Undo available 30s`
   if (typeof toast === 'function') {
-    toast(msg, 'info')
+    toast(msg, 'info', {
+      actionLabel: 'Undo',
+      ttlMs: TTL_MS,
+      onAction: async () => {
+        const result = await undoLast()
+        if (result?.ok) toast(`${result.label || 'Restored'}`, 'success')
+        else toast('Nothing to undo', 'info')
+      },
+    })
   }
   return list.length
 }
