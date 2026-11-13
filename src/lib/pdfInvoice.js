@@ -28,7 +28,8 @@ export async function buildInvoicePdf(invoice, { company, client, payments = [] 
   y += 2
   doc.setFontSize(14)
   doc.setTextColor(20)
-  doc.text(invoice.isQuote ? 'QUOTATION' : 'TAX INVOICE', 14, y)
+  const vatEnabled = invoice.vatEnabled != null ? !!invoice.vatEnabled : Number(invoice.vatAmount || 0) > 0
+  doc.text(invoice.isQuote ? 'QUOTATION' : vatEnabled ? 'TAX INVOICE' : 'INVOICE', 14, y)
   y += 7
   doc.setFontSize(10)
   doc.text('No: ' + (invoice.number || ''), 14, y)
@@ -69,8 +70,10 @@ export async function buildInvoicePdf(invoice, { company, client, payments = [] 
   y += 7
   doc.text('Subtotal: ' + formatMoney(invoice.exclusive || 0).replace(/\u00a0/g, ' '), 120, y)
   y += 5
-  doc.text('VAT: ' + formatMoney(invoice.vatAmount || 0).replace(/\u00a0/g, ' '), 120, y)
-  y += 5
+  if (vatEnabled) {
+    doc.text('VAT: ' + formatMoney(invoice.vatAmount || 0).replace(/\u00a0/g, ' '), 120, y)
+    y += 5
+  }
   doc.setFont(undefined, 'bold')
   doc.text('TOTAL: ' + formatMoney(total).replace(/\u00a0/g, ' '), 120, y)
   y += 5
