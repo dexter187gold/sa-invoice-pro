@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { partitionPushQueue } from '../src/lib/workspaceSync.js'
+import { partitionPushQueue, mergeWorkspaces } from '../src/lib/workspaceSync.js'
 import { isSameSyncIdentity } from '../src/lib/sync.js'
 
 test('only flushes queued writes owned by the currently signed-in account', () => {
@@ -34,4 +34,15 @@ test('scheduled sync cannot run after the cloud identity token changes', () => {
   assert.equal(isSameSyncIdentity('token-account-a', 'token-account-b'), false)
   assert.equal(isSameSyncIdentity('token-account-a', null), false)
   assert.equal(isSameSyncIdentity(null, 'token-account-b'), false)
+})
+
+test('cloud VAT preferences restore when a new device has no saved local VAT choice', () => {
+  const merged = mergeWorkspaces({ settings: {} }, { settings: { vatEnabled: true, vatRate: 0.15 } })
+  assert.equal(merged.settings.vatEnabled, true)
+  assert.equal(merged.settings.vatRate, 0.15)
+})
+
+test('an explicitly saved local VAT-off choice remains authoritative during sync merge', () => {
+  const merged = mergeWorkspaces({ settings: { vatEnabled: false, vatRate: 0.15 } }, { settings: { vatEnabled: true, vatRate: 0.15 } })
+  assert.equal(merged.settings.vatEnabled, false)
 })
