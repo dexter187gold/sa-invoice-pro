@@ -8,7 +8,7 @@ on:
       - 'src/**'
       - 'public/**'
       - 'package.json'
-      - 'package-lock.json'
+      'package-lock.json'
       - 'vite.config.js'
       - 'index.html'
       - '.github/workflows/build-apk.yml'
@@ -57,7 +57,8 @@ jobs:
       - name: npm + web build + Capacitor
         run: |
           set -e
-          npm install --no-audit --no-fund
+          if [ -f package-lock.json ]; then npm ci || npm install --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+          node scripts/ci-guard.mjs
           npm run build
           test -d dist
           npm install --no-audit --no-fund \
