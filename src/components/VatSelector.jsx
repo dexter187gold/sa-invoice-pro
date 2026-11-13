@@ -25,7 +25,7 @@ export default function VatSelector({ enabled, rate, onChange, compact = false }
     const p = VAT_PRESETS.find((x) => x.id === id)
     if (!p) return
     if (id === 'custom') {
-      const n = Number(custom)
+      const n = String(custom).trim() === '' ? Number(rate) || 15 : Number(custom)
       onChange?.({ enabled: true, rate: Number.isFinite(n) ? n : 15 })
       return
     }
