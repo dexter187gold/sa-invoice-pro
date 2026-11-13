@@ -1,17 +1,25 @@
 # Grok / AI coding-agent context — SA INVOICE PRO
-Last reviewed: 2026-10-28
+Last reviewed: 2026-11-13
 
 Read first: [Android Owner Experience Mega Pack](./ANDROID_OWNER_MEGA_PACK.md)
 
 ## Repository facts
 - Product: SA INVOICE PRO, a React 19 + Vite 6 app.
-- Current package version at time of writing: 6.32.0 (verify package.json before each change).
+- Current package/release version: 6.65.0 (verify package.json and version.json before each change). The UI version is exported from `src/config.js` and must match.
 - Main branch: main.
 - Frontend repo: https://github.com/dexter187gold/sa-invoice-pro
-- Production URL: https://sa-invoice-pro.pcrepairdex.workers.dev
+- Primary production URL: https://sa-invoice-pro.pages.dev (Cloudflare Pages, GitHub `main`). The legacy Worker URL is separate and must not be assumed to be the active Pages deployment.
 - Cloudflare deployment is driven by GitHub Actions. Check the actual workflow status before claiming a deployment is live.
 - Existing checks: `npm run check:exports`, `npm run check:version`, `npm run test:unit`, `npm run build`, `npm run test:e2e`.
 - The APK workflow is .github/workflows/build-apk.yml. Inspect its actual implementation before claiming native Android capabilities.
+
+## Current audit notes — 2026-11-13
+- Cloudflare Pages project `sa-invoice-pro` is connected to `dexter187gold/sa-invoice-pro` / `main`; the latest observed production deployment before the VAT fixes succeeded on commit `a07d402`. Verify the post-change deployment and CI before calling the fixes live.
+- VAT preferences belong in IndexedDB `settings` (`vatEnabled` boolean and `vatRate` decimal, e.g. `0.15`). Do not rely on the old `localStorage` mirror as the source of truth.
+- VAT is optional in the product UI; new workspaces default to VAT off. `src/lib/vatPreferences.js` normalizes legacy percentage values and preserves a zero rate. Settings must save through `db.setSetting` so `AppContext.refresh()` cannot restore an implicit VAT-on default.
+- Invoice and quote totals use decimal VAT rates. Quote-to-invoice conversion must recalculate from current workspace VAT preferences rather than reusing stale quote VAT totals. Keep historic documents unchanged unless a user explicitly edits/saves them.
+- Regression coverage: `tests/vatPreferences.test.js`. Run unit tests, E2E smoke, production build, and APK workflow; report only checks that actually pass.
+- Settings sections with editable values should provide an explicit save/apply action and a visible success or error result. Immediate actions must be clearly identified as immediate.
 
 ## Current working agreement
 - IT Document Studio lives in `src/pages/Documents.jsx`; the detailed catalogue is `src/lib/itDocumentTemplates.js`. Keep templates searchable/category-filtered, with structured sections, A4 multi-page PDF output, company/client metadata, approval/sign-off and a clear draft/review disclaimer.
