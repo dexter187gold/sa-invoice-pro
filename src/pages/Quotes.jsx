@@ -199,6 +199,7 @@ export default function Quotes() {
                 {qt.portalNote ? <div style={{ fontSize: 12, marginTop: 4 }}>Client note: {qt.portalNote}</div> : null}
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <Link className="btn btn-outline btn-sm" to={`/quotes/${qt.id}/edit`}>Edit</Link>
                 {canConv && (
                   <button type="button" className="btn btn-primary btn-sm" disabled={convertingId === qt.id} onClick={() => convert(qt)}>
                     {convertingId === qt.id ? '…' : 'Convert'}
