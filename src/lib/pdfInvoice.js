@@ -14,6 +14,7 @@ export async function buildInvoicePdf(invoice, { company, client, payments = [] 
   const paid = (payments || []).reduce((s, p) => s + (Number(p.amount) || 0), 0) || Number(invoice.amountPaid) || 0
   const total = Number(invoice.total) || 0
   const due = Math.max(0, total - paid)
+  const vatEnabled = invoice.vatEnabled != null ? !!invoice.vatEnabled : Number(invoice.vatAmount || 0) > 0
   let y = 16
   y = drawPdfLogo(doc, { x: 14, y: 8, maxH: 14, maxW: 24 })
   if (y < 16) y = 16
@@ -23,12 +24,11 @@ export async function buildInvoicePdf(invoice, { company, client, payments = [] 
   y += 7
   doc.setFontSize(9)
   doc.setTextColor(80)
-  const coLines = [co.address, co.email, co.phone, co.vatNumber ? 'VAT: ' + co.vatNumber : ''].filter(Boolean)
+  const coLines = [co.address, co.email, co.phone, vatEnabled && co.vatNumber ? 'VAT: ' + co.vatNumber : ''].filter(Boolean)
   for (const line of coLines) { doc.text(String(line), 14, y); y += 4.5 }
   y += 2
   doc.setFontSize(14)
   doc.setTextColor(20)
-  const vatEnabled = invoice.vatEnabled != null ? !!invoice.vatEnabled : Number(invoice.vatAmount || 0) > 0
   doc.text(invoice.isQuote ? 'QUOTATION' : vatEnabled ? 'TAX INVOICE' : 'INVOICE', 14, y)
   y += 7
   doc.setFontSize(10)
