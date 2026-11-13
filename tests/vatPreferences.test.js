@@ -14,6 +14,7 @@ test('VAT preference normalization preserves off and zero-rate choices', () => {
 
 test('invoice totals respect VAT disabled, standard and zero-rated modes', () => {
   const lines = [{ qty: 2, price: 100 }]
+  assert.deepEqual(invoiceTotals(lines), { exclusive: 200, vat: 0, total: 200 })
   assert.deepEqual(invoiceTotals(lines, 0.15, false), { exclusive: 200, vat: 0, total: 200 })
   assert.deepEqual(invoiceTotals(lines, 0.15, true), { exclusive: 200, vat: 30, total: 230 })
   assert.deepEqual(invoiceTotals(lines, 0, true), { exclusive: 200, vat: 0, total: 200 })
