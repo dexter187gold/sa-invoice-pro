@@ -16,7 +16,7 @@ export function canConvertQuote(quote) {
   return s === 'draft' || s === 'sent'
 }
 
-export async function convertQuoteToInvoice(quote, { invoices = [], vatRate = 0.15, vatEnabled = true } = {}) {
+export async function convertQuoteToInvoice(quote, { invoices = [], vatRate = 0.15, vatEnabled = false } = {}) {
   if (!quote) throw new Error('Quote required')
   if (String(quote.status || '').toLowerCase() === 'converted') {
     throw new Error('Already converted')
@@ -56,11 +56,11 @@ export async function convertQuoteToInvoice(quote, { invoices = [], vatRate = 0.
     dueDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
     status: 'unpaid',
     lines,
-    exclusive: quote.exclusive != null ? quote.exclusive : t.exclusive,
-    vatAmount: quote.vatAmount != null ? quote.vatAmount : t.vat,
-    total: quote.total != null ? quote.total : t.total,
+    exclusive: t.exclusive,
+    vatAmount: t.vat,
+    total: t.total,
     amountPaid: 0,
-    amountDue: quote.total != null ? quote.total : t.total,
+    amountDue: t.total,
     fromQuoteId: quote.id,
     templateId: ['adhoc', 'hourly', 'flatrate'].includes(quote.templateId)
       ? 'standard'
