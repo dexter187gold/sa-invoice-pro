@@ -5,6 +5,8 @@ import { APP_VERSION } from '../config'
 import AppLogo from '../components/AppLogo'
 import * as db from '../lib/db'
 import { Sync } from '../lib/sync'
+import { isGoogleSignInConfigured, signInWithGoogle } from '../lib/googleAuth'
+import { setSession } from '../lib/storage'
 
 const SPLASH_MS = 1600
 
@@ -72,6 +74,65 @@ export default function Login() {
     }, SPLASH_MS)
     return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [splash])
+
+  // Complete Google redirect: /login?google_token=...&email=...
+  useEffect(() => {
+    let cancelled = false
+    const params = new URLSearchParams(window.location.search)
+    const gt = params.get('google_token')
+    const em = params.get('email')
+    if (!gt) return undefined
+    ;(async () => {
+      try {
+        setBusy(true)
+        try {
+          localStorage.setItem('sa_cloud_token', gt)
+          if (Sync.setToken) Sync.setToken(gt)
+        } catch {}
+        setSession({
+          email: em || '',
+          name: em || 'Google user',
+          cloud: true,
+          provider: 'google',
+        })
+        if (cancelled) return
+        toast('Signed in with Google', 'success')
+        await refresh?.()
+        const co = await db.getCompany()
+        nav(co?.name ? '/' : '/setup', { replace: true })
+        try {
+          window.history.replaceState({}, '', '/login')
+        } catch {}
+      } catch (err) {
+        if (!cancelled) toast(err.message || 'Google session failed', 'error')
+      } finally {
+        if (!cancelled) setBusy(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [nav, refresh, toast])
+
+  const onGoogle = async () => {
+    setBusy(true)
+    try {
+      const data = await signInWithGoogle()
+      const email = data?.user?.email || ''
+      setSession({
+        email,
+        name: data?.user?.name || email || 'Google user',
+        cloud: true,
+        provider: 'google',
+      })
+      toast('Signed in with Google — syncing workspace…', 'success')
+      await refresh?.()
+      const co = await db.getCompany()
+      nav(co?.name ? '/' : '/setup', { replace: true })
+    } catch (err) {
+      toast(err.message || 'Google sign-in failed', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const goForgot = () => {
     setMode('forgot')
@@ -255,6 +316,17 @@ export default function Login() {
             <button className="btn btn-primary" type="submit" disabled={busy} style={{ width: '100%' }}>
               {busy ? 'Please wait…' : mode === 'in' ? 'Sign in' : mode === 'up' ? 'Create account' : 'Reset password'}
             </button>
+            {mode === 'in' && isGoogleSignInConfigured() && (
+              <div className="stack" style={{ gap: 8 }}>
+                <div className="muted" style={{ textAlign: 'center', fontSize: 12 }}>or</div>
+                <button type="button" className="btn btn-outline" disabled={busy} onClick={onGoogle} style={{ width: '100%' }}>
+                  Continue with Google
+                </button>
+                <p className="muted" style={{ fontSize: 11, margin: 0, textAlign: 'center' }}>
+                  Cloud profile is tied to your Google email. Workspace data syncs only after the server verifies your account.
+                </p>
+              </div>
+            )}
             {mode === 'in' && (
               <button type="button" style={{ background: 'none', border: 0, color: '#5eead4', cursor: 'pointer', fontWeight: 600 }} onClick={goForgot}>Forgot password?</button>
             )}
