@@ -122,3 +122,22 @@ export async function runDueRecurring({ invoices = [], vatRate = 0.15, vatEnable
   if (created.length) await saveRecurring(nextList)
   return { created: created.length, invoices: created }
 }
+
+const AUTO_KEY = 'recurring_auto_last_run'
+
+/**
+ * Run due recurring templates at most once per calendar day (local).
+ * Safe to call on app boot; no-ops if already ran today or nothing due.
+ */
+export async function autoRunRecurringOncePerDay(opts = {}) {
+  const today = new Date().toISOString().slice(0, 10)
+  try {
+    const last = localStorage.getItem(AUTO_KEY)
+    if (last === today) return { skipped: true, reason: 'already-ran-today', created: 0 }
+  } catch {}
+  const result = await runDueRecurring(opts)
+  try {
+    localStorage.setItem(AUTO_KEY, today)
+  } catch {}
+  return { skipped: false, ...result }
+}
