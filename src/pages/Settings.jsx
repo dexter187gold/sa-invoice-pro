@@ -519,7 +519,7 @@ export default function Settings() {
           <label className="label">Add customer phone to the opt-out list</label>
           <input className="input" value={optPhone} onChange={(e) => setOptPhone(e.target.value)} placeholder="Phone number" />
           <button type="button" className="btn btn-outline" onClick={() => {
-            const digits = String(optPhone || '').replace(/\\D/g, '')
+            const digits = String(optPhone || '').replace(/\D/g, '')
             if (!digits) return toast('Enter a valid phone number', 'error')
             setComms({ ...comms, optOutPhones: [...new Set([...(comms.optOutPhones || []), digits])] })
             setOptPhone('')
