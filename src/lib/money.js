@@ -22,7 +22,7 @@ export function parseMoney(s) {
   return Number.isFinite(v) ? v : 0
 }
 
-export function calcLine(qty, price, vatRate = 0.15, vatEnabled = true) {
+export function calcLine(qty, price, vatRate = 0.15, vatEnabled = false) {
   const q = Number(qty) || 0
   const p = Number(price) || 0
   const exclusive = Math.round(q * p * 100) / 100
