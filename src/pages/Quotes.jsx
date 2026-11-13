@@ -108,7 +108,7 @@ export default function Quotes() {
     if (!canConvertQuote(qt)) return toast('Quote cannot be converted', 'error')
     setConvertingId(qt.id)
     try {
-      const inv = await convertQuoteToInvoice(qt, { invoices: [], vatRate: vatRate ?? 0.15, vatEnabled: vatEnabled !== false })
+      const inv = await convertQuoteToInvoice(qt, { invoices: [], vatRate: vatRate ?? 0.15, vatEnabled: !!vatEnabled })
       await refresh()
       toast(`Invoice created from ${qt.number || 'quote'}`, 'success')
       nav(`/invoices/${inv.id}`)
