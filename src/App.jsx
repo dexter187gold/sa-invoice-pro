@@ -15,6 +15,7 @@ import Clients from './pages/Clients'
 import Invoices from './pages/Invoices'
 import InvoiceEdit from './pages/InvoiceEdit'
 import Quotes from './pages/Quotes'
+import QuoteEdit from './pages/QuoteEdit'
 import Tickets from './pages/Tickets'
 import Accounting from './pages/Accounting'
 import Settings from './pages/Settings'
@@ -136,6 +137,8 @@ export default function App() {
                 <Route path="/invoices/new" element={<InvoiceEdit />} />
                 <Route path="/invoices/:id" element={<InvoiceEdit />} />
                 <Route path="/quotes" element={<Quotes />} />
+                <Route path="/quotes/new" element={<QuoteEdit />} />
+                <Route path="/quotes/:id/edit" element={<QuoteEdit />} />
                 <Route path="/tickets" element={<Tickets />} />
                 <Route path="/products" element={<Products />} />
                 <Route path="/expenses" element={<Expenses />} />
