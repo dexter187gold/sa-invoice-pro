@@ -8,7 +8,7 @@ on:
       - 'src/**'
       - 'public/**'
       - 'package.json'
-      'package-lock.json'
+      - 'package-lock.json'
       - 'vite.config.js'
       - 'index.html'
       - '.github/workflows/build-apk.yml'
