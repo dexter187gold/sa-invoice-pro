@@ -84,10 +84,11 @@ async function localSnapshot() {
   const products = (await db.getAll(STORES.products)) || []
   const services = (await db.getAll(STORES.services)) || []
   const expenses = (await db.getAll(STORES.expenses)) || []
-  const settings = {
-    vatEnabled: normalizeVatEnabled(await db.getSetting('vatEnabled', false), false),
-    vatRate: normalizeVatRate(await db.getSetting('vatRate', 0.15), 0.15),
-  }
+  const settings = {}
+  const storedVatEnabled = await db.getSetting('vatEnabled', null)
+  const storedVatRate = await db.getSetting('vatRate', null)
+  if (storedVatEnabled !== null) settings.vatEnabled = normalizeVatEnabled(storedVatEnabled, false)
+  if (storedVatRate !== null) settings.vatRate = normalizeVatRate(storedVatRate, 0.15)
   return { company, clients, invoices, quotes, tickets, payments, products, services, expenses, settings }
 }
 
@@ -110,7 +111,7 @@ function mergeLists(localArr, cloudArr, idKey = 'id') {
   return Array.from(map.values())
 }
 
-function mergeWorkspaces(local, cloud) {
+export function mergeWorkspaces(local, cloud) {
   return {
     company: local.company?.name ? local.company : cloud.company || local.company,
     clients: mergeLists(local.clients, cloud.clients),
