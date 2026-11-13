@@ -22,6 +22,7 @@ import DeskRulesCard from '../components/DeskRulesCard'
 import NpsCard from '../components/NpsCard'
 import SoftLicenseBanner from '../components/SoftLicenseBanner'
 import OwnerInsightsStrip from '../components/OwnerInsightsStrip'
+import { invoiceOutstanding } from '../lib/payments'
 
 function greeting() {
   const h = new Date().getHours()
@@ -46,9 +47,14 @@ export default function Home() {
   const [convertingId, setConvertingId] = useState(null)
   const shedding = isLoadSheddingMode()
 
-  const open = invoices.filter((i) => ['unpaid', 'partial', 'overdue'].includes(i.status))
-  const paid = invoices.filter((i) => i.status === 'paid')
-  const ar = open.reduce((s, i) => s + (Number(i.amountDue != null ? i.amountDue : i.total) || 0), 0)
+  // Live balances from payments (fixes stale amountDue after cross-device sync)
+  const open = invoices.filter((i) => {
+    if (i.isCredit) return false
+    const due = invoiceOutstanding(i, payments)
+    return due > 0.009
+  })
+  const paid = invoices.filter((i) => invoiceOutstanding(i, payments) <= 0.009 && (Number(i.total) || 0) > 0)
+  const ar = open.reduce((s, i) => s + invoiceOutstanding(i, payments), 0)
   const rev = paid.reduce((s, i) => s + (Number(i.total) || 0), 0)
   const today = new Date().toISOString().slice(0, 10)
   const paidToday = payments
@@ -72,10 +78,12 @@ export default function Home() {
   const needsChase = useMemo(() => {
     const map = {}
     for (const inv of invoices) {
-      if (!['overdue', 'partial', 'unpaid'].includes(inv.status || '')) continue
+      if (inv.isCredit) continue
+      const due = invoiceOutstanding(inv, payments)
+      if (due <= 0.009) continue
       const id = String(inv.clientId)
       if (!map[id]) map[id] = { clientId: id, total: 0, count: 0, worstDays: 0 }
-      map[id].total += Number(inv.amountDue != null ? inv.amountDue : inv.total) || 0
+      map[id].total += due
       map[id].count++
       map[id].worstDays = Math.max(map[id].worstDays, daysPastDue(inv))
     }
@@ -84,7 +92,7 @@ export default function Home() {
       .filter((r) => r.client)
       .sort((a, b) => b.total - a.total)
       .slice(0, 6)
-  }, [invoices, clients])
+  }, [invoices, clients, payments])
 
   const jobToBill = useMemo(() => {
     return openJobs
@@ -177,7 +185,6 @@ export default function Home() {
         <Link className="btn btn-outline btn-sm" to="/wa-chase">WhatsApp chase</Link>
         <Link className="btn btn-outline btn-sm" to="/bank">Bank import</Link>
       </div>
-
 
       <section className="pulse-hero">
         <div className="pulse-hero-text">
