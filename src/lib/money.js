@@ -30,7 +30,7 @@ export function calcLine(qty, price, vatRate = 0.15, vatEnabled = false) {
   return { exclusive, vat, total: Math.round((exclusive + vat) * 100) / 100 }
 }
 
-export function invoiceTotals(lines, vatRate = 0.15, vatEnabled = true) {
+export function invoiceTotals(lines, vatRate = 0.15, vatEnabled = false) {
   let exclusive = 0, vat = 0
   for (const l of lines || []) {
     const c = calcLine(l.qty, l.price, vatRate, vatEnabled)
