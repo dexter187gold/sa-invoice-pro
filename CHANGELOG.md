@@ -1,3 +1,10 @@
+## 6.65.0 — CI green, license UX, coffee FAB
+
+- Sticky licence contact bar; full 6-tier plan cards; clearer checkout toasts.
+- Floating Buy us a coffee FAB on all app pages.
+- Recurring auto-run, VAT201 helper, job photos, workspace ZIP (batch).
+- Hardened GitHub Actions (smoke, APK, workers) and version/export guards.
+
 ## 6.61.0 — Expanded inbound WhatsApp replies
 
 - Added keyword packs for speaker/sound/mic, WiFi/Bluetooth, software/bootloop, lock/password, iCloud/Samsung account, Face ID/Touch ID.
@@ -11,38 +18,3 @@
 - Expanded keyword pack: water damage, charging port, camera, dead/no power, FRP, data recovery, warranty, screen, battery.
 - One-tap Copy on the reply box. Context hint shows when a job/invoice was matched.
 - ZA tone EN/AF preserved.
-
-## 6.59.0 — Smarter inbound WhatsApp replies
-
-- Inbox now surfaces multiple contextual suggestions from `suggestInboundReplies` (status, pricing, payment, collection, greeting) with one-tap EN / AF.
-- Falls back to the existing quick-reply keyword pack.
-- Better desk flow for responding to real client WhatsApp messages.
-
-## 6.58.0 — Website access shortcut
-
-- Added a direct link to the public SA Invoice Pro website in the orb Main Menu.
-- Aligned the app release metadata and version references.
-
-## 6.57.0 — WhatsApp response pack
-
-- **Inbound suggestions**: Keyword-aware replies for common client messages (status, pricing, payment, collection, greeting).
-- ZA tone EN/AF options, ready for desk one-tap wa.me.
-- Aligns with P6 communications stack.
-
-## 6.56.0 — Seats + white-label pilot
-
-- **White-label**: Live preview, portal tagline, accent presets + colour picker, hide powered-by, reset defaults; Shop+ access.
-- **Docs**: Dual-rail seats (local + cloud) and white-label patterns in `docs/SEATS_AND_WHITE_LABEL.md`.
-- CSS hooks for `data-hide-powered`.
-
-## 6.55.0 — Playwright + unit coverage
-
-- Chase pack, bank alternatives, portal quote/pay fixture, wa-chase smoke.
-
-## 6.54.0 — Bank credit → invoice suggest
-
-- Ranked alternatives, picker, one-click apply.
-
-## 6.53.0 — Collections chase UI
-
-- Age filters, portal/pay toggle, last-chased log.

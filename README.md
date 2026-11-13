@@ -1,4 +1,4 @@
-# SA Invoice Pro 6.60.0
+# SA Invoice Pro 6.65.0
 
 Contextual desk WhatsApp replies · Bench pack for repair shops.
 
