@@ -13,19 +13,32 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+
       - name: Install dependencies
         run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          set -e
+          if [ -f package-lock.json ]; then
+            npm ci || npm install --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
+
+      - name: CI guard
+        run: node scripts/ci-guard.mjs
+
       - name: Build web assets
         run: npm run build
+
       - name: Validate Worker bundle (dry-run)
         run: npx wrangler@4 deploy --dry-run
         continue-on-error: true
+
       - name: Skip production deploy (missing secrets)
         if: ${{ env.HAS_CLOUDFLARE_DEPLOY_CREDENTIALS != 'true' }}
         run: |
-          echo '::warning::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID not set — build validated, production deploy skipped.'
-          echo 'Add repository secrets to enable auto-deploy. Pages may still deploy via Cloudflare Pages Git integration.'
+          echo '::warning::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID not set — production Worker deploy skipped (not a failure).'
+          echo 'Pages may still deploy via Cloudflare Pages Git integration.'
+
       - name: Deploy to Cloudflare Workers
         if: ${{ env.HAS_CLOUDFLARE_DEPLOY_CREDENTIALS == 'true' }}
         uses: cloudflare/wrangler-action@v3

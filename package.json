@@ -1,17 +1,18 @@
 {
   "name": "sa-invoice-pro",
-  "version": "6.63.0",
+  "version": "6.65.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "prebuild": "node scripts/check-exports.mjs && node scripts/check-version.mjs",
+    "prebuild": "node scripts/ci-guard.mjs",
     "build": "vite build",
     "dev": "vite",
     "preview": "vite preview",
     "test:e2e": "playwright test",
     "test:unit": "node --test tests/*.test.js",
     "check:exports": "node scripts/check-exports.mjs",
-    "check:version": "node scripts/check-version.mjs"
+    "check:version": "node scripts/check-version.mjs",
+    "ci:guard": "node scripts/ci-guard.mjs"
   },
   "dependencies": {
     "jspdf": "^2.5.2",
