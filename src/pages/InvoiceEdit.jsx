@@ -178,6 +178,8 @@ export default function InvoiceEdit() {
       },
       lines,
       exclusive: totals.exclusive,
+      vatEnabled: !!vatEnabled,
+      vatRate: Number(vatRate) || 0,
       vatAmount: totals.vat,
       total: totals.total,
       amountPaid,
@@ -212,7 +214,7 @@ export default function InvoiceEdit() {
   const doPdf = async (open) => {
     try {
       const payload = existing ? { ...existing, ...buildPayload(), id: existing.id } : buildPayload()
-      const opts = { company, client, payments: invPayments, isQuote: false, templateId: payload.templateId || templateId, accountType, layout }
+      const opts = { company, client, payments: invPayments, isQuote: false, vatEnabled: !!vatEnabled, vatRate, templateId: payload.templateId || templateId, accountType, layout }
       if (open) await openProfessionalPdf(payload, opts)
       else await downloadProfessionalPdf(payload, opts)
       toast(open ? 'Preview opened' : 'PDF downloaded', 'success')
@@ -227,7 +229,7 @@ export default function InvoiceEdit() {
     const c = clients.find((x) => String(x.id) === String(clientId))
     const phone = String(c?.phone || '').replace(/\D/g, '')
     const text = encodeURIComponent(
-      `Hi${c?.name ? ' ' + c.name : ''}, please find tax invoice ${invNumber} for ${formatMoney(totals.total)} (balance due ${formatMoney(balance)}). Thank you — ${company?.name || 'SA Invoice Pro'}.`
+      `Hi${c?.name ? ' ' + c.name : ''}, please find ${vatEnabled ? 'tax invoice' : 'invoice'} ${invNumber} for ${formatMoney(totals.total)} (balance due ${formatMoney(balance)}). Thank you — ${company?.name || 'SA Invoice Pro'}.`
     )
     const url = phone
       ? `https://wa.me/${phone.startsWith('0') ? '27' + phone.slice(1) : phone}?text=${text}`
@@ -236,7 +238,7 @@ export default function InvoiceEdit() {
   }
   const shareEmail = () => {
     const c = clients.find((x) => String(x.id) === String(clientId))
-    const subject = encodeURIComponent(`Tax invoice ${invNumber} — ${company?.name || 'SA Invoice Pro'}`)
+    const subject = encodeURIComponent(`${vatEnabled ? 'Tax invoice' : 'Invoice'} ${invNumber} — ${company?.name || 'SA Invoice Pro'}`)
     const body = encodeURIComponent(
       `Dear ${c?.name || 'Client'},\n\nPlease find tax invoice ${invNumber}.\nTotal: ${formatMoney(totals.total)}\nBalance due: ${formatMoney(balance)}\nDue: ${dueDate || 'on receipt'}\n\nRegards,\n${company?.name || ''}`
     )
