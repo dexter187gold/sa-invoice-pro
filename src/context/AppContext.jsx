@@ -4,6 +4,7 @@ import { STORES } from '../lib/db'
 import { getSession, setSession } from '../lib/storage'
 import { hashPassword, verifyPassword } from '../lib/hash'
 import { VAT_RATE_DEFAULT } from '../config'
+import { normalizeVatEnabled, normalizeVatRate } from '../lib/vatPreferences'
 import { Sync } from '../lib/sync'
 import { canUseCloudSync } from '../lib/soloMode'
 import { ensureWorkspaceSynced, flushPushQueue, describeEnsureResult } from '../lib/workspaceSync'
@@ -43,7 +44,7 @@ export function AppProvider({ children }) {
   const [toasts, setToasts] = useState([])
   const [theme, setTheme] = useState(() => localStorage.getItem('sa_theme') || 'light')
   const [density, setDensity] = useState(() => localStorage.getItem('sa_density') || 'comfortable')
-  const [vatEnabled, setVatEnabled] = useState(true)
+  const [vatEnabled, setVatEnabled] = useState(false)
   const [vatRate, setVatRate] = useState(VAT_RATE_DEFAULT)
   const [online, setOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
   const skipAutoPush = useRef(true)
@@ -82,8 +83,13 @@ export function AppProvider({ children }) {
       setter(rows)
       if (key) snap[key] = rows
     }
-    setVatEnabled((await db.getSetting('vatEnabled', true)) !== false)
-    setVatRate(Number(await db.getSetting('vatRate', VAT_RATE_DEFAULT)) || VAT_RATE_DEFAULT)
+    const storedVatEnabled = await db.getSetting('vatEnabled', false)
+    const storedVatRate = await db.getSetting('vatRate', VAT_RATE_DEFAULT)
+    const normalizedVatEnabled = normalizeVatEnabled(storedVatEnabled, false)
+    const normalizedVatRate = normalizeVatRate(storedVatRate, VAT_RATE_DEFAULT)
+    setVatEnabled(normalizedVatEnabled)
+    setVatRate(normalizedVatRate)
+    snap.settings = { vatEnabled: normalizedVatEnabled, vatRate: normalizedVatRate }
     if (skipAutoPush.current) skipAutoPush.current = false
     else if (!skipSync && canUseCloudSync() && Sync.isLoggedIn()) Sync.scheduleAutoPush(snap, 2500)
   }, [])
