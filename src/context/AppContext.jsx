@@ -50,10 +50,18 @@ export function AppProvider({ children }) {
   const lastFailToast = useRef(0)
 
   const dismissToast = useCallback((id) => setToasts((t) => t.filter((x) => x.id !== id)), [])
-  const toast = useCallback((message, type = 'info') => {
+  const toast = useCallback((message, type = 'info', opts = {}) => {
     const id = crypto.randomUUID()
-    setToasts((t) => [...t, { id, message, type }])
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4500)
+    const entry = {
+      id,
+      message,
+      type,
+      actionLabel: opts.actionLabel || opts.onActionLabel || null,
+      onAction: typeof opts.onAction === 'function' ? opts.onAction : null,
+    }
+    setToasts((t) => [...t, entry])
+    const ttl = opts.ttlMs || (entry.onAction ? 30000 : 4500)
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), ttl)
   }, [])
 
   const refresh = useCallback(async ({ skipSync = false } = {}) => {
@@ -149,7 +157,6 @@ export function AppProvider({ children }) {
     return () => clearInterval(id)
   }, [ready, toast])
 
-  // Lock the local app session after the configured period without user input.
   useEffect(() => {
     if (!ready || !user) return
     let timer
