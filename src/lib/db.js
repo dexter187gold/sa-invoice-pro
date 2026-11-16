@@ -359,15 +359,28 @@ export async function replaceAllAtomic(data, { allowPartial = false } = {}) {
  * Incoming records are written to IndexedDB in small batches, then swapped
  * into the live stores in one transaction. Recovery snapshots are preserved.
  */
-export async function replaceAllStaged(data, { allowPartial = false, onProgress } = {}) {
+export async function replaceAllStaged(data, { allowPartial = false, onProgress, estimatedBytes = 0 } = {}) {
   const src = unwrapBackup(data)
   data = null
   if (!src || typeof src !== 'object') throw new Error('Invalid backup file')
-  const storeKeys = Object.keys(STORES).filter((key) => !['autoBackups', 'accountWorkspaces', 'importStaging'].includes(key))
+  const storeKeys = Object.keys(STORES).filter((key) => !['users', 'autoBackups', 'accountWorkspaces', 'importStaging'].includes(key))
   const present = storeKeys.filter((key) => Array.isArray(src[key]) || (key === 'company' && src[key] && typeof src[key] === 'object'))
   const missing = storeKeys.filter((key) => !present.includes(key))
   if (!allowPartial && missing.length) throw new Error(`This is not a complete workspace backup. Missing store data: ${missing.join(', ')}`)
 
+  if (estimatedBytes > 0 && typeof navigator !== 'undefined' && navigator.storage?.estimate) {
+    try {
+      const estimate = await navigator.storage.estimate()
+      const available = Number(estimate.quota || 0) - Number(estimate.usage || 0)
+      const required = Math.ceil(estimatedBytes * 1.25)
+      if (available > 0 && available < required) {
+        throw new Error(`Not enough browser storage to stage this backup safely. Approximately ${Math.ceil(required / 1048576)} MB free space is recommended. Your existing workspace has not been replaced.`)
+      }
+    } catch (error) {
+      if (String(error?.message || '').startsWith('Not enough browser storage')) throw error
+      console.warn('[backup] storage estimate unavailable', error)
+    }
+  }
   const db = await openDB()
   const batchId = crypto.randomUUID?.() || `import_${Date.now()}`
   const batchSize = 150
