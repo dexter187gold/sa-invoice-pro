@@ -1,0 +1,114 @@
+name: Build Windows desktop (Tauri)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'src-tauri/**'
+      - 'package.json'
+      - 'vite.config.js'
+      - 'index.html'
+      - '.github/workflows/build-windows.yml'
+      - 'version.json'
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Windows MSI / NSIS
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend deps + build web
+        shell: bash
+        run: |
+          set -e
+          if [ -f package-lock.json ]; then npm ci || npm install --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+          node scripts/ci-guard.mjs
+          npm run build
+          test -d dist
+
+      - name: Install Tauri CLI
+        shell: bash
+        run: npm install -D @tauri-apps/cli@2
+
+      - name: Ensure placeholder icons exist
+        shell: bash
+        run: |
+          mkdir -p src-tauri/icons
+          python - << 'PY'
+          import struct, zlib, pathlib
+          def png(w, h, rgb=(13, 148, 136)):
+              def chunk(tag, data):
+                  return struct.pack('>I', len(data)) + tag + data + struct.pack('>I', zlib.crc32(tag + data) & 0xffffffff)
+              raw = b''.join(b'\x00' + bytes(rgb) * w for _ in range(h))
+              return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(raw)) + chunk(b'IEND', b'')
+          root = pathlib.Path('src-tauri/icons')
+          root.mkdir(parents=True, exist_ok=True)
+          (root / '32x32.png').write_bytes(png(32, 32))
+          (root / '128x128.png').write_bytes(png(128, 128))
+          (root / '128x128@2x.png').write_bytes(png(256, 256))
+          (root / 'icon.png').write_bytes(png(256, 256))
+          print('icons written')
+          PY
+          cp src-tauri/icons/32x32.png src-tauri/icons/icon.ico || true
+          cp src-tauri/icons/128x128.png src-tauri/icons/icon.icns || true
+
+      - name: Build Tauri (Windows)
+        shell: bash
+        run: |
+          set -e
+          npx tauri build --bundles msi,nsis || npx tauri build
+
+      - name: Collect installers
+        shell: bash
+        run: |
+          set -e
+          VER=$(node -p "require('./package.json').version")
+          mkdir -p out-win
+          find src-tauri/target -type f \( -name '*.msi' -o -name '*setup*.exe' -o -name '*.exe' \) 2>/dev/null | head -20 || true
+          MSI=$(find src-tauri/target -name '*.msi' 2>/dev/null | head -1 || true)
+          EXE=$(find src-tauri/target \( -name '*setup*.exe' -o -name '*-setup.exe' \) 2>/dev/null | head -1 || true)
+          if [ -n "$MSI" ]; then cp "$MSI" "out-win/SA-Invoice-Pro-v${VER}-windows.msi"; fi
+          if [ -n "$EXE" ]; then cp "$EXE" "out-win/SA-Invoice-Pro-v${VER}-windows-setup.exe"; fi
+          ls -la out-win || true
+          if [ -z "$(ls -A out-win 2>/dev/null)" ]; then
+            echo "::warning::No MSI/EXE produced — uploading web dist zip as interim Windows package"
+            (cd dist && zip -r "../out-win/SA-Invoice-Pro-v${VER}-web-portable.zip" .)
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SA-Invoice-Pro-Windows
+          path: out-win/*
+          retention-days: 30
+
+      - name: Attach Windows package to GitHub Release
+        if: success()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          VER=$(node -p "require('./package.json').version")
+          TAG="v${VER}"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --target "$GITHUB_SHA" --title "SA Invoice Pro v$VER (stable)" --generate-notes || true
+          fi
+          for f in out-win/*; do
+            [ -f "$f" ] || continue
+            gh release upload "$TAG" "$f" --clobber || true
+            echo "Attached $(basename "$f") to $TAG"
+          done
