@@ -1,6 +1,6 @@
 {
   "name": "sa-invoice-pro",
-  "version": "6.67.0",
+  "version": "6.68.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,7 +12,10 @@
     "test:unit": "node --test tests/*.test.js",
     "check:exports": "node scripts/check-exports.mjs",
     "check:version": "node scripts/check-version.mjs",
-    "ci:guard": "node scripts/ci-guard.mjs"
+    "ci:guard": "node scripts/ci-guard.mjs",
+    "tauri": "tauri",
+    "desktop:dev": "tauri dev",
+    "desktop:build": "tauri build"
   },
   "dependencies": {
     "jspdf": "^2.5.2",

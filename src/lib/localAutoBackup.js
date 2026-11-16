@@ -1,8 +1,10 @@
 /**
  * Local rolling auto-backups in IndexedDB — recovery without downloading JSON.
  * Snapshots are built store-by-store to avoid one giant exportAll() allocation.
+ * Large payloads (>~1.5MB JSON) offload to OPFS when available (roadmap A1).
  */
 import * as db from './db.js'
+import { opfsAvailable, writeOpfsPayload, readOpfsPayload, removeOpfsPayload } from './opfsRecovery.js'
 
 const META_KEY = 'saip_auto_backup_meta'
 const MAX_SNAPS = 5
@@ -72,11 +74,29 @@ export async function saveAutoBackup({ reason = 'manual', label = 'Snapshot' } =
     throw new Error('Recovery snapshot storage is unavailable. Refresh the app to complete the storage upgrade.')
   }
   const snap = await exportSnapshotChunked(label, reason)
+  // Roadmap A1: large snapshots keep metadata in IDB and payload in OPFS
+  try {
+    const rough = JSON.stringify(snap.data || {}).length
+    if (rough > 1_500_000 && (await opfsAvailable())) {
+      const ref = await writeOpfsPayload(snap.id, snap.data)
+      if (ref?.opfs) {
+        snap.opfsPath = ref.path
+        snap.data = { __opfs: true, path: ref.path, exportedAt: snap.data?.exportedAt }
+        snap.counts = snap.counts || {}
+        snap.counts.opfsBytesApprox = rough
+      }
+    }
+  } catch (error) {
+    console.warn('[autoBackup] OPFS offload skipped', error)
+  }
   await db.add(db.STORES.autoBackups, snap)
   const all = (await db.getAll(db.STORES.autoBackups)) || []
   all.sort((a, b) => String(b.at || b.createdAt).localeCompare(String(a.at || a.createdAt)))
   for (const old of all.slice(MAX_SNAPS)) {
-    try { await db.remove(db.STORES.autoBackups, old.id) } catch {}
+    try {
+      if (old.opfsPath || old.data?.__opfs) await removeOpfsPayload(old.opfsPath || old.data?.path)
+      await db.remove(db.STORES.autoBackups, old.id)
+    } catch {}
   }
   saveMeta({ lastAt: snap.at, lastReason: reason, lastCounts: snap.counts })
   return snap
@@ -112,13 +132,19 @@ export async function getAutoBackup(id) {
 export async function restoreAutoBackup(id, { confirmed = false } = {}) {
   if (confirmed !== true) throw new Error('Restore requires explicit confirmation')
   const snap = await getAutoBackup(id)
-  if (!snap?.data) throw new Error('Snapshot not found')
+  if (!snap) throw new Error('Snapshot not found')
+  let payload = snap.data
+  if (payload?.__opfs && (payload.path || snap.opfsPath)) {
+    payload = await readOpfsPayload(payload.path || snap.opfsPath)
+    if (!payload) throw new Error('OPFS recovery payload missing — restore from a downloaded JSON backup instead')
+  }
+  if (!payload) throw new Error('Snapshot not found')
 
   const rollbackSnapshot = await saveAutoBackup({
     reason: 'pre-restore-rollback',
     label: 'Automatic rollback before restore',
   })
-  const stats = await db.replaceAllAtomic(snap.data)
+  const stats = await db.replaceAllAtomic(payload)
   return { snapshot: snap, rollbackSnapshot, stats }
 }
 
@@ -127,7 +153,12 @@ export async function downloadAutoBackup(id) {
   const list = await listAutoBackups()
   const row = id ? list.find((s) => s.id === id) : list[0]
   if (!row?.data) throw new Error('No auto-backup to download')
-  const blob = new Blob([JSON.stringify(row.data, null, 2)], { type: 'application/json' })
+  let payload = row.data
+  if (payload?.__opfs && (payload.path || row.opfsPath)) {
+    payload = await readOpfsPayload(payload.path || row.opfsPath)
+  }
+  if (!payload) throw new Error('No auto-backup payload to download')
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url

@@ -1,8 +1,15 @@
+## 6.68.0 — Desktop packages + OPFS recovery
+
+- APK workflow attaches `SA-Invoice-Pro-Lab-v*.apk` to the matching GitHub Release tag.
+- Windows Tauri scaffold (`src-tauri`) + CI for MSI/NSIS (fallback portable zip).
+- Recovery snapshots larger than ~1.5 MB offload payload to OPFS (roadmap A1).
+- Company save validation fixed (array errors); e2e green on prior tip.
+
 ## 6.67.0 — Beta readiness
 
 - Streaming company backup import for large files (File.stream + staged restore).
 - Chunked recovery snapshots (store-by-store, no exportAll memory spike).
-- Settings: Company profile, VAT on/off + rate, Backup tab, Cloud, Security.
+- Settings: Company profile, VAT on/off + rate, Backup tab, Cloud, Security, Look.
 - Restored exportFile helpers; CI guard blocks PLACEHOLDER and empty src files.
 - e2e seed aligned to IndexedDB v7.
 
@@ -19,10 +26,3 @@
 ## 6.66.0 — Expanded WhatsApp desk replies
 
 - Keyword packs for motherboard, data transfer, drop-off, accessories, load shedding, price negotiation.
-- Smart suggest on Inbox covers more SA repair desk conversations.
-
-## 6.65.0 — CI green, license UX, coffee FAB
-
-- Sticky licence contact bar; full plan cards; checkout toasts.
-- Floating Buy us a coffee FAB.
-- Hardened GitHub Actions and version/export guards.

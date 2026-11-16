@@ -1,10 +1,11 @@
-# SA Invoice Pro 6.67.0
+# SA Invoice Pro 6.68.0
 
-Beta readiness — VAT settings, streaming backup import, chunked recovery snapshots.
+APK on GitHub Releases · Windows Tauri desktop scaffold · OPFS recovery for large snapshots.
 
 ```bash
 npm install && npm run dev
 ```
 
 Product: **sainvoicepro@gmail.com**  
-Website: https://sa-invoice-pro.pages.dev
+Website: https://sa-invoice-pro.pages.dev  
+Releases: https://github.com/dexter187gold/sa-invoice-pro/releases

@@ -1,14 +1,24 @@
 # SA Invoice Pro — Post-Beta Roadmap
 **World Domination Update Pack (practical edition)**  
-Version baseline: **6.67.0 beta** · Updated: 2026-11-17
-
-This roadmap builds on everything shipped from first IndexedDB workspace through streaming backup, staged restore, OPFS export, VAT consistency, and beta hardening.
+Version baseline: **6.68.0** · Updated: 2026-11-17
 
 ---
 
-## Pillar A — Backend, data & workers (priority order)
+## Progress this cycle
 
-1. OPFS-backed recovery snapshots for workspaces > 20 MB (metadata in IDB, payload on disk).
+| Item | Status |
+|------|--------|
+| A1 OPFS-backed recovery snapshots | **Shipped** (payload offload > ~1.5 MB) |
+| D1 CI green (e2e + APK + Workers) | **Shipped** on 6.67.x tip |
+| D14 APK on GitHub Releases | **Shipped** (workflow attaches to `v{version}`) |
+| Windows desktop MSI/NSIS | **In progress** (Tauri scaffold + CI) |
+| B1 Full Settings remaining tabs | Partial (core tabs live) |
+
+---
+
+## Pillar A — Backend, data & workers
+
+1. ~~OPFS-backed recovery snapshots for workspaces > 20 MB~~ **done (threshold ~1.5 MB JSON)**
 2. Incremental workspace sync deltas (only dirty stores to Render workers).
 3. Background sync worker with exponential backoff + offline queue metrics.
 4. Server-side backup receipt (hash + timestamp) for licensed cloud plans.
@@ -45,56 +55,48 @@ This roadmap builds on everything shipped from first IndexedDB workspace through
 ## Pillar C — Security & privacy
 
 1. Encrypt recovery snapshots at rest (device key in WebCrypto).
-2. Clear separation of account/licence keys vs workspace data (already partial — finish matrix).
-3. Session timeout + auto-lock already present — add biometric unlock where available.
+2. Clear separation of account/licence keys vs workspace data.
+3. Biometric unlock where available (on top of auto-lock).
 4. CSP headers on Pages + Worker.
 5. Strip PII from client-side error reports.
 6. Device access panel: revoke other sessions.
 7. POPIA export package (JSON + human PDF).
 8. POPIA delete-with-retention-log.
 9. Rate-limit login attempts on cloud auth.
-10. Hardware-bound licence proofs (existing) — document threat model in-app.
-11. No secrets in repo; rotate any historical placeholders.
-12. Subresource integrity for CDN scripts if any remain.
+10. Document hardware licence threat model in-app.
+11. No secrets in repo.
+12. Subresource integrity for any CDN scripts.
 13. Secure passcode for owner recovery flows.
-14. Audit of localStorage keys (no tokens in plain form beyond session).
+14. Audit of localStorage keys.
 15. Third-party share sheet only after explicit consent.
 
 ## Pillar D — Stability & robustness
 
-1. Keep CI green: unit, e2e-smoke, APK, Workers, Pages.
+1. ~~Keep CI green~~ **ongoing**
 2. Playwright coverage for backup import progress + recovery restore.
 3. Chaos test: kill tab mid-import → workspace unchanged.
-4. Memory budget tests for 5 MB / 15 MB / 40 MB backups on Android Chrome.
-5. IndexedDB version migration tests (v6 → v7 → future v8).
-6. Service worker update prompt without blank screen (already unlocked in e2e).
+4. Memory budget tests for 5 / 15 / 40 MB backups on Android Chrome.
+5. IndexedDB version migration tests.
+6. Service worker update prompt without blank screen.
 7. ErrorBoundary per route with report ID.
 8. Feature flags for experimental modules.
 9. Performance marks on invoice save and PDF generate.
-10. Rollback runbook documented in Support page.
+10. Rollback runbook on Support page.
 11. Dependency pin audit quarterly.
-12. Zero-byte / PLACEHOLDER file ban in ci-guard (done — keep expanding).
-13. Synthetic monitoring of production `/` and `/api` health.
-14. APK versionCode auto-bump aligned with package.json.
-15. Beta channel vs stable channel on Pages (optional).
-
----
+12. ~~Zero-byte / PLACEHOLDER ban in ci-guard~~ **done**
+13. Synthetic monitoring of production health.
+14. ~~APK on GitHub Releases~~ **done**
+15. Windows MSI/NSIS channel (Tauri) — **CI scaffolded**
 
 ## Shipped foundation (do not regress)
 
 - IndexedDB v7 + importStaging + staged atomic restore
-- Streaming JSON import (`streamBackupImport` + `importBackupFromFile`)
-- OPFS / File System Access backup download
-- Chunked recovery snapshots
-- VAT preference normalisation + Settings UI
-- Licence access gates + portal
-- WhatsApp desk replies + chase packs
-- e2e helpers DB v7 seed
+- Streaming JSON import + OPFS export download
+- Chunked + OPFS recovery snapshots
+- VAT preference UI
+- Licence gates + portal + WhatsApp desk packs
+- e2e DB v7 seed; company save array-validation fix
 
-## Definition of done for each roadmap item
+## Definition of done
 
-1. Implementation on `main`
-2. Unit or e2e coverage where risk is high
-3. CI green
-4. Production deploy confirmed
-5. No customer data loss path introduced
+1. On `main`  2. Tests where high risk  3. CI green  4. Deploy confirmed  5. No data-loss path
