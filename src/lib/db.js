@@ -428,12 +428,15 @@ export async function replaceAllStaged(data, { allowPartial = false, onProgress,
         row: { id: 'main', name: 'Restored business' },
       }))
     }
+    // Only replace stores actually present in the backup. Older/partial backups
+    // must not erase newer data types that they do not know about.
+    const targetKeys = present.filter((key) => storeKeys.includes(key))
     report('finalizing', 90, 'Applying validated backup')
     await new Promise((resolve, reject) => {
-      const names = [...storeKeys.map((key) => STORES[key]), STORES.importStaging]
+      const names = [...targetKeys.map((key) => STORES[key]), STORES.importStaging]
       const t = db.transaction(names, 'readwrite')
       const stage = t.objectStore(STORES.importStaging)
-      for (const key of storeKeys) t.objectStore(STORES[key]).clear()
+      for (const key of targetKeys) t.objectStore(STORES[key]).clear()
       const cursorRequest = stage.openCursor()
       cursorRequest.onsuccess = () => {
         const cursor = cursorRequest.result
@@ -442,7 +445,7 @@ export async function replaceAllStaged(data, { allowPartial = false, onProgress,
           return
         }
         const item = cursor.value
-        if (item.batchId === batchId && STORES[item.storeKey]) {
+        if (item.batchId === batchId && targetKeys.includes(item.storeKey) && STORES[item.storeKey]) {
           t.objectStore(STORES[item.storeKey]).put(item.row)
         }
         cursor.continue()
