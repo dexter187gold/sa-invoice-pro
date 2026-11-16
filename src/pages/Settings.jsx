@@ -14,6 +14,7 @@ import {
 import { readAccessStatus, normalizedPlan } from '../lib/accessControl'
 import { readProfilePrefs, saveProfilePrefs } from '../lib/profilePreferences'
 import CompanyProfileForm from '../components/CompanyProfileForm'
+import ThemePicker from '../components/ThemePicker'
 import { companyToForm, formToCompanyPayload, validateCompanyForm } from '../lib/companyProfile'
 
 export default function Settings() {
@@ -31,7 +32,6 @@ export default function Settings() {
   const plan = normalizedPlan(accessStatus)
 
   useEffect(() => { setVatDraft({ enabled: !!vatEnabled, rate: Number(vatRate ?? 0.15) * 100 }) }, [vatEnabled, vatRate])
-
   useEffect(() => { setForm(companyToForm(company)) }, [company])
   useEffect(() => { readAccessStatus().then(setAccessStatus).catch(() => {}) }, [])
   useEffect(() => { refreshAutoBackups() }, [])
@@ -130,6 +130,7 @@ export default function Settings() {
     { id: 'company', label: 'Company' },
     { id: 'data', label: 'Backup' },
     { id: 'cloud', label: 'Cloud' },
+    { id: 'look', label: 'Look' },
     { id: 'security', label: 'Security' },
   ]
 
@@ -226,6 +227,12 @@ export default function Settings() {
 
         {tab === 'cloud' && (
           <div style={{ marginTop: 12 }}><CloudSettings /></div>
+        )}
+
+        {tab === 'look' && (
+          <div className="card form-grid" style={{ marginTop: 12 }}>
+            <ThemePicker setTheme={setTheme} toast={toast} />
+          </div>
         )}
 
         {tab === 'security' && (
