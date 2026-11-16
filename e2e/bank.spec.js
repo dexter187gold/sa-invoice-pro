@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test'
 import { injectSession, seedIndexedDbCompany } from './helpers.js'
 
-
 async function seedMultiPlanLicense(page) {
   await page.evaluate(async () => {
     const db = await new Promise((resolve, reject) => {
-      const req = indexedDB.open('SAInvoicePro_v2', 6)
+      // Must match app DB_VERSION (7)
+      const req = indexedDB.open('SAInvoicePro_v2', 7)
       req.onsuccess = () => resolve(req.result)
       req.onerror = () => reject(req.error)
     })
@@ -44,7 +44,6 @@ test.describe('Bank CSV import', () => {
     await seedMultiPlanLicense(page)
     await page.goto('/bank')
     await expect(page.getByRole('heading', { name: /bank import/i })).toBeVisible({ timeout: 10000 })
-    // The bank-import screen must expose its statement upload control.
     await expect(page.locator('input[type="file"]')).toBeAttached({ timeout: 5000 })
   })
 })
