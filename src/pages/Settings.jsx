@@ -26,7 +26,11 @@ export default function Settings() {
   const [autoBackups, setAutoBackups] = useState([])
   const [form, setForm] = useState(() => companyToForm(company))
   const [accessStatus, setAccessStatus] = useState(null)
+  const [vatDraft, setVatDraft] = useState(() => ({ enabled: !!vatEnabled, rate: Number(vatRate ?? 0.15) * 100 }))
+  const [vatSaving, setVatSaving] = useState(false)
   const plan = normalizedPlan(accessStatus)
+
+  useEffect(() => { setVatDraft({ enabled: !!vatEnabled, rate: Number(vatRate ?? 0.15) * 100 }) }, [vatEnabled, vatRate])
 
   useEffect(() => { setForm(companyToForm(company)) }, [company])
   useEffect(() => { readAccessStatus().then(setAccessStatus).catch(() => {}) }, [])
@@ -89,6 +93,23 @@ export default function Settings() {
     })
   }
 
+  const saveVatPreferences = async () => {
+    setVatSaving(true)
+    try {
+      const enabled = !!vatDraft.enabled
+      const rate = Math.max(0, Math.min(100, Number(vatDraft.rate) || 0)) / 100
+      await db.setSetting('vatEnabled', enabled)
+      await db.setSetting('vatRate', rate)
+      setVatEnabled(enabled)
+      setVatRate(rate)
+      toast(enabled ? `VAT on at ${(rate * 100).toFixed(0)}%` : 'VAT turned off for new documents', 'success')
+    } catch (err) {
+      toast(err?.message || 'Could not save VAT preferences', 'error')
+    } finally {
+      setVatSaving(false)
+    }
+  }
+
   const saveCompany = async () => {
     const err = validateCompanyForm(form)
     if (err) { toast(err, 'error'); return }
@@ -131,11 +152,26 @@ export default function Settings() {
         </div>
 
         {tab === 'company' && (
+          <>
           <div className="card form-grid" style={{ marginTop: 12 }}>
             <h3 style={{ marginTop: 0 }}>Company profile</h3>
             <CompanyProfileForm form={form} setForm={setForm} />
             <LoadingButton className="btn btn-primary" busy={busy} onClick={saveCompany}>Save company</LoadingButton>
           </div>
+          <div className="card form-grid" style={{ marginTop: 12 }}>
+            <h3 style={{ marginTop: 0 }}>VAT (South Africa)</h3>
+            <p className="muted" style={{ marginTop: 0 }}>Controls tax invoices, PDF totals, and default document type. Existing invoices keep the VAT state they were saved with.</p>
+            <label className="label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input type="checkbox" checked={!!vatDraft.enabled} onChange={(e) => setVatDraft((d) => ({ ...d, enabled: e.target.checked }))} />
+              Charge VAT on new invoices & quotes
+            </label>
+            <label className="label" htmlFor="vat-rate">VAT rate (%)</label>
+            <input id="vat-rate" className="input" type="number" min={0} max={100} step={0.5} disabled={!vatDraft.enabled}
+              value={vatDraft.rate}
+              onChange={(e) => setVatDraft((d) => ({ ...d, rate: e.target.value }))} />
+            <LoadingButton className="btn btn-primary" busy={vatSaving} onClick={saveVatPreferences}>Save VAT preferences</LoadingButton>
+          </div>
+          </>
         )}
 
         {tab === 'data' && (
