@@ -175,7 +175,7 @@ export default function Settings() {
                 <button type="button" className="btn btn-outline btn-sm" disabled={busy} onClick={async () => {
                   setBusy(true)
                   try {
-                    await restoreAutoBackup(b.id)
+                    await restoreAutoBackup(b.id, { confirmed: true })
                     await refresh()
                     toast('Recovery snapshot restored', 'success')
                   } catch (err) {
