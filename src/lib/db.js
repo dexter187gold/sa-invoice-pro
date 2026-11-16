@@ -623,3 +623,123 @@ export async function withTransaction(storeNames, handler) {
     }
   })
 }
+
+
+/**
+ * Stream a company backup from IndexedDB in bounded batches.
+ * The File System Access API is preferred so large exports are written
+ * directly to disk instead of being assembled as one giant JSON string.
+ */
+export async function downloadBackupStreaming({ onProgress, signal } = {}) {
+  const excluded = new Set(['users', 'autoBackups', 'accountWorkspaces', 'importStaging']);
+  const keys = Object.keys(STORES).filter((key) => !excluded.has(key));
+  const metadata = {
+    exportedAt: new Date().toISOString(),
+    version: versionInfo.version,
+    app: 'SA Invoice Pro Lab',
+    format: 'sa-invoice-pro-workspace-v2',
+  };
+  let writable = null;
+  let parts = [];
+  let bytesWritten = 0;
+  const encoder = new TextEncoder();
+  const write = async (value) => {
+    if (signal?.aborted) throw new DOMException('Backup export cancelled', 'AbortError');
+    const chunk = encoder.encode(value);
+    if (writable) await writable.write(chunk);
+    else parts.push(chunk);
+    bytesWritten += chunk.byteLength;
+  };
+  const report = (percent, message, rows) => {
+    try { onProgress?.({ percent, message, rows, bytes: bytesWritten }); } catch {}
+  };
+
+  // Open the picker synchronously from the user's click before awaiting DB work.
+  if (typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function') {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: `sa-invoice-backup-${new Date().toISOString().slice(0, 10)}.json`,
+        types: [{ description: 'SA Invoice Pro backup', accept: { 'application/json': ['.json'] } }],
+      });
+      writable = await handle.createWritable();
+    } catch (error) {
+      if (error?.name === 'AbortError') throw error;
+      // Unsupported or denied picker: use the browser download fallback.
+      writable = null;
+    }
+  }
+
+  try {
+    await write('{');
+    await write('"exportedAt":' + JSON.stringify(metadata.exportedAt));
+    await write(',"version":' + JSON.stringify(metadata.version));
+    await write(',"app":' + JSON.stringify(metadata.app));
+    await write(',"format":' + JSON.stringify(metadata.format));
+
+    const database = await openDB();
+    let totalRows = 0;
+    let storesDone = 0;
+    for (const key of keys) {
+      if (signal?.aborted) throw new DOMException('Backup export cancelled', 'AbortError');
+      await write(',' + JSON.stringify(key) + ':[');
+      const storeName = STORES[key];
+      let lastKey;
+      let first = true;
+      let storeRows = 0;
+      while (true) {
+        const batch = await new Promise((resolve, reject) => {
+          const transaction = database.transaction(storeName, 'readonly');
+          const store = transaction.objectStore(storeName);
+          let request;
+          try {
+            const range = lastKey === undefined ? null : IDBKeyRange.lowerBound(lastKey, true);
+            request = store.getAll(range, 100);
+          } catch (error) { reject(error); return; }
+          request.onsuccess = () => resolve(request.result || []);
+          request.onerror = () => reject(request.error || new Error('Could not read backup records'));
+          transaction.onerror = () => reject(transaction.error || new Error('Could not read backup records'));
+          transaction.onabort = () => reject(transaction.error || new Error('Backup read was interrupted'));
+        });
+        if (!batch.length) break;
+        for (const row of batch) {
+          if (!first) await write(',');
+          await write(JSON.stringify(row));
+          first = false;
+          storeRows++;
+          totalRows++;
+        }
+        const last = batch[batch.length - 1];
+        // All current stores have a keyPath. Use its actual key for pagination.
+        lastKey = key === 'settings' ? last.key : last.id;
+        if (batch.length < 100) break;
+      }
+      await write(']');
+      storesDone++;
+      report(5 + Math.round((storesDone / keys.length) * 90), `Exporting ${key}`, totalRows);
+    }
+    await write('}');
+    if (writable) {
+      await writable.close();
+      report(100, 'Backup saved successfully', totalRows);
+      return { rows: totalRows, bytes: bytesWritten, streamed: true, fileSystemWriter: true };
+    }
+    const blob = new Blob(parts, { type: 'application/json;charset=utf-8' });
+    parts = [];
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `sa-invoice-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    report(100, 'Backup downloaded successfully', totalRows);
+    return { rows: totalRows, bytes: bytesWritten, streamed: true, fileSystemWriter: false };
+  } catch (error) {
+    if (writable) {
+      try { await writable.abort() } catch {}
+    }
+    parts = [];
+    throw error;
+  }
+}
