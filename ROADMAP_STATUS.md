@@ -1,6 +1,6 @@
 # SA Invoice Pro — Owner roadmap
 
-**Ship:** **6.65.0** · **Top-100 adjusted readiness rising**
+**Ship:** **6.66.0** · **Top-100 adjusted readiness rising**
 
 | Priority | Shipped | Partial | Open |
 |----------|--------:|--------:|-----:|
@@ -12,7 +12,10 @@
 ### Mode
 Paystack **test keys** until live. Google GIS **ID-token only** (email/name/sub).
 
-### v6.65 batch (next recommended)
+### v6.66 batch (just shipped)
+- Expanded inbound WhatsApp desk reply packs (motherboard, data transfer, drop-off/booking, accessories, load shedding, price negotiation).
+
+### v6.65 batch (shipped)
 1. **Recurring auto-generate** — runs due templates once per day on app open (`autoRunRecurringOncePerDay`)
 2. **Last contact + follow-up** — Clients columns + Mark contacted / Set follow-up actions
 3. **Job-card photos** — up to 6 compressed photos per ticket (camera/file)
@@ -25,6 +28,7 @@ Paystack **test keys** until live. Google GIS **ID-token only** (email/name/sub)
 - VAT201 polish with expense VAT flags in expense form
 - Photo storage off-device (cloud blobs)
 - Full letterhead templates per document type
+- Full inbound webhook → ticket + auto-suggest (needs Render webhook)
 
 ### Remaining blockers
 1. Live Paystack keys when issued  
