@@ -44,33 +44,60 @@ jobs:
         shell: bash
         run: npm install -D @tauri-apps/cli@2
 
-      - name: Ensure placeholder icons exist
+      - name: Ensure valid Windows icons (real ICO)
         shell: bash
         run: |
-          mkdir -p src-tauri/icons
+          mkdir -p src-tauri/icons src-tauri/capabilities
           python - << 'PY'
           import struct, zlib, pathlib
+          def dib(w, h, rgb=(13, 148, 136)):
+              header = struct.pack('<IIIHHIIIIII', 40, w, h * 2, 1, 32, 0, w * h * 4, 0, 0, 0, 0)
+              row = bytes([rgb[2], rgb[1], rgb[0], 255]) * w
+              xor = b''.join(row for _ in range(h))
+              and_row_bytes = ((w + 31) // 32) * 4
+              and_mask = b'\x00' * (and_row_bytes * h)
+              return header + xor + and_mask
+          def ico(sizes=(16, 32, 48, 256)):
+              images = [dib(s, s) for s in sizes]
+              count = len(images)
+              out = struct.pack('<HHH', 0, 1, count)
+              offset = 6 + 16 * count
+              entries = b''
+              for s, data in zip(sizes, images):
+                  ww = 0 if s >= 256 else s
+                  hh = 0 if s >= 256 else s
+                  entries += struct.pack('<BBBBHHII', ww, hh, 0, 0, 1, 32, len(data), offset)
+                  offset += len(data)
+              return out + entries + b''.join(images)
           def png(w, h, rgb=(13, 148, 136)):
               def chunk(tag, data):
                   return struct.pack('>I', len(data)) + tag + data + struct.pack('>I', zlib.crc32(tag + data) & 0xffffffff)
               raw = b''.join(b'\x00' + bytes(rgb) * w for _ in range(h))
-              return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(raw)) + chunk(b'IEND', b'')
+              return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(raw, 9)) + chunk(b'IEND', b'')
           root = pathlib.Path('src-tauri/icons')
           root.mkdir(parents=True, exist_ok=True)
-          (root / '32x32.png').write_bytes(png(32, 32))
-          (root / '128x128.png').write_bytes(png(128, 128))
-          (root / '128x128@2x.png').write_bytes(png(256, 256))
-          (root / 'icon.png').write_bytes(png(256, 256))
-          print('icons written')
+          (root / 'icon.ico').write_bytes(ico())
+          for s, name in [(32, '32x32.png'), (128, '128x128.png'), (256, '128x128@2x.png'), (256, 'icon.png')]:
+              (root / name).write_bytes(png(s, s))
+          (root / 'icon.icns').write_bytes(png(256, 256))
+          print('icons ok', (root / 'icon.ico').stat().st_size)
           PY
-          cp src-tauri/icons/32x32.png src-tauri/icons/icon.ico || true
-          cp src-tauri/icons/128x128.png src-tauri/icons/icon.icns || true
+          if [ ! -f src-tauri/capabilities/default.json ]; then
+            cat > src-tauri/capabilities/default.json << 'CAP'
+          {
+            "identifier": "default",
+            "description": "Default desktop capabilities",
+            "windows": ["main"],
+            "permissions": ["core:default", "shell:allow-open"]
+          }
+          CAP
+          fi
 
       - name: Build Tauri (Windows)
         shell: bash
         run: |
           set -e
-          npx tauri build --bundles msi,nsis || npx tauri build
+          npx tauri build --bundles msi,nsis
 
       - name: Collect installers
         shell: bash
@@ -78,14 +105,17 @@ jobs:
           set -e
           VER=$(node -p "require('./package.json').version")
           mkdir -p out-win
-          find src-tauri/target -type f \( -name '*.msi' -o -name '*setup*.exe' -o -name '*.exe' \) 2>/dev/null | head -20 || true
+          find src-tauri/target -type f \( -name '*.msi' -o -name '*setup*.exe' -o -name '*.exe' \) 2>/dev/null | head -30 || true
           MSI=$(find src-tauri/target -name '*.msi' 2>/dev/null | head -1 || true)
           EXE=$(find src-tauri/target \( -name '*setup*.exe' -o -name '*-setup.exe' \) 2>/dev/null | head -1 || true)
           if [ -n "$MSI" ]; then cp "$MSI" "out-win/SA-Invoice-Pro-v${VER}-windows.msi"; fi
           if [ -n "$EXE" ]; then cp "$EXE" "out-win/SA-Invoice-Pro-v${VER}-windows-setup.exe"; fi
+          # Always keep the main exe binary as portable fallback
+          BIN=$(find src-tauri/target/release -maxdepth 1 -name 'sa-invoice-pro.exe' 2>/dev/null | head -1 || true)
+          if [ -n "$BIN" ]; then cp "$BIN" "out-win/SA-Invoice-Pro-v${VER}-windows-portable.exe"; fi
           ls -la out-win || true
           if [ -z "$(ls -A out-win 2>/dev/null)" ]; then
-            echo "::warning::No MSI/EXE produced — uploading web dist zip as interim Windows package"
+            echo "::warning::No MSI/EXE — uploading web dist zip"
             (cd dist && zip -r "../out-win/SA-Invoice-Pro-v${VER}-web-portable.zip" .)
           fi
 
