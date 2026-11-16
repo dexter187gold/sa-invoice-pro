@@ -685,7 +685,6 @@ export async function downloadBackupStreaming({ onProgress, signal } = {}) {
       const storeName = STORES[key];
       let lastKey;
       let first = true;
-      let storeRows = 0;
       while (true) {
         const batchResult = await new Promise((resolve, reject) => {
           const transaction = database.transaction(storeName, 'readonly');
@@ -716,7 +715,6 @@ export async function downloadBackupStreaming({ onProgress, signal } = {}) {
           if (!first) await write(',');
           await write(JSON.stringify(row));
           first = false;
-          storeRows++;
           totalRows++;
         }
         // Use IndexedDB primary keys, including generated keys on legacy rows.
