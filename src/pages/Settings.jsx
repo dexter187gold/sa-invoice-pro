@@ -20,7 +20,7 @@ import { companyToForm, formToCompanyPayload, validateCompanyForm } from '../lib
 export default function Settings() {
   const { user, company, setCompany, toast, refresh, vatEnabled, vatRate, setVatEnabled, setVatRate, theme, setTheme } = useApp()
   const nav = useNavigate()
-  const [tab, setTab] = useState('data')
+  const [tab, setTab] = useState('company')
   const [busy, setBusy] = useState(false)
   const [importProgress, setImportProgress] = useState(null)
   const [confirm, setConfirm] = useState(null)
@@ -29,6 +29,10 @@ export default function Settings() {
   const [accessStatus, setAccessStatus] = useState(null)
   const [vatDraft, setVatDraft] = useState(() => ({ enabled: !!vatEnabled, rate: Number(vatRate ?? 0.15) * 100 }))
   const [vatSaving, setVatSaving] = useState(false)
+  const [autoLockMinutes, setAutoLockMinutes] = useState(() => {
+    const n = Number(readProfilePrefs(user).autoLockMinutes || 5)
+    return [5, 15, 30].includes(n) ? String(n) : '5'
+  })
   const plan = normalizedPlan(accessStatus)
 
   useEffect(() => { setVatDraft({ enabled: !!vatEnabled, rate: Number(vatRate ?? 0.15) * 100 }) }, [vatEnabled, vatRate])
@@ -157,7 +161,7 @@ export default function Settings() {
           <div className="card form-grid" style={{ marginTop: 12 }}>
             <h3 style={{ marginTop: 0 }}>Company profile</h3>
             <CompanyProfileForm form={form} setForm={setForm} />
-            <LoadingButton className="btn btn-primary" busy={busy} onClick={saveCompany}>Save company</LoadingButton>
+            <LoadingButton className="btn btn-primary" busy={busy} onClick={saveCompany}>Save company profile</LoadingButton>
           </div>
           <div className="card form-grid" style={{ marginTop: 12 }}>
             <h3 style={{ marginTop: 0 }}>VAT (South Africa)</h3>
@@ -237,7 +241,17 @@ export default function Settings() {
 
         {tab === 'security' && (
           <div className="card form-grid" style={{ marginTop: 12 }}>
-            <h3 style={{ marginTop: 0 }}>Privacy & device access</h3>
+            <h3 style={{ marginTop: 0 }}>Privacy & automatic workspace lock</h3>
+            <p className="muted" style={{ marginTop: 0 }}>Automatically lock the workspace after inactivity. Your subscription and device activation stay intact; signing back in unlocks the workspace.</p>
+            <label className="label" htmlFor="auto-lock-minutes">Lock after</label>
+            <select id="auto-lock-minutes" data-testid="auto-lock-minutes" className="select input" value={autoLockMinutes} onChange={(e) => { const next = [5, 15, 30].includes(Number(e.target.value)) ? e.target.value : '5'; setAutoLockMinutes(next) }}>
+              <option value="5">5 minutes</option>
+              <option value="15">15 minutes</option>
+              <option value="30">30 minutes</option>
+            </select>
+            <p className="muted" style={{ fontSize: 12 }}>Activity resets the timer. When it expires, the local workspace locks and requires sign-in again without revoking the cloud session or licence.</p>
+            <button type="button" className="btn btn-primary" onClick={() => { saveProfilePrefs(user, { autoLockMinutes: Number(autoLockMinutes) }); window.dispatchEvent(new Event('sa-auto-lock-updated')); toast('Security preferences saved', 'success') }}>Save security settings</button>
+            <h3>Device access</h3>
             <DeviceAccessPanel toast={toast} userLabel={user?.email} />
           </div>
         )}
