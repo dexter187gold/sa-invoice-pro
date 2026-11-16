@@ -1,6 +1,6 @@
-# SA Invoice Pro 6.65.0
+# SA Invoice Pro 6.66.0
 
-Contextual desk WhatsApp replies · Bench pack for repair shops.
+Expanded desk WhatsApp replies · Bench pack for repair shops.
 
 ```bash
 npm install && npm run dev

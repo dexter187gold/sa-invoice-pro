@@ -1,3 +1,10 @@
+## 6.66.0 — Expanded WhatsApp desk replies
+
+- Added keyword packs for motherboard/logic board, data transfer/migration, drop-off/booking times, accessories, load shedding, price negotiation.
+- Smart suggest on Inbox now covers more real SA repair desk conversations.
+- Context (open job + invoice) still injected when phone matches a client.
+- Versions aligned across package.json, config.js, version.json.
+
 ## 6.65.0 — CI green, license UX, coffee FAB
 
 - Sticky licence contact bar; full 6-tier plan cards; clearer checkout toasts.

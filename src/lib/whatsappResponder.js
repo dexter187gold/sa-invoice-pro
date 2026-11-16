@@ -110,7 +110,7 @@ export function suggestInboundReplies({ message = '', client = {}, company = {},
     })
   }
 
-  if (/how much|price|cost|quote|quotation|estimate|how much is|what does it cost/.test(text)) {
+  if (/how much|price|cost|quote|quotation|estimate|how much is|what does it cost|cheaper|discount|negotiate/.test(text)) {
     replies.push({
       label: 'Pricing / quote',
       text: `Hi ${name}, happy to help with a price.\n\nPlease send the exact model of the *${device || 'phone'}* and what is wrong (e.g. cracked screen, not charging, water). I will send a proper quote shortly.\n\nThanks!`,
@@ -174,11 +174,11 @@ export function suggestInboundReplies({ message = '', client = {}, company = {},
     })
   }
 
-  if (/data|recovery|photos|backup|whatsapp|contacts/.test(text)) {
+  if (/data|recovery|photos|backup|whatsapp|contacts|transfer|migrate|move data|old phone/.test(text)) {
     replies.push({
-      label: 'Data recovery',
-      text: `Hi ${name}, from *${shop}*: data recovery.\n\nWe can assess photos / WhatsApp / contacts. Success depends on the damage. Reply with model + what happened (water, drop, not turning on).`,
-      af: `Hi ${name}, data herstel. Stuur model en wat gebeur het.`,
+      label: 'Data recovery / transfer',
+      text: `Hi ${name}, from *${shop}*: data recovery or transfer.\n\nWe can assess photos / WhatsApp / contacts or help move data to a new phone. Success depends on the damage. Reply with model + what happened (water, drop, not turning on) or the two models for a transfer.`,
+      af: `Hi ${name}, data herstel of oordrag. Stuur model en wat gebeur het.`,
     })
   }
 
@@ -206,7 +206,6 @@ export function suggestInboundReplies({ message = '', client = {}, company = {},
     })
   }
 
-  // New expanded keywords for common desk queries
   if (/speaker|sound|audio|silent|no sound|mic|microphone|voice|call sound/.test(text)) {
     replies.push({
       label: 'Speaker / sound',
@@ -252,6 +251,39 @@ export function suggestInboundReplies({ message = '', client = {}, company = {},
       label: 'Face ID / Touch ID',
       text: `Hi ${name}, from *${shop}*: Face ID or Touch ID issue.\n\nReply with the model and whether it stopped working after a drop, screen repair, or software update. We can diagnose sensor or software.`,
       af: `Hi ${name}, Face ID / Touch ID. Stuur model en wanneer dit opgehou werk het.`,
+    })
+  }
+
+  // Additional common desk queries
+  if (/motherboard|logic board|board|main board|chip|ic|no power after drop|won't charge after water/.test(text)) {
+    replies.push({
+      label: 'Motherboard / board',
+      text: `Hi ${name}, from *${shop}*: motherboard / logic board issue.\n\nThese need proper diagnosis. Bring the device in — we can check if it is board-level or a simpler fix. Reply with model + what happened (drop, water, after repair).`,
+      af: `Hi ${name}, moederbord. Bring dit in vir diagnose. Stuur model en wat gebeur het.`,
+    })
+  }
+
+  if (/drop off|drop it off|bring it in|when can i come|book|booking|appointment|afspraak|today|tomorrow|same day/.test(text)) {
+    replies.push({
+      label: 'Drop-off / booking',
+      text: `Hi ${name}, from *${shop}*: drop-off or booking.\n\nYou can bring the *${device || 'device'}* in during normal hours. Reply with preferred time or just come through — we'll diagnose and quote before any work. Please bring ID.`,
+      af: `Hi ${name}, jy kan dit bring tydens gewone ure. Stuur as jy ’n spesifieke tyd wil.`,
+    })
+  }
+
+  if (/accessories|charger|cable|case|screen protector|glass|tempered|buy|sell|trade/.test(text)) {
+    replies.push({
+      label: 'Accessories',
+      text: `Hi ${name}, from *${shop}*: accessories.\n\nWe have chargers, cables, cases and tempered glass for common models. Reply with the exact phone model and what you need — we can confirm stock and price.`,
+      af: `Hi ${name}, bykomstighede. Stuur die model en wat jy soek.`,
+    })
+  }
+
+  if (/load shedding|loadshed|power cut|generator|no power at shop|closed/.test(text)) {
+    replies.push({
+      label: 'Load shedding',
+      text: `Hi ${name}, from *${shop}*: load shedding note.\n\nWe keep working through most stages with backup power. If we are temporarily affected we will WhatsApp. Reply with your job number if you are checking status.`,
+      af: `Hi ${name}, lasafskakeling. Ons werk meestal deur met rugsteun. Stuur job nommer as jy status soek.`,
     })
   }
 
