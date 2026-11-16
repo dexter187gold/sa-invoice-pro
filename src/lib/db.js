@@ -687,19 +687,24 @@ export async function downloadBackupStreaming({ onProgress, signal } = {}) {
       let first = true;
       let storeRows = 0;
       while (true) {
-        const batch = await new Promise((resolve, reject) => {
+        const batchResult = await new Promise((resolve, reject) => {
           const transaction = database.transaction(storeName, 'readonly');
           const store = transaction.objectStore(storeName);
           let request;
           try {
             const range = lastKey === undefined ? null : IDBKeyRange.lowerBound(lastKey, true);
-            request = store.getAll(range, 100);
-          } catch (error) { reject(error); return; }
-          request.onsuccess = () => resolve(request.result || []);
-          request.onerror = () => reject(request.error || new Error('Could not read backup records'));
+            const valuesRequest = store.getAll(range, 100);
+          const keysRequest = store.getAllKeys(range, 100);
+          let values;
+          let primaryKeys;
+          valuesRequest.onsuccess = () => { values = valuesRequest.result || []; if (primaryKeys) resolve({ values, primaryKeys }); };
+          keysRequest.onsuccess = () => { primaryKeys = keysRequest.result || []; if (values) resolve({ values, primaryKeys }); };
+          valuesRequest.onerror = () => reject(valuesRequest.error || new Error('Could not read backup records'));
+          keysRequest.onerror = () => reject(keysRequest.error || new Error('Could not read backup record keys'));
           transaction.onerror = () => reject(transaction.error || new Error('Could not read backup records'));
           transaction.onabort = () => reject(transaction.error || new Error('Backup read was interrupted'));
         });
+        const { values: batch, primaryKeys } = await batchResult;
         if (!batch.length) break;
         for (const row of batch) {
           if (!first) await write(',');
@@ -708,9 +713,8 @@ export async function downloadBackupStreaming({ onProgress, signal } = {}) {
           storeRows++;
           totalRows++;
         }
-        const last = batch[batch.length - 1];
-        // All current stores have a keyPath. Use its actual key for pagination.
-        lastKey = key === 'settings' ? last.key : last.id;
+        // Use IndexedDB primary keys, including generated keys on legacy rows.
+        lastKey = primaryKeys[primaryKeys.length - 1];
         if (batch.length < 100) break;
       }
       await write(']');
