@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Permanent preflight for CI and agents.
- * Fails fast on version drift, PLACEHOLDER file damage, and broken exports.
+ * Fails fast on version drift, PLACEHOLDER file damage, empty source files, and broken exports.
  */
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
@@ -39,6 +39,17 @@ if (bad.length) {
   errors.push('PLACEHOLDER content in: ' + bad.join(', '))
 }
 
+// 1b) Empty source files under src/ (never ship zero-byte modules)
+const empty = []
+for (const f of walk(path.join(root, 'src'))) {
+  try {
+    if (fs.statSync(f).size === 0) empty.push(path.relative(root, f))
+  } catch {}
+}
+if (empty.length) {
+  errors.push('Empty source files: ' + empty.join(', '))
+}
+
 // 2) version + exports via existing scripts
 for (const script of ['scripts/check-version.mjs', 'scripts/check-exports.mjs']) {
   const r = spawnSync(process.execPath, [path.join(root, script)], { encoding: 'utf8' })
@@ -47,14 +58,19 @@ for (const script of ['scripts/check-version.mjs', 'scripts/check-exports.mjs'])
   }
 }
 
-// 3) Critical files must exist
+// 3) Critical files must exist and be non-empty
 for (const rel of [
   'src/pages/License.jsx',
+  'src/pages/Settings.jsx',
   'src/lib/payments.js',
+  'src/lib/db.js',
+  'src/lib/backupImport.js',
   'src/worker.js',
   '.github/workflows/e2e-smoke.yml',
 ]) {
-  if (!fs.existsSync(path.join(root, rel))) errors.push('Missing critical file: ' + rel)
+  const p = path.join(root, rel)
+  if (!fs.existsSync(p)) errors.push('Missing critical file: ' + rel)
+  else if (fs.statSync(p).size === 0) errors.push('Empty critical file: ' + rel)
 }
 
 if (errors.length) {

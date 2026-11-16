@@ -1,5 +1,5 @@
 {
-  "version": "6.66.2",
-  "codename": "Chunked recovery snapshots + streaming import",
+  "version": "6.67.0",
+  "codename": "Beta readiness — VAT settings + recovery hardening",
   "shipped": "2026-11-17"
 }
