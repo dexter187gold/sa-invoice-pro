@@ -18,7 +18,8 @@ function walk(dir, out = []) {
 
 function exportsOf(text) {
   const names = new Set()
-  for (const m of text.matchAll(/export\s+(?:async\s+)?function\s+(\w+)/g)) names.add(m[1])
+  // function, async function, function*, async function*
+  for (const m of text.matchAll(/export\s+(?:async\s+)?function\*?\s+(\w+)/g)) names.add(m[1])
   for (const m of text.matchAll(/export\s+class\s+(\w+)/g)) names.add(m[1])
   for (const m of text.matchAll(/export\s+(?:const|let|var)\s+(\w+)/g)) names.add(m[1])
   for (const m of text.matchAll(/export\s+\{([^}]+)\}/gs)) {

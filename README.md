@@ -1,6 +1,6 @@
-# SA Invoice Pro 6.66.0
+# SA Invoice Pro 6.67.0
 
-Expanded desk WhatsApp replies · Bench pack for repair shops.
+Beta readiness — VAT settings, streaming backup import, chunked recovery snapshots.
 
 ```bash
 npm install && npm run dev
