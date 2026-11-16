@@ -88,6 +88,7 @@ export default function Settings() {
       let raw = JSON.parse(await file.text())
       const restore = replaceAllStaged(raw, {
         allowPartial: true,
+        estimatedBytes: file.size,
         onProgress: setImportProgress,
       })
       // The staged importer takes its own normalized references; release the
