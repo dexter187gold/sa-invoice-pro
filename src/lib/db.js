@@ -2,7 +2,7 @@
 import versionInfo from '../../version.json' with { type: 'json' }
 
 const DB_NAME = 'SAInvoicePro_v2'
-const DB_VERSION = 6
+const DB_VERSION = 7
 
 export const STORES = {
   users: 'users',
@@ -31,6 +31,7 @@ export const STORES = {
   reminders: 'reminders',
   autoBackups: 'autoBackups',
   accountWorkspaces: 'accountWorkspaces',
+  importStaging: 'importStaging',
 }
 
 let dbp = null
@@ -46,7 +47,7 @@ function openDB() {
       for (const name of Object.keys(STORES)) {
         if (d.objectStoreNames.contains(name)) continue
         if (name === 'settings') d.createObjectStore(name, { keyPath: 'key' })
-        else if (name === 'company' || name === 'accountWorkspaces') d.createObjectStore(name, { keyPath: 'id' })
+        else if (name === 'company' || name === 'accountWorkspaces' || name === 'importStaging') d.createObjectStore(name, { keyPath: 'id' })
         else d.createObjectStore(name, { keyPath: 'id', autoIncrement: true })
       }
     }
@@ -350,6 +351,97 @@ export async function replaceAllAtomic(data, { allowPartial = false } = {}) {
       fail(error)
     }
   })
+}
+
+
+/**
+ * Low-memory staged workspace restore.
+ * Incoming records are written to IndexedDB in small batches, then swapped
+ * into the live stores in one transaction. Recovery snapshots are preserved.
+ */
+export async function replaceAllStaged(data, { allowPartial = false, onProgress } = {}) {
+  const src = unwrapBackup(data)
+  if (!src || typeof src !== 'object') throw new Error('Invalid backup file')
+  const storeKeys = Object.keys(STORES).filter((key) => !['autoBackups', 'accountWorkspaces', 'importStaging'].includes(key))
+  const present = storeKeys.filter((key) => Array.isArray(src[key]) || (key === 'company' && src[key] && typeof src[key] === 'object'))
+  const missing = storeKeys.filter((key) => !present.includes(key))
+  if (!allowPartial && missing.length) throw new Error(`This is not a complete workspace backup. Missing store data: ${missing.join(', ')}`)
+
+  const db = await openDB()
+  const batchId = crypto.randomUUID?.() || `import_${Date.now()}`
+  const batchSize = 150
+  let totalRows = 0
+  let completedStores = 0
+  const report = (phase, percent, message) => {
+    try { onProgress?.({ phase, percent, message, rows: totalRows }) } catch {}
+  }
+  const clearStage = async () => tx(STORES.importStaging, 'readwrite', (s) => s.clear())
+  await clearStage()
+  try {
+    report('staging', 2, 'Preparing backup records')
+    for (const key of storeKeys) {
+      let rows = src[key]
+      if (key === 'company' && rows && !Array.isArray(rows) && typeof rows === 'object') rows = [rows]
+      if (!Array.isArray(rows)) rows = []
+      for (let offset = 0; offset < rows.length; offset += batchSize) {
+        const chunk = rows.slice(offset, offset + batchSize)
+        await new Promise((resolve, reject) => {
+          const t = db.transaction(STORES.importStaging, 'readwrite')
+          const stage = t.objectStore(STORES.importStaging)
+          chunk.forEach((row, index) => {
+            const normalized = normalizeRow(key, row)
+            if (!normalized) return
+            const sequence = offset + index
+            stage.put({ id: `${batchId}:${key}:${sequence}`, batchId, storeKey: key, row: normalized })
+            totalRows++
+          })
+          t.oncomplete = resolve
+          t.onerror = () => reject(t.error || new Error('Could not stage backup records'))
+          t.onabort = () => reject(t.error || new Error('Backup staging was interrupted'))
+        })
+        report('staging', Math.min(85, 5 + Math.round((completedStores / storeKeys.length) * 80)), `Preparing ${key}`)
+      }
+      // Release each source array as soon as it has been staged.
+      try { delete src[key] } catch {}
+      completedStores++
+    }
+    if (!totalRows) throw new Error('Backup contains no workspace records; nothing was changed')
+    if (allowPartial && !present.includes('company')) {
+      await tx(STORES.importStaging, 'readwrite', (s) => s.put({
+        id: `${batchId}:company:placeholder`, batchId, storeKey: 'company',
+        row: { id: 'main', name: 'Restored business' },
+      }))
+    }
+    report('finalizing', 90, 'Applying validated backup')
+    await new Promise((resolve, reject) => {
+      const names = [...storeKeys.map((key) => STORES[key]), STORES.importStaging]
+      const t = db.transaction(names, 'readwrite')
+      const stage = t.objectStore(STORES.importStaging)
+      for (const key of storeKeys) t.objectStore(STORES[key]).clear()
+      const cursorRequest = stage.openCursor()
+      cursorRequest.onsuccess = () => {
+        const cursor = cursorRequest.result
+        if (!cursor) {
+          stage.clear()
+          return
+        }
+        const item = cursor.value
+        if (item.batchId === batchId && STORES[item.storeKey]) {
+          t.objectStore(STORES[item.storeKey]).put(item.row)
+        }
+        cursor.continue()
+      }
+      cursorRequest.onerror = () => { try { t.abort() } catch {} }
+      t.oncomplete = resolve
+      t.onerror = () => reject(t.error || new Error('Workspace restore transaction failed'))
+      t.onabort = () => reject(t.error || new Error('Workspace restore was rolled back'))
+    })
+    report('complete', 100, 'Backup restored successfully')
+    return { stores: present.length, rows: totalRows, staged: true, preservedRecoverySnapshots: true }
+  } catch (error) {
+    try { await clearStage() } catch {}
+    throw error
+  }
 }
 
 
