@@ -7,7 +7,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
 import { APP_VERSION, SA_CONFIG } from '../config'
-import { exportAll, replaceAllAtomic, importAll } from '../lib/db'
+import { exportAll, replaceAllStaged } from '../lib/db'
 import { Segmented, PageFade, ConfirmDialog, LoadingButton } from '../components/ui'
 import CloudSettings from '../components/CloudSettings'
 import ThemePicker from '../components/ThemePicker'
@@ -58,6 +58,7 @@ export default function Settings() {
   const [form, setForm] = useState(() => companyToForm(company))
   useEffect(() => { setVatDraft({ enabled: !!vatEnabled, rate: Number(vatRate ?? 0.15) * 100 }) }, [vatEnabled, vatRate])
   const [busy, setBusy] = useState(false)
+  const [importProgress, setImportProgress] = useState(null)
   const [confirm, setConfirm] = useState(null)
   const [autoBackups, setAutoBackups] = useState([])
   const [shedding, setShedding] = useState(() => isLoadSheddingMode())
@@ -72,24 +73,35 @@ export default function Settings() {
   const importDeviceBackup = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+    const sizeMb = file.size / (1024 * 1024)
     const confirmed = window.confirm(
-      'Import this device backup and replace the current local workspace? A rollback snapshot will be saved first.'
+      `Restore this company backup and replace the current local workspace?\\n\\nFile size: ${sizeMb.toFixed(1)} MB\\nA recovery snapshot will be saved first. Keep this page open until the restore finishes.`
     )
     if (!confirmed) { e.target.value = ''; return }
     setBusy(true)
+    setImportProgress({ phase: 'backup', percent: 1, message: 'Saving a recovery copy before import…', rows: 0 })
     try {
-      const raw = JSON.parse(await file.text())
-      await saveAutoBackup({ reason: 'pre-device-backup-import' })
-      let stats
-      try { stats = await replaceAllAtomic(raw, { allowPartial: true }) }
-      catch { stats = await importAll(raw, { wipe: true }) }
+      // Save the rollback copy before loading the incoming file to avoid holding
+      // both the current workspace export and the parsed incoming backup at once.
+      await saveAutoBackup({ reason: 'pre-device-backup-import', label: 'Recovery copy before company backup import' })
+      setImportProgress({ phase: 'reading', percent: 3, message: 'Reading backup file…', rows: 0 })
+      let raw = JSON.parse(await file.text())
+      const restore = replaceAllStaged(raw, {
+        allowPartial: true,
+        onProgress: setImportProgress,
+      })
+      // The staged importer takes its own normalized references; release the
+      // Settings component's reference while IndexedDB writes proceed.
+      raw = null
+      const stats = await restore
       await refresh?.({ skipSync: true })
       await refreshAutoBackups()
-      toast('Device backup imported: ' + stats.rows + ' records', 'success')
+      toast('Company backup restored: ' + stats.rows + ' records', 'success')
     } catch (error) {
-      toast(error?.message || 'Backup import failed', 'error')
+      toast(error?.message || 'Backup import failed. Your existing workspace was not intentionally cleared.', 'error')
     } finally {
       setBusy(false)
+      setImportProgress(null)
       e.target.value = ''
     }
   }
@@ -478,8 +490,20 @@ export default function Settings() {
             a.click()
             toast('Backup downloaded', 'success')
           }}>Download backup JSON</button>
-          <label className="label">Import backup JSON</label>
+          <label className="label">Import company backup JSON</label>
+          <p className="muted" style={{ fontSize: 12 }}>Uses a staged IndexedDB restore to reduce memory spikes on phones. Keep this page open until the import completes.</p>
           <input className="input" type="file" accept=".json,application/json" disabled={busy} onChange={importDeviceBackup} />
+          {importProgress && (
+            <div className="card" role="status" aria-live="polite" style={{ padding: 12, marginTop: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 12 }}>
+                <strong>{importProgress.message}</strong><strong>{importProgress.percent}%</strong>
+              </div>
+              <div style={{ height: 8, borderRadius: 8, overflow: 'hidden', background: 'var(--surface-2, #e5e7eb)', marginTop: 8 }}>
+                <div style={{ width: `${importProgress.percent}%`, height: '100%', background: 'var(--accent, #0d9488)', transition: 'width .2s ease' }} />
+              </div>
+              <p className="muted" style={{ fontSize: 11, margin: '6px 0 0' }}>{Number(importProgress.rows || 0).toLocaleString()} records staged</p>
+            </div>
+          )}
           <div className="card" style={{ border: '1px solid var(--danger, #b42318)', padding: 14, marginTop: 8 }}>
             <h4 style={{ margin: '0 0 6px', color: 'var(--danger, #b42318)' }}>Reset signed-in account workspace</h4>
             <p className="muted" style={{ fontSize: 12 }}>Resets this owner workspace to first-run setup. Backups are saved first.</p>
