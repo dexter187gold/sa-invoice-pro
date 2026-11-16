@@ -115,12 +115,20 @@ export default function Settings() {
   }
 
   const saveCompany = async () => {
-    const err = validateCompanyForm(form)
-    if (err) { toast(err, 'error'); return }
+    const errors = validateCompanyForm(form)
+    if (Array.isArray(errors) ? errors.length : errors) {
+      toast(Array.isArray(errors) ? errors[0] : errors, 'error')
+      return
+    }
     setBusy(true)
     try {
-      const payload = formToCompanyPayload(form)
+      const payload = {
+        ...formToCompanyPayload(form),
+        id: company?.id || form.id || 'main',
+        updatedAt: new Date().toISOString(),
+      }
       const saved = await db.saveCompany(payload)
+      if (typeof db.setActiveCompany === 'function') await db.setActiveCompany(saved.id)
       setCompany(saved)
       toast('Company saved', 'success')
     } catch (e) {
