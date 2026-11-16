@@ -158,7 +158,7 @@ export async function deleteCompany(id) {
 export async function exportAll() {
   const out = {}
   for (const k of Object.keys(STORES)) {
-    if (k === 'autoBackups') continue
+    if (k === 'autoBackups' || k === 'importStaging') continue
     out[k] = await getAll(STORES[k])
   }
   out.exportedAt = new Date().toISOString()
@@ -451,7 +451,7 @@ export async function replaceAllStaged(data, { allowPartial = false, onProgress 
 const DEVICE_LICENSE_SETTING_KEYS = new Set(['licenseKey', 'licenseMeta', 'activationToken', 'licenseOfflineBlob', 'licenseEmail', 'licenseServerUrl', 'hwid', 'handshakeOk', 'lastLicenseExchange', 'pendingLicenseKey', 'trialStartedAt'])
 
 const ACCOUNT_WORKSPACE_STORES = Object.keys(STORES).filter(
-  (key) => !['users', 'autoBackups', 'accountWorkspaces'].includes(key),
+  (key) => !['users', 'autoBackups', 'accountWorkspaces', 'importStaging'].includes(key),
 )
 
 /** Preserve the current device workspace under its authenticated account before switching users. */
