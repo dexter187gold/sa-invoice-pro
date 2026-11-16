@@ -7,7 +7,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
 import { APP_VERSION, SA_CONFIG } from '../config'
-import { exportAll, replaceAllStaged } from '../lib/db'
+import { downloadBackupStreaming, replaceAllStaged } from '../lib/db'
 import { Segmented, PageFade, ConfirmDialog, LoadingButton } from '../components/ui'
 import CloudSettings from '../components/CloudSettings'
 import ThemePicker from '../components/ThemePicker'
@@ -482,17 +482,21 @@ export default function Settings() {
       {tab === 'data' && (
         <div className="card form-grid" style={{ marginTop: 12 }}>
           <h3 style={{ marginTop: 0 }}>Data & backup</h3>
-          <button type="button" className="btn btn-outline" onClick={async () => {
-            const data = await exportAll()
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-            const a = document.createElement('a')
-            a.href = URL.createObjectURL(blob)
-            a.download = `sa-invoice-backup-${new Date().toISOString().slice(0, 10)}.json`
-            a.click()
-            toast('Backup downloaded', 'success')
-          }}>Download backup JSON</button>
+          <button type="button" className="btn btn-outline" disabled={busy} onClick={async () => {
+            setBusy(true)
+            setImportProgress({ phase: 'exporting', percent: 1, message: 'Preparing company backup…', rows: 0 })
+            try {
+              const result = await downloadBackupStreaming({ onProgress: setImportProgress })
+              toast(`Backup downloaded: ${result.rows.toLocaleString()} records`, 'success')
+            } catch (error) {
+              if (error?.name !== 'AbortError') toast(error?.message || 'Backup export failed', 'error')
+            } finally {
+              setBusy(false)
+              setImportProgress(null)
+            }
+          }}>Download company backup JSON</button>
           <label className="label">Import company backup JSON</label>
-          <p className="muted" style={{ fontSize: 12 }}>Uses a staged IndexedDB restore to reduce memory spikes on phones. Keep this page open until the import completes.</p>
+          <p className="muted" style={{ fontSize: 12 }}>Uses staged IndexedDB restore to protect the current workspace. Very large files are still parsed before staging; a streaming file parser is the next hardening step. Keep this page open until the import completes.</p>
           <input className="input" type="file" accept=".json,application/json" disabled={busy} onChange={importDeviceBackup} />
           {importProgress && (
             <div className="card" role="status" aria-live="polite" style={{ padding: 12, marginTop: 8 }}>
