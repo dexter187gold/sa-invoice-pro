@@ -361,6 +361,7 @@ export async function replaceAllAtomic(data, { allowPartial = false } = {}) {
  */
 export async function replaceAllStaged(data, { allowPartial = false, onProgress } = {}) {
   const src = unwrapBackup(data)
+  data = null
   if (!src || typeof src !== 'object') throw new Error('Invalid backup file')
   const storeKeys = Object.keys(STORES).filter((key) => !['autoBackups', 'accountWorkspaces', 'importStaging'].includes(key))
   const present = storeKeys.filter((key) => Array.isArray(src[key]) || (key === 'company' && src[key] && typeof src[key] === 'object'))
@@ -372,6 +373,7 @@ export async function replaceAllStaged(data, { allowPartial = false, onProgress 
   const batchSize = 150
   let totalRows = 0
   let completedStores = 0
+  let companyRows = 0
   const report = (phase, percent, message) => {
     try { onProgress?.({ phase, percent, message, rows: totalRows }) } catch {}
   }
@@ -394,6 +396,7 @@ export async function replaceAllStaged(data, { allowPartial = false, onProgress 
             const sequence = offset + index
             stage.put({ id: `${batchId}:${key}:${sequence}`, batchId, storeKey: key, row: normalized })
             totalRows++
+            if (key === 'company') companyRows++
           })
           t.oncomplete = resolve
           t.onerror = () => reject(t.error || new Error('Could not stage backup records'))
@@ -406,7 +409,7 @@ export async function replaceAllStaged(data, { allowPartial = false, onProgress 
       completedStores++
     }
     if (!totalRows) throw new Error('Backup contains no workspace records; nothing was changed')
-    if (allowPartial && !present.includes('company')) {
+    if (allowPartial && companyRows === 0) {
       await tx(STORES.importStaging, 'readwrite', (s) => s.put({
         id: `${batchId}:company:placeholder`, batchId, storeKey: 'company',
         row: { id: 'main', name: 'Restored business' },
