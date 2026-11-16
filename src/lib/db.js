@@ -690,17 +690,23 @@ export async function downloadBackupStreaming({ onProgress, signal } = {}) {
         const batchResult = await new Promise((resolve, reject) => {
           const transaction = database.transaction(storeName, 'readonly');
           const store = transaction.objectStore(storeName);
-          let request;
+          let values;
+          let primaryKeys;
+          let settled = false;
+          const finish = () => {
+            if (settled || !values || !primaryKeys) return;
+            settled = true;
+            resolve({ values, primaryKeys });
+          };
           try {
             const range = lastKey === undefined ? null : IDBKeyRange.lowerBound(lastKey, true);
             const valuesRequest = store.getAll(range, 100);
-          const keysRequest = store.getAllKeys(range, 100);
-          let values;
-          let primaryKeys;
-          valuesRequest.onsuccess = () => { values = valuesRequest.result || []; if (primaryKeys) resolve({ values, primaryKeys }); };
-          keysRequest.onsuccess = () => { primaryKeys = keysRequest.result || []; if (values) resolve({ values, primaryKeys }); };
-          valuesRequest.onerror = () => reject(valuesRequest.error || new Error('Could not read backup records'));
-          keysRequest.onerror = () => reject(keysRequest.error || new Error('Could not read backup record keys'));
+            const keysRequest = store.getAllKeys(range, 100);
+            valuesRequest.onsuccess = () => { values = valuesRequest.result || []; finish(); };
+            keysRequest.onsuccess = () => { primaryKeys = keysRequest.result || []; finish(); };
+            valuesRequest.onerror = () => reject(valuesRequest.error || new Error('Could not read backup records'));
+            keysRequest.onerror = () => reject(keysRequest.error || new Error('Could not read backup record keys'));
+          } catch (error) { reject(error); }
           transaction.onerror = () => reject(transaction.error || new Error('Could not read backup records'));
           transaction.onabort = () => reject(transaction.error || new Error('Backup read was interrupted'));
         });
