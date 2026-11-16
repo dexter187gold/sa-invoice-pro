@@ -1,5 +1,6 @@
 /**
  * Local rolling auto-backups in IndexedDB — recovery without downloading JSON.
+ * Snapshots are built store-by-store to avoid one giant exportAll() allocation.
  */
 import * as db from './db.js'
 
@@ -25,27 +26,52 @@ export function getAutoBackupMeta() {
   return loadMeta()
 }
 
-async function exportSnapshot(label, reason) {
-  const data = await db.exportAll()
+/** Keys that belong in a workspace recovery snapshot (not account/licence/staging). */
+function snapshotStoreKeys() {
+  return Object.keys(db.STORES || {}).filter(
+    (key) => !['users', 'autoBackups', 'accountWorkspaces', 'importStaging'].includes(key),
+  )
+}
+
+/**
+ * Build a workspace snapshot one store at a time.
+ * Avoids db.exportAll() which materialises every store in one object graph.
+ */
+async function exportSnapshotChunked(label, reason) {
+  const data = {
+    exportedAt: new Date().toISOString(),
+    app: 'SA Invoice Pro Lab',
+    format: 'sa-invoice-pro-workspace-v2',
+  }
+  const counts = { clients: 0, invoices: 0, tickets: 0, quotes: 0 }
+  for (const key of snapshotStoreKeys()) {
+    let rows = []
+    try {
+      rows = (await db.getAll(db.STORES[key])) || []
+    } catch (error) {
+      console.warn('[autoBackup] store read failed', key, error)
+      rows = []
+    }
+    data[key] = rows
+    if (key in counts) counts[key] = rows.length
+    rows = null
+  }
   return {
-    id: crypto.randomUUID(),
+    id: crypto.randomUUID?.() || `snap_${Date.now()}`,
     at: new Date().toISOString(),
     createdAt: new Date().toISOString(),
     label: label || 'Auto',
     reason: reason || 'auto',
-    counts: {
-      clients: (data.clients || []).length,
-      invoices: (data.invoices || []).length,
-      tickets: (data.tickets || []).length,
-      quotes: (data.quotes || []).length,
-    },
+    counts,
     data,
   }
 }
 
 export async function saveAutoBackup({ reason = 'manual', label = 'Snapshot' } = {}) {
-  const snap = await exportSnapshot(label, reason)
-  if (!db.STORES?.autoBackups) throw new Error('Recovery snapshot storage is unavailable. Refresh the app to complete the storage upgrade.')
+  if (!db.STORES?.autoBackups) {
+    throw new Error('Recovery snapshot storage is unavailable. Refresh the app to complete the storage upgrade.')
+  }
+  const snap = await exportSnapshotChunked(label, reason)
   await db.add(db.STORES.autoBackups, snap)
   const all = (await db.getAll(db.STORES.autoBackups)) || []
   all.sort((a, b) => String(b.at || b.createdAt).localeCompare(String(a.at || a.createdAt)))
@@ -70,7 +96,6 @@ export async function listAutoBackups() {
   } catch (error) {
     console.warn('[autoBackup] snapshot listing failed', error)
   }
-  // Include legacy settings-based snapshots until the rolling window expires.
   const legacy = (await db.getSetting('autoBackups', [])) || []
   const unique = new Map()
   for (const snap of [...current, ...legacy]) if (snap?.id && snap?.data) unique.set(snap.id, snap)
@@ -89,8 +114,6 @@ export async function restoreAutoBackup(id, { confirmed = false } = {}) {
   const snap = await getAutoBackup(id)
   if (!snap?.data) throw new Error('Snapshot not found')
 
-  // Capture the current workspace first. replaceAllAtomic commits all store
-  // changes together, so a failed restore leaves the live workspace unchanged.
   const rollbackSnapshot = await saveAutoBackup({
     reason: 'pre-restore-rollback',
     label: 'Automatic rollback before restore',

@@ -1,5 +1,5 @@
 {
-  "version": "6.66.1",
-  "codename": "Streaming backup import + e2e DB v7",
+  "version": "6.66.2",
+  "codename": "Chunked recovery snapshots + streaming import",
   "shipped": "2026-11-17"
 }
