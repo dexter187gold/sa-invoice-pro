@@ -4,6 +4,7 @@
  */
 import * as db from './db'
 import { STORES } from './db'
+import { openWhatsApp } from './share'
 
 export const BULK_INVOICE_STATUSES = [
   { id: 'unpaid', label: 'Mark unpaid' },
@@ -21,12 +22,6 @@ export const BULK_TICKET_STATUSES = [
   { id: 'closed', label: 'Closed' },
 ]
 
-/**
- * @param {string} store
- * @param {Array<string|number>} ids
- * @param {object} patch
- * @returns {{ ok: number, failed: number, errors: string[] }}
- */
 export async function bulkPatch(store, ids, patch) {
   const result = { ok: 0, failed: 0, errors: [] }
   if (!ids?.length) return result
@@ -85,6 +80,44 @@ export async function bulkDelete(store, ids) {
       result.ok++
     } catch (e) {
       result.failed++
+      result.errors.push(String(e?.message || e))
+    }
+  }
+  return result
+}
+
+/** Open WhatsApp payment reminders for selected unpaid invoices. */
+export async function bulkWhatsAppRemind(invoiceIds, { clients = [], companyName = 'us' } = {}) {
+  const result = { ok: 0, skipped: 0, errors: [] }
+  for (const id of invoiceIds || []) {
+    try {
+      const inv = await db.get(STORES.invoices, id)
+      if (!inv) {
+        result.skipped++
+        continue
+      }
+      const client = clients.find((c) => String(c.id) === String(inv.clientId))
+      const phone = client?.phone || client?.whatsapp || ''
+      if (!phone) {
+        result.skipped++
+        result.errors.push(`No phone for invoice ${inv.number || id}`)
+        continue
+      }
+      const due = Number(inv.amountDue ?? inv.total) || 0
+      const text =
+        `Hi ${String(client?.name || 'there').split(' ')[0]}, ` +
+        `friendly reminder: invoice ${inv.number || ''} for ${companyName} ` +
+        `has R ${due.toFixed(2)} outstanding` +
+        (inv.dueDate ? ` (due ${String(inv.dueDate).slice(0, 10)})` : '') +
+        `. Reply here if you need a statement or payment details.`
+      const opened = openWhatsApp(phone, text)
+      if (opened) result.ok++
+      else {
+        result.skipped++
+        result.errors.push(`Could not open WhatsApp for ${inv.number || id}`)
+      }
+    } catch (e) {
+      result.skipped++
       result.errors.push(String(e?.message || e))
     }
   }
