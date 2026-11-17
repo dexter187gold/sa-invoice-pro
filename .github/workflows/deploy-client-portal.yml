@@ -19,6 +19,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Validate customer portal JavaScript
+        working-directory: client-portal
+        run: node --check app.js
       - name: Deploy standalone customer portal
         working-directory: client-portal
         env:
