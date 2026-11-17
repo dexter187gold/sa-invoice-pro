@@ -114,7 +114,7 @@ export default function NotificationBell() {
                 <strong style={{ fontSize: 13 }}>{account.name || account.email}</strong>
                 <span style={{ color: account.clientOnline ? '#16a34a' : '#94a3b8', fontSize: 11 }}>● {account.clientOnline ? 'Online' : 'Offline'}</span>
               </div>
-              <div className="muted" style={{ fontSize: 11 }}>{account.email} · {account.unreadMessages || 0} unread</div>
+              <div className="muted" style={{ fontSize: 11 }}>{account.email} · {account.unreadMessages || 0} unread · <span style={{ color: account.businessOnline ? '#16a34a' : '#94a3b8' }}>Business {account.businessOnline ? 'online' : 'offline'}</span></div>
               {account.lastMessage && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{account.lastMessage.sender === 'client' ? 'Customer: ' : 'You: '}{String(account.lastMessage.message || '').slice(0, 90)}</div>}
             </button>
           ))}
