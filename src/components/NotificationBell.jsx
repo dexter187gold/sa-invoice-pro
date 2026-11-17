@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Sync } from '../lib/sync'
 
 /** Unified customer messages and app notifications centre. */
 export default function NotificationBell() {
+  const navigate = useNavigate()
   const [unread, setUnread] = useState(0)
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState([])
@@ -94,7 +95,7 @@ export default function NotificationBell() {
 
   return (
     <div style={{ position: 'relative' }}>
-      <button type="button" className="btn btn-outline btn-sm" onClick={() => setOpen((value) => !value)}
+      <button type="button" className="btn btn-outline btn-sm" onClick={() => navigate('/inbox')}
         aria-label="Messages and notifications" title="Messages and notifications" style={{ position: 'relative' }}>
         <span aria-hidden="true">✉</span>
         {badgeCount > 0 && <span style={{ position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 999, background: '#ef4444', color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>{badgeCount > 99 ? '99+' : badgeCount}</span>}
