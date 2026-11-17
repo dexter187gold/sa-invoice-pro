@@ -121,6 +121,7 @@ export function AppProvider({ children }) {
           try {
             syncActivity('syncing')
             const result = await ensureWorkspaceSynced()
+            if (result?.ok) await Sync.refreshClientPortalSnapshots().catch(() => {})
             syncActivity('busy')
             skipAutoPush.current = true
             await refresh()
@@ -145,7 +146,8 @@ export function AppProvider({ children }) {
       syncActivity('syncing')
       flushPushQueue()
         .then(() => { syncActivity('busy'); return ensureWorkspaceSynced() })
-        .then((r) => {
+        .then(async (r) => {
+          if (r?.ok) await Sync.refreshClientPortalSnapshots().catch(() => {})
           syncActivity(r?.ok ? 'synced' : 'error')
           if (r?.ok && r.action && !['both_empty', 'none', 'queued'].includes(r.action)) {
             console.log('[5min-sync]', r.action)
