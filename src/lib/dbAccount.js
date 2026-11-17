@@ -81,6 +81,22 @@ export async function recoverDeviceLicenseSettings() {
     if (hasProof) return true
     const deviceId = localStorage.getItem('saip_hwid') || current.find((row) => row.key === 'hwid')?.value
     if (!deviceId) return false
+
+    // Recover the device-bound activation cache before consulting legacy workspace
+    // snapshots. Account workspace exports deliberately exclude licence settings.
+    try {
+      const cached = JSON.parse(localStorage.getItem('sa_license_cache') || 'null')
+      const cachedMeta = cached?.meta || {}
+      const cachedToken = cached?.activationToken || cachedMeta.activationToken
+      if (cached?.key && cachedToken && cachedMeta.server === true && cachedMeta.hwid === deviceId) {
+        await setSetting('licenseKey', cached.key)
+        await setSetting('licenseMeta', { ...cachedMeta, activationToken: cachedToken })
+        await setSetting('activationToken', cachedToken)
+        await setSetting('licenseOfflineBlob', { key: cached.key, meta: { ...cachedMeta, activationToken: cachedToken }, activationToken: cachedToken })
+        return true
+      }
+    } catch (error) { console.warn('[license recovery] local activation cache', error?.message || error) }
+
     const snapshots = await getAll(STORES.accountWorkspaces)
     for (const snapshot of snapshots) {
       const rows = snapshot?.data?.settings || []
