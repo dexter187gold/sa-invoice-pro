@@ -1,24 +1,35 @@
-# Owner top 20 — business-minded next moves (Nov 2026)
+# Owner top 20 — progress toward 100%
 
-1. **Payment webhooks mark invoices paid automatically** — every hour without this is manual chase.
-2. **Device limit UX in Settings** — show 1/1 Solo or 2/3 Shop with revoke buttons (code path shipped; polish UI).
-3. **License admin delete must invalidate overview + keys list** — server-side cascade + client revalidate (client refresh helper shipped).
-4. **Play Store track** — sideload kills trust for walk-in owners.
-5. **Windows Authenticode** — SmartScreen blocks casual installs.
-6. **SARS tax-invoice field checklist on PDF** — market compliance, not just VAT math.
-7. **Portal PIN share sheet** — one WhatsApp message with URL + username + PIN (UI shipped).
-8. **Magic link email** — optional one-tap portal open for clients who lose PINs.
-9. **Demo data pack** — 3 clients, 2 jobs, 1 unpaid invoice for sales demos.
-10. **Bulk mark paid + bulk WhatsApp remind** — counter staff speed.
-11. **Offline banner with last sync** — reduce “did it save?” anxiety.
-12. **Shop licence onboarding** — explain 3-device rule at activation success splash.
-13. **Account switcher** — explicit “Sign out & clear licence from this browser” for shared PCs.
-14. **Compare table on website vs app** — same Solo/Shop device numbers everywhere.
-15. **Pilot pricing CTA on LinkedIn** — free beta → paid Solo conversion path.
-16. **POPIA export one-click** — accountants ask; builds enterprise trust.
-17. **Bank CSV presets for FNB/Standard/Absa** — SA workshop reality.
-18. **Job photo attachments in OPFS** — proof of work before invoice.
-19. **Soft-delete recycle bin** — owners fear permanent delete.
-20. **Synthetic uptime monitor** — know before customers that sync/licence is down.
+Updated: 2026-11-18 · Baseline product beta **v6.68.0**
 
-Ship order recommendation: 3 → 2 → 7 → 1 → 10 → 6.
+| # | Item | Status |
+|---|------|--------|
+| 1 | Payment webhooks mark invoices paid | Open |
+| 2 | Device limit UX in Settings (list + revoke) | Partial (limits enforced; UI next) |
+| 3 | **License admin delete → overview + keys list** | **Shipped** (`license_revoke_consistency` + dashboard filter) |
+| 4 | Play Store track | Open |
+| 5 | Windows Authenticode | Open |
+| 6 | SARS tax-invoice field checklist on PDF | Open |
+| 7 | Portal PIN share sheet | **Shipped** (PortalCard) |
+| 8 | Magic link email for portal | Open |
+| 9 | Demo data pack | Open |
+| 10 | Bulk mark paid + WhatsApp remind | Partial (`bulkOps.js` exists) |
+| 11 | Offline banner + last sync | Open |
+| 12 | Shop licence 3-device onboarding splash | Partial |
+| 13 | Sign out & clear licence on shared PC | Partial (isolation on register/login) |
+| 14 | Website vs app device numbers aligned | Partial (Solo 1 / Shop 3 in seats) |
+| 15 | LinkedIn pilot CTA | Docs shipped |
+| 16 | POPIA export one-click | Open |
+| 17 | Bank CSV presets FNB/Standard/Absa | Open |
+| 18 | Job photo OPFS attachments | Open |
+| 19 | Soft-delete recycle bin | Open |
+| 20 | Synthetic uptime monitor | Open |
+
+**Score: 4 shipped · 5 partial · 11 open → ~32% of this Top 20 complete** (higher when counting partials as half ≈ **48%**).
+
+## Next execution order
+1. Confirm Render redeploy of `saip-license` after revoke fix  
+2. Device list UI in Settings  
+3. Paystack/PayFast webhook → mark paid  
+4. Demo data + bulk paid  
+5. SARS PDF checklist  
