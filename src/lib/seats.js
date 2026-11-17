@@ -95,7 +95,6 @@ export async function getActiveSeat() {
   return rows.find((r) => String(r.id) === String(id)) || null
 }
 
-/** Verify optional PIN when switching into a protected seat. */
 export function verifySeatPin(seat, pin) {
   if (!seat) return false
   const expected = String(seat.pin || '').trim()
@@ -114,12 +113,12 @@ export function seatLimits(settings = {}, license = {}) {
           ? 'enterprise'
           : 'solo'
   const defaults = {
-    solo: { users: 1, branches: 1, devices: 2 },
-    shop: { users: 5, branches: 1, devices: 8 },
-    team: { users: 5, branches: 1, devices: 8 },
-    multi: { users: 25, branches: 5, devices: 25 },
-    multi_branch: { users: 25, branches: 5, devices: 25 },
-    enterprise: { users: 50, branches: 20, devices: 100 },
+    solo: { users: 1, branches: 1, devices: 1 },
+    shop: { users: 5, branches: 1, devices: 3 },
+    team: { users: 5, branches: 1, devices: 3 },
+    multi: { users: 25, branches: 5, devices: 8 },
+    multi_branch: { users: 25, branches: 5, devices: 8 },
+    enterprise: { users: 50, branches: 20, devices: 25 },
   }
   const base = defaults[tier] || defaults.solo
   return {
@@ -138,7 +137,6 @@ export function seatUsage({ teamMembers = [], branches = [], devices = [] }, lim
   }
 }
 
-/** Throw if adding a new seat would exceed tier user limit (edits of existing id ok). */
 export async function assertCanAddSeat(settings = {}, license = {}, { seatId } = {}) {
   const limits = seatLimits(settings, license)
   const rows = await listSeats()
@@ -165,8 +163,6 @@ export function activeSeatSummary(seat) {
   }
 }
 
-
-/** Clear local desk-seat identities after an owner-authorized workspace reset. */
 export async function clearSeats() {
   try {
     const rows = await readAll()
