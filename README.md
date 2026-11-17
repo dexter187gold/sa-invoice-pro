@@ -1,4 +1,4 @@
-# SA Invoice Pro — First public beta (v6.68.0)
+# SA Invoice Pro 6.68.0 — First public beta
 
 **Invoicing, quotes, job tickets, and WhatsApp-ready follow-ups built for South African workshops and small businesses.**
 
