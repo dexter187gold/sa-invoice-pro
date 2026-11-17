@@ -27,6 +27,31 @@
       return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]
     })
   }
+  function printPortalDocument(kind, record, company, client) {
+    var win = window.open('', '_blank')
+    if (!win) { alert('Please allow pop-ups to download or print this document.'); return }
+    var title = kind.charAt(0).toUpperCase() + kind.slice(1)
+    var ref = record.number || record.id || title
+    var rows = Array.isArray(record.items) ? record.items : (Array.isArray(record.lines) ? record.lines : (Array.isArray(record.products) ? record.products : []))
+    var itemRows = rows.map(function (item) {
+      return '<tr><td>' + esc(item.description || item.name || item.title || 'Item') + '</td><td>' +
+        esc(item.quantity || item.qty || 1) + '</td><td style="text-align:right">' +
+        money(item.unitPrice || item.price || item.rate || item.amount || 0) + '</td><td style="text-align:right">' +
+        money(item.total || item.lineTotal || ((Number(item.quantity || item.qty || 1) || 1) * (Number(item.unitPrice || item.price || item.rate || item.amount) || 0))) + '</td></tr>'
+    }).join('')
+    var html = '<!doctype html><html><head><meta charset="utf-8"><title>' + esc(title + ' ' + ref) +
+      '</title><style>body{font:14px Arial,sans-serif;color:#17202a;margin:32px}header{display:flex;justify-content:space-between;border-bottom:2px solid #0f766e;padding-bottom:16px}h1{color:#0f766e;margin:0 0 6px}small{color:#566}table{width:100%;border-collapse:collapse;margin-top:24px}th,td{padding:10px;border-bottom:1px solid #ddd;text-align:left}th{background:#eef7f5}.total{text-align:right;font-size:20px;font-weight:bold;margin-top:24px}.meta{margin:22px 0;line-height:1.7}.note{white-space:pre-wrap;margin-top:18px}@media print{button{display:none}body{margin:14mm}}</style></head><body>' +
+      '<header><div><h1>' + esc(company.name || 'Business') + '</h1><small>' + esc(company.address || '') + '<br>' + esc(company.email || '') + ' ' + esc(company.phone || '') + '</small></div><div style="text-align:right"><h2>' + esc(title) + '</h2><strong>' + esc(ref) + '</strong></div></header>' +
+      '<div class="meta"><strong>Customer:</strong> ' + esc(client.name || client.email || '') + '<br><strong>Email:</strong> ' + esc(client.email || '') +
+      '<br><strong>Date:</strong> ' + esc(dateTimeFmt(record.createdAt || record.date || record.issuedAt)) +
+      (record.dueDate ? '<br><strong>Due date:</strong> ' + esc(dateFmt(record.dueDate)) : '') +
+      (record.status ? '<br><strong>Status:</strong> ' + esc(record.status) : '') + '</div>' +
+      (itemRows ? '<table><thead><tr><th>Description</th><th>Qty</th><th>Unit price</th><th>Total</th></tr></thead><tbody>' + itemRows + '</tbody></table>' : '') +
+      '<div class="total">Total: ' + money(record.total || record.amount || record.amountDue || 0) + '</div>' +
+      '<div class="note">' + esc(record.description || record.notes || record.publicNote || record.customerNote || '') + '</div>' +
+      '<p style="margin-top:40px;color:#667">Generated from the SA Invoice Pro customer portal.</p><script>window.onload=function(){setTimeout(function(){window.print()},250)}<\/script></body></html>'
+    win.document.open(); win.document.write(html); win.document.close()
+  }
   function csvCell(value) {
     return '"' + String(value == null ? '' : value).replace(/"/g, '""') + '"'
   }
@@ -255,7 +280,7 @@
           '<button class="btn btn-ghost btn-sm" id="out">Sign out</button>' +
           '</div>' +
           '<div class="tabs">' +
-          ['overview', 'statement', 'invoices', 'quotes', 'service', 'payments'].map(function (id) {
+          ['overview', 'statement', 'invoices', 'quotes', 'service', 'payments', 'messages'].map(function (id) {
             return '<button class="tab' + (tab === id ? ' on' : '') + '" data-tab="' + id + '">' +
               (id === 'service' ? 'Job cards' : id.charAt(0).toUpperCase() + id.slice(1)) + '</button>'
           }).join('') +
@@ -300,6 +325,7 @@
               '<div class="muted">Issued ' + dateTimeFmt(i.createdAt || i.issuedAt || i.date) + (i.dueDate ? ' · Due date ' + esc(dateFmt(i.dueDate)) : '') + ' · Total ' + money(i.total) +
               ' · Paid ' + money(invoicePaid(i, dash)) + ' · Due ' + money(invoiceDue(i, dash)) +
               (i.paidAt || i.paidDate ? ' · Paid on ' + esc(dateTimeFmt(i.paidAt || i.paidDate)) : '') + '</div>' +
+              '<div class="actions"><button class="btn btn-ghost btn-sm" data-doc-kind="invoice" data-doc-id="' + esc(i.id || i.number) + '">Download / Print PDF</button></div>' +
               (canPay && invoiceDue(i, dash) > 0
                 ? '<div class="actions"><button class="btn btn-pay btn-sm" data-pay-id="' +
                   esc(i.id || i.number) +
@@ -321,6 +347,7 @@
               '<div class="row"><div style="flex:1"><strong>' + (q.number || q.id || 'Quote') + '</strong>' +
               '<div class="muted">Created ' + dateTimeFmt(q.createdAt || q.date) + ' · ' + money(q.total) +
               (q.portalDecisionAt || q.portalDecidedAt || q.decidedAt || q.updatedAt ? ' · Decision / update ' + esc(dateTimeFmt(q.portalDecisionAt || q.decidedAt || q.updatedAt)) : '') + '</div>' +
+              '<div class="actions"><button class="btn btn-ghost btn-sm" data-doc-kind="quote" data-doc-id="' + esc(q.id || q.number) + '">Download / Print PDF</button></div>' +
               (can
                 ? '<div class="actions">' +
                   '<button class="btn btn-ok btn-sm" data-q="' + q.id + '" data-d="accepted">Accept</button>' +
@@ -342,10 +369,18 @@
               '<div class="muted">' + esc(dateTimeFmt(t.createdAt || t.openedAt || t.date)) + ' · ' + esc(t.device || t.deviceLabel || 'Service job') + (t.imei ? ' · IMEI ' + esc(t.imei) : '') + '</div>' +
               '<div>' + esc((t.description || t.publicNote || t.customerNote || '').slice(0, 220)) + '</div>' +
               (t.publicNote || t.customerNote ? '<div class="muted">Workshop note: ' + esc(t.publicNote || t.customerNote) + '</div>' : '') +
+              '<div class="actions"><button class="btn btn-ghost btn-sm" data-doc-kind="job" data-doc-id="' + esc(t.id || t.number) + '">Download / Print PDF</button></div>' +
               (t.completedAt || t.closedAt || t.updatedAt ? '<div class="muted">Last updated: ' + esc(dateTimeFmt(t.completedAt || t.closedAt || t.updatedAt)) + '</div>' : '') +
               '</div>' + pill(t.status) + '</div>'
           })
           html += '</div>'
+        }
+
+        if (tab === 'messages') {
+          html += '<div class="card"><div class="row"><div><strong>Messages with the workshop</strong><div class="muted">Ask about an invoice, quote, repair or anything related to your account. Replies appear here.</div></div><button class="btn btn-ghost btn-sm" id="refresh-messages">Refresh</button></div>' +
+            '<div id="chat-thread" style="max-height:420px;overflow:auto;margin:12px 0"></div>' +
+            '<label for="chat-message">Your message</label><textarea id="chat-message" maxlength="4000" rows="3" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:#070b10;color:var(--text);font:inherit" placeholder="Type your question…"></textarea>' +
+            '<div class="actions"><button class="btn" id="send-message">Send message</button><span class="muted">Please do not send passwords or card details.</span></div></div>'
         }
 
         if (tab === 'payments') {
@@ -400,6 +435,45 @@
           link.download = 'SAIP-account-statement.csv'
           link.click()
           URL.revokeObjectURL(url)
+        }
+        app.querySelectorAll('[data-doc-kind]').forEach(function (el) {
+          el.onclick = function () {
+            var kind = el.getAttribute('data-doc-kind')
+            var id = el.getAttribute('data-doc-id')
+            var source = kind === 'invoice' ? dash.invoices : kind === 'quote' ? dash.quotes : dash.tickets
+            var record = (source || []).find(function (row) { return String(row.id || row.number) === String(id) })
+            if (record) printPortalDocument(kind, record, dash.company || {}, dash.client || {})
+          }
+        })
+        if (tab === 'messages') {
+          var thread = document.getElementById('chat-thread')
+          var renderMessages = function (messages) {
+            thread.innerHTML = messages.length ? messages.map(function (m) {
+              var own = m.sender === 'client'
+              return '<div style="margin:8px 0;padding:10px 12px;border-radius:12px;background:' + (own ? 'rgba(20,184,166,.15)' : 'rgba(255,255,255,.06)') + ';margin-left:' + (own ? '12%' : '0') + ';margin-right:' + (own ? '0' : '12%') + '"><strong>' + esc(own ? 'You' : 'Workshop') + '</strong><div style="white-space:pre-wrap;margin-top:4px">' + esc(m.message) + '</div><div class="muted" style="font-size:11px;margin-top:5px">' + esc(dateTimeFmt(m.createdAt)) + '</div></div>'
+            }).join('') : '<p class="muted">No messages yet. Send the workshop your first question.</p>'
+            thread.scrollTop = thread.scrollHeight
+          }
+          var loadMessages = async function () {
+            try { var result = await api('/api/client-portal/messages'); renderMessages(result.messages || []) }
+            catch (e) { thread.innerHTML = '<p class="err">' + esc(e.message) + '</p>' }
+          }
+          document.getElementById('refresh-messages').onclick = loadMessages
+          document.getElementById('send-message').onclick = async function () {
+            var field = document.getElementById('chat-message')
+            var message = String(field.value || '').trim()
+            if (!message) return
+            var send = document.getElementById('send-message')
+            send.disabled = true
+            try {
+              await api('/api/client-portal/messages', { method: 'POST', body: JSON.stringify({ message: message }) })
+              field.value = ''
+              await loadMessages()
+              showToast('Message sent to the workshop')
+            } catch (e) { showToast(e.message || 'Message could not be sent') }
+            finally { send.disabled = false }
+          }
+          loadMessages()
         }
         app.querySelectorAll('[data-tab]').forEach(function (el) {
           el.onclick = function () {
