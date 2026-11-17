@@ -270,8 +270,9 @@
             var canPay = isUnpaid(i.status)
             html +=
               '<div class="row"><div style="flex:1"><strong>' + (i.number || i.id) + '</strong>' +
-              '<div class="muted">' + dateTimeFmt(i.createdAt || i.issuedAt || i.date) + ' · Total ' + money(i.total) +
-              ' · Paid ' + money(i.amountPaid) + ' · Due ' + money(i.amountDue != null ? i.amountDue : Math.max(0, Number(i.total || 0) - Number(i.amountPaid || 0))) + '</div>' +
+              '<div class="muted">Issued ' + dateTimeFmt(i.createdAt || i.issuedAt || i.date) + (i.dueDate ? ' · Due date ' + esc(dateFmt(i.dueDate)) : '') + ' · Total ' + money(i.total) +
+              ' · Paid ' + money(i.amountPaid) + ' · Due ' + money(i.amountDue != null ? i.amountDue : Math.max(0, Number(i.total || 0) - Number(i.amountPaid || 0))) +
+              (i.paidAt || i.paidDate ? ' · Paid on ' + esc(dateTimeFmt(i.paidAt || i.paidDate)) : '') + '</div>' +
               (canPay && Number(i.amountDue != null ? i.amountDue : (Number(i.total || 0) - Number(i.amountPaid || 0))) > 0
                 ? '<div class="actions"><button class="btn btn-pay btn-sm" data-pay-id="' +
                   esc(i.id || i.number) +
@@ -291,7 +292,8 @@
             var can = st === 'sent' || st === 'draft' || !st
             html +=
               '<div class="row"><div style="flex:1"><strong>' + (q.number || q.id || 'Quote') + '</strong>' +
-              '<div class="muted">' + dateTimeFmt(q.createdAt || q.date) + ' · ' + money(q.total) + '</div>' +
+              '<div class="muted">Created ' + dateTimeFmt(q.createdAt || q.date) + ' · ' + money(q.total) +
+              (q.portalDecisionAt || q.decidedAt || q.updatedAt ? ' · Decision / update ' + esc(dateTimeFmt(q.portalDecisionAt || q.decidedAt || q.updatedAt)) : '') + '</div>' +
               (can
                 ? '<div class="actions">' +
                   '<button class="btn btn-ok btn-sm" data-q="' + q.id + '" data-d="accepted">Accept</button>' +
