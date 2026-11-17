@@ -1,1 +1,2 @@
-/*    /index.html   200
+# SPA routing is configured in wrangler.toml with not_found_handling = "single-page-application".
+# Do not add /* /index.html 200 here: Cloudflare detects it as an infinite loop.
