@@ -61,6 +61,14 @@ export default function Setup() {
     if (company?.name) nav('/', { replace: true })
   }, [company, nav])
 
+  // Each wizard step starts at its heading so the next section is immediately visible
+  // on mobile, even when the previous section ended near the bottom of a long form.
+  React.useEffect(() => {
+    const page = document.querySelector('.auth-page')
+    if (page) page.scrollTo({ top: 0, behavior: 'auto' })
+    else window.scrollTo({ top: 0, behavior: 'auto' })
+  }, [phase, companySection])
+
   React.useEffect(() => {
     if (!user) return
     setPersonal((p) => ({
@@ -235,8 +243,10 @@ export default function Setup() {
                 key={p.id}
                 type="button"
                 className={`btn btn-sm ${phase === p.id ? 'btn-primary' : 'btn-outline'}`}
-                onClick={() => setPhase(p.id)}
-                style={{ minWidth: 100 }}
+                onClick={() => { if (p.id <= phase) setPhase(p.id) }}
+                disabled={p.id > phase}
+                aria-current={phase === p.id ? 'step' : undefined}
+                style={{ minWidth: 100, opacity: p.id > phase ? 0.55 : 1 }}
               >
                 {p.id}. {p.title}
               </button>
@@ -337,7 +347,7 @@ export default function Setup() {
                   refresh={refresh}
                   form={form}
                   setForm={setForm}
-                  showFields
+                  showFields={false}
                   onDefaults={(d) => {
                     if (d?.suggestVat != null) {
                       setPrefs((p) => ({ ...p, vatEnabled: !!d.suggestVat }))
