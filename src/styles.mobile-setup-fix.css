@@ -1,0 +1,24 @@
+/* Loaded after styles.auth.css — kill max-height trap on mobile setup */
+.auth-page .auth-card-modern,
+.auth-page .auth-card,
+.auth-page .setup-wizard-card {
+  max-height: none !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+@media (max-width: 767px) {
+  .auth-page {
+    display: block !important;
+    height: auto !important;
+    min-height: 100dvh;
+    overflow-y: auto !important;
+  }
+  .auth-page .setup-wizard-card {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .company-profile-form .form-grid.cols-2,
+  .company-profile-form .form-grid.cols-3 {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
