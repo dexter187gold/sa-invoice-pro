@@ -283,6 +283,7 @@ export default function Inbox() {
           <button type="button" className="btn btn-secondary" disabled={!intake.length || busy} onClick={importAllJobs}>
             Import all jobs
           </button>
+          <Link className="btn btn-outline" to="/portal-admin">Customer conversations</Link>
           <Link className="btn btn-outline" to="/clients">Clients</Link>
           <Link className="btn btn-outline" to="/tickets">Job cards</Link>
           <Link className="btn btn-outline" to="/wa-templates">Templates</Link>
