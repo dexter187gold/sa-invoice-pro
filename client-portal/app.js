@@ -539,6 +539,9 @@
         })
       }
       paint()
+      await refreshPresence()
+      if (window.__saipPortalPresenceTimer) clearInterval(window.__saipPortalPresenceTimer)
+      window.__saipPortalPresenceTimer = setInterval(refreshPresence, 30000)
       var paymentReturn = new URLSearchParams(window.location.search).get('payment')
       if (paymentReturn === 'processing') {
         showToast('Payment submitted. Waiting for secure provider confirmation. Refresh your account in a moment.')
