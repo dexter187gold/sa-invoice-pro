@@ -159,9 +159,12 @@ export default function Clients() {
     if (!Sync.isLoggedIn()) return toast('Log in to Cloud under Settings first', 'error')
     setPortalBusyId(client.id)
     try {
-      await Sync.pushAll({
+      const syncResult = await Sync.pushAll({
         company, clients, invoices, quotes, tickets, payments, products, services, expenses,
       })
+      if (!syncResult?.ok) {
+        throw new Error(syncResult?.error || 'Could not sync customer records. Please Sync Now and try again.')
+      }
       const data = await Sync.issueClientPortalLogin({
         clientId: client.id,
         email: client.email,
@@ -171,12 +174,13 @@ export default function Clients() {
       })
       setPortalCreds({
         name: client.name,
+        username: data.username || data.email,
         email: data.email,
         pin: data.pin,
         portalUrl: data.portalUrl,
         loginHint: data.loginHint,
       })
-      const msg = `Portal login\n${data.email}\nPIN: ${data.pin}\n${data.portalUrl || ''}`
+      const msg = `SA Invoice Pro Client Portal\nURL: ${data.portalUrl || ''}\nUsername: ${data.username || data.email}\nPIN: ${data.pin}`
       try {
         await navigator.clipboard.writeText(msg)
         toast('Portal login created & copied', 'success')
@@ -248,12 +252,12 @@ export default function Clients() {
           </p>
           <div style={{ fontFamily: 'monospace', fontSize: 14, lineHeight: 1.6 }}>
             <div>URL: {portalCreds.portalUrl}</div>
-            <div>Email: {portalCreds.email}</div>
+            <div>Username: {portalCreds.username || portalCreds.email}</div>
             <div>PIN: <strong>{portalCreds.pin}</strong></div>
           </div>
           <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button type="button" className="btn btn-outline btn-sm" onClick={() => {
-              const msg = `Portal login\n${portalCreds.email}\nPIN: ${portalCreds.pin}\n${portalCreds.portalUrl || ''}`
+              const msg = `SA Invoice Pro Client Portal\nURL: ${portalCreds.portalUrl || ''}\nUsername: ${portalCreds.username || portalCreds.email}\nPIN: ${portalCreds.pin}`
               navigator.clipboard?.writeText(msg)
               toast('Copied', 'success')
             }}>Copy again</button>
