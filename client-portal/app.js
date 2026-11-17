@@ -2,6 +2,7 @@
   var API = (window.SAIP_API || 'https://saip-sync.onrender.com').replace(/\/$/, '')
   var TOKEN_KEY = 'saip_client_portal_token'
   var PORTAL_TOKEN_KEY = 'saip_portal_view_token'
+  var COMPANY_KEY = 'saip_client_portal_company'
   var app = document.getElementById('app')
 
   function money(n) {
@@ -210,6 +211,9 @@
         tabRef.current = 'invoices'
       }
       paint()
+      await refreshPresence()
+      if (window.__saipPortalPresenceTimer) clearInterval(window.__saipPortalPresenceTimer)
+      window.__saipPortalPresenceTimer = setInterval(refreshPresence, 30000)
     } catch (e) {
       alert(e.message || 'Could not save decision')
       throw e
@@ -220,8 +224,8 @@
     app.innerHTML =
       '<div class="shell"><div class="card login-card">' +
       '<div class="reticle" aria-hidden="true"><span></span></div>' +
-      '<div class="eyebrow">Client portal · Sniper desk</div>' +
-      '<h1>Sign in</h1>' +
+      '<div class="eyebrow">' + esc((function () { try { return JSON.parse(localStorage.getItem(COMPANY_KEY) || '{}').name || 'Customer Portal' } catch (e) { return 'Customer Portal' } })()) + '</div>' +
+      '<h1>Customer sign in</h1>' +
       '<p class="muted">Use the email and PIN from your workshop.</p>' +
       '<label>Username / email</label><input id="email" type="text" autocomplete="username" />' +
       '<label>PIN</label><input id="pin" type="password" inputmode="numeric" autocomplete="current-password" />' +
@@ -251,6 +255,7 @@
       })
       if (!j.token) throw new Error('No session token returned')
       setToken(j.token)
+      try { if (j.company) localStorage.setItem(COMPANY_KEY, JSON.stringify(j.company)) } catch (e) {}
       await showApp()
     } catch (e) {
       renderLogin(e.message || 'Login failed')
@@ -258,6 +263,7 @@
   }
 
   function logout() {
+    if (window.__saipPortalPresenceTimer) { clearInterval(window.__saipPortalPresenceTimer); window.__saipPortalPresenceTimer = null }
     if (window.__saipPortalChatTimer) { clearInterval(window.__saipPortalChatTimer); window.__saipPortalChatTimer = null }
     setToken('')
     renderLogin()
@@ -267,17 +273,30 @@
     try {
       var dash = await api('/api/client-portal/dashboard')
       var tabRef = { current: 'overview' }
+      var businessOnline = false
+      var refreshPresence = async function () {
+        try {
+          var presence = await api('/api/client-portal/presence', { method: 'POST', body: JSON.stringify({}) })
+          businessOnline = !!presence.businessOnline
+          var indicator = document.getElementById('business-presence')
+          if (indicator) {
+            indicator.textContent = businessOnline ? '● Business online' : '● Business offline'
+            indicator.style.color = businessOnline ? '#16a34a' : '#94a3b8'
+          }
+        } catch (e) {}
+      }
 
       function paint() {
         var tab = tabRef.current
         var client = dash.client || {}
         var company = (dash.company && dash.company.name) || 'Your workshop'
+        document.title = company + ' — Customer Portal'
         var sum = dash.summary || {}
         var html =
           '<div class="shell">' +
           '<div class="topbar">' +
-          '<div><div class="brand">' + company + '<small>Client portal</small></div>' +
-          '<div class="muted">Signed in as ' + (client.name || client.email || '') + '</div></div>' +
+          '<div><div class="brand">' + esc(company) + '<small>Customer account</small></div>' +
+          '<div class="muted">Signed in as ' + esc(client.name || client.email || '') + ' · <span style="color:#16a34a">● You are online</span> · <span id="business-presence" style="color:#94a3b8">● Checking business status…</span></div></div>' +
           '<button class="btn btn-ghost btn-sm" id="out">Sign out</button>' +
           '</div>' +
           '<div class="tabs">' +
