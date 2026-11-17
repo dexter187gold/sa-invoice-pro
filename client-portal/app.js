@@ -90,7 +90,7 @@
         await new Promise(function (resolve) { setTimeout(resolve, attempt * 1800) })
         return api(path, opts, attempt + 1)
       }
-      throw new Error('Cannot reach the SA Invoice Pro portal server. Check your internet connection and try again. If this continues, contact the workshop.')
+      throw new Error('The portal server may be waking up or your connection may be interrupted. Keep this page open and try again in a few seconds. If it continues, contact the workshop.')
     }
     var j = await res.json().catch(function () { return {} })
     if (!res.ok) {
