@@ -306,7 +306,7 @@
         }
 
         if (tab === 'service') {
-          html += '<div class="card"><strong>Service / jobs</strong>'
+          html += '<div class="card"><strong>Job cards</strong>'
           var ts = dash.tickets || []
           if (!ts.length) html += '<p class="muted">No job cards recorded yet.</p>'
           ts.forEach(function (t) {
