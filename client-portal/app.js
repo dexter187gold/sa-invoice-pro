@@ -158,6 +158,12 @@
         tabRef.current = 'invoices'
       }
       paint()
+      var paymentReturn = new URLSearchParams(window.location.search).get('payment')
+      if (paymentReturn === 'processing') {
+        showToast('Payment submitted. Waiting for secure provider confirmation. Refresh your account in a moment.')
+      } else if (paymentReturn === 'cancelled') {
+        showToast('Payment was cancelled. No payment confirmation was received.')
+      }
     } catch (e) {
       alert(e.message || 'Could not save decision')
       throw e
@@ -244,7 +250,7 @@
             '<div class="stat"><b>' + (sum.quotes || 0) + '</b><span class="muted">Quotes</span></div>' +
             '<div class="stat"><b>' + (sum.tickets || 0) + '</b><span class="muted">Job cards</span></div>' +
             '</div>' +
-            '<div class="card"><strong>Welcome to your account</strong><p class="muted" style="margin:6px 0 0">View your full account statement, invoice and quote history, job cards, and recorded payments. You can pay outstanding invoices securely when online checkout is enabled by the workshop.</p></div>'
+            '<div class="card"><strong>Welcome to your account</strong><p class="muted" style="margin:6px 0 0">View your full account statement, invoice and quote history, job cards, and recorded payments. You can pay outstanding invoices securely when online checkout is enabled by the workshop.</p><div class="actions"><button class="btn btn-ghost btn-sm" data-refresh>Refresh account</button></div></div>'
         }
 
         if (tab === 'statement') {
@@ -342,6 +348,20 @@
         html += '</div>'
         app.innerHTML = html
         document.getElementById('out').onclick = logout
+        app.querySelectorAll('[data-refresh]').forEach(function (el) {
+          el.onclick = async function () {
+            el.disabled = true
+            try {
+              var fresh = await api('/api/client-portal/dashboard')
+              Object.assign(dash, fresh)
+              paint()
+              showToast('Account statement refreshed')
+            } catch (e) {
+              el.disabled = false
+              showToast(e.message || 'Could not refresh account')
+            }
+          }
+        })
         var printBtn = document.getElementById('print-statement')
         if (printBtn) printBtn.onclick = function () { window.print() }
         var downloadBtn = document.getElementById('download-statement')
