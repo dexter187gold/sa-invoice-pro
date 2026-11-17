@@ -8,6 +8,7 @@ import { importBackupFromFile } from '../lib/backupImport'
 import { PageFade, ConfirmDialog, LoadingButton } from '../components/ui'
 import CloudSettings from '../components/CloudSettings'
 import DeviceAccessPanel from '../components/DeviceAccessPanel'
+import DeviceSeatsPanel from '../components/DeviceSeatsPanel'
 import {
   listAutoBackups, restoreAutoBackup, downloadAutoBackup, saveAutoBackup,
 } from '../lib/localAutoBackup'
@@ -16,6 +17,12 @@ import { readProfilePrefs, saveProfilePrefs } from '../lib/profilePreferences'
 import CompanyProfileForm from '../components/CompanyProfileForm'
 import ThemePicker from '../components/ThemePicker'
 import { companyToForm, formToCompanyPayload, validateCompanyForm } from '../lib/companyProfile'
+import { loadDemoWorkspace } from '../lib/demoData'
+import { downloadPopiaExport } from '../lib/popiaExport'
+import { listRecycleBin, restoreFromBin, purgeBinEntry, emptyRecycleBin } from '../lib/recycleBin'
+import { runServiceHealthChecks } from '../lib/serviceHealth'
+import { applyPaymentWebhookEvent } from '../lib/paymentWebhook'
+import { BANK_PRESETS } from '../lib/bankPresets'
 
 export default function Settings() {
   const { user, company, setCompany, toast, refresh, vatEnabled, vatRate, setVatEnabled, setVatRate, theme, setTheme } = useApp()
@@ -29,6 +36,9 @@ export default function Settings() {
   const [accessStatus, setAccessStatus] = useState(null)
   const [vatDraft, setVatDraft] = useState(() => ({ enabled: !!vatEnabled, rate: Number(vatRate ?? 0.15) * 100 }))
   const [vatSaving, setVatSaving] = useState(false)
+  const [bin, setBin] = useState([])
+  const [health, setHealth] = useState(null)
+  const [webhookJson, setWebhookJson] = useState('{"status":"paid","invoiceNumber":"","amount":0,"provider":"manual"}')
   const [autoLockMinutes, setAutoLockMinutes] = useState(() => {
     const n = Number(readProfilePrefs(user).autoLockMinutes || 5)
     return [5, 15, 30].includes(n) ? String(n) : '5'
@@ -39,6 +49,9 @@ export default function Settings() {
   useEffect(() => { setForm(companyToForm(company)) }, [company])
   useEffect(() => { readAccessStatus().then(setAccessStatus).catch(() => {}) }, [])
   useEffect(() => { refreshAutoBackups() }, [])
+  useEffect(() => {
+    if (tab === 'data') listRecycleBin().then(setBin).catch(() => setBin([]))
+  }, [tab])
 
   const refreshAutoBackups = async () => {
     try { setAutoBackups(await listAutoBackups()) } catch { setAutoBackups([]) }
@@ -144,6 +157,7 @@ export default function Settings() {
     { id: 'cloud', label: 'Cloud' },
     { id: 'look', label: 'Look' },
     { id: 'security', label: 'Security' },
+    { id: 'ops', label: 'Ops' },
   ]
 
   return (
@@ -152,7 +166,7 @@ export default function Settings() {
         <div className="page-header">
           <div>
             <h1>Settings</h1>
-            <p className="subtitle">Workspace · v{APP_VERSION} · {SA_CONFIG.productEmail || 'sainvoicepro@gmail.com'}</p>
+            <p className="subtitle">Workspace · v{APP_VERSION} · plan {plan || 'trial'} · {SA_CONFIG.productEmail || 'sainvoicepro@gmail.com'}</p>
           </div>
         </div>
 
@@ -206,6 +220,25 @@ export default function Settings() {
                 <input type="file" accept="application/json,.json" hidden disabled={busy} onChange={importDeviceBackup} data-testid="settings-import-backup" />
               </label>
               <button type="button" className="btn btn-ghost" disabled={busy} onClick={clearWorkspaceSafely}>Clear workspace</button>
+              <LoadingButton className="btn btn-outline" busy={busy} onClick={async () => {
+                setBusy(true)
+                try {
+                  await loadDemoWorkspace({ companyName: company?.name })
+                  await refresh()
+                  toast('Demo data loaded (Acme client, sample invoice/quote/job)', 'success')
+                } catch (e) {
+                  toast(e?.message || 'Demo load failed', 'error')
+                } finally { setBusy(false) }
+              }}>Load demo data</LoadingButton>
+              <LoadingButton className="btn btn-outline" busy={busy} onClick={async () => {
+                setBusy(true)
+                try {
+                  await downloadPopiaExport()
+                  toast('POPIA data-subject export downloaded', 'success')
+                } catch (e) {
+                  toast(e?.message || 'POPIA export failed', 'error')
+                } finally { setBusy(false) }
+              }}>POPIA export (JSON)</LoadingButton>
             </div>
             {importProgress && (
               <div className="card" style={{ marginTop: 12, padding: 12 }} data-testid="import-progress">
@@ -234,6 +267,32 @@ export default function Settings() {
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => downloadAutoBackup(b.id)}>Download</button>
               </div>
             ))}
+            <h4>Recycle bin</h4>
+            <p className="muted" style={{ fontSize: 12 }}>Soft-deleted records can be restored. Use bulk/soft-delete helpers where wired.</p>
+            {bin.length === 0 && <p className="muted">Bin is empty.</p>}
+            {bin.slice(0, 20).map((e) => (
+              <div key={e.id} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+                <span className="muted" style={{ fontSize: 12 }}>{e.store} · {e.originalId} · {e.deletedAt}</span>
+                <button type="button" className="btn btn-outline btn-sm" onClick={async () => {
+                  await restoreFromBin(e.id)
+                  setBin(await listRecycleBin())
+                  await refresh()
+                  toast('Restored from bin', 'success')
+                }}>Restore</button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={async () => {
+                  await purgeBinEntry(e.id)
+                  setBin(await listRecycleBin())
+                }}>Purge</button>
+              </div>
+            ))}
+            {bin.length > 0 && (
+              <button type="button" className="btn btn-outline btn-sm" onClick={async () => {
+                if (!window.confirm('Permanently empty recycle bin?')) return
+                await emptyRecycleBin()
+                setBin([])
+                toast('Recycle bin emptied', 'success')
+              }}>Empty bin</button>
+            )}
           </div>
         )}
 
@@ -250,17 +309,58 @@ export default function Settings() {
         {tab === 'security' && (
           <div className="card form-grid" style={{ marginTop: 12 }}>
             <h3 style={{ marginTop: 0 }}>Privacy & automatic workspace lock</h3>
-            <p className="muted" style={{ marginTop: 0 }}>Automatically lock the workspace after inactivity. Your subscription and device activation stay intact; signing back in unlocks the workspace.</p>
+            <p className="muted" style={{ marginTop: 0 }}>Automatically lock the workspace after inactivity.</p>
             <label className="label" htmlFor="auto-lock-minutes">Lock after</label>
             <select id="auto-lock-minutes" data-testid="auto-lock-minutes" className="select input" value={autoLockMinutes} onChange={(e) => { const next = [5, 15, 30].includes(Number(e.target.value)) ? e.target.value : '5'; setAutoLockMinutes(next) }}>
               <option value="5">5 minutes</option>
               <option value="15">15 minutes</option>
               <option value="30">30 minutes</option>
             </select>
-            <p className="muted" style={{ fontSize: 12 }}>Activity resets the timer. When it expires, the local workspace locks and requires sign-in again without revoking the cloud session or licence.</p>
             <button type="button" className="btn btn-primary" onClick={() => { saveProfilePrefs(user, { autoLockMinutes: Number(autoLockMinutes) }); window.dispatchEvent(new Event('sa-auto-lock-updated')); toast('Security preferences saved', 'success') }}>Save security settings</button>
+            <DeviceSeatsPanel toast={toast} />
             <h3>Device access</h3>
             <DeviceAccessPanel toast={toast} userLabel={user?.email} />
+          </div>
+        )}
+
+        {tab === 'ops' && (
+          <div className="card form-grid" style={{ marginTop: 12 }}>
+            <h3 style={{ marginTop: 0 }}>Service health</h3>
+            <p className="muted">Synthetic checks against licence + sync endpoints.</p>
+            <LoadingButton className="btn btn-outline" busy={busy} onClick={async () => {
+              setBusy(true)
+              try {
+                const r = await runServiceHealthChecks()
+                setHealth(r)
+                toast(r.allOk ? 'All services reachable' : 'One or more services failed', r.allOk ? 'success' : 'warn')
+              } catch (e) {
+                toast(e?.message || 'Health check failed', 'error')
+              } finally { setBusy(false) }
+            }}>Run health checks</LoadingButton>
+            {health && (
+              <pre style={{ fontSize: 11, overflow: 'auto', maxHeight: 200 }}>{JSON.stringify(health, null, 2)}</pre>
+            )}
+            <h3>Payment webhook replay</h3>
+            <p className="muted" style={{ fontSize: 12 }}>Paste a paid event JSON (invoiceNumber or invoiceId + amount/status) to mark a local invoice paid.</p>
+            <textarea className="textarea" rows={4} value={webhookJson} onChange={(e) => setWebhookJson(e.target.value)} />
+            <LoadingButton className="btn btn-primary" busy={busy} onClick={async () => {
+              setBusy(true)
+              try {
+                const payload = JSON.parse(webhookJson)
+                const r = await applyPaymentWebhookEvent(payload)
+                if (!r.ok) throw new Error(r.reason || 'not applied')
+                await refresh()
+                toast(r.fullyPaid ? 'Invoice marked paid from webhook' : 'Partial payment applied', 'success')
+              } catch (e) {
+                toast(e?.message || 'Webhook apply failed', 'error')
+              } finally { setBusy(false) }
+            }}>Apply payment event</LoadingButton>
+            <h3>Bank CSV presets</h3>
+            <ul className="muted" style={{ fontSize: 13 }}>
+              {BANK_PRESETS.map((p) => <li key={p.id}>{p.label}</li>)}
+            </ul>
+            <p className="muted" style={{ fontSize: 12 }}>Bank import auto-guesses FNB / Standard / Absa / Nedbank / Capitec headers via <code>bankPresets.js</code>.</p>
+            <p><Link to="/bank">Open bank import →</Link> · <Link to="/webhooks">Webhooks →</Link></p>
           </div>
         )}
 
