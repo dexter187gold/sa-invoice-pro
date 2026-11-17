@@ -40,6 +40,12 @@ jobs:
             -D /tmp/client-portal-cors.headers -o /dev/null \
             https://saip-sync.onrender.com/api/client-portal/login
           grep -qi 'Access-Control-Allow-Origin: https://sa-invoice-pro-client-portal.pcrepairdex.workers.dev' /tmp/client-portal-cors.headers
+          curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-all-errors \
+            -H 'Origin: https://sa-invoice-pro-client-portal.pcrepairdex.workers.dev' \
+            -D /tmp/client-portal-health.headers -o /tmp/client-portal-health.json \
+            https://saip-sync.onrender.com/api/client-portal/health
+          grep -qi 'Access-Control-Allow-Origin: https://sa-invoice-pro-client-portal.pcrepairdex.workers.dev' /tmp/client-portal-health.headers
+          grep -q 'https://sa-invoice-pro-client-portal.pcrepairdex.workers.dev' /tmp/client-portal-health.json
           status=$(curl --silent --show-error --retry 8 --retry-delay 5 --retry-all-errors \
             -H 'Origin: https://sa-invoice-pro-client-portal.pcrepairdex.workers.dev' \
             -H 'Content-Type: application/json' \
