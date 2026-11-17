@@ -129,7 +129,7 @@ export async function activate(key) {
   const meta = {
     ...(j.meta || {}),
     server: true,
-    plan: j.plan || j.meta?.plan || 'standard',
+    plan: j.plan || j.planId || j.plan_id || j.tier || j.license?.plan || j.meta?.plan || j.meta?.planId || j.meta?.planName || j.meta?.tier || 'standard',
     activatedAt: j.meta?.activatedAt || new Date().toISOString(),
     hwid,
     activationToken: token || j.meta?.activationToken || null,
@@ -163,6 +163,20 @@ export async function revalidateLicense() {
     if (!licensed) {
       await clearLicenseLocal()
       return { ok: false, licensed: false, reason: j.error || 'not_licensed', remote: j }
+    }
+    // Verification endpoints may return the plan under different field names.
+    // Refresh local plan metadata when the server supplies an authoritative value.
+    const remotePlan = j.plan || j.planId || j.plan_id || j.tier || j.license?.plan ||
+      j.meta?.plan || j.meta?.planId || j.meta?.planName || j.meta?.tier
+    if (remotePlan) {
+      const currentMeta = await getSetting('licenseMeta', {}) || {}
+      const updatedMeta = { ...currentMeta, ...(j.meta || {}), plan: remotePlan, server: true }
+      await setSetting('licenseMeta', updatedMeta)
+      try {
+        localStorage.setItem('sa_license_cache', JSON.stringify({
+          key, meta: updatedMeta, activationToken: token || updatedMeta.activationToken,
+        }))
+      } catch {}
     }
     return { ok: true, licensed: true, remote: j }
   } catch (e) {
