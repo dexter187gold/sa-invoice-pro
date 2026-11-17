@@ -28,3 +28,59 @@
     -webkit-overflow-scrolling: touch;
   }
 }
+
+/* Portrait-first onboarding: never trap the last setup fields below the fold. */
+.auth-page {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start !important;
+  justify-content: center;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: auto !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  padding: 16px 12px calc(28px + env(safe-area-inset-bottom)) !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+.auth-page > *,
+.auth-page .page-fade,
+.auth-page .auth-card {
+  min-width: 0;
+  max-width: 100%;
+}
+.auth-page .auth-card,
+.auth-page .auth-card-modern,
+.form-scroll-host {
+  max-height: none !important;
+  height: auto !important;
+  overflow: visible !important;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.auth-page form {
+  min-width: 0;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+.auth-page input,
+.auth-page select,
+.auth-page textarea,
+.auth-page button {
+  max-width: 100%;
+  scroll-margin-block: 18px;
+}
+@media (max-width: 767px) {
+  .auth-page { align-items: flex-start !important; }
+  .auth-page .auth-card { width: 100% !important; }
+  .auth-page .form-grid,
+  .auth-page .form-grid.cols-2,
+  .auth-page .form-grid.cols-3 {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .auth-page .form-section { min-width: 0; }
+}
+@media (max-height: 700px) {
+  .auth-page { padding-top: 10px !important; }
+}
