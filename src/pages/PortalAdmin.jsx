@@ -83,7 +83,7 @@ export default function PortalAdmin() {
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12, alignItems: 'start' }}>
         <div><strong>{acc.name || acc.email}</strong><div className="muted">{acc.email}</div><div className="muted" style={{ fontSize: 12 }}>Client ID: {acc.clientId || '—'} · Last login: {acc.lastLoginAt ? new Date(acc.lastLoginAt).toLocaleString() : 'Never'}</div><div className="muted" style={{ fontSize: 12 }}>{acc.counts?.invoices || 0} invoices · {acc.counts?.quotes || 0} quotes · {acc.counts?.tickets || 0} jobs · {acc.counts?.payments || 0} payments</div>
         <div className="muted" style={{ fontSize: 12, marginTop: 5 }}><span style={{ color: acc.clientOnline ? '#16a34a' : '#94a3b8' }}>● Customer {acc.clientOnline ? 'online' : 'offline'}</span> · <span style={{ color: acc.businessOnline ? '#16a34a' : '#94a3b8' }}>● Business {acc.businessOnline ? 'online' : 'offline'}</span>{acc.unreadMessages ? ' · ' + acc.unreadMessages + ' unread message(s)' : ''}</div>
-        {acc.lastMessage && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Latest: {acc.lastMessage.sender === 'client' ? 'Customer: ' : 'Business: '}{String(acc.lastMessage.message || '').slice(0, 110)}</div></div>
+        {acc.lastMessage && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Latest: {acc.lastMessage.sender === 'client' ? 'Customer: ' : 'Business: '}{String(acc.lastMessage.message || '').slice(0, 110)}</div>}</div>
         <span className="badge">{acc.active ? 'Active' : 'Disabled'}</span>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
