@@ -223,7 +223,7 @@
       '<div class="eyebrow">Client portal · Sniper desk</div>' +
       '<h1>Sign in</h1>' +
       '<p class="muted">Use the email and PIN from your workshop.</p>' +
-      '<label>Email</label><input id="email" type="email" autocomplete="username" />' +
+      '<label>Username / email</label><input id="email" type="text" autocomplete="username" />' +
       '<label>PIN</label><input id="pin" type="password" inputmode="numeric" autocomplete="current-password" />' +
       '<div style="margin-top:1rem"><button class="btn" id="go" style="width:100%">Enter portal</button></div>' +
       (err ? '<p class="err">' + err + '</p>' : '') +
@@ -258,6 +258,7 @@
   }
 
   function logout() {
+    if (window.__saipPortalChatTimer) { clearInterval(window.__saipPortalChatTimer); window.__saipPortalChatTimer = null }
     setToken('')
     renderLogin()
   }
@@ -384,7 +385,7 @@
         }
 
         if (tab === 'payments') {
-          html += '<div class="card"><strong>Payments</strong>'
+          html += '<div class="card"><div class="row"><strong>Payments</strong><div class="actions"><button class="btn btn-ghost btn-sm" id="print-payments">Print / Save as PDF</button><button class="btn btn-ghost btn-sm" id="download-payments">Download CSV</button></div></div>'
           var ps = dash.payments || []
           if (!ps.length) {
             html += '<p class="muted">No payments recorded yet. Unpaid invoices can be paid under the Invoices tab.</p>'
@@ -418,6 +419,20 @@
             }
           }
         })
+        var printPaymentsBtn = document.getElementById('print-payments')
+        if (printPaymentsBtn) printPaymentsBtn.onclick = function () { window.print() }
+        var downloadPaymentsBtn = document.getElementById('download-payments')
+        if (downloadPaymentsBtn) downloadPaymentsBtn.onclick = function () {
+          var rows = [['Date / time', 'Amount', 'Method', 'Reference', 'Status']]
+          ;(dash.payments || []).forEach(function (p) {
+            rows.push([dateTimeFmt(p.createdAt || p.paidAt || p.date), p.amount, p.method || p.channel, p.reference || p.transactionId, p.status])
+          })
+          var blob = new Blob([rows.map(function (row) { return row.map(csvCell).join(',') }).join('\\r\\n')], { type: 'text/csv;charset=utf-8' })
+          var url = URL.createObjectURL(blob)
+          var link = document.createElement('a')
+          link.href = url; link.download = 'SAIP-payment-history.csv'; link.click()
+          URL.revokeObjectURL(url)
+        }
         var printBtn = document.getElementById('print-statement')
         if (printBtn) printBtn.onclick = function () { window.print() }
         var downloadBtn = document.getElementById('download-statement')
