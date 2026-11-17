@@ -443,6 +443,15 @@ export const Sync = {
     })
   },
 
+  async getClientPortalMessages(email) {
+    return request('/api/client-portal/messages/business?email=' + encodeURIComponent(email))
+  },
+  async replyToClientPortalMessage(email, message) {
+    return request('/api/client-portal/messages/business/reply', {
+      method: 'POST',
+      body: JSON.stringify({ email, message }),
+    })
+  },
   async resetClientPortalPin(email) {
     return request('/api/client-portal/accounts/' + encodeURIComponent(email) + '/reset-pin', {
       method: 'POST',
