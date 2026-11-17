@@ -564,6 +564,9 @@ def owner_permanent_delete_license():
             del keys[existing_key]
             removed += 1
     reqs.pop(hwid, None)
+    for account in (db.get("accounts") or {}).values():
+        if isinstance(account, dict) and key and str(account.get("key") or "").strip().upper() == key:
+            account.pop("key", None)
     user = db.setdefault("users", {}).get(hwid)
     if isinstance(user, dict):
         for field in ("key", "activationToken", "expiresAt", "expiry", "trialEndsAt", "expiryEnforced", "activatedAt"):
@@ -590,6 +593,9 @@ def owner_permanent_delete_device():
     existed = hwid in users or hwid in reqs
     users.pop(hwid, None)
     reqs.pop(hwid, None)
+    for account in (db.get("accounts") or {}).values():
+        if isinstance(account, dict):
+            account["devices"] = [device_id for device_id in (account.get("devices") or []) if str(device_id) != hwid]
     removed_keys = 0
     for existing_key, record in list(keys.items()):
         if isinstance(record, dict) and str(record.get("hwid") or "") == hwid:
