@@ -101,7 +101,8 @@ def register_developer_console(app, load_fn, now_display_fn=None):
                 continue
             key_cards.append(
                 f"""<article class="key-card">
-                  <div class="card-top"><code>{_e(key)}</code><span class="status-pill">{'Used' if record.get('used') else 'Unused'}</span></div>
+                  <div class="card-top"><code>{_e(key)}</code><span class="status-pill">{'Revoked' if record.get('revoked') else ('Used' if record.get('used') else 'Unused')}</span></div>
+                  <div class="status-actions"><button type="button" onclick="navigator.clipboard.writeText({_e(json.dumps(key))})">Copy key</button></div>
                   <div class="meta-grid">
                     <div><span>Plan</span><b>{_e(record.get('plan') or '—')}</b></div>
                     <div><span>Customer</span><b>{_e(record.get('boundEmail') or record.get('email') or '—')}</b></div>
