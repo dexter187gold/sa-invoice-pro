@@ -215,7 +215,7 @@ export async function getLicenseStatus() {
   await recoverDeviceLicenseSettings()
   const trialStart = await ensureTrialStarted()
   const key = await getSetting('licenseKey', null)
-  const meta = await getSetting('licenseMeta', null)
+  let meta = await getSetting('licenseMeta', null)
   const token = await getSetting('activationToken', null)
   const hwid = await getHardwareId()
   const elapsed = (Date.now() - new Date(trialStart).getTime()) / 86400000
