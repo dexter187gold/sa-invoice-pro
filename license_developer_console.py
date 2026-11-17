@@ -78,6 +78,17 @@ def register_developer_console(app, load_fn, now_display_fn=None):
                     <button name="status" value="blocked">Block</button>
                     <button name="status" value="expired">Expire</button>
                   </form>
+                  <form method="post" action="/owner/permanent-delete-device" onsubmit="return confirm('Permanently delete this device registration and every key/request bound to it? This cannot be undone.');">
+                    <input type="hidden" name="hwid" value="{_e(hwid)}"/>
+                    <input name="confirm" required autocomplete="off" placeholder="Type DELETE DEVICE" aria-label="Type DELETE DEVICE to confirm"/>
+                    <button class="danger" type="submit">Permanently remove device</button>
+                  </form>
+                  <form method="post" action="/owner/permanent-delete-user" onsubmit="return confirm('Permanently remove this registered user and all devices/licences registered to this email? This cannot be undone.');">
+                    <input type="hidden" name="email" value="{_e(email if email != 'No email' else '')}"/>
+                    <input type="hidden" name="hwid" value="{_e(hwid)}"/>
+                    <input name="confirm" required autocomplete="off" placeholder="Type DELETE USER" aria-label="Type DELETE USER to confirm"/>
+                    <button class="danger" type="submit">Permanently remove registered user</button>
+                  </form>
                 </article>"""
             )
         if not device_cards:
@@ -112,7 +123,12 @@ def register_developer_console(app, load_fn, now_display_fn=None):
                     <div><span>Expiry</span><b>{_e(record.get('expiresAt') or 'Set on activation')}</b></div>
                   </div>
                   <div class="muted-line">HWID · {_e(record.get('hwid') or 'Unbound')}</div>
-                  <form method="post" action="/owner/revoke-issued"><input type="hidden" name="hwid" value="{_e(record.get('hwid') or '')}"/><button type="submit" {'disabled' if record.get('revoked') or not record.get('hwid') else ''}>Revoke &amp; remove</button></form>
+                  <form method="post" action="/owner/revoke-issued"><input type="hidden" name="hwid" value="{_e(record.get('hwid') or '')}"/><button type="submit" {'disabled' if record.get('revoked') or not record.get('hwid') else ''}>Revoke &amp; remove (retain history)</button></form>
+                  <form method="post" action="/owner/permanent-delete-license" onsubmit="return confirm('Permanently delete this issued licence key and its request record?');">
+                    <input type="hidden" name="hwid" value="{_e(record.get('hwid') or '')}"/>
+                    <input name="confirm" required autocomplete="off" placeholder="Type DELETE LICENSE" aria-label="Type DELETE LICENSE to confirm"/>
+                    <button class="danger" type="submit">Permanently delete licence</button>
+                  </form>
                 </article>"""
             )
         if not key_cards:
@@ -208,7 +224,7 @@ main{{max-width:1200px;margin:auto;padding:20px}}h1{{font-size:23px;margin:0 0 4
 .card-top{{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px}}.card-top strong{{overflow-wrap:anywhere}}code{{font-size:11px;color:#a7c5b7;overflow-wrap:anywhere}}
 .status-pill,.plan-code{{display:inline-block;border-radius:99px;padding:3px 9px;background:#123b2d;color:#a7f3d0;border:1px solid #23634b;font-size:11px}}
 .meta-grid{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}}.meta-grid span{{display:block;color:var(--muted);font-size:11px}}.meta-grid b{{display:block;font-size:12px;overflow-wrap:anywhere}}
-.status-actions{{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}}button,.btn{{background:#14533d;color:#d1fae5;border:1px solid #287452;border-radius:9px;padding:8px 11px;cursor:pointer;font-size:12px;font-weight:700}}button:hover,.btn:hover{{filter:brightness(1.12)}}.status-actions button{{flex:1 1 70px}}
+.status-actions{{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}}button,.btn{{background:#14533d;color:#d1fae5;border:1px solid #287452;border-radius:9px;padding:8px 11px;cursor:pointer;font-size:12px;font-weight:700}}button:hover,.btn:hover{{filter:brightness(1.12)}}button.danger{{background:#552633;border-color:#8b3547;color:#ffe4e6}}form[action*="permanent-delete"]{{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;margin-top:10px}}form[action*="permanent-delete"] input{{margin:0}}form[action*="permanent-delete"] button{{white-space:normal}}.status-actions button{{flex:1 1 70px}}
 label{{display:block;color:var(--muted);font-size:12px;margin:8px 0 4px}}input,select{{width:100%;background:#071b16;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:10px;margin-bottom:8px}}
 .form-grid{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}.empty{{padding:24px;text-align:center;color:var(--muted);border:1px dashed #3a6553;border-radius:12px}}
 .search-wrap{{max-width:440px;margin:12px 0}}.plan-card strong{{display:block;font-size:18px;color:var(--mint)}}.plan-card p{{color:var(--muted);font-size:12px}}
