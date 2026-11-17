@@ -150,3 +150,13 @@ input:focus {
 @media (prefers-reduced-motion: reduce) {
   .card, .btn, .toast { animation: none !important; transition: none !important; }
 }
+
+@media print {
+  body { background: #fff !important; color: #111 !important; }
+  body::before, .topbar, .tabs, button, .actions { display: none !important; }
+  .shell { max-width: none; padding: 0; }
+  .card { background: #fff !important; color: #111 !important; box-shadow: none; border: 1px solid #bbb; break-inside: avoid; }
+  .muted { color: #444 !important; }
+  table { color: #111 !important; }
+  th, td { border-color: #bbb !important; }
+}

@@ -269,7 +269,7 @@
             var canPay = isUnpaid(i.status)
             html +=
               '<div class="row"><div style="flex:1"><strong>' + (i.number || i.id) + '</strong>' +
-              '<div class="muted">' + dateFmt(i.date || i.issuedAt || i.createdAt) + ' · Total ' + money(i.total) +
+              '<div class="muted">' + dateTimeFmt(i.createdAt || i.issuedAt || i.date) + ' · Total ' + money(i.total) +
               ' · Paid ' + money(i.amountPaid) + ' · Due ' + money(i.amountDue != null ? i.amountDue : Math.max(0, Number(i.total || 0) - Number(i.amountPaid || 0))) + '</div>' +
               (canPay && Number(i.amountDue != null ? i.amountDue : (Number(i.total || 0) - Number(i.amountPaid || 0))) > 0
                 ? '<div class="actions"><button class="btn btn-pay btn-sm" data-pay-id="' +
@@ -290,7 +290,7 @@
             var can = st === 'sent' || st === 'draft' || !st
             html +=
               '<div class="row"><div style="flex:1"><strong>' + (q.number || q.id || 'Quote') + '</strong>' +
-              '<div class="muted">' + dateFmt(q.date || q.createdAt) + ' · ' + money(q.total) + '</div>' +
+              '<div class="muted">' + dateTimeFmt(q.createdAt || q.date) + ' · ' + money(q.total) + '</div>' +
               (can
                 ? '<div class="actions">' +
                   '<button class="btn btn-ok btn-sm" data-q="' + q.id + '" data-d="accepted">Accept</button>' +
@@ -308,9 +308,12 @@
           if (!ts.length) html += '<p class="muted">No open service jobs.</p>'
           ts.forEach(function (t) {
             html +=
-              '<div class="row"><div><strong>' + (t.title || t.subject || t.number || t.id) + '</strong>' +
-              '<div class="muted">' + (t.description || '').slice(0, 120) + '</div></div>' +
-              pill(t.status) + '</div>'
+              '<div class="row"><div style="flex:1"><strong>' + esc(t.number || t.title || t.subject || t.id) + '</strong>' +
+              '<div class="muted">' + esc(dateTimeFmt(t.createdAt || t.openedAt || t.date)) + ' · ' + esc(t.device || t.deviceLabel || 'Service job') + (t.imei ? ' · IMEI ' + esc(t.imei) : '') + '</div>' +
+              '<div>' + esc((t.description || t.publicNote || t.customerNote || '').slice(0, 220)) + '</div>' +
+              (t.publicNote || t.customerNote ? '<div class="muted">Workshop note: ' + esc(t.publicNote || t.customerNote) + '</div>' : '') +
+              (t.completedAt || t.closedAt || t.updatedAt ? '<div class="muted">Last updated: ' + esc(dateTimeFmt(t.completedAt || t.closedAt || t.updatedAt)) + '</div>' : '') +
+              '</div>' + pill(t.status) + '</div>'
           })
           html += '</div>'
         }

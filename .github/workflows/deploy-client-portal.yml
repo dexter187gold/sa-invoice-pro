@@ -1,0 +1,27 @@
+name: Deploy Customer Client Portal
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'client-portal/**'
+      - '.github/workflows/deploy-client-portal.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-client-portal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Deploy standalone customer portal
+        working-directory: client-portal
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 deploy --config wrangler.toml
