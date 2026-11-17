@@ -9,6 +9,8 @@ import { Sync } from '../lib/sync'
 import { canUseCloudSync } from '../lib/soloMode'
 import { ensureWorkspaceSynced, flushPushQueue, describeEnsureResult } from '../lib/workspaceSync'
 import { cloudLogin, cloudRegister } from '../lib/cloudAuth'
+import { isolateLicenseForAccount } from '../lib/licenseIsolation'
+import { assertAndRegisterDevice } from '../lib/deviceLimits'
 
 const AppCtx = createContext(null)
 const FIVE_MIN_MS = 5 * 60 * 1000
@@ -213,10 +215,40 @@ export function AppProvider({ children }) {
     document.documentElement.dataset.density = density
   }, [density])
 
-  const login = (username, password) =>
-    cloudLogin(username, password, { online, toast, setSession, setUser, refresh, skipAutoPush })
+  const login = async (username, password) => {
+    const result = await cloudLogin(username, password, {
+      online, toast, setSession, setUser, refresh, skipAutoPush,
+    })
+    const email = result?.user?.email || username
+    try {
+      await isolateLicenseForAccount(email)
+    } catch (e) {
+      console.warn('[login] license isolate', e?.message || e)
+    }
+    try {
+      await assertAndRegisterDevice({ accountEmail: email })
+    } catch (e) {
+      if (e?.code === 'device_limit') {
+        try { Sync.logout() } catch {}
+        setSession(null)
+        setUser(null)
+        throw e
+      }
+      console.warn('[login] device register', e?.message || e)
+    }
+    return result
+  }
 
-  const register = (form) => cloudRegister(form, { online, toast, setSession, setUser, refresh })
+  const register = async (form) => {
+    const result = await cloudRegister(form, { online, toast, setSession, setUser, refresh })
+    const email = result?.user?.email || form?.email
+    try {
+      await isolateLicenseForAccount(email)
+    } catch (e) {
+      console.warn('[register] license isolate', e?.message || e)
+    }
+    return result
+  }
 
   const resetPassword = async ({ usernameOrEmail, emailConfirm, newPassword, recoveryCode }) => {
     const emailNeedle = String(emailConfirm || usernameOrEmail || '').trim().toLowerCase()
@@ -244,6 +276,7 @@ export function AppProvider({ children }) {
         if (data.token) {
           setSession({ email: emailNeedle, name: data.user?.name })
           setUser({ email: emailNeedle, name: data.user?.name })
+          try { await isolateLicenseForAccount(emailNeedle) } catch {}
         }
       } catch (e) {
         console.warn('[resetPassword] local mirror', e.message || e)
