@@ -84,3 +84,32 @@
 @media (max-height: 700px) {
   .auth-page { padding-top: 10px !important; }
 }
+
+/* Mobile setup: inputs and buttons always interactive; no nested scroll traps */
+@media (max-width: 767px) {
+  .auth-page {
+    display: block !important;
+    place-items: unset !important;
+  }
+  .auth-page .auth-card,
+  .auth-page .auth-card-modern,
+  .auth-page .setup-wizard-card {
+    max-height: none !important;
+    overflow: visible !important;
+    width: 100% !important;
+    pointer-events: auto !important;
+  }
+  .auth-page input,
+  .auth-page select,
+  .auth-page textarea,
+  .auth-page button,
+  .company-profile-form,
+  .company-profile-form * {
+    pointer-events: auto !important;
+    touch-action: manipulation;
+  }
+  .company-profile-form .form-grid.cols-2,
+  .company-profile-form .form-grid.cols-3 {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
