@@ -31,7 +31,7 @@ const PLAN_FEATURES = {
 const OWNER_ONLY = new Set(['/owner-console', '/owner-recovery', '/dev-portal'])
 
 export function normalizedPlan(status) {
-  const raw = status?.meta?.plan || status?.meta?.planId || status?.meta?.tier || ''
+  const raw = status?.meta?.plan || status?.meta?.planId || status?.meta?.planName || status?.meta?.tier || status?.plan || status?.planId || status?.licensePlan || ''
   // Map lifetime→solo, enterprise→multi for feature gates
   return featurePlanGroup(raw) || normalizePlanId(raw) || ''
 }
@@ -43,6 +43,9 @@ export function canAccessPath(pathname, status, isOwner = false) {
   if (OWNER_ONLY.has(path)) return !!isOwner
 
   if (status?.licensed) {
+    // Enterprise aliases (E, Enterprise, Enterprise Lifetime, etc.) are
+    // normalized to the multi-branch feature group, including portal admin.
+    if (path === '/portal-admin' && ['enterprise', 'multi'].includes(normalizePlanId(status?.meta?.plan || status?.meta?.planId || status?.meta?.planName || status?.meta?.tier || status?.plan || status?.planId || status?.licensePlan))) return true
     if (path === '/license' || path === '/support' || path === '/about' || path === '/settings') return true
     const plan = normalizedPlan(status)
     const allowed = PLAN_FEATURES[plan] || BASIC_PATHS
