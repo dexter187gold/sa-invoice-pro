@@ -18,11 +18,8 @@ export default function PortalAdmin() {
   async function load() {
     setError('')
     try {
-      const team = await Sync.getTeam()
-      if (!team?.isOwner) {
-        setState('denied')
-        return
-      }
+      // The server scopes this list to the authenticated workspace owner ID.
+      // Do not rely on a possibly stale local team-role cache to hide Enterprise features.
       const data = await Sync.listClientPortalAccounts()
       setAccounts(Array.isArray(data.accounts) ? data.accounts : [])
       setState('ready')
@@ -32,7 +29,11 @@ export default function PortalAdmin() {
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    const timer = setInterval(load, 30000)
+    return () => clearInterval(timer)
+  }, [])
 
   async function openThread(email) {
     setSelectedThread(email); setThreadBusy(true); setError('')
@@ -73,14 +74,16 @@ export default function PortalAdmin() {
     <div className="page-header"><div><h1>Client portal administration</h1><p className="subtitle">Manage portal access for clients in your verified workspace.</p></div><button className="btn btn-outline" onClick={load}>Refresh</button></div>
     <p><Link to="/clients">← Back to clients</Link></p>
     {state === 'loading' && <div className="card">Verifying owner access and loading accounts…</div>}
-    {state === 'denied' && <div className="card"><h2>Owner access required</h2><p>This console requires server-verified workspace owner access. A local seat role cannot grant access.</p><Link className="btn" to="/owner-recovery">Owner recovery</Link></div>}
+    {state === 'denied' && <div className="card"><h2>Owner access required</h2><p>The server did not return portal accounts for this signed-in workspace. Check that you are signed into the Enterprise workspace owner account.</p><Link className="btn" to="/owner-recovery">Owner recovery</Link></div>}
     {state === 'error' && <div className="card" role="alert">{error}</div>}
     {error && state !== 'error' && <div className="card" role="alert">{error}</div>}
     {notice && <div className="card" role="status">{notice}</div>}
     {newPin && <div className="card"><strong>Replacement PIN for {newPin.email}</strong><p style={{ fontSize: 24, fontWeight: 800, letterSpacing: 3 }}>{newPin.pin}</p><button className="btn btn-outline" onClick={() => navigator.clipboard?.writeText(newPin.email + '\\nPIN: ' + newPin.pin).then(() => setNotice('PIN copied. Share it through a trusted channel.')).catch(() => setError('Clipboard unavailable; select and copy the PIN manually.'))}>Copy login details</button><button className="btn btn-outline" style={{ marginLeft: 8 }} onClick={() => setNewPin(null)}>Hide PIN</button></div>}
     {state === 'ready' && (accounts.length ? accounts.map((acc) => <div className="card" key={acc.email}>
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12, alignItems: 'start' }}>
-        <div><strong>{acc.name || acc.email}</strong><div className="muted">{acc.email}</div><div className="muted" style={{ fontSize: 12 }}>Client ID: {acc.clientId || '—'} · Last login: {acc.lastLoginAt ? new Date(acc.lastLoginAt).toLocaleString() : 'Never'}</div><div className="muted" style={{ fontSize: 12 }}>{acc.counts?.invoices || 0} invoices · {acc.counts?.quotes || 0} quotes · {acc.counts?.tickets || 0} jobs</div></div>
+        <div><strong>{acc.name || acc.email}</strong><div className="muted">{acc.email}</div><div className="muted" style={{ fontSize: 12 }}>Client ID: {acc.clientId || '—'} · Last login: {acc.lastLoginAt ? new Date(acc.lastLoginAt).toLocaleString() : 'Never'}</div><div className="muted" style={{ fontSize: 12 }}>{acc.counts?.invoices || 0} invoices · {acc.counts?.quotes || 0} quotes · {acc.counts?.tickets || 0} jobs · {acc.counts?.payments || 0} payments</div>
+        <div className="muted" style={{ fontSize: 12, marginTop: 5 }}><span style={{ color: acc.clientOnline ? '#16a34a' : '#94a3b8' }}>● Customer {acc.clientOnline ? 'online' : 'offline'}</span> · <span style={{ color: acc.businessOnline ? '#16a34a' : '#94a3b8' }}>● Business {acc.businessOnline ? 'online' : 'offline'}</span>{acc.unreadMessages ? ' · ' + acc.unreadMessages + ' unread message(s)' : ''}</div>
+        {acc.lastMessage && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Latest: {acc.lastMessage.sender === 'client' ? 'Customer: ' : 'Business: '}{String(acc.lastMessage.message || '').slice(0, 110)}</div></div>
         <span className="badge">{acc.active ? 'Active' : 'Disabled'}</span>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
