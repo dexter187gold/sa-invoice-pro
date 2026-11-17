@@ -59,7 +59,21 @@
   }
   function isUnpaid(status) {
     var s = String(status || '').toLowerCase()
-    return ['paid', 'settled', 'closed', 'cancelled', 'void'].indexOf(s) < 0
+    return ['paid', 'settled', 'closed', 'cancelled', 'canceled', 'void', 'voided'].indexOf(s) < 0
+  }
+  function invoicePaid(invoice, dash) {
+    var keyId = String(invoice.id || '')
+    var keyNumber = String(invoice.number || '')
+    var linked = (dash.payments || []).filter(function (p) {
+      var ref = String(p.invoiceId || p.invoice_id || p.invoiceNumber || p.invoice_number || '')
+      return (keyId && ref === keyId) || (keyNumber && ref === keyNumber)
+    }).reduce(function (sum, p) { return sum + (Number(p.amount) || 0) }, 0)
+    return Math.max(Number(invoice.amountPaid) || 0, linked)
+  }
+  function invoiceDue(invoice, dash) {
+    if (!isUnpaid(invoice.status)) return 0
+    var calculated = Math.max(0, Number(invoice.total || invoice.amount || 0) - invoicePaid(invoice, dash))
+    return invoice.amountDue == null ? calculated : Math.min(calculated, Math.max(0, Number(invoice.amountDue) || 0))
   }
   async function api(path, opts) {
     var headers = { Accept: 'application/json', 'Content-Type': 'application/json' }
@@ -158,12 +172,6 @@
         tabRef.current = 'invoices'
       }
       paint()
-      var paymentReturn = new URLSearchParams(window.location.search).get('payment')
-      if (paymentReturn === 'processing') {
-        showToast('Payment submitted. Waiting for secure provider confirmation. Refresh your account in a moment.')
-      } else if (paymentReturn === 'cancelled') {
-        showToast('Payment was cancelled. No payment confirmation was received.')
-      }
     } catch (e) {
       alert(e.message || 'Could not save decision')
       throw e
@@ -256,7 +264,7 @@
         if (tab === 'statement') {
           var statement = dash.accountStatement || {}
           var entries = Array.isArray(statement.entries) ? statement.entries : []
-          html += '<div class="card"><div class="row" style="align-items:center"><div><strong>Full account statement</strong><div class="muted">Generated ' + dateTimeFmt(statement.generatedAt) + '</div></div><div class="actions"><button class="btn btn-ghost btn-sm" id="print-statement">Print / Save PDF</button><button class="btn btn-ghost btn-sm" id="download-statement">Download CSV</button></div></div>' +
+          html += '<div class="card"><div class="row" style="align-items:center"><div><strong>Full account statement</strong><div class="muted">Generated ' + dateTimeFmt(statement.generatedAt) + '</div></div><div class="actions"><button class="btn btn-ghost btn-sm" data-refresh>Refresh</button><button class="btn btn-ghost btn-sm" id="print-statement">Print / Save PDF</button><button class="btn btn-ghost btn-sm" id="download-statement">Download CSV</button></div></div>' +
             '<div class="stats">' +
             '<div class="stat"><b>' + money(statement.totalInvoiced) + '</b><span class="muted">Charges</span></div>' +
             '<div class="stat"><b>' + money(statement.totalPaid) + '</b><span class="muted">Payments received</span></div>' +
@@ -277,9 +285,9 @@
             html +=
               '<div class="row"><div style="flex:1"><strong>' + (i.number || i.id) + '</strong>' +
               '<div class="muted">Issued ' + dateTimeFmt(i.createdAt || i.issuedAt || i.date) + (i.dueDate ? ' · Due date ' + esc(dateFmt(i.dueDate)) : '') + ' · Total ' + money(i.total) +
-              ' · Paid ' + money(i.amountPaid) + ' · Due ' + money(i.amountDue != null ? i.amountDue : Math.max(0, Number(i.total || 0) - Number(i.amountPaid || 0))) +
+              ' · Paid ' + money(invoicePaid(i, dash)) + ' · Due ' + money(invoiceDue(i, dash)) +
               (i.paidAt || i.paidDate ? ' · Paid on ' + esc(dateTimeFmt(i.paidAt || i.paidDate)) : '') + '</div>' +
-              (canPay && Number(i.amountDue != null ? i.amountDue : (Number(i.total || 0) - Number(i.amountPaid || 0))) > 0
+              (canPay && invoiceDue(i, dash) > 0
                 ? '<div class="actions"><button class="btn btn-pay btn-sm" data-pay-id="' +
                   esc(i.id || i.number) +
                   '">Pay Now</button></div>'
@@ -407,6 +415,12 @@
         })
       }
       paint()
+      var paymentReturn = new URLSearchParams(window.location.search).get('payment')
+      if (paymentReturn === 'processing') {
+        showToast('Payment submitted. Waiting for secure provider confirmation. Refresh your account in a moment.')
+      } else if (paymentReturn === 'cancelled') {
+        showToast('Payment was cancelled. No payment confirmation was received.')
+      }
     } catch (e) {
       setToken('')
       renderLogin(e.message || 'Session expired')
