@@ -540,6 +540,105 @@ def heartbeat():
 
 
 
+@app.post("/owner/permanent-delete-license")
+def owner_permanent_delete_license():
+    """Permanently remove the issued key/request for one device, keeping its registration."""
+    denied = _owner_page_guard()
+    if denied:
+        return denied
+    hwid = _valid_hwid(request.form.get("hwid"))
+    if not hwid or request.form.get("confirm") != "DELETE LICENSE":
+        return redirect(url_for("dashboard", msg="Permanent licence deletion cancelled or invalid."))
+    db = load()
+    reqs = db.setdefault("requests", {})
+    keys = db.setdefault("keys", {})
+    req = reqs.get(hwid) or {}
+    removed = 0
+    key = _valid_key(req.get("key"))
+    if key and key in keys and str(keys[key].get("hwid") or "") == hwid:
+        del keys[key]
+        removed += 1
+    # Remove any additional key records explicitly bound to this HWID.
+    for existing_key, record in list(keys.items()):
+        if isinstance(record, dict) and str(record.get("hwid") or "") == hwid:
+            del keys[existing_key]
+            removed += 1
+    reqs.pop(hwid, None)
+    user = db.setdefault("users", {}).get(hwid)
+    if isinstance(user, dict):
+        for field in ("key", "activationToken", "expiresAt", "expiry", "trialEndsAt", "expiryEnforced", "activatedAt"):
+            user.pop(field, None)
+        user["mode"] = "handshake"
+        user["status"] = "handshake"
+    save(db)
+    return redirect(url_for("dashboard", msg=f"Permanently removed {removed} issued key record(s) for this device. Device registration retained."))
+
+
+@app.post("/owner/permanent-delete-device")
+def owner_permanent_delete_device():
+    """Permanently remove a device registration and every licence/request bound to it."""
+    denied = _owner_page_guard()
+    if denied:
+        return denied
+    hwid = _valid_hwid(request.form.get("hwid"))
+    if not hwid or request.form.get("confirm") != "DELETE DEVICE":
+        return redirect(url_for("dashboard", msg="Permanent device deletion cancelled or invalid."))
+    db = load()
+    users = db.setdefault("users", {})
+    reqs = db.setdefault("requests", {})
+    keys = db.setdefault("keys", {})
+    existed = hwid in users or hwid in reqs
+    users.pop(hwid, None)
+    reqs.pop(hwid, None)
+    removed_keys = 0
+    for existing_key, record in list(keys.items()):
+        if isinstance(record, dict) and str(record.get("hwid") or "") == hwid:
+            del keys[existing_key]
+            removed_keys += 1
+    save(db)
+    return redirect(url_for("dashboard", msg=f"Device registration {'removed' if existed else 'not found'}; {removed_keys} bound key record(s) permanently removed."))
+
+
+@app.post("/owner/permanent-delete-user")
+def owner_permanent_delete_user():
+    """Remove all licence-server registrations/devices and keys for one registered email."""
+    denied = _owner_page_guard()
+    if denied:
+        return denied
+    email = str(request.form.get("email") or "").strip().lower()[:254]
+    hwid = _valid_hwid(request.form.get("hwid"))
+    if request.form.get("confirm") != "DELETE USER" or (not email and not hwid):
+        return redirect(url_for("dashboard", msg="Permanent user deletion cancelled or invalid."))
+    db = load()
+    users = db.setdefault("users", {})
+    reqs = db.setdefault("requests", {})
+    keys = db.setdefault("keys", {})
+    targets = set()
+    if email:
+        targets.update(
+            device_id for device_id, record in users.items()
+            if isinstance(record, dict) and str(record.get("email") or "").strip().lower() == email
+        )
+        targets.update(
+            device_id for device_id, record in reqs.items()
+            if isinstance(record, dict) and str(record.get("email") or "").strip().lower() == email
+        )
+    elif hwid:
+        targets.add(hwid)
+    if hwid and not email:
+        targets.add(hwid)
+    removed_keys = 0
+    for device_id in targets:
+        users.pop(device_id, None)
+        reqs.pop(device_id, None)
+    for existing_key, record in list(keys.items()):
+        if isinstance(record, dict) and str(record.get("hwid") or "") in targets:
+            del keys[existing_key]
+            removed_keys += 1
+    save(db)
+    return redirect(url_for("dashboard", msg=f"Registered user removal complete: {len(targets)} device registration(s) and {removed_keys} key record(s) permanently removed from the active licence database."))
+
+
 @app.post("/owner/revoke-issued")
 def owner_revoke_issued():
     denied = _owner_page_guard()
