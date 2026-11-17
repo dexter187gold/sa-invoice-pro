@@ -427,7 +427,7 @@
           ;(dash.payments || []).forEach(function (p) {
             rows.push([dateTimeFmt(p.createdAt || p.paidAt || p.date), p.amount, p.method || p.channel, p.reference || p.transactionId, p.status])
           })
-          var blob = new Blob([rows.map(function (row) { return row.map(csvCell).join(',') }).join('\\r\\n')], { type: 'text/csv;charset=utf-8' })
+          var blob = new Blob([rows.map(function (row) { return row.map(csvCell).join(',') }).join('\r\n')], { type: 'text/csv;charset=utf-8' })
           var url = URL.createObjectURL(blob)
           var link = document.createElement('a')
           link.href = url; link.download = 'SAIP-payment-history.csv'; link.click()
