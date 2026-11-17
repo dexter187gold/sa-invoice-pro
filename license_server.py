@@ -613,8 +613,12 @@ def owner_permanent_delete_user():
     users = db.setdefault("users", {})
     reqs = db.setdefault("requests", {})
     keys = db.setdefault("keys", {})
+    accounts = db.setdefault("accounts", {})
     targets = set()
+    account = accounts.get(email) if email else None
     if email:
+        if isinstance(account, dict):
+            targets.update(str(device_id) for device_id in (account.get("devices") or []) if _valid_hwid(str(device_id)))
         targets.update(
             device_id for device_id, record in users.items()
             if isinstance(record, dict) and str(record.get("email") or "").strip().lower() == email
@@ -632,11 +636,14 @@ def owner_permanent_delete_user():
         users.pop(device_id, None)
         reqs.pop(device_id, None)
     for existing_key, record in list(keys.items()):
-        if isinstance(record, dict) and str(record.get("hwid") or "") in targets:
+        if isinstance(record, dict) and (str(record.get("hwid") or "") in targets or (email and str(record.get("boundEmail") or record.get("email") or "").strip().lower() == email)):
             del keys[existing_key]
             removed_keys += 1
+    removed_account = bool(email and accounts.pop(email, None) is not None)
+    if email and not targets and not removed_account:
+        return redirect(url_for("dashboard", msg="No registered user or device matched that email. Nothing was deleted."))
     save(db)
-    return redirect(url_for("dashboard", msg=f"Registered user removal complete: {len(targets)} device registration(s) and {removed_keys} key record(s) permanently removed from the active licence database."))
+    return redirect(url_for("dashboard", msg=f"Registered user removal complete: account {'deleted' if removed_account else 'not found'}, {len(targets)} device registration(s) and {removed_keys} key record(s) permanently removed from the active licence database."))
 
 
 @app.post("/owner/revoke-issued")
