@@ -325,7 +325,7 @@
               '<div class="muted">Issued ' + dateTimeFmt(i.createdAt || i.issuedAt || i.date) + (i.dueDate ? ' · Due date ' + esc(dateFmt(i.dueDate)) : '') + ' · Total ' + money(i.total) +
               ' · Paid ' + money(invoicePaid(i, dash)) + ' · Due ' + money(invoiceDue(i, dash)) +
               (i.paidAt || i.paidDate ? ' · Paid on ' + esc(dateTimeFmt(i.paidAt || i.paidDate)) : '') + '</div>' +
-              '<div class="actions"><button class="btn btn-ghost btn-sm" data-doc-kind="invoice" data-doc-id="' + esc(i.id || i.number) + '">Download / Print PDF</button></div>' +
+              '<div class="actions"><button class="btn btn-ghost btn-sm" data-doc-kind="invoice" data-doc-id="' + esc(i.id || i.number) + '">Print / Save as PDF</button></div>' +
               (canPay && invoiceDue(i, dash) > 0
                 ? '<div class="actions"><button class="btn btn-pay btn-sm" data-pay-id="' +
                   esc(i.id || i.number) +
@@ -347,7 +347,7 @@
               '<div class="row"><div style="flex:1"><strong>' + (q.number || q.id || 'Quote') + '</strong>' +
               '<div class="muted">Created ' + dateTimeFmt(q.createdAt || q.date) + ' · ' + money(q.total) +
               (q.portalDecisionAt || q.portalDecidedAt || q.decidedAt || q.updatedAt ? ' · Decision / update ' + esc(dateTimeFmt(q.portalDecisionAt || q.decidedAt || q.updatedAt)) : '') + '</div>' +
-              '<div class="actions"><button class="btn btn-ghost btn-sm" data-doc-kind="quote" data-doc-id="' + esc(q.id || q.number) + '">Download / Print PDF</button></div>' +
+              '<div class="actions"><button class="btn btn-ghost btn-sm" data-doc-kind="quote" data-doc-id="' + esc(q.id || q.number) + '">Print / Save as PDF</button></div>' +
               (can
                 ? '<div class="actions">' +
                   '<button class="btn btn-ok btn-sm" data-q="' + q.id + '" data-d="accepted">Accept</button>' +
@@ -369,7 +369,7 @@
               '<div class="muted">' + esc(dateTimeFmt(t.createdAt || t.openedAt || t.date)) + ' · ' + esc(t.device || t.deviceLabel || 'Service job') + (t.imei ? ' · IMEI ' + esc(t.imei) : '') + '</div>' +
               '<div>' + esc((t.description || t.publicNote || t.customerNote || '').slice(0, 220)) + '</div>' +
               (t.publicNote || t.customerNote ? '<div class="muted">Workshop note: ' + esc(t.publicNote || t.customerNote) + '</div>' : '') +
-              '<div class="actions"><button class="btn btn-ghost btn-sm" data-doc-kind="job" data-doc-id="' + esc(t.id || t.number) + '">Download / Print PDF</button></div>' +
+              '<div class="actions"><button class="btn btn-ghost btn-sm" data-doc-kind="job" data-doc-id="' + esc(t.id || t.number) + '">Print / Save as PDF</button></div>' +
               (t.completedAt || t.closedAt || t.updatedAt ? '<div class="muted">Last updated: ' + esc(dateTimeFmt(t.completedAt || t.closedAt || t.updatedAt)) + '</div>' : '') +
               '</div>' + pill(t.status) + '</div>'
           })
@@ -474,9 +474,12 @@
             finally { send.disabled = false }
           }
           loadMessages()
+          if (window.__saipPortalChatTimer) clearInterval(window.__saipPortalChatTimer)
+          window.__saipPortalChatTimer = setInterval(loadMessages, 15000)
         }
         app.querySelectorAll('[data-tab]').forEach(function (el) {
           el.onclick = function () {
+            if (el.getAttribute('data-tab') !== 'messages' && window.__saipPortalChatTimer) { clearInterval(window.__saipPortalChatTimer); window.__saipPortalChatTimer = null }
             tabRef.current = el.getAttribute('data-tab')
             paint()
           }
