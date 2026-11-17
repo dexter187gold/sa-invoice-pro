@@ -150,13 +150,15 @@ def register_developer_console(app, load_fn, now_display_fn=None):
             <p class="muted-line">Create a key bound to the customer's email, phone and device HWID.</p>
             <form method="post" action="/owner/admin-issue-form">
               <div class="form-grid">
-                <div><label>Customer email</label><input name="email" type="email" required placeholder="client@shop.co.za"/></div>
-                <div><label>Customer phone</label><input name="phone" type="tel" required placeholder="0821234567"/></div>
-                <div><label>Device HWID</label><input name="hwid" required placeholder="From app handshake"/></div>
-                <div><label>Plan</label><select name="plan"><option value="T">Trial</option><option value="S" selected>Solo</option><option value="P">Shop</option><option value="M">Multi-branch</option><option value="L">Lifetime</option><option value="E">Enterprise</option></select></div>
+                <div><label>Customer email</label><input name="email" type="email" required autocomplete="email" placeholder="client@shop.co.za"/></div>
+                <div><label>Customer phone</label><input name="phone" type="tel" placeholder="0821234567"/></div>
+                <div><label>Device HWID</label><input name="hwid" required maxlength="256" placeholder="Copy from the customer's app handshake"/></div>
+                <div><label>Plan</label><select name="plan" required><option value="T">Trial</option><option value="S" selected>Solo</option><option value="P">Shop</option><option value="M">Multi-branch</option><option value="L">Lifetime</option><option value="E">Enterprise</option></select></div>
+                <div><label>Duration</label><input name="duration" type="number" min="1" max="36500" value="365" required/></div>
+                <div><label>Duration unit</label><select name="unit"><option value="days" selected>Days</option><option value="months">Months (30 days)</option><option value="years">Years (365 days)</option></select></div>
               </div>
-              <label>Developer access token</label><input name="token" type="password" required autocomplete="current-password"/>
-              <button type="submit">Issue bound key</button>
+              <p class="muted-line">The server creates and stores a unique key bound to this customer and HWID. Existing active or issued keys cannot be silently re-issued.</p>
+              <button type="submit">Generate & issue verified key</button>
             </form>
           </section>"""
         duration_form = """
@@ -228,4 +230,60 @@ function filterDevices(){{const q=(document.getElementById('device-search')?.val
         except Exception:
             app.view_functions[endpoint] = lambda view=view: render_page(view)
 
-    print("[developer-console] card-based multi-page licence control centre registered")
+    def issue_customer_key():
+        from license_server import owner_cookie_authenticated, load, save, gen_key, PLAN_DAYS, PLAN_LABEL, _valid_hwid, _now
+        if not owner_cookie_authenticated():
+            return redirect("/login")
+        email = (request.form.get("email") or "").strip().lower()
+        phone = (request.form.get("phone") or "").strip()
+        hwid = _valid_hwid(request.form.get("hwid"))
+        plan = (request.form.get("plan") or "").strip().upper()
+        unit = (request.form.get("unit") or "days").strip().lower()
+        try:
+            duration = int(request.form.get("duration") or 0)
+        except (TypeError, ValueError):
+            duration = 0
+        if not email or "@" not in email or not hwid or plan not in PLAN_DAYS or unit not in ("days", "months", "years") or duration < 1:
+            return redirect("/keys?msg=Check+the+customer+email,+HWID,+plan+and+duration")
+        days = duration * {"days": 1, "months": 30, "years": 365}[unit]
+        if days > 36500:
+            return redirect("/keys?msg=Licence+duration+is+too+long")
+        db = load() or {}
+        reqs = db.setdefault("requests", {})
+        keys = db.setdefault("keys", {})
+        previous = reqs.get(hwid) or {}
+        existing_key = previous.get("key")
+        existing_record = keys.get(existing_key) if existing_key else None
+        if existing_key and existing_record and not existing_record.get("revoked"):
+            return redirect("/keys?msg=This+device+already+has+an+issued+key.+Manage+or+revoke+it+before+issuing+another")
+        key = gen_key(plan)
+        while key in keys:
+            key = gen_key(plan)
+        issued_at = _now()
+        label = PLAN_LABEL.get(plan, "Licensed")
+        keys[key] = {
+            "hwid": hwid, "plan": plan, "days": days, "label": label,
+            "boundEmail": email, "email": email, "boundPhone": phone, "phone": phone,
+            "createdAt": issued_at, "issuedAt": issued_at, "used": False,
+            "verified": True, "issuer": "developer-console",
+        }
+        reqs[hwid] = {
+            **previous, "hwid": hwid, "email": email, "phone": phone,
+            "plan": plan, "key": key, "status": "issued",
+            "issuedAt": issued_at, "company": previous.get("company", ""),
+        }
+        users = db.setdefault("users", {})
+        users[hwid] = {
+            **(users.get(hwid) or {}), "hwid": hwid, "email": email,
+            "phone": phone, "plan": plan, "mode": "handshake",
+            "lastIssuedAt": issued_at,
+        }
+        save(db)
+        return redirect("/keys?msg=" + _e("Verified key generated and stored: " + key))
+
+    try:
+        app.add_url_rule("/owner/admin-issue-form", endpoint="developer_issue_customer_key", view_func=issue_customer_key, methods=["POST"])
+    except Exception:
+        app.view_functions["developer_issue_customer_key"] = issue_customer_key
+
+    print("[developer-console] card-based multi-page licence control centre and verified key issuing registered")
