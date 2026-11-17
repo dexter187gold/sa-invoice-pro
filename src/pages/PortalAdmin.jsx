@@ -10,6 +10,10 @@ export default function PortalAdmin() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [newPin, setNewPin] = useState(null)
+  const [selectedThread, setSelectedThread] = useState('')
+  const [threads, setThreads] = useState({})
+  const [draft, setDraft] = useState('')
+  const [threadBusy, setThreadBusy] = useState(false)
 
   async function load() {
     setError('')
@@ -30,6 +34,20 @@ export default function PortalAdmin() {
 
   useEffect(() => { load() }, [])
 
+  async function openThread(email) {
+    setSelectedThread(email); setThreadBusy(true); setError('')
+    try { const data = await Sync.getClientPortalMessages(email); setThreads((rows) => ({ ...rows, [email]: data.messages || [] })) }
+    catch (e) { setError(e?.message || 'Could not load customer conversation') }
+    finally { setThreadBusy(false) }
+  }
+  async function sendReply() {
+    const message = draft.trim()
+    if (!selectedThread || !message) return
+    setThreadBusy(true); setError('')
+    try { await Sync.replyToClientPortalMessage(selectedThread, message); setDraft(''); await openThread(selectedThread); setNotice('Reply sent to ' + selectedThread) }
+    catch (e) { setError(e?.message || 'Could not send reply') }
+    finally { setThreadBusy(false) }
+  }
   async function toggle(acc) {
     setBusyEmail(acc.email); setError(''); setNotice(''); setNewPin(null)
     try {
@@ -68,8 +86,17 @@ export default function PortalAdmin() {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
         <button className="btn btn-outline" disabled={!!busyEmail} onClick={() => toggle(acc)}>{busyEmail === acc.email ? 'Saving…' : acc.active ? 'Disable portal access' : 'Enable portal access'}</button>
         <button className="btn btn-outline" disabled={!!busyEmail || !acc.active} onClick={() => resetPin(acc)}>Reset client PIN</button>
+        <button className="btn btn-outline" disabled={!acc.active || threadBusy} onClick={() => openThread(acc.email)}>{selectedThread === acc.email ? "Refresh conversation" : "Open conversation"}</button>
       </div>
     </div>) : <div className="card">No client portal logins have been issued for this workspace yet. Open Clients and choose Portal login for a client.</div>)}
+    {selectedThread && <div className="card" style={{ marginTop: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}><div><h2 style={{ margin: 0 }}>Customer conversation</h2><p className="muted">{selectedThread}</p></div><button className="btn btn-outline" onClick={() => openThread(selectedThread)} disabled={threadBusy}>Refresh messages</button></div>
+      <div style={{ maxHeight: 420, overflowY: "auto", padding: 8, border: "1px solid var(--border, #ddd)", borderRadius: 10 }}>
+        {(threads[selectedThread] || []).length ? (threads[selectedThread] || []).map((m) => <div key={m.id} style={{ padding: 10, margin: "8px 0", borderRadius: 10, background: m.sender === "business" ? "rgba(20,184,166,.12)" : "rgba(148,163,184,.12)", marginLeft: m.sender === "business" ? "12%" : 0, marginRight: m.sender === "client" ? "12%" : 0 }}><strong>{m.sender === "business" ? "Your business" : (m.senderName || "Customer")}</strong><div style={{ whiteSpace: "pre-wrap", marginTop: 4 }}>{m.message}</div><div className="muted" style={{ fontSize: 11 }}>{new Date(m.createdAt).toLocaleString()}</div></div>) : <p className="muted">No messages yet. This conversation will appear here when the customer contacts you.</p>}
+      </div>
+      <label className="label" htmlFor="portal-reply">Reply to customer</label><textarea id="portal-reply" className="input" rows={3} maxLength={4000} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Type a clear reply…" />
+      <div style={{ display: "flex", gap: 8, marginTop: 8 }}><button className="btn btn-primary" disabled={threadBusy || !draft.trim()} onClick={sendReply}>{threadBusy ? "Sending…" : "Send reply"}</button><button className="btn btn-outline" onClick={() => { setSelectedThread(""); setDraft("") }}>Close conversation</button></div>
+    </div>}
     <p className="muted" style={{ fontSize: 12 }}>Security: account listing is tenant-scoped by the sync server. PIN hashes and client financial snapshots are never returned to this console. A reset PIN is shown once after an explicit owner action.</p>
   </PageFade>
 }
