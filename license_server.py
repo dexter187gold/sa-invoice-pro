@@ -194,7 +194,7 @@ main{min-width:0;max-width:1600px;width:100%;padding:25px clamp(14px,3vw,36px);m
 <div class="info"><label>Plan</label><strong>{{ u.plan or 'Not assigned' }}</strong></div><div class="info"><label>Application version</label><strong>{{ u.appVersion or 'Unknown' }}</strong></div>
 <div class="info"><label>First handshake</label><strong>{{ u.handshakeAt or '—' }}</strong></div><div class="info"><label>Last seen</label><strong>{{ u.lastSeen or '—' }}</strong></div>
 <div class="info"><label>Activated at</label><strong>{{ u.activatedAt or '—' }}</strong></div><div class="info"><label>Licence expiry</label><strong>{{ u.expiresAt or u.expiry or 'Not recorded' }}</strong></div>
-<div class="info"><label>Seat / device limit</label><strong>{{ u.seats or 'Plan-defined' }}</strong></div><div class="info"><label>Admin note</label><strong>{{ u.adminNote or 'No admin note' }}</strong></div>
+<div class="info"><label>Seat / device limit</label><strong>{{ u.seats or 'Plan-defined' }}</strong></div><div class="info"><label>Phone</label><strong>{{ u.phone or 'Not supplied by app' }}</strong></div><div class="info"><label>IP address (latest check-in)</label><strong>{{ u.lastIp or 'Not recorded' }}</strong></div><div class="info"><label>Browser / user agent</label><strong style="overflow-wrap:anywhere">{{ u.browser or u.userAgent or 'Not recorded' }}</strong></div><div class="info"><label>MAC address</label><strong>Not available from a remote browser</strong></div><div class="info"><label>Admin note</label><strong>{{ u.adminNote or 'No admin note' }}</strong></div>
 </div>
 <details class="record" style="margin-top:12px"><summary>View complete raw device record</summary><div class="recordbody"><pre style="white-space:pre-wrap;overflow-wrap:anywhere;color:#b8d5c6;font-size:11px">{{ u.raw_json }}</pre></div></details>
 <div class="actions" style="margin-top:12px"><form class="inline" method="post" action="/set-status"><input type="hidden" name="hwid" value="{{ u.hwid }}"><button class="btn blue" name="status" value="trial">Set trial</button><button class="btn" name="status" value="licensed">Activate</button><button class="btn warn" name="status" value="suspended">Suspend</button><button class="btn danger" name="status" value="blocked">Block device</button></form><form class="inline" method="post" action="/owner/reset-for-repurchase" onsubmit="const t=prompt('Enter owner token');if(!t)return false;this.elements.token.value=t;return confirm('Reset account for repurchase? Historical transactions will be retained.')"><input type="hidden" name="token"><input type="hidden" name="email" value="{{ u.email or '' }}"><button class="btn warn" type="submit">Reset for repurchase</button></form><button class="btn sec" onclick="navigator.clipboard.writeText({{ u.hwid|tojson }})">Copy HWID</button></div>
@@ -206,8 +206,8 @@ main{min-width:0;max-width:1600px;width:100%;padding:25px clamp(14px,3vw,36px);m
 {% for r in pending %}<div class="record"><div class="recordbody" style="padding-top:12px"><div class="infogrid"><div class="info"><label>Device</label><strong><code>{{ r.hwid }}</code></strong></div><div class="info"><label>Company / customer</label><strong>{{ r.company or '—' }}</strong></div><div class="info"><label>Requested plan</label><strong>{{ r.plan or '—' }}</strong></div><div class="info"><label>Requested at</label><strong>{{ r.at or '—' }}</strong></div></div><form class="actions" method="post" action="/issue" style="margin-top:12px"><input type="hidden" name="hwid" value="{{ r.hwid }}"><button class="btn blue" name="plan" value="T">Issue 7-day trial</button><button class="btn" name="plan" value="S">Issue Standard</button><button class="btn sec" name="plan" value="P">Issue Pro</button><button class="btn warn" name="plan" value="L">Issue Lifetime</button></form></div></div>{% else %}<p class="muted">No pending requests. New requests will appear here automatically after refresh.</p>{% endfor %}
 </div></details>
 
-<details class="panel" id="keys"><summary><span>03 · Issued keys & activation history</span><span class="muted small">{{ n_issued }} keys</span></summary><div class="panelbody"><div class="tablewrap"><table><thead><tr><th>Device HWID</th><th>Status</th><th>Plan</th><th>Key</th><th>Activated</th></tr></thead><tbody>
-{% for r in issued %}<tr><td><code>{{ r.hwid }}</code></td><td><span class="badge issued">{{ r.status }}</span></td><td>{{ r.plan }}</td><td><code>{{ r.key }}</code></td><td>{{ r.activatedAt or '—' }}</td></tr>{% else %}<tr><td colspan="5" class="muted">No issued keys recorded.</td></tr>{% endfor %}
+<details class="panel" id="keys"><summary><span>03 · Issued keys & activation history</span><span class="muted small">{{ n_issued }} keys</span></summary><div class="panelbody"><div class="tablewrap"><table><thead><tr><th>Device HWID</th><th>Status</th><th>Plan</th><th>Key</th><th>Activated</th><th>Action</th></tr></thead><tbody>
+{% for r in issued %}<tr><td><code>{{ r.hwid }}</code></td><td><span class="badge issued">{{ r.status }}</span></td><td>{{ r.plan }}</td><td><code>{{ r.key }}</code></td><td>{{ r.activatedAt or '—' }}</td><td><form method="post" action="/owner/revoke-issued" onsubmit="return confirm('Revoke this key and remove it from the active issued list? Audit history will be retained.');"><input type="hidden" name="hwid" value="{{ r.hwid }}"><button class="btn danger" type="submit">Revoke &amp; remove</button></form></td></tr>{% else %}<tr><td colspan="6" class="muted">No active issued keys recorded.</td></tr>{% endfor %}
 </tbody></table></div></div></details>
 
 <details class="panel" id="controls"><summary><span>04 · Device operations & status controls</span><span class="muted small">Owner actions</span></summary><div class="panelbody"><p class="muted">Changes are submitted to the server immediately. Suspended and blocked devices lose access when they next check in.</p><div class="tablewrap"><table><thead><tr><th>Device</th><th>Current state</th><th>Last activity</th><th>Quick action</th></tr></thead><tbody>{% for u in handshakes %}<tr><td><code>{{ u.hwid }}</code><br><span class="muted small">{{ u.email or u.company or 'Unlinked' }}</span></td><td><span class="badge {{ (u.mode or 'unknown')|lower }}">{{ u.mode or 'unknown' }}</span></td><td>{{ u.lastSeen or '—' }}</td><td><form class="inline" method="post" action="/set-status"><input type="hidden" name="hwid" value="{{ u.hwid }}"><button class="btn blue" name="status" value="trial">Trial</button><button class="btn" name="status" value="licensed">Licensed</button><button class="btn warn" name="status" value="suspended">Suspend</button><button class="btn danger" name="status" value="blocked">Block</button></form></td></tr>{% else %}<tr><td colspan="4" class="muted">No devices available.</td></tr>{% endfor %}</tbody></table></div></div></details>
@@ -269,7 +269,7 @@ def dashboard():
     users = list(db.get("users", {}).values())
     reqs = list(db.get("requests", {}).values())
     pending = [r for r in reqs if r.get("status") == "pending"]
-    issued = [r for r in reqs if r.get("key")]
+    issued = [r for r in reqs if r.get("key") and not r.get("archived")]
     handshakes = sorted(users, key=lambda x: x.get("lastSeen", ""), reverse=True)
     for user in handshakes:
         user["raw_json"] = json.dumps(user, indent=2, ensure_ascii=False, default=str)
@@ -328,13 +328,31 @@ def api_handshake():
         return jsonify({"error": "hwid required", "ok": False}), 400
     db = load()
     users = db.setdefault("users", {})
+    previous = users.get(hwid, {})
+    user_agent = (request.headers.get("User-Agent") or "")[:1000]
+    forwarded = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+    ip_address = forwarded or request.remote_addr or ""
+    ua_lower = user_agent.lower()
+    if "edg/" in ua_lower: browser = "Microsoft Edge"
+    elif "opr/" in ua_lower or "opera" in ua_lower: browser = "Opera"
+    elif "firefox/" in ua_lower: browser = "Firefox"
+    elif "chrome/" in ua_lower and "chromium" not in ua_lower: browser = "Chrome"
+    elif "safari/" in ua_lower and "chrome/" not in ua_lower: browser = "Safari"
+    elif "android" in ua_lower: browser = "Android WebView / browser"
+    else: browser = "Other / unidentified browser"
     users[hwid] = {
-        **users.get(hwid, {}),
+        **previous,
         "hwid": hwid,
-        "mode": users.get(hwid, {}).get("mode") or "handshake",
-        "appVersion": data.get("appVersion"),
+        "mode": previous.get("mode") or "handshake",
+        "appVersion": data.get("appVersion") or previous.get("appVersion"),
+        "email": str(data.get("email") or previous.get("email") or "")[:254],
+        "phone": str(data.get("phone") or previous.get("phone") or "")[:40],
+        "company": str(data.get("company") or previous.get("company") or "")[:160],
+        "lastIp": ip_address[:64],
+        "userAgent": user_agent,
+        "browser": browser,
         "lastSeen": _now(),
-        "handshakeAt": _now(),
+        "handshakeAt": previous.get("handshakeAt") or _now(),
     }
     # Never disclose an issued key from an unauthenticated HWID-only handshake.
     req = db.get("requests", {}).get(hwid) or {}
@@ -520,6 +538,38 @@ def heartbeat():
     save(db)
     return jsonify({"ok": True})
 
+
+
+@app.post("/owner/revoke-issued")
+def owner_revoke_issued():
+    denied = _owner_page_guard()
+    if denied:
+        return denied
+    hwid = _valid_hwid(request.form.get("hwid"))
+    if not hwid:
+        return redirect(url_for("dashboard", msg="Invalid device reference"))
+    db = load()
+    req = (db.get("requests") or {}).get(hwid) or {}
+    key = _valid_key(req.get("key"))
+    if not key:
+        return redirect(url_for("dashboard", msg="No issued key found for this device"))
+    record = (db.get("keys") or {}).get(key) or {}
+    record["revoked"] = True
+    record["revokedAt"] = _now()
+    record["archived"] = True
+    record["archivedAt"] = _now()
+    db.setdefault("keys", {})[key] = record
+    req["status"] = "revoked"
+    req["archived"] = True
+    req["revokedAt"] = _now()
+    db.setdefault("requests", {})[hwid] = req
+    user = (db.get("users") or {}).get(hwid)
+    if user:
+        user["mode"] = "suspended"
+        user["status"] = "suspended"
+        user["statusSetAt"] = _now()
+    save(db)
+    return redirect(url_for("dashboard", msg="Licence key revoked and removed from the active issued list. Audit history retained."))
 
 
 @app.post("/set-status")
