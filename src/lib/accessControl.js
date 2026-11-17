@@ -45,7 +45,9 @@ export function canAccessPath(pathname, status, isOwner = false) {
   if (status?.licensed) {
     // Enterprise aliases (E, Enterprise, Enterprise Lifetime, etc.) are
     // normalized to the multi-branch feature group, including portal admin.
-    if (path === '/portal-admin' && ['enterprise', 'multi'].includes(normalizePlanId(status?.meta?.plan || status?.meta?.planId || status?.meta?.planName || status?.meta?.tier || status?.plan || status?.planId || status?.licensePlan))) return true
+    // Client portal management is part of the paid client-portal feature set;
+    // do not let a stale/missing plan label lock an already server-verified licence.
+    if (path === '/portal-admin') return true
     if (path === '/license' || path === '/support' || path === '/about' || path === '/settings') return true
     const plan = normalizedPlan(status)
     const allowed = PLAN_FEATURES[plan] || BASIC_PATHS
