@@ -57,6 +57,19 @@ try:
 except Exception as e:
     print("[developer-console] not registered:", e)
 
+try:
+    from license_revoke_consistency import register_revoke_consistency
+    register_revoke_consistency(
+        app,
+        ls.load,
+        ls.save,
+        ls._valid_hwid,
+        ls._owner_page_guard,
+    )
+    print("[revoke-consistency] registered")
+except Exception as e:
+    print("[revoke-consistency] not registered:", e)
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "5055"))
