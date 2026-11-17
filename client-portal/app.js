@@ -75,18 +75,31 @@
     var calculated = Math.max(0, Number(invoice.total || invoice.amount || 0) - invoicePaid(invoice, dash))
     return invoice.amountDue == null ? calculated : Math.min(calculated, Math.max(0, Number(invoice.amountDue) || 0))
   }
-  async function api(path, opts) {
+  async function api(path, opts, attempt) {
+    attempt = attempt || 1
     var headers = { Accept: 'application/json', 'Content-Type': 'application/json' }
     var t = token()
     if (t) headers.Authorization = 'Bearer ' + t
+    var method = String((opts && opts.method) || 'GET').toUpperCase()
+    var retryable = method === 'GET' || path === '/api/client-portal/login'
     var res
     try {
       res = await fetch(API + path, Object.assign({}, opts || {}, { headers: headers }))
     } catch (networkError) {
+      if (retryable && attempt < 3) {
+        await new Promise(function (resolve) { setTimeout(resolve, attempt * 1800) })
+        return api(path, opts, attempt + 1)
+      }
       throw new Error('Cannot reach the SA Invoice Pro portal server. Check your internet connection and try again. If this continues, contact the workshop.')
     }
     var j = await res.json().catch(function () { return {} })
-    if (!res.ok) throw new Error(j.message || j.error || ('HTTP ' + res.status))
+    if (!res.ok) {
+      if (retryable && [502, 503, 504].indexOf(res.status) >= 0 && attempt < 3) {
+        await new Promise(function (resolve) { setTimeout(resolve, attempt * 1800) })
+        return api(path, opts, attempt + 1)
+      }
+      throw new Error(j.message || j.error || ('HTTP ' + res.status))
+    }
     return j
   }
 
