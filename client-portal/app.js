@@ -3,8 +3,6 @@
   var TOKEN_KEY = 'saip_client_portal_token'
   var PORTAL_TOKEN_KEY = 'saip_portal_view_token'
   var app = document.getElementById('app')
-  var paystackReady = null
-  var payConfig = null
 
   function money(n) {
     var x = Number(n || 0)
@@ -17,6 +15,20 @@
     } catch (e) {
       return String(iso).slice(0, 10)
     }
+  }
+  function dateTimeFmt(value) {
+    if (!value) return '—'
+    try {
+      return new Date(value).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' })
+    } catch (e) { return String(value) }
+  }
+  function esc(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]
+    })
+  }
+  function csvCell(value) {
+    return '"' + String(value == null ? '' : value).replace(/"/g, '""') + '"'
   }
   function token() {
     try { return localStorage.getItem(TOKEN_KEY) || '' } catch (e) { return '' }
@@ -53,148 +65,65 @@
     var headers = { Accept: 'application/json', 'Content-Type': 'application/json' }
     var t = token()
     if (t) headers.Authorization = 'Bearer ' + t
-    var res = await fetch(API + path, Object.assign({}, opts || {}, { headers: headers }))
+    var res
+    try {
+      res = await fetch(API + path, Object.assign({}, opts || {}, { headers: headers }))
+    } catch (networkError) {
+      throw new Error('Cannot reach the SA Invoice Pro portal server. Check your internet connection and try again. If this continues, contact the workshop.')
+    }
     var j = await res.json().catch(function () { return {} })
     if (!res.ok) throw new Error(j.message || j.error || ('HTTP ' + res.status))
     return j
   }
 
-  function loadPaystackScript() {
-    if (paystackReady) return paystackReady
-    paystackReady = new Promise(function (resolve, reject) {
-      if (window.PaystackPop) return resolve()
-      var s = document.createElement('script')
-      s.src = 'https://js.paystack.co/v1/inline.js'
-      s.async = true
-      s.onload = function () { resolve() }
-      s.onerror = function () { reject(new Error('Could not load Paystack')) }
-      document.head.appendChild(s)
-    })
-    return paystackReady
-  }
-
-  async function fetchPayConfig() {
-    if (payConfig) return payConfig
-    try {
-      payConfig = await api('/api/portal/pay/config')
-    } catch (e) {
-      try {
-        payConfig = await api('/api/payments/config')
-      } catch (e2) {
-        payConfig = { enabled: false }
-      }
-    }
-    return payConfig
-  }
-
   async function startPayNow(invoice, btn) {
-    var viewToken = portalViewToken() || token()
-    if (!viewToken) {
-      alert('Please sign in or open the portal link from your workshop first.')
+    if (!token()) {
+      alert('Please sign in to pay this invoice.')
       return
     }
     if (btn) {
       btn.disabled = true
-      btn.textContent = 'Starting…'
+      btn.textContent = 'Preparing…'
     }
     try {
-      await loadPaystackScript()
-      var cfg = await fetchPayConfig()
-      if (!cfg.enabled || !cfg.publicKey) {
-        throw new Error('Online payments are not enabled for this workshop yet (test or live keys). Please pay via EFT or contact the shop.')
-      }
-
-      var init = await api('/api/portal/pay/init', {
+      var checkout = await api('/api/client-portal/pay/' + encodeURIComponent(invoice.id || invoice.number), {
         method: 'POST',
-        body: JSON.stringify({
-          token: viewToken,
-          invoiceId: invoice.id || invoice.number,
-          amount: invoice.balance != null ? invoice.balance : invoice.total,
-          email: invoice.clientEmail || undefined,
-        }),
+        body: JSON.stringify({}),
       })
-
-      if (!init.reference) {
-        throw new Error(init.message || 'Could not start payment')
+      if (!checkout.configured) {
+        var bank = checkout.bankDetails || {}
+        var details = [
+          checkout.message || 'Online payments are not configured.',
+          bank.bankName ? 'Bank: ' + bank.bankName : '',
+          bank.accountName ? 'Account name: ' + bank.accountName : '',
+          bank.accountNumber ? 'Account number: ' + bank.accountNumber : '',
+          bank.branchCode ? 'Branch code: ' + bank.branchCode : '',
+          bank.reference ? 'Payment reference: ' + bank.reference : '',
+        ].filter(Boolean).join('\n')
+        alert(details)
+        if (btn) { btn.disabled = false; btn.textContent = 'Pay Now' }
+        return
       }
-
-      var handler = window.PaystackPop.setup({
-        key: init.publicKey || cfg.publicKey,
-        email: init.email,
-        amount: init.amountCents,
-        currency: init.currency || 'ZAR',
-        ref: init.reference,
-        metadata: {
-          custom_fields: [
-            { display_name: 'Invoice', variable_name: 'invoice', value: invoice.number || invoice.id },
-          ],
-        },
-        callback: function (response) {
-          verifyAndRefresh(response.reference, btn)
-        },
-        onClose: function () {
-          if (btn) {
-            btn.disabled = false
-            btn.textContent = 'Pay Now'
-          }
-        },
+      if (!checkout.processUrl || !checkout.fields || !checkout.fields.signature) {
+        throw new Error('The payment provider did not return a valid secure checkout form.')
+      }
+      var form = document.createElement('form')
+      form.method = 'POST'
+      form.action = checkout.processUrl
+      form.style.display = 'none'
+      Object.keys(checkout.fields).forEach(function (key) {
+        var input = document.createElement('input')
+        input.type = 'hidden'
+        input.name = key
+        input.value = String(checkout.fields[key])
+        form.appendChild(input)
       })
-      handler.openIframe()
+      document.body.appendChild(form)
+      form.submit()
     } catch (e) {
-      alert(e.message || 'Payment could not be started')
-      if (btn) {
-        btn.disabled = false
-        btn.textContent = 'Pay Now'
-      }
+      alert(e.message || 'Payment could not be started.')
+      if (btn) { btn.disabled = false; btn.textContent = 'Pay Now' }
     }
-  }
-
-  async function verifyAndRefresh(reference, btn) {
-    try {
-      if (btn) btn.textContent = 'Confirming…'
-      var v = await api('/api/portal/pay/verify', {
-        method: 'POST',
-        body: JSON.stringify({ reference: reference }),
-      })
-      if (v.ok) {
-        showToast('Payment received — thank you!')
-        if (token()) showApp()
-        else {
-          app.innerHTML =
-            '<div class="shell"><div class="card login-card">' +
-            '<div class="eyebrow">Payment successful</div>' +
-            '<h1>Thank you</h1>' +
-            '<p class="muted">Your payment has been received. The workshop has been notified.</p>' +
-            '<p><strong>' + money(v.payment && v.payment.amount) + '</strong></p>' +
-            '<p class="muted">Ref: ' + ((v.payment && v.payment.reference) || reference) + '</p>' +
-            '</div></div>'
-        }
-      } else {
-        alert(v.message || 'Payment could not be confirmed.')
-        if (btn) {
-          btn.disabled = false
-          btn.textContent = 'Pay Now'
-        }
-      }
-    } catch (e) {
-      alert(e.message || 'Verification failed.')
-      if (btn) {
-        btn.disabled = false
-        btn.textContent = 'Pay Now'
-      }
-    }
-  }
-
-  function showToast(msg) {
-    var t = document.createElement('div')
-    t.className = 'toast'
-    t.textContent = msg
-    document.body.appendChild(t)
-    setTimeout(function () { t.classList.add('show') }, 10)
-    setTimeout(function () {
-      t.classList.remove('show')
-      setTimeout(function () { t.remove() }, 300)
-    }, 3200)
   }
 
   /** Professional quote decision — optional reason on decline */
@@ -265,7 +194,7 @@
     try {
       var j = await api('/api/client-portal/login', {
         method: 'POST',
-        body: JSON.stringify({ email: email, pin: pin }),
+        body: JSON.stringify({ email: email, username: email, pin: pin }),
       })
       if (!j.token) throw new Error('No session token returned')
       setToken(j.token)
@@ -284,7 +213,6 @@
     try {
       var dash = await api('/api/client-portal/dashboard')
       var tabRef = { current: 'overview' }
-      fetchPayConfig().catch(function () {})
 
       function paint() {
         var tab = tabRef.current
@@ -299,7 +227,7 @@
           '<button class="btn btn-ghost btn-sm" id="out">Sign out</button>' +
           '</div>' +
           '<div class="tabs">' +
-          ['overview', 'invoices', 'quotes', 'service', 'payments'].map(function (id) {
+          ['overview', 'statement', 'invoices', 'quotes', 'service', 'payments'].map(function (id) {
             return '<button class="tab' + (tab === id ? ' on' : '') + '" data-tab="' + id + '">' +
               id.charAt(0).toUpperCase() + id.slice(1) + '</button>'
           }).join('') +
@@ -308,12 +236,29 @@
         if (tab === 'overview') {
           html +=
             '<div class="card stats">' +
-            '<div class="stat"><b>' + money(sum.openBalance) + '</b><span class="muted">Open balance</span></div>' +
+            '<div class="stat"><b>' + money(sum.openBalance) + '</b><span class="muted">Outstanding</span></div>' +
+            '<div class="stat"><b>' + money(sum.totalPaid) + '</b><span class="muted">Total paid</span></div>' +
+            '<div class="stat"><b>' + money(sum.totalInvoiced) + '</b><span class="muted">Total invoiced</span></div>' +
             '<div class="stat"><b>' + (sum.invoices || 0) + '</b><span class="muted">Invoices</span></div>' +
             '<div class="stat"><b>' + (sum.quotes || 0) + '</b><span class="muted">Quotes</span></div>' +
-            '<div class="stat"><b>' + (sum.tickets || 0) + '</b><span class="muted">Service jobs</span></div>' +
+            '<div class="stat"><b>' + (sum.tickets || 0) + '</b><span class="muted">Job cards</span></div>' +
             '</div>' +
-            '<div class="card"><p class="muted" style="margin:0">Review invoices, accept quotes, track jobs, and pay securely online (test or live).</p></div>'
+            '<div class="card"><strong>Welcome to your account</strong><p class="muted" style="margin:6px 0 0">View your full account statement, invoice and quote history, job cards, and recorded payments. You can pay outstanding invoices securely when online checkout is enabled by the workshop.</p></div>'
+        }
+
+        if (tab === 'statement') {
+          var statement = dash.accountStatement || {}
+          var entries = Array.isArray(statement.entries) ? statement.entries : []
+          html += '<div class="card"><div class="row" style="align-items:center"><div><strong>Full account statement</strong><div class="muted">Generated ' + dateTimeFmt(statement.generatedAt) + '</div></div><div class="actions"><button class="btn btn-ghost btn-sm" id="print-statement">Print / Save PDF</button><button class="btn btn-ghost btn-sm" id="download-statement">Download CSV</button></div></div>' +
+            '<div class="stats">' +
+            '<div class="stat"><b>' + money(statement.totalInvoiced) + '</b><span class="muted">Charges</span></div>' +
+            '<div class="stat"><b>' + money(statement.totalPaid) + '</b><span class="muted">Payments received</span></div>' +
+            '<div class="stat"><b>' + money(statement.openBalance) + '</b><span class="muted">Balance due</span></div></div>' +
+            '<div style="overflow-x:auto;margin-top:12px"><table style="width:100%;border-collapse:collapse;min-width:620px"><thead><tr><th style="text-align:left;padding:9px">Date / time</th><th style="text-align:left;padding:9px">Description</th><th style="text-align:left;padding:9px">Reference</th><th style="text-align:right;padding:9px">Charge</th><th style="text-align:right;padding:9px">Payment</th><th style="text-align:right;padding:9px">Balance</th></tr></thead><tbody>' +
+            (entries.length ? entries.map(function (entry) {
+              return '<tr style="border-top:1px solid var(--border)"><td style="padding:9px">' + esc(dateTimeFmt(entry.date)) + '</td><td style="padding:9px">' + esc(entry.description || entry.type) + '</td><td style="padding:9px">' + esc(entry.reference || '—') + '</td><td style="padding:9px;text-align:right">' + (Number(entry.debit) ? money(entry.debit) : '—') + '</td><td style="padding:9px;text-align:right">' + (Number(entry.credit) ? money(entry.credit) : '—') + '</td><td style="padding:9px;text-align:right">' + money(entry.balance) + '</td></tr>'
+            }).join('') : '<tr><td colspan="6" class="muted" style="padding:12px">No account activity recorded yet.</td></tr>') +
+            '</tbody></table></div></div>'
         }
 
         if (tab === 'invoices') {
@@ -324,10 +269,11 @@
             var canPay = isUnpaid(i.status)
             html +=
               '<div class="row"><div style="flex:1"><strong>' + (i.number || i.id) + '</strong>' +
-              '<div class="muted">' + dateFmt(i.date || i.issuedAt) + ' · ' + money(i.total) + '</div>' +
-              (canPay
+              '<div class="muted">' + dateFmt(i.date || i.issuedAt || i.createdAt) + ' · Total ' + money(i.total) +
+              ' · Paid ' + money(i.amountPaid) + ' · Due ' + money(i.amountDue != null ? i.amountDue : Math.max(0, Number(i.total || 0) - Number(i.amountPaid || 0))) + '</div>' +
+              (canPay && Number(i.amountDue != null ? i.amountDue : (Number(i.total || 0) - Number(i.amountPaid || 0))) > 0
                 ? '<div class="actions"><button class="btn btn-pay btn-sm" data-pay-id="' +
-                  (i.id || i.number) +
+                  esc(i.id || i.number) +
                   '">Pay Now</button></div>'
                 : '') +
               '</div>' + pill(i.status) + '</div>'
@@ -379,7 +325,7 @@
             html +=
               '<div class="row"><div><strong>' + money(p.amount) + '</strong>' +
               '<div class="muted">' +
-              dateFmt(p.date || p.paidAt) +
+              dateTimeFmt(p.createdAt || p.paidAt || p.date) +
               ' · ' +
               (p.method || p.channel || p.reference || '') +
               '</div></div></div>'
@@ -390,6 +336,24 @@
         html += '</div>'
         app.innerHTML = html
         document.getElementById('out').onclick = logout
+        var printBtn = document.getElementById('print-statement')
+        if (printBtn) printBtn.onclick = function () { window.print() }
+        var downloadBtn = document.getElementById('download-statement')
+        if (downloadBtn) downloadBtn.onclick = function () {
+          var statement = dash.accountStatement || {}
+          var rows = [['Date / time', 'Type', 'Description', 'Reference', 'Charge', 'Payment', 'Balance']]
+          ;(statement.entries || []).forEach(function (entry) {
+            rows.push([dateTimeFmt(entry.date), entry.type, entry.description, entry.reference, entry.debit, entry.credit, entry.balance])
+          })
+          var csv = rows.map(function (row) { return row.map(csvCell).join(',') }).join('\r\n')
+          var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+          var url = URL.createObjectURL(blob)
+          var link = document.createElement('a')
+          link.href = url
+          link.download = 'SAIP-account-statement.csv'
+          link.click()
+          URL.revokeObjectURL(url)
+        }
         app.querySelectorAll('[data-tab]').forEach(function (el) {
           el.onclick = function () {
             tabRef.current = el.getAttribute('data-tab')
