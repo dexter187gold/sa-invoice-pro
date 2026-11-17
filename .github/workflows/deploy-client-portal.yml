@@ -40,3 +40,11 @@ jobs:
             -D /tmp/client-portal-cors.headers -o /dev/null \
             https://saip-sync.onrender.com/api/client-portal/login
           grep -qi 'Access-Control-Allow-Origin: https://sa-invoice-pro-client-portal.pcrepairdex.workers.dev' /tmp/client-portal-cors.headers
+          status=$(curl --silent --show-error --retry 8 --retry-delay 5 --retry-all-errors \
+            -H 'Origin: https://sa-invoice-pro-client-portal.pcrepairdex.workers.dev' \
+            -H 'Content-Type: application/json' \
+            -o /tmp/client-portal-login.json -w '%{http_code}' \
+            -d '{"username":"portal-smoke@example.invalid","pin":"000000"}' \
+            https://saip-sync.onrender.com/api/client-portal/login)
+          test "$status" = "401"
+          grep -qi 'Access-Control-Allow-Origin: https://sa-invoice-pro-client-portal.pcrepairdex.workers.dev' /tmp/client-portal-login.json /tmp/client-portal-cors.headers
