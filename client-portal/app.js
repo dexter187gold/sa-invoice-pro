@@ -98,6 +98,7 @@
           bank.accountName ? 'Account name: ' + bank.accountName : '',
           bank.accountNumber ? 'Account number: ' + bank.accountNumber : '',
           bank.branchCode ? 'Branch code: ' + bank.branchCode : '',
+          bank.accountType ? 'Account type: ' + bank.accountType : '',
           bank.reference ? 'Payment reference: ' + bank.reference : '',
         ].filter(Boolean).join('\n')
         alert(details)
