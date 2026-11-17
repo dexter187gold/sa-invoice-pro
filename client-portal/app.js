@@ -230,7 +230,7 @@
           '<div class="tabs">' +
           ['overview', 'statement', 'invoices', 'quotes', 'service', 'payments'].map(function (id) {
             return '<button class="tab' + (tab === id ? ' on' : '') + '" data-tab="' + id + '">' +
-              id.charAt(0).toUpperCase() + id.slice(1) + '</button>'
+              (id === 'service' ? 'Job cards' : id.charAt(0).toUpperCase() + id.slice(1)) + '</button>'
           }).join('') +
           '</div>'
 
@@ -293,7 +293,7 @@
             html +=
               '<div class="row"><div style="flex:1"><strong>' + (q.number || q.id || 'Quote') + '</strong>' +
               '<div class="muted">Created ' + dateTimeFmt(q.createdAt || q.date) + ' · ' + money(q.total) +
-              (q.portalDecisionAt || q.decidedAt || q.updatedAt ? ' · Decision / update ' + esc(dateTimeFmt(q.portalDecisionAt || q.decidedAt || q.updatedAt)) : '') + '</div>' +
+              (q.portalDecisionAt || q.portalDecidedAt || q.decidedAt || q.updatedAt ? ' · Decision / update ' + esc(dateTimeFmt(q.portalDecisionAt || q.decidedAt || q.updatedAt)) : '') + '</div>' +
               (can
                 ? '<div class="actions">' +
                   '<button class="btn btn-ok btn-sm" data-q="' + q.id + '" data-d="accepted">Accept</button>' +
@@ -308,7 +308,7 @@
         if (tab === 'service') {
           html += '<div class="card"><strong>Service / jobs</strong>'
           var ts = dash.tickets || []
-          if (!ts.length) html += '<p class="muted">No open service jobs.</p>'
+          if (!ts.length) html += '<p class="muted">No job cards recorded yet.</p>'
           ts.forEach(function (t) {
             html +=
               '<div class="row"><div style="flex:1"><strong>' + esc(t.number || t.title || t.subject || t.id) + '</strong>' +
