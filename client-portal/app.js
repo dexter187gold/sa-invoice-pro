@@ -92,8 +92,10 @@
     var keyNumber = String(invoice.number || '')
     var linked = (dash.payments || []).filter(function (p) {
       var ref = String(p.invoiceId || p.invoice_id || p.invoiceNumber || p.invoice_number || '')
-      return (keyId && ref === keyId) || (keyNumber && ref === keyNumber)
-    }).reduce(function (sum, p) { return sum + (Number(p.amount) || 0) }, 0)
+      var status = String(p.status || 'received').toLowerCase()
+      var confirmed = ['failed', 'declined', 'cancelled', 'canceled', 'void', 'voided', 'reversed', 'refunded'].indexOf(status) < 0
+      return confirmed && ((keyId && ref === keyId) || (keyNumber && ref === keyNumber))
+    }).reduce(function (sum, p) { return sum + (Number(p.amount || p.paidAmount || p.value) || 0) }, 0)
     return Math.max(Number(invoice.amountPaid) || 0, linked)
   }
   function invoiceDue(invoice, dash) {
