@@ -29,70 +29,63 @@ export const TIERS = [
   {
     id: 'solo', code: 'S', name: 'Solo', priceHint: 'R 1 999 / year · ~R 167/mo',
     seats: 1, days: 365, purchasable: true,
-    limits: ['1 device seat', 'Single operator', 'No multi-branch'],
+    limits: ['1 device only', 'Single operator', 'No multi-branch'],
     features: ['Invoices, quotes, jobs', 'WhatsApp + client portal', 'Offline desk + cloud restore', 'IT service pack & themes'],
   },
   {
     id: 'shop', code: 'P', name: 'Shop', priceHint: 'R 4 999 / year · ~R 417/mo',
     seats: 5, days: 365, purchasable: true, recommended: true,
-    limits: ['Up to 5 seats', 'One workshop location', 'No branch workspaces'],
+    limits: ['Up to 5 user seats · 3 devices', 'One workshop location', 'No branch workspaces'],
     features: ['Everything in Solo', 'Team roles & audit log', 'Accounting, bank import, payroll tools', 'Bulk chase & recurring invoices', 'Priority support'],
   },
   {
     id: 'multi', code: 'M', name: 'Multi-branch', priceHint: 'R 11 999 / year · ~R 1 000/mo',
     seats: 25, days: 365, purchasable: true,
-    limits: ['Up to 25 seats', 'Annual commitment', 'SLA on license server'],
+    limits: ['Up to 25 seats · 8 devices', 'Annual commitment', 'SLA on license server'],
     features: ['Everything in Shop', 'Multi-branch workspaces', 'API / webhooks', 'Custom domain portal', 'Owner SLA pathway'],
   },
   {
     id: 'lifetime', code: 'L', name: 'Lifetime', priceHint: 'R 14 999 · one-time',
     seats: 1, days: 36500, purchasable: true,
-    limits: ['1 seat', 'Solo feature group', 'No renewals'],
-    features: ['Solo feature set', 'One-time buyout', 'No annual renewal'],
+    limits: ['1 device seat', 'One-time purchase', 'Major version updates per policy'],
+    features: ['Solo feature set', 'No annual renewals', 'Local-first desk forever'],
   },
   {
-    id: 'enterprise', code: 'E', name: 'Enterprise', priceHint: 'R 29 999 · one-time',
+    id: 'enterprise', code: 'E', name: 'Enterprise', priceHint: 'R 29 999 · one-time / custom',
     seats: 25, days: 36500, purchasable: true,
-    limits: ['Up to 25 seats', 'Custom commercial terms'],
-    features: ['Multi-branch feature set', 'Lifetime term', 'Priority owner support'],
+    limits: ['Custom seats · up to 25 devices guide', 'Owner onboarding', 'Priority SLA'],
+    features: ['Multi-branch + portal admin', 'API / webhooks', 'Custom commercial terms'],
   },
 ]
+
+export function getTier(id) {
+  const key = normalizePlanId(id)
+  return TIERS.find((t) => t.id === key) || null
+}
 
 export function purchasableTiers() {
   return TIERS.filter((t) => t.purchasable !== false)
 }
 
 export function normalizePlanId(raw) {
-  const s = String(raw || '').trim()
-  if (!s) return ''
-  const upper = s.toUpperCase()
-  if (PLAN_CODES[upper]) return PLAN_CODES[upper]
-  if (PLAN_CODES[upper[0]] && upper.length === 1) return PLAN_CODES[upper[0]]
-  const lower = s.toLowerCase()
-  if (PLAN_ID_TO_CODE[lower]) return lower
-  if (lower.includes('enterprise')) return 'enterprise'
-  if (lower.includes('lifetime')) return 'lifetime'
-  if (lower.includes('multi') || lower.includes('branch')) return 'multi'
-  if (lower.includes('shop') || lower.includes('pro')) return 'shop'
-  if (lower.includes('solo') || lower.includes('standard')) return 'solo'
-  if (lower.includes('trial')) return 'trial'
-  return lower
+  const id = String(raw || '').trim().toLowerCase()
+  if (!id) return ''
+  if (PLAN_CODES[id.toUpperCase()]) return PLAN_CODES[id.toUpperCase()]
+  if (id.includes('enter')) return 'enterprise'
+  if (id.includes('life')) return 'lifetime'
+  if (id.includes('multi') || id.includes('branch')) return 'multi'
+  if (id === 'team' || id === 'p' || id.includes('shop')) return 'shop'
+  if (id === 'solo' || id === 's') return 'solo'
+  if (id === 'trial' || id === 't') return 'trial'
+  if (TIERS.some((t) => t.id === id)) return id
+  return id
 }
 
-export function getTier(raw) {
-  const id = normalizePlanId(raw)
-  return TIERS.find((t) => t.id === id) || null
-}
-
-export function planCodeForId(id) {
-  return PLAN_ID_TO_CODE[normalizePlanId(id)] || 'S'
-}
-
+/** Map product plans onto feature gates used by accessControl. */
 export function featurePlanGroup(raw) {
   const id = normalizePlanId(raw)
-  if (id === 'trial') return 'trial'
+  if (id === 'enterprise' || id === 'multi') return 'multi'
   if (id === 'lifetime') return 'solo'
-  if (id === 'enterprise') return 'multi'
   if (id === 'solo' || id === 'shop' || id === 'multi') return id
   return 'solo'
 }
@@ -102,7 +95,8 @@ export const COMPARISON_COLUMNS = ['trial', 'solo', 'shop', 'multi', 'lifetime',
 export const COMPARISON_ROWS = [
   { id: 'price', label: 'Guide price (ZAR)', values: { trial: 'Free', solo: 'R 1 999/yr', shop: 'R 4 999/yr', multi: 'R 11 999/yr', lifetime: 'R 14 999 once', enterprise: 'R 29 999 once' } },
   { id: 'billing', label: 'Billing model', values: { trial: '7-day trial', solo: 'Annual sub', shop: 'Annual sub', multi: 'Annual sub', lifetime: 'One-time', enterprise: 'One-time' } },
-  { id: 'seats', label: 'Device seats', values: { trial: '1', solo: '1', shop: '5', multi: '25', lifetime: '1', enterprise: '25' } },
+  { id: 'seats', label: 'User seats', values: { trial: '1', solo: '1', shop: '5', multi: '25', lifetime: '1', enterprise: '25' } },
+  { id: 'devices', label: 'Devices', values: { trial: '1', solo: '1', shop: '3', multi: '8', lifetime: '1', enterprise: '25' } },
   { id: 'invoices', label: 'Invoices & quotes', values: { trial: true, solo: true, shop: true, multi: true, lifetime: true, enterprise: true } },
   { id: 'jobs', label: 'Job cards / tickets', values: { trial: false, solo: true, shop: true, multi: true, lifetime: true, enterprise: true } },
   { id: 'whatsapp', label: 'WhatsApp & portal', values: { trial: false, solo: true, shop: true, multi: true, lifetime: true, enterprise: true } },
@@ -117,12 +111,4 @@ export const COMPARISON_ROWS = [
 export function comparisonColumns(includeTrial = true) {
   const ids = includeTrial ? COMPARISON_COLUMNS : COMPARISON_COLUMNS.filter((id) => id !== 'trial')
   return ids.map((id) => getTier(id)).filter(Boolean)
-}
-
-export function cellValue(row, planId) {
-  const v = row?.values?.[planId]
-  if (v === true) return 'yes'
-  if (v === false) return 'no'
-  if (v == null) return '—'
-  return String(v)
 }
