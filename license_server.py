@@ -554,8 +554,9 @@ def owner_permanent_delete_license():
     keys = db.setdefault("keys", {})
     req = reqs.get(hwid) or {}
     removed = 0
-    key = _valid_key(req.get("key"))
-    if key and key in keys and str(keys[key].get("hwid") or "") == hwid:
+    key = _valid_key(req.get("key")) if isinstance(req, dict) else None
+    key_record = keys.get(key) if key else None
+    if key and isinstance(key_record, dict) and str(key_record.get("hwid") or "") == hwid:
         del keys[key]
         removed += 1
     # Remove any additional key records explicitly bound to this HWID.
@@ -622,6 +623,7 @@ def owner_permanent_delete_user():
     accounts = db.setdefault("accounts", {})
     targets = set()
     account = accounts.get(email) if email else None
+    account_key = _valid_key(account.get("key")) if isinstance(account, dict) else None
     if email:
         if isinstance(account, dict):
             targets.update(str(device_id) for device_id in (account.get("devices") or []) if _valid_hwid(str(device_id)))
@@ -642,7 +644,7 @@ def owner_permanent_delete_user():
         users.pop(device_id, None)
         reqs.pop(device_id, None)
     for existing_key, record in list(keys.items()):
-        if isinstance(record, dict) and (str(record.get("hwid") or "") in targets or (email and str(record.get("boundEmail") or record.get("email") or "").strip().lower() == email)):
+        if isinstance(record, dict) and (str(record.get("hwid") or "") in targets or (email and str(record.get("boundEmail") or record.get("email") or "").strip().lower() == email) or (account_key and existing_key == account_key)):
             del keys[existing_key]
             removed_keys += 1
     removed_account = bool(email and accounts.pop(email, None) is not None)
