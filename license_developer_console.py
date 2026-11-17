@@ -4,6 +4,7 @@ The console is intentionally developer-only. It reuses the existing authenticate
 licence APIs and Git-backed state; it does not expose customer-facing admin routes.
 """
 import html
+import json
 from flask import redirect, request
 
 
@@ -255,7 +256,7 @@ function filterDevices(){{const q=(document.getElementById('device-search')?.val
         previous = reqs.get(hwid) or {}
         existing_key = previous.get("key")
         existing_record = keys.get(existing_key) if existing_key else None
-        if existing_key and existing_record and not existing_record.get("revoked"):
+        if existing_key and (not existing_record or not existing_record.get("revoked")):
             return redirect("/keys?msg=This+device+already+has+an+issued+key.+Manage+or+revoke+it+before+issuing+another")
         key = gen_key(plan)
         while key in keys:
