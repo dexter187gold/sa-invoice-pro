@@ -69,6 +69,7 @@ def register_developer_console(app, load_fn, now_display_fn=None):
                     <div><span>Last seen</span><b>{_e(user.get('lastSeen') or '—')}</b></div>
                   </div>
                   <div class="muted-line">Phone · {_e(phone)}</div>
+                  <div class="muted-line">IP · {_e(user.get("lastIp") or "Not recorded")} · Browser · {_e(user.get("browser") or user.get("userAgent") or "Not recorded")} · MAC · unavailable remotely</div>
                   <form class="status-actions" method="post" action="/set-status">
                     <input type="hidden" name="hwid" value="{_e(hwid)}"/>
                     <button name="status" value="trial">Trial</button>
@@ -111,6 +112,7 @@ def register_developer_console(app, load_fn, now_display_fn=None):
                     <div><span>Expiry</span><b>{_e(record.get('expiresAt') or 'Set on activation')}</b></div>
                   </div>
                   <div class="muted-line">HWID · {_e(record.get('hwid') or 'Unbound')}</div>
+                  <form method="post" action="/owner/revoke-issued"><input type="hidden" name="hwid" value="{_e(record.get('hwid') or '')}"/><button type="submit" {'disabled' if record.get('revoked') or not record.get('hwid') else ''}>Revoke &amp; remove</button></form>
                 </article>"""
             )
         if not key_cards:
