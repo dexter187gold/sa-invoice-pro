@@ -183,6 +183,9 @@ export const Sync = {
       method: 'PUT',
       body: JSON.stringify({ data: workspaceData }),
     })
+    // Keep every previously issued customer portal profile in step with the
+    // latest workspace version (payments, invoices, quotes and job cards).
+    await request('/api/client-portal/refresh-snapshots', { method: 'POST', body: JSON.stringify({}) }).catch(() => {})
     _lastPushAt = Date.now()
     _lastError = null
     return r
