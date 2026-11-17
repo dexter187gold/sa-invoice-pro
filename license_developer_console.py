@@ -245,7 +245,7 @@ function filterDevices(){{const q=(document.getElementById('device-search')?.val
             duration = int(request.form.get("duration") or 0)
         except (TypeError, ValueError):
             duration = 0
-        if not email or "@" not in email or not hwid or plan not in PLAN_DAYS or unit not in ("days", "months", "years") or duration < 1:
+        if not email or "@" not in email or not hwid or plan not in ("T", "S", "P", "M", "L", "E") or unit not in ("days", "months", "years") or duration < 1:
             return redirect("/keys?msg=Check+the+customer+email,+HWID,+plan+and+duration")
         days = duration * {"days": 1, "months": 30, "years": 365}[unit]
         if days > 36500:
