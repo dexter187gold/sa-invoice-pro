@@ -1,4 +1,4 @@
-import { getSetting, setSetting, recoverDeviceLicenseSettings } from './db.js'
+import { getSetting, setSetting, getCompany, recoverDeviceLicenseSettings } from './db.js'
 import { SA_CONFIG } from '../config.js'
 
 /** Alpha soft trial length (days). Matches deviceLicense SOFT_LIMITS. */
@@ -76,8 +76,10 @@ export async function handshake() {
   const base = await getServerUrl()
   if (!base) throw new Error('License server URL not set')
   const hwid = await getHardwareId()
+  const company = await getCompany().catch(() => null)
   const j = await postJson(base, ['/api/handshake', '/api/license/handshake'], {
     hwid, app: 'sa-invoice-pro', appVersion: SA_CONFIG.appVersion, version: SA_CONFIG.appVersion,
+    email: company?.email || '', phone: company?.phone || '', company: company?.name || company?.tradingName || '',
   })
   await setSetting('handshakeOk', true)
   await setSetting('lastLicenseExchange', { step: 'handshake', at: new Date().toISOString(), response: j })
