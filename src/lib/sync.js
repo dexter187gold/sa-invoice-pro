@@ -435,6 +435,13 @@ export const Sync = {
     })
   },
 
+  async refreshClientPortalSnapshots() {
+    return request('/api/client-portal/refresh-snapshots', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    })
+  },
+
   async listClientPortalAccounts() {
     return request('/api/client-portal/accounts')
   },
