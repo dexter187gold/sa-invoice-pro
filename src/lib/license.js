@@ -3,6 +3,7 @@ import { SA_CONFIG } from '../config.js'
 
 /** Alpha soft trial length (days). Matches deviceLicense SOFT_LIMITS. */
 export const ALPHA_TRIAL_DAYS = 30
+let planRevalidation = null
 
 export async function getHardwareId() {
   let id = await getSetting('hwid', null)
@@ -57,7 +58,7 @@ async function postJson(base, paths, body) {
 
 /** True only when the server confirmed activation (token + server flag). */
 export async function hasServerProof() {
-  const meta = await getSetting('licenseMeta', null)
+  let meta = await getSetting('licenseMeta', null)
   const token = await getSetting('activationToken', null)
   const key = await getSetting('licenseKey', null)
   return !!(key && token && meta && meta.server === true && meta.activationToken)
@@ -222,6 +223,14 @@ export async function getLicenseStatus() {
   const exchange = await getSetting('lastLicenseExchange', null)
   const serverUrl = await getServerUrl()
   const licensed = !!(key && meta && meta.server === true && (token || meta.activationToken))
+  // Older activation responses sometimes stored an unhelpful "standard"
+  // fallback even when the server-issued licence was Enterprise. Re-check
+  // once per app session and prefer the server's authoritative plan fields.
+  if (licensed && (!meta.plan || String(meta.plan).toLowerCase() === 'standard')) {
+    if (!planRevalidation) planRevalidation = revalidateLicense().catch(() => null)
+    await planRevalidation
+    meta = await getSetting('licenseMeta', meta)
+  }
   return {
     licensed,
     key: licensed ? key : null,
