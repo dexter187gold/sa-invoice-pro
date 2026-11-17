@@ -14,6 +14,7 @@ import GestureLayer from './GestureLayer'
 import { loadGesturePrefs } from '../lib/deviceAccess'
 import { readAccessStatus, canAccessPath } from '../lib/accessControl'
 import DonateFab from './DonateFab'
+import OfflineBanner from './OfflineBanner'
 
 export default function Shell({ children, sections: sectionsProp }) {
   const { user, online, lock, logout, syncNow, toast } = useApp() || {}
@@ -124,6 +125,7 @@ export default function Shell({ children, sections: sectionsProp }) {
 
   return (
     <>
+      <OfflineBanner />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       {gesturesOn ? (
         <GestureLayer
