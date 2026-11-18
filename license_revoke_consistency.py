@@ -58,7 +58,7 @@ def revoke_key_everywhere(db: dict, *, hwid: str = "", key: str = "", reason: st
     now = _now()
     key = (key or "").strip().upper()
     hwid = (hwid or "").strip()
-    touched = {"keys": 0, "requests": 0, "users": 0, "accounts": 0}
+    touched = {"keys": 0, "requests": 0, "users": 0, "accounts": 0, "deletedKeyIds": []}
 
     if not key and hwid:
         req = reqs.get(hwid) or {}
@@ -97,6 +97,7 @@ def revoke_key_everywhere(db: dict, *, hwid: str = "", key: str = "", reason: st
         if k in keys:
             del keys[k]
             touched["keys"] += 1
+            touched["deletedKeyIds"].append(k)
 
     if hwid and hwid in reqs:
         req = dict(reqs.get(hwid) or {})
@@ -164,7 +165,7 @@ def register_revoke_consistency(app, load_fn, save_fn, valid_hwid_fn, owner_page
         if not isinstance(db, dict):
             db = {}
         touched = revoke_key_everywhere(db, hwid=hwid or "", key=key, reason="owner_revoke_issued")
-        save_fn(db)
+        save_fn(db, deleted={"keys": touched.get("deletedKeyIds", [])})
         msg = (
             f"Licence revoked. Removed {touched['keys']} key(s), "
             f"updated {touched['requests']} request(s), "
@@ -183,7 +184,7 @@ def register_revoke_consistency(app, load_fn, save_fn, valid_hwid_fn, owner_page
             return redirect("/keys?msg=Key+required")
         db = load_fn() or {}
         touched = revoke_key_everywhere(db, hwid=hwid, key=key, reason="owner_delete_key")
-        save_fn(db)
+        save_fn(db, deleted={"keys": touched.get("deletedKeyIds", [])})
         return redirect(
             "/keys?msg="
             + f"Key+removed+from+active+list+({touched['keys']}+purged)".replace(" ", "+")
