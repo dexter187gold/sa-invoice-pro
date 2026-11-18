@@ -11,6 +11,7 @@ test.describe('Authenticated desk smoke', () => {
     page.on('pageerror', (e) => errors.push(String(e)))
     await page.goto('/')
     await page.waitForTimeout(1200)
+    await expect(page.getByText('Loading workspace…')).toHaveCount(0)
     // First visit may land setup (no company) or home after seed
     const url = page.url()
     expect(url.includes('/login')).toBeFalsy()
