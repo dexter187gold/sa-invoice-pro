@@ -82,9 +82,9 @@ function LicenseAccessGate({ children }) {
 }
 
 function Guard({ children }) {
-  const { user, bootstrapped } = useApp()
+  const { user, ready } = useApp()
   const location = useLocation()
-  if (!bootstrapped) return <div className="muted" style={{ padding: 24 }}>Loading workspace…</div>
+  if (!ready) return <div className="muted" style={{ padding: 24 }}>Loading workspace…</div>
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />
   return children
 }
