@@ -84,6 +84,23 @@ def _paystack_request(secret: str, method: str, path: str, body: dict | None = N
         raise RuntimeError(parsed.get("message") or parsed.get("error") or str(e)) from e
 
 
+
+def _pf_signature(fields: dict, passphrase: str = "") -> str:
+    """Build the PayFast MD5 signature from sorted, URL-encoded non-empty fields."""
+    from urllib.parse import quote_plus
+    pairs = []
+    for key in sorted(fields or {}):
+        if key == "signature":
+            continue
+        value = fields.get(key)
+        if value is None or str(value) == "":
+            continue
+        pairs.append(f"{key}={quote_plus(str(value).strip())}")
+    if passphrase:
+        pairs.append("passphrase=" + quote_plus(str(passphrase).strip()))
+    return hashlib.md5("&".join(pairs).encode("utf-8")).hexdigest()
+
+
 def _amount_kobo(amount_str: str) -> int:
     return int(round(float(amount_str) * 100))
 
