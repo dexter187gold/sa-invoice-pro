@@ -1,11 +1,22 @@
 import React, { useState } from 'react'
 import { Sync } from '../lib/sync'
 import { openWhatsApp, openEmail } from '../lib/share'
+import { readMediaBlob } from '../lib/mediaOpfs'
+
+function blobAsDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(new Error('Could not read selected attachment'))
+    reader.readAsDataURL(blob)
+  })
+}
 
 export default function PortalCard({
   client,
   company,
   invoices = [],
+  tickets = [],
   toast,
   onCreated,
   preparePortal,
@@ -14,6 +25,8 @@ export default function PortalCard({
   const [busy, setBusy] = useState(false)
   const [link, setLink] = useState(null)
   const [login, setLogin] = useState(null)
+  const [selectedFiles, setSelectedFiles] = useState({})
+  const [publishing, setPublishing] = useState(false)
 
   if (!client) return null
 
@@ -73,6 +86,39 @@ export default function PortalCard({
   }
 
   const url = link?.url
+  const customerJobs = (tickets || []).filter((t) => String(t.clientId) === String(client.id))
+  const availableFiles = customerJobs.flatMap((ticket) => [
+    ...(Array.isArray(ticket.photos) ? ticket.photos : []),
+    ...(Array.isArray(ticket.attachments) ? ticket.attachments : []),
+  ].map((file) => ({ ...file, ticketId: ticket.id, ticketLabel: ticket.number || ticket.title || 'Job card' })))
+  const selectedCount = availableFiles.filter((file) => selectedFiles[String(file.id)]).length
+
+  const publishSelected = async () => {
+    if (!link?.token || !selectedCount) return
+    setPublishing(true)
+    try {
+      const chosen = availableFiles.filter((file) => selectedFiles[String(file.id)])
+      const payload = []
+      for (const file of chosen) {
+        let dataUrl = file.dataUrl || ''
+        if (!dataUrl && file.opfs && file.path) {
+          const blob = await readMediaBlob(file.path)
+          if (!blob) throw new Error('Could not find ' + (file.name || 'a selected file') + ' in this device storage')
+          dataUrl = await blobAsDataUrl(blob)
+        }
+        if (!dataUrl) throw new Error((file.name || 'Selected file') + ' is not available to upload')
+        payload.push({ id: file.id, ticketId: file.ticketId, name: file.name, dataUrl })
+      }
+      const result = await Sync.publishPortalAttachments(link.token, payload)
+      toast?.((result.published || payload.length) + ' file(s) shared with customer', 'success')
+      setSelectedFiles({})
+    } catch (e) {
+      toast?.(e?.message || 'Could not share attachments', 'error')
+    } finally {
+      setPublishing(false)
+    }
+  }
+
   const shareText = login
     ? `Hi ${client.name?.split(' ')[0] || 'there'}, your client portal for ${company?.name || 'us'}:\n${login.portalUrl || url}\nLogin: ${login.username}\nPIN: ${login.pin}`
     : `Hi ${client.name?.split(' ')[0] || 'there'}, ` +
@@ -111,6 +157,28 @@ export default function PortalCard({
             <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>
               Tip: add a client email, then create the link again to issue a username + PIN login.
             </p>
+          )}
+          {availableFiles.length > 0 && (
+            <div className="card" style={{ marginTop: 12, padding: 12 }}>
+              <strong>Job-card attachments</strong>
+              <p className="muted" style={{ fontSize: 12, margin: '4px 0 10px' }}>
+                Choose exactly which files the customer may download. Files stay private until you share them here.
+              </p>
+              <div style={{ display: 'grid', gap: 8 }}>
+                {availableFiles.map((file) => (
+                  <label key={String(file.ticketId) + ':' + String(file.id)} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: 8, border: '1px solid var(--border)', borderRadius: 8 }}>
+                    <input type="checkbox" checked={!!selectedFiles[String(file.id)]} onChange={(e) => setSelectedFiles((prev) => ({ ...prev, [String(file.id)]: e.target.checked }))} />
+                    <span style={{ minWidth: 0 }}>
+                      <strong style={{ display: 'block', overflowWrap: 'anywhere' }}>{file.name || 'Attachment'}</strong>
+                      <span className="muted" style={{ fontSize: 11 }}>{file.ticketLabel} · {file.size ? Math.ceil(file.size / 1024) + ' KB' : 'File size unknown'}{file.opfs ? ' · stored on this device' : ''}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: 10 }} disabled={!selectedCount || publishing} onClick={publishSelected}>
+                {publishing ? 'Sharing files…' : 'Share ' + (selectedCount || '') + ' selected file' + (selectedCount === 1 ? '' : 's') + ' with customer'}
+              </button>
+            </div>
           )}
           <div className="portal-actions">
             <button
