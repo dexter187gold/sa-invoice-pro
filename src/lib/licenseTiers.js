@@ -112,3 +112,11 @@ export function comparisonColumns(includeTrial = true) {
   const ids = includeTrial ? COMPARISON_COLUMNS : COMPARISON_COLUMNS.filter((id) => id !== 'trial')
   return ids.map((id) => getTier(id)).filter(Boolean)
 }
+
+/** Normalise a comparison cell for the responsive plan matrix. */
+export function cellValue(row, planId) {
+  const value = row?.values?.[normalizePlanId(planId)]
+  if (value === true) return 'yes'
+  if (value === false || value == null || value === '') return 'no'
+  return String(value)
+}
