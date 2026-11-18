@@ -252,7 +252,7 @@ export default function Documents() {
           <h1>Document Studio</h1>
           <p className="subtitle">IT, retail and trades templates — branded A4 PDFs for real workflows.</p>
         </div>
-        <button type="button" className="btn btn-outline" onClick={fillDemo}>Load example</button>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}><a className="btn btn-primary" href="/content-studio">Open Content Studio</a><button type="button" className="btn btn-outline" onClick={fillDemo}>Load example</button></div>
       </div>
 
       <div className="it-doc-hero">
