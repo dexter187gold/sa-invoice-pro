@@ -171,7 +171,8 @@ def register_revoke_consistency(app, load_fn, save_fn, valid_hwid_fn, owner_page
             f"updated {touched['requests']} request(s), "
             f"{touched['users']} device(s). Overview and Keys issued refresh from live state."
         )
-        return redirect("/?msg=" + msg.replace(" ", "+"))
+        from urllib.parse import quote_plus
+        return redirect("/keys?msg=" + quote_plus(msg))
 
     @app.post("/owner/delete-key")
     def owner_delete_key_consistent():
