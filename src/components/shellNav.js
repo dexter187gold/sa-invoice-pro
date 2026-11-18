@@ -12,6 +12,7 @@ const ROOT_NAV = [
   { to: '/reports', label: 'Reports', icon: '📈', section: 'home' },
   { to: '/products', label: 'Products', icon: '📦', section: 'jobs' },
   { to: '/documents', label: 'Documents', icon: '📁', section: 'tools' },
+  { to: '/content-studio', label: 'Content Studio', icon: '🧩', section: 'tools' },
   { to: '/inbox', label: 'Messages', icon: '💬', section: 'home' },
   { to: '/accounting', label: 'Accounting', icon: '📒', section: 'books' },
   { to: '/settings', label: 'Settings', icon: '⚙️', section: 'settings' },
@@ -63,6 +64,7 @@ const SECTION_NAV = {
   ],
   tools: [
     { to: '/documents', label: 'Documents', icon: '📁', end: true },
+    { to: '/content-studio', label: 'Content Studio', icon: '🧩' },
   ],
 }
 
@@ -74,7 +76,7 @@ function sectionFromPath(pathname) {
   if (p.startsWith('/accounting') || p.startsWith('/expenses') || p.startsWith('/petty') || p.startsWith('/payroll') || p.startsWith('/employees') || p.startsWith('/bank')) return 'books'
   if (p.startsWith('/settings') || p.startsWith('/license') || p.startsWith('/support') || p.startsWith('/about') || p.startsWith('/owner')) return 'settings'
   if (p.startsWith('/products')) return 'jobs'
-  if (p.startsWith('/documents')) return 'tools'
+  if (p.startsWith('/documents') || p.startsWith('/content-studio')) return 'tools'
   return 'home'
 }
 
