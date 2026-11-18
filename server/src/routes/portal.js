@@ -20,6 +20,9 @@ portalRouter.get('/view/:token', (req, res) => {
     client: row.client || {},
     quotes: row.quotes || [],
     invoices: row.invoices || [],
+    tickets: row.tickets || [],
+    payments: row.payments || [],
+    accountStatement: row.accountStatement || {},
     expires: row.expires,
     token: row.token,
   })
