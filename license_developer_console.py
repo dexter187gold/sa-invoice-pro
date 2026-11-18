@@ -113,6 +113,20 @@ def register_developer_console(app, load_fn, now_display_fn=None):
         for key, record in list(raw_keys.items())[-60:][::-1]:
             if not isinstance(record, dict):
                 continue
+            expiry_raw = str(record.get("expiresAt") or record.get("expiry") or "").strip()
+            expired = False
+            if expiry_raw:
+                try:
+                    expiry_dt = datetime.fromisoformat(expiry_raw.replace("Z", "+00:00"))
+                    if expiry_dt.tzinfo is None:
+                        expiry_dt = expiry_dt.replace(tzinfo=timezone.utc)
+                    expired = expiry_dt <= datetime.now(timezone.utc)
+                except (TypeError, ValueError):
+                    pass
+            key_group = "revoked" if record.get("revoked") or record.get("archived") else ("expired" if expired else ("active" if record.get("used") else "unused"))
+            selected_filter = str(request.args.get("filter") or "all").lower()
+            if selected_filter in ("active", "unused", "expired", "revoked") and selected_filter != key_group:
+                continue
             key_cards.append(
                 f"""<article class="key-card" data-key-state="{'revoked' if record.get('revoked') or record.get('archived') else ('active' if record.get('used') else 'unused')}" data-key-expiry="{_e(record.get('expiresAt') or record.get('expiry') or '')}">
                   <div class="card-top"><code>{_e(key)}</code><span class="status-pill">{'Revoked' if record.get('revoked') else ('Used' if record.get('used') else 'Unused')}</span></div>
