@@ -288,7 +288,7 @@ export default function InvoiceEdit() {
           <button type="button" className="btn btn-outline" onClick={() => nav('/invoices')}>Back</button>
           <button type="button" className="btn btn-secondary" onClick={() => doPdf(true)}>Preview PDF</button>
           <button type="button" className="btn btn-secondary" onClick={() => doPdf(false)}>Download</button>
-          <button type="button" className="btn btn-outline" onClick={shareWhatsApp}>WhatsApp</button>
+          <button type="button" className="btn btn-outline" onClick={shareWhatsApp}>Send invoice PDF + WhatsApp</button>
           <button type="button" className="btn btn-outline" onClick={shareEmail}>Email</button>
         </div>
       </div>
