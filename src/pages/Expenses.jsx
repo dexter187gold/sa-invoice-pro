@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
+import { softDelete } from '../lib/recycleBin'
 import { STORES } from '../lib/db'
 import { formatMoney } from '../lib/money'
 import {
@@ -85,15 +86,15 @@ export default function Expenses() {
     const id = typeof row === 'object' ? row?.id : row
     setConfirm({
       title: 'Delete expense?',
-      message: 'This cannot be undone.',
+      message: 'Expense moves to the recycle bin (Settings → Backup).',
       danger: true,
       confirmLabel: 'Delete',
       action: async () => {
         try {
           if (id == null) throw new Error('Missing id')
-          await db.remove(STORES.expenses, id)
+          await softDelete(STORES.expenses, id, { reason: 'user-delete' })
           await refresh()
-          toast('Deleted', 'success')
+          toast('Expense moved to recycle bin', 'success')
           if (form.id != null && String(form.id) === String(id)) setForm(blank())
         } catch (err) {
           toast(err?.message || 'Delete failed', 'error')
