@@ -59,6 +59,24 @@ function StatusPill({ status }) {
   )
 }
 
+
+function safeText(value) {
+  return String(value == null ? '' : value).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]))
+}
+function downloadCsv(filename, rows) {
+  const csv = (rows || []).map((row) => row.map((v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"').join(',')).join('\n')
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+function printInvoice(inv, company, client) {
+  const win = window.open('', '_blank')
+  if (!win) return
+  const rows = (inv.lines || []).map((line) => '<tr><td>' + safeText(line.description) + '</td><td>' + safeText(line.qty || 1) + '</td><td>' + safeText(formatMoney((Number(line.qty) || 1) * (Number(line.price) || 0))) + '</td></tr>').join('')
+  win.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' + safeText(inv.number || 'Invoice') + '</title><style>body{font:14px Arial;color:#17202a;padding:32px;max-width:900px;margin:auto}header{display:flex;justify-content:space-between;gap:20px;border-bottom:2px solid #0f766e;padding-bottom:18px}table{width:100%;border-collapse:collapse;margin-top:24px}th,td{text-align:left;padding:10px;border-bottom:1px solid #ddd;vertical-align:top}.total{text-align:right;font-size:20px;font-weight:bold;margin-top:24px}.muted{color:#64748b}@media print{button{display:none}}</style></head><body><header><div><h2>' + safeText(company.name || 'Service provider') + '</h2><p>' + safeText(company.address || '') + '<br>' + safeText(company.email || '') + '</p></div><div><h1>INVOICE</h1><b>' + safeText(inv.number || '') + '</b><p class="muted">' + safeText(inv.date || '') + '</p></div></header><p><b>Bill to:</b> ' + safeText(client.name || client.email || '') + '</p><table><thead><tr><th>Description</th><th>Qty</th><th>Amount</th></tr></thead><tbody>' + rows + '</tbody></table><div class="total">Total: ' + safeText(formatMoney(inv.total || 0)) + '</div><p>Amount due: ' + safeText(formatMoney(inv.amountDue ?? inv.total ?? 0)) + '</p><p class="muted">' + safeText(inv.notes || '') + '</p><script>window.onload=function(){setTimeout(function(){window.print()},250)}<\/script></body></html>')
+  win.document.close()
+}
+
 function shellStyle() {
   return { minHeight: '100vh', background: 'var(--bg, #0f172a)', color: 'var(--text, #e2e8f0)' }
 }
@@ -300,8 +318,18 @@ export default function Portal() {
         <div style={{ fontSize: 12, opacity: 0.7 }}>Paid to date</div>
         <strong style={{ fontSize: 22 }}>{formatMoney(paidTotal)}</strong>
       </div>
-      {!(data?.payments || []).length ? (
-        <div style={cardStyle()}>No payments recorded yet.</div>
+      <div style={cardStyle()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+          <div><div style={{ fontSize: 12, opacity: 0.7 }}>Account statement</div><strong>{formatMoney(data?.accountStatement?.openBalance ?? openBal)} outstanding</strong></div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => downloadCsv('account-statement.csv', [['Date','Type','Reference','Description','Debit','Credit'], ...((data?.accountStatement?.entries || []).map((e) => [e.date,e.type,e.reference,e.description,e.debit,e.credit]))])}>Download statement CSV</button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => window.print()}>Print / Save PDF</button>
+          </div>
+        </div>
+      </div>
+      {!(data?.payments || []).length ? <div style={cardStyle()}>No payments recorded yet.</div> : (data.payments || []).map((p, i) => (
+        <div key={p.id || i} style={cardStyle()}><strong>{formatMoney(p.amount || p.paidAmount || p.value)}</strong><div style={{ fontSize: 13, opacity: 0.8 }}>{formatDate(p.date || p.paidAt)} · {p.method || p.reference || 'Payment received'}</div>{p.reference && <div style={{ fontSize: 12, opacity: 0.7 }}>Reference: {p.reference}</div>}</div>
+      ))}>No payments recorded yet.</div>
       ) : (
         (data.payments || []).map((p, i) => (
           <div key={p.id || i} style={cardStyle()}>
@@ -321,8 +349,14 @@ export default function Portal() {
       ) : (
         (tickets.length ? tickets : openJobs).map((t) => (
           <div key={t.id || t.number} style={cardStyle()}>
-            <strong>{t.title || t.subject || t.number || t.id}</strong> <StatusPill status={t.status} />
-            <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>{(t.description || '').slice(0, 160)}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}><strong>{t.title || t.subject || t.number || t.id}</strong><StatusPill status={t.status} /></div>
+            <div style={{ fontSize: 13, opacity: 0.8, marginTop: 6 }}>Job reference: {t.id || '—'} · {t.jobType || 'Service'} · {formatDate(t.scheduledDate || t.createdAt)}</div>
+            {t.siteAddress && <div style={{ fontSize: 13, marginTop: 4 }}>Service location: {t.siteAddress}</div>}
+            {t.technician && <div style={{ fontSize: 13, marginTop: 4 }}>Technician: {t.technician}</div>}
+            {t.description && <p style={{ fontSize: 13, margin: '8px 0 0' }}>{t.description}</p>}
+            {t.workDone && <p style={{ fontSize: 13, margin: '8px 0 0' }}><b>Work completed:</b> {t.workDone}</p>}
+            {Array.isArray(t.parts) && t.parts.length > 0 && <div style={{ marginTop: 8 }}><b style={{ fontSize: 13 }}>Parts / materials</b>{t.parts.map((part, i) => <div key={i} style={{ fontSize: 13 }}>{part.name || part.description} · Qty {part.qty || 1}</div>)}</div>}
+            {Array.isArray(t.attachments) && t.attachments.length > 0 && <div style={{ marginTop: 12 }}><b style={{ fontSize: 13 }}>Job photos & documents</b><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>{t.attachments.map((file) => <a key={file.id} href={file.dataUrl} download={file.name} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm">{file.name || 'Download attachment'}</a>)}</div></div>}
           </div>
         ))
       )}
