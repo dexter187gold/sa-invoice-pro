@@ -109,7 +109,7 @@ def test_safe_dashboard_variant_also_requires_owner_cookie():
     from license_dashboard_fix import register_safe_dashboard
 
     app = Flask(__name__)
-    register_safe_dashboard(app, lambda: {"users": {}, "requests": {}, "keys": {}}, now_display_fn=lambda: "test")
+    register_safe_dashboard(app, lambda: {"users": {}, "requests": {}, "keys": {}}, license_server.DASH, now_display_fn=lambda: "test")
     client = app.test_client()
     with patch.dict(os.environ, {"SA_OWNER_TOKEN": "owner-test-token"}):
         response = client.get("/")
