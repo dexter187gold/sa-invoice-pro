@@ -22,7 +22,7 @@ function addDays(iso, n) {
 export default function InvoiceEdit() {
   const { id } = useParams()
   const isNew = !id || id === 'new'
-  const { clients, invoices, tickets, products, services, payments, vatRate, vatEnabled, refresh, toast, company } = useApp()
+  const { user, clients, invoices, tickets, products, services, payments, vatRate, vatEnabled, refresh, toast, company } = useApp()
   const nav = useNavigate()
   const existing = invoices.find((i) => String(i.id) === String(id))
   const invPayments = payments.filter((p) => String(p.invoiceId) === String(id))
@@ -56,6 +56,18 @@ export default function InvoiceEdit() {
   useEffect(() => {
     if (!vatEnabled && documentType === 'tax-invoice') setDocumentType('invoice')
   }, [vatEnabled, documentType])
+
+  useEffect(() => {
+    if (!isNew || searchParams.get('fromStudio') !== '1') return
+    try {
+      const pending = JSON.parse(localStorage.getItem('sa_content_studio_invoice_lines') || 'null')
+      const identity = String(user?.id || user?.email || 'workspace')
+      if (!pending || pending.owner !== 'sa_content_studio_' + identity || !Array.isArray(pending.rows)) return
+      setLines(pending.rows.length ? pending.rows : [{ description: '', qty: 1, price: 0 }])
+      localStorage.removeItem('sa_content_studio_invoice_lines')
+      toast?.('Reviewed Content Studio billable lines loaded. Select a client and review totals before saving.', 'success')
+    } catch (error) { console.warn('[content-studio invoice handoff]', error) }
+  }, [isNew, searchParams, user?.id, user?.email])
 
   useEffect(() => {
     loadInvoiceLayout().then((L) => {
