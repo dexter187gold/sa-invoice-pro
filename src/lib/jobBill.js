@@ -13,11 +13,13 @@ export async function invoiceFromTickets(tickets, {
   defaultRate = 450,
   markResolved = true,
   force = false,
+  billingOptions = {},
 } = {}) {
   const list = (tickets || []).filter(Boolean)
   if (!list.length) throw new Error('Select at least one job card')
 
-  if (list.length === 1 && !force) {
+  const hasExtras = Boolean(billingOptions?.fuelEnabled || billingOptions?.calloutEnabled || billingOptions?.diagnosticsEnabled || billingOptions?.consumablesEnabled || billingOptions?.otherEnabled);
+  if (list.length === 1 && !force && !hasExtras) {
     const inv = await invoiceFromTicket(list[0], {
       invoices, vatRate, vatEnabled, defaultRate, markResolved, force,
     })
@@ -50,11 +52,17 @@ export async function invoiceFromTickets(tickets, {
       ticket.workDone || ticket.description || '',
       ticket.devices || ticket.serials || '',
     ].filter(Boolean)
+    const detail = [
+      ticket.id ? `Job card: ${ticket.id}` : '',
+      ticket.assignee || ticket.technician ? `Technician: ${ticket.assignee || ticket.technician}` : '',
+      ticket.priority ? `Priority: ${ticket.priority}` : '',
+    ].filter(Boolean);
     lines.push({
-      description: descParts.join(' · ') || 'Job card service',
+      description: [descParts.join(' · ') || 'Job card service', ...detail].join('\\n'),
       qty: 1,
       price: labourPrice,
       ticketId: ticket.id,
+      category: 'labour',
     })
     if (Array.isArray(ticket.parts)) {
       for (const part of ticket.parts) {
@@ -63,13 +71,36 @@ export async function invoiceFromTickets(tickets, {
           qty: Number(part.qty) || 1,
           price: Number(part.price) || 0,
           ticketId: ticket.id,
+          category: 'parts',
         })
       }
     }
   }
   if (!lines.length) {
-    lines.push({ description: 'Job card services', qty: 1, price: defaultRate })
+    lines.push({ description: 'Job card services', qty: 1, price: defaultRate, category: 'labour' })
   }
+
+  // Optional invoice-level charges are only added when the operator enables them.
+  const addOptionalLine = (enabled, description, qty, price, category) => {
+    const q = Number(qty) || 0
+    const p = Number(price) || 0
+    if (enabled && q > 0 && p >= 0 && q * p > 0) {
+      lines.push({ description, qty: q, price: p, category })
+    }
+  }
+  if (billingOptions.fuelEnabled) {
+    const km = Number(billingOptions.fuelKm) || 0
+    const rate = Number(billingOptions.fuelRate) || 0
+    if (billingOptions.fuelMode === 'distance') {
+      addOptionalLine(true, `Travel / fuel charge (${km} km × R ${rate.toFixed(2)} per km)`, km, rate, 'fuel')
+    } else {
+      addOptionalLine(true, billingOptions.fuelDescription || 'Fuel / travel charge', 1, billingOptions.fuelAmount, 'fuel')
+    }
+  }
+  addOptionalLine(billingOptions.calloutEnabled, billingOptions.calloutDescription || 'Call-out fee', 1, billingOptions.calloutAmount, 'callout')
+  addOptionalLine(billingOptions.diagnosticsEnabled, billingOptions.diagnosticsDescription || 'Diagnostic / assessment fee', 1, billingOptions.diagnosticsAmount, 'diagnostics')
+  addOptionalLine(billingOptions.consumablesEnabled, billingOptions.consumablesDescription || 'Consumables / workshop materials', 1, billingOptions.consumablesAmount, 'consumables')
+  addOptionalLine(billingOptions.otherEnabled, billingOptions.otherDescription || 'Additional service charge', 1, billingOptions.otherAmount, 'other')
 
   const totals = invoiceTotals(lines, vatRate, vatEnabled)
   const year = new Date().getFullYear()
