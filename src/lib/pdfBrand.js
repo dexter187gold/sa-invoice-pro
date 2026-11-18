@@ -28,8 +28,11 @@ export function pdfBrandMeta() {
  * Draw logo (if any) top-left; returns y offset after logo block.
  * @param {import('jspdf').jsPDF} doc
  */
-export function drawPdfLogo(doc, { x = 14, y = 10, maxH = 16, maxW = 28 } = {}) {
-  const { logoDataUrl } = pdfBrandMeta()
+export function drawPdfLogo(doc, { x = 14, y = 10, maxH = 16, maxW = 28, logoDataUrl: overrideLogo } = {}) {
+  const brand = pdfBrandMeta()
+  const logoDataUrl = (overrideLogo && String(overrideLogo).startsWith('data:image'))
+    ? overrideLogo
+    : brand.logoDataUrl
   if (!logoDataUrl || !logoDataUrl.startsWith('data:image')) return y
   try {
     const fmt = logoDataUrl.includes('image/png') ? 'PNG' : 'JPEG'

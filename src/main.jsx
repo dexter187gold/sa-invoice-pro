@@ -8,6 +8,7 @@ import { loadSavedTheme } from './lib/themes'
 import { registerPwa } from './lib/registerPwa'
 import { loadSavedBusinessType } from './lib/businessTypes'
 import { applyWhiteLabel, loadWhiteLabel } from './lib/whiteLabel'
+import { applyUiLayoutOnBoot } from './lib/uiLayout'
 
 try {
   const prefs = JSON.parse(localStorage.getItem('sa_nav_prefs') || '{}')
@@ -22,7 +23,7 @@ import './styles.auth.css'
 import './styles.auth-recovery.css'
 import './styles.ux.css'
 import './styles.form-scroll.css'
-import './styles.mobile-setup-fix.css'
+import './styles.mobile-setup-form.css'
 import './styles.tickets.css'
 import './styles.table.css'
 import './styles.invoice.css'
@@ -36,13 +37,14 @@ import './styles.pulse.css'
 import './styles.nav-comfort.css'
 import './styles.glass.css'
 import './styles.white-label.css'
+import './styles.layout-traditional.css'
 
-// Apply theme once, after styles load — never force-overwrite user choice
 try { loadSavedTheme() } catch {}
 try { loadSavedBusinessType() } catch {}
 try { registerPwa() } catch {}
 try { applyWhiteLabel(loadWhiteLabel()) } catch {}
 try { initFont() } catch {}
+try { applyUiLayoutOnBoot() } catch {}
 
 try {
   document.documentElement.style.visibility = 'visible'
