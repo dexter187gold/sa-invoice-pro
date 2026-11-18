@@ -297,3 +297,67 @@ def test_switching_managed_device_to_trial_preserves_trial_expiry(monkeypatch):
     )
     assert response.status_code == 302
     assert db["users"]["device-3"]["trialEndsAt"] == "2026-12-01T00:00:00Z"
+
+
+def test_permanent_delete_license_uses_exact_key_and_returns_to_keys(monkeypatch):
+    import license_server
+
+    db = {
+        "keys": {
+            "EXPIRED-KEY": {"hwid": "device-a", "boundEmail": "same@example.test", "expiresAt": "2020-01-01T00:00:00Z"},
+            "OTHER-KEY": {"hwid": "device-b", "boundEmail": "same@example.test"},
+        },
+        "requests": {
+            "device-a": {"hwid": "device-a", "email": "same@example.test", "key": "EXPIRED-KEY", "status": "issued"},
+            "device-b": {"hwid": "device-b", "email": "same@example.test", "key": "OTHER-KEY", "status": "issued"},
+        },
+        "users": {
+            "device-a": {"hwid": "device-a", "email": "same@example.test", "mode": "licensed", "key": "EXPIRED-KEY"},
+            "device-b": {"hwid": "device-b", "email": "same@example.test", "mode": "licensed", "key": "OTHER-KEY"},
+        },
+        "accounts": {},
+    }
+    monkeypatch.setattr(license_server, "_owner_page_guard", lambda: None)
+    monkeypatch.setattr(license_server, "load", lambda: db)
+    monkeypatch.setattr(license_server, "save", lambda value: None)
+    response = license_server.app.test_client().post(
+        "/owner/permanent-delete-license",
+        data={"key": "EXPIRED-KEY", "hwid": "device-a", "confirm": "DELETE LICENSE", "return_to": "/keys"},
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"].startswith("/keys?")
+    assert "EXPIRED-KEY" not in db["keys"]
+    assert "OTHER-KEY" in db["keys"]
+    assert db["users"]["device-a"]["mode"] == "handshake"
+    assert db["users"]["device-b"]["mode"] == "licensed"
+
+
+def test_permanent_delete_device_only_removes_keys_for_selected_hwid(monkeypatch):
+    import license_server
+
+    db = {
+        "users": {
+            "device-a": {"hwid": "device-a", "email": "same@example.test"},
+            "device-b": {"hwid": "device-b", "email": "same@example.test"},
+        },
+        "requests": {},
+        "keys": {
+            "KEY-A": {"hwid": "device-a", "boundEmail": "same@example.test"},
+            "KEY-B": {"hwid": "device-b", "boundEmail": "same@example.test"},
+        },
+        "accounts": {"same@example.test": {"devices": ["device-a", "device-b"]}},
+    }
+    monkeypatch.setattr(license_server, "_owner_page_guard", lambda: None)
+    monkeypatch.setattr(license_server, "load", lambda: db)
+    monkeypatch.setattr(license_server, "save", lambda value: None)
+    response = license_server.app.test_client().post(
+        "/owner/permanent-delete-device",
+        data={"hwid": "device-a", "confirm": "DELETE DEVICE", "return_to": "/devices"},
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"].startswith("/devices?")
+    assert "device-a" not in db["users"]
+    assert "device-b" in db["users"]
+    assert "KEY-A" not in db["keys"]
+    assert "KEY-B" in db["keys"]
+    assert db["accounts"]["same@example.test"]["devices"] == ["device-b"]
