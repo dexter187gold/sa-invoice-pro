@@ -26,7 +26,7 @@ import PettyCash from './pages/PettyCash'
 import Employees from './pages/Employees'
 import Payroll from './pages/Payroll'
 import Reports from './pages/Reports'
-import Documents from './pages/Documents'
+import Documents from './pages/Documents'\nimport ContentStudio from './pages/ContentStudio'
 import License from './pages/License'
 import Team from './pages/Team'
 import OwnerRecovery from './pages/OwnerRecovery'
@@ -140,7 +140,7 @@ export default function App() {
                 <Route path="/roadmap" element={<Roadmap />} />
                 <Route path="/accounting" element={<Accounting />} />
                 <Route path="/reports" element={<Reports />} />
-                <Route path="/documents" element={<Documents />} />
+                <Route path="/documents" element={<Documents />} />\n                <Route path="/content-studio" element={<ContentStudio />} />
                 <Route path="/license" element={<License />} />
                 <Route path="/team" element={<Team />} />
                 <Route path="/owner-recovery" element={<OwnerRecovery />} />
