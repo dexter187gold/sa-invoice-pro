@@ -141,7 +141,8 @@ export default function App() {
                 <Route path="/roadmap" element={<Roadmap />} />
                 <Route path="/accounting" element={<Accounting />} />
                 <Route path="/reports" element={<Reports />} />
-                <Route path="/documents" element={<Documents />} />\n                <Route path="/content-studio" element={<ContentStudio />} />
+                <Route path="/documents" element={<Documents />} />
+                <Route path="/content-studio" element={<ContentStudio />} />
                 <Route path="/license" element={<License />} />
                 <Route path="/team" element={<Team />} />
                 <Route path="/owner-recovery" element={<OwnerRecovery />} />
