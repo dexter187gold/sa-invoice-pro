@@ -428,6 +428,15 @@ export const Sync = {
     return normalized
   },
 
+  async publishPortalAttachments(token, attachments) {
+    return request('/api/portal/publish/' + encodeURIComponent(String(token || '')), {
+      method: 'POST',
+      body: JSON.stringify({ attachments: Array.isArray(attachments) ? attachments : [] }),
+      _maxAttempts: 1,
+      _timeout: 60000,
+    })
+  },
+
   async listPortalLinks() { return request('/api/portal/list') },
   async revokePortalLink(token) {
     return request('/api/portal/revoke', { method: 'POST', body: JSON.stringify({ token }) })
