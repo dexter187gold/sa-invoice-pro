@@ -13,7 +13,7 @@ async function attachmentForPortal(item) {
   if (item.opfs && item.path) {
     try {
       const file = await readMediaBlob(item.path)
-      if (!file || file.size > 2_500_000) return null
+      if (!file || file.size > 1_500_000) return null
       const dataUrl = await new Promise((resolve, reject) => {
         const reader = new FileReader()
         reader.onload = () => resolve(String(reader.result || ''))
@@ -43,9 +43,9 @@ async function buildClientPortalSnapshot(client) {
     const docs = Array.isArray(ticket.attachments) ? ticket.attachments : []
     const published = []
     for (const item of [...photos, ...docs]) {
-      if (budget >= 8_000_000) break
+      if (budget >= 2_000_000) break
       const file = await attachmentForPortal(item)
-      if (file) { budget += Number(file.size) || 0; published.push(file) }
+      if (file) { const size = Number(file.size) || Math.ceil(String(file.dataUrl || '').length * 0.75); if (budget + size <= 2_000_000) { budget += size; published.push(file) } }
     }
     publishedTickets.push({
       id: ticket.id, title: ticket.title || ticket.subject || 'Service job',
