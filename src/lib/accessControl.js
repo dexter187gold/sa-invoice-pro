@@ -6,8 +6,6 @@ const BASIC_PATHS = new Set([
   '/products', '/payments', '/license', '/support', '/about', '/settings',
 ])
 
-// A trial is deliberately a small, usable introduction to the core workflow.
-// Keep this list narrow: trial accounts can manage clients, invoices and quotes only.
 const TRIAL_PATHS = new Set(['/clients', '/invoices', '/quotes'])
 
 const PLAN_FEATURES = {
@@ -32,20 +30,18 @@ const OWNER_ONLY = new Set(['/owner-console', '/owner-recovery', '/dev-portal'])
 
 export function normalizedPlan(status) {
   const raw = status?.meta?.plan || status?.meta?.planId || status?.meta?.planName || status?.meta?.tier || status?.plan || status?.planId || status?.licensePlan || ''
-  // Map lifetime→solo, enterprise→multi for feature gates
   return featurePlanGroup(raw) || normalizePlanId(raw) || ''
 }
 
 export function canAccessPath(pathname, status, isOwner = false) {
   let path = String(pathname || '/').split('?')[0]
   if (path.startsWith('/invoices/')) path = '/invoices'
+  if (path.startsWith('/tickets')) path = '/tickets'
   if (path.startsWith('/portal/')) path = '/portal'
   if (OWNER_ONLY.has(path)) return !!isOwner
 
   if (status?.licensed) {
     if (path === '/license' || path === '/support' || path === '/about' || path === '/settings') return true
-    // Super-admin surfaces stay owner-only (OWNER_ONLY already enforced above).
-    // portal-admin is multi/enterprise only — not every licensed solo/shop seat.
     if (path === '/portal-admin') {
       const plan = normalizedPlan(status)
       return plan === 'multi' || isOwner
@@ -55,8 +51,6 @@ export function canAccessPath(pathname, status, isOwner = false) {
     return allowed.has(path)
   }
 
-  // Keep licence checkout reachable so a trial user can upgrade, but expose
-  // no other modules beyond the three trial workflow areas.
   if (path === '/license' || path === '/settings') return true
   return TRIAL_PATHS.has(path) && Number(status?.trialDaysLeft || 0) > 0
 }
