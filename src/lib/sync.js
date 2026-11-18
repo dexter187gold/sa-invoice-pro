@@ -309,6 +309,19 @@ export const Sync = {
     return { supported: true, subscribed: !!subscription, enabled: !!config.enabled }
   },
 
+  async getPendingWaClients() { return request('/api/wa/pending') },
+  async markWaClientImported(phone, clientId) {
+    return request('/api/wa/pending/' + encodeURIComponent(String(phone || '')) + '/imported', {
+      method: 'POST', body: JSON.stringify({ client_id: clientId || null }),
+    })
+  },
+  async getTicketIntake() { return request('/api/tickets/intake') },
+  async markTicketImported(id, ticketId) {
+    return request('/api/tickets/intake/' + encodeURIComponent(String(id || '')) + '/imported', {
+      method: 'POST', body: JSON.stringify({ ticket_id: ticketId || null }),
+    })
+  },
+
   async getNotifications() { return request('/api/notifications') },
   async markNotificationsRead() { return request('/api/notifications/read', { method: 'POST', body: JSON.stringify({ all: true }) }) },
 
