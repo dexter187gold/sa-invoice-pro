@@ -734,6 +734,7 @@ def owner_permanent_delete_user():
     if hwid:
         targets.add(hwid)
     removed_keys = 0
+    removed_key_ids = []
     for device_id in targets:
         users.pop(device_id, None)
         reqs.pop(device_id, None)
@@ -744,6 +745,7 @@ def owner_permanent_delete_user():
         if str(record.get("hwid") or "").strip() in targets or (email and record_email == email) or (account_key and str(existing_key).upper() == account_key):
             del keys[existing_key]
             removed_keys += 1
+            removed_key_ids.append(existing_key)
     removed_account = bool(email and accounts.pop(email, None) is not None)
     if not targets and not removed_account and not removed_keys:
         return _developer_console_redirect("No matching registered user, device or licence was found. Nothing was deleted.", "/devices")
