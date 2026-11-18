@@ -287,40 +287,32 @@ export default function Portal() {
 
   const invoicesBlock = (
     <>
-      <h2 style={{ fontSize: 16, margin: '0 0 12px' }}>Invoices & balance</h2>
+      <h2 style={{ fontSize: 18, margin: '0 0 12px' }}>Invoices & balance</h2>
       <div style={cardStyle({ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 })}>
-        <div>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>Open balance</div>
-          <strong style={{ fontSize: 22 }}>{formatMoney(openBal)}</strong>
-        </div>
+        <div><div style={{ fontSize: 12, opacity: 0.7 }}>Open balance</div><strong style={{ fontSize: 22 }}>{formatMoney(openBal)}</strong></div>
       </div>
-      {!invoices.length ? (
-        <div style={cardStyle()}>No invoices yet.</div>
-      ) : (
-        invoices.map((inv) => (
-          <div key={inv.id || inv.number} style={{ ...cardStyle(), display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            <div>
-              <strong>{inv.number || 'Invoice'}</strong> <StatusPill status={inv.status} />
-              <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>
-                {formatMoney(inv.amountDue != null ? inv.amountDue : inv.total)} · {formatDate(inv.date)}
-              </div>
-            </div>
+      {!invoices.length ? <div style={cardStyle()}>No invoices yet.</div> : invoices.map((inv) => (
+        <div key={inv.id || inv.number} style={cardStyle()}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div><strong>{inv.number || 'Invoice'}</strong> <StatusPill status={inv.status} /><div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>Issued {formatDate(inv.date)} · Due {formatDate(inv.dueDate)}</div></div>
+            <strong style={{ fontSize: 20 }}>{formatMoney(inv.total)}</strong>
           </div>
-        ))
-      )}
+          <div style={{ fontSize: 13, opacity: 0.85, marginTop: 8 }}>Paid: {formatMoney(inv.amountPaid || 0)} · Balance: {formatMoney(inv.amountDue ?? inv.total ?? 0)}</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => printInvoice(inv, company, client)}>Download / Print invoice</button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => downloadCsv((inv.number || 'invoice') + '-items.csv', [['Description','Quantity','Unit price','Line total'], ...(inv.lines || []).map((line) => [line.description, line.qty, line.price, (Number(line.qty) || 1) * (Number(line.price) || 0)])])}>Download item list</button>
+          </div>
+        </div>
+      ))}
     </>
   )
 
   const paymentsBlock = (
     <>
-      <h2 style={{ fontSize: 16, margin: '0 0 12px' }}>Payment history</h2>
+      <h2 style={{ fontSize: 18, margin: '0 0 12px' }}>Payments & account statement</h2>
       <div style={cardStyle()}>
-        <div style={{ fontSize: 12, opacity: 0.7 }}>Paid to date</div>
-        <strong style={{ fontSize: 22 }}>{formatMoney(paidTotal)}</strong>
-      </div>
-      <div style={cardStyle()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-          <div><div style={{ fontSize: 12, opacity: 0.7 }}>Account statement</div><strong>{formatMoney(data?.accountStatement?.openBalance ?? openBal)} outstanding</strong></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div><div style={{ fontSize: 12, opacity: 0.7 }}>Paid to date</div><strong style={{ fontSize: 22 }}>{formatMoney(paidTotal)}</strong><div style={{ fontSize: 13, opacity: 0.8 }}>Outstanding: {formatMoney(data?.accountStatement?.openBalance ?? openBal)}</div></div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button type="button" className="btn btn-outline btn-sm" onClick={() => downloadCsv('account-statement.csv', [['Date','Type','Reference','Description','Debit','Credit'], ...((data?.accountStatement?.entries || []).map((e) => [e.date,e.type,e.reference,e.description,e.debit,e.credit]))])}>Download statement CSV</button>
             <button type="button" className="btn btn-outline btn-sm" onClick={() => window.print()}>Print / Save PDF</button>
@@ -329,37 +321,29 @@ export default function Portal() {
       </div>
       {!(data?.payments || []).length ? <div style={cardStyle()}>No payments recorded yet.</div> : (data.payments || []).map((p, i) => (
         <div key={p.id || i} style={cardStyle()}><strong>{formatMoney(p.amount || p.paidAmount || p.value)}</strong><div style={{ fontSize: 13, opacity: 0.8 }}>{formatDate(p.date || p.paidAt)} · {p.method || p.reference || 'Payment received'}</div>{p.reference && <div style={{ fontSize: 12, opacity: 0.7 }}>Reference: {p.reference}</div>}</div>
-      ))}>No payments recorded yet.</div>
-      ) : (
-        (data.payments || []).map((p, i) => (
-          <div key={p.id || i} style={cardStyle()}>
-            <strong>{formatMoney(p.amount)}</strong>
-            <div style={{ fontSize: 13, opacity: 0.8 }}>{formatDate(p.date || p.paidAt)} · {p.method || p.reference || ''}</div>
-          </div>
-        ))
-      )}
+      ))}
+      <div style={cardStyle()}>
+        <strong>Statement activity</strong>
+        {(data?.accountStatement?.entries || []).map((entry, index) => <div key={index} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '9px 0', borderBottom: '1px solid rgba(148,163,184,.15)' }}><div><b>{entry.type}</b><div style={{ fontSize: 12, opacity: .75 }}>{formatDate(entry.date)} · {entry.reference || ''} · {entry.description || ''}</div></div><div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{entry.debit ? formatMoney(entry.debit) : ''}{entry.credit ? <div>{formatMoney(entry.credit)} credit</div> : ''}</div></div>)}
+      </div>
     </>
   )
 
   const serviceBlock = (
     <>
-      <h2 style={{ fontSize: 16, margin: '0 0 12px' }}>Service / jobs</h2>
-      {!openJobs.length && !tickets.length ? (
-        <div style={cardStyle()}>No open service jobs.</div>
-      ) : (
-        (tickets.length ? tickets : openJobs).map((t) => (
-          <div key={t.id || t.number} style={cardStyle()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}><strong>{t.title || t.subject || t.number || t.id}</strong><StatusPill status={t.status} /></div>
-            <div style={{ fontSize: 13, opacity: 0.8, marginTop: 6 }}>Job reference: {t.id || '—'} · {t.jobType || 'Service'} · {formatDate(t.scheduledDate || t.createdAt)}</div>
-            {t.siteAddress && <div style={{ fontSize: 13, marginTop: 4 }}>Service location: {t.siteAddress}</div>}
-            {t.technician && <div style={{ fontSize: 13, marginTop: 4 }}>Technician: {t.technician}</div>}
-            {t.description && <p style={{ fontSize: 13, margin: '8px 0 0' }}>{t.description}</p>}
-            {t.workDone && <p style={{ fontSize: 13, margin: '8px 0 0' }}><b>Work completed:</b> {t.workDone}</p>}
-            {Array.isArray(t.parts) && t.parts.length > 0 && <div style={{ marginTop: 8 }}><b style={{ fontSize: 13 }}>Parts / materials</b>{t.parts.map((part, i) => <div key={i} style={{ fontSize: 13 }}>{part.name || part.description} · Qty {part.qty || 1}</div>)}</div>}
-            {Array.isArray(t.attachments) && t.attachments.length > 0 && <div style={{ marginTop: 12 }}><b style={{ fontSize: 13 }}>Job photos & documents</b><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>{t.attachments.map((file) => <a key={file.id} href={file.dataUrl} download={file.name} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm">{file.name || 'Download attachment'}</a>)}</div></div>}
-          </div>
-        ))
-      )}
+      <h2 style={{ fontSize: 18, margin: '0 0 12px' }}>Service history & job cards</h2>
+      {!tickets.length ? <div style={cardStyle()}>No job cards have been shared with this portal yet.</div> : tickets.map((t) => (
+        <div key={t.id || t.number} style={cardStyle()}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}><strong>{t.title || t.subject || t.number || t.id}</strong><StatusPill status={t.status} /></div>
+          <div style={{ fontSize: 13, opacity: 0.8, marginTop: 6 }}>Job reference: {t.id || '—'} · {t.jobType || 'Service'} · {formatDate(t.scheduledDate || t.createdAt)}</div>
+          {t.siteAddress && <div style={{ fontSize: 13, marginTop: 4 }}>Service location: {t.siteAddress}</div>}
+          {t.technician && <div style={{ fontSize: 13, marginTop: 4 }}>Technician: {t.technician}</div>}
+          {t.description && <p style={{ fontSize: 13, margin: '8px 0 0' }}>{t.description}</p>}
+          {t.workDone && <p style={{ fontSize: 13, margin: '8px 0 0' }}><b>Work completed:</b> {t.workDone}</p>}
+          {Array.isArray(t.parts) && t.parts.length > 0 && <div style={{ marginTop: 8 }}><b style={{ fontSize: 13 }}>Parts / materials</b>{t.parts.map((part, i) => <div key={i} style={{ fontSize: 13 }}>{part.name || part.description} · Qty {part.qty || 1}</div>)}</div>}
+          {Array.isArray(t.attachments) && t.attachments.length > 0 && <div style={{ marginTop: 12 }}><b style={{ fontSize: 13 }}>Job photos & documents</b><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>{t.attachments.map((file) => <a key={file.id} href={file.dataUrl} download={file.name} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm">{file.name || 'Download attachment'}</a>)}</div></div>}
+        </div>
+      ))}
     </>
   )
 
