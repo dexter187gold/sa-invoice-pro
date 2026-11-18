@@ -10,6 +10,9 @@ import { ticketLabel } from '../lib/statusLabels'
 import { PageFade, SearchInput, EmptyState, formatDateZA, relativeTime } from '../components/ui'
 import PageInsightsBar from '../components/PageInsightsBar'
 import { notifyJobStatus, hasCloudCredentials, buildJobStatusMessage } from '../lib/whatsapp'
+import { buildJobCardPdf, getJobCardShareFiles } from '../lib/ticketPrint'
+import { shareFilesWithCaption } from '../lib/pdfOpen'
+import { openWhatsApp as openWhatsAppText } from '../lib/share'
 
 const STATUSES = [
   { id: 'open', label: 'Open', color: '#38bdf8' },
@@ -240,15 +243,51 @@ export default function Tickets() {
     toast('Note added', 'success')
   }
 
-  const openWhatsApp = (t, custom) => {
-    const phone = t.contactPhone || clientOf(t)?.phone || ''
-    const wa = toWa(phone)
-    const msg = custom || buildWaMsg(t, company)
-    const url = wa
-      ? `https://wa.me/${wa}?text=${encodeURIComponent(msg)}`
-      : `https://wa.me/?text=${encodeURIComponent(msg)}`
-    window.open(url, '_blank', 'noopener,noreferrer')
-    toast(wa ? 'Opening WhatsApp…' : 'No phone — WhatsApp opened without number', wa ? 'success' : 'info')
+  const openWhatsApp = async (t, custom) => {
+    const client = clientOf(t) || {}
+    const phone = t.contactPhone || client.phone || ''
+    const name = client.name || t.contactName || 'Customer'
+    const jobRef = t.number || t.jobNumber || t.title || t.id
+    const caption = custom || [
+      `Dear ${name},`,
+      '',
+      `Please find attached the job card / service report for ${jobRef} from ${company?.name || 'SA Invoice Pro'}.`,
+      `Job: ${t.title || t.subject || 'Service'}`,
+      `Status: ${ticketLabel(t.status) || t.status || 'Open'}`,
+      t.workDone ? `Work completed: ${t.workDone}` : '',
+      '',
+      'Please review the attached report and reply here if you have any questions.',
+      '',
+      `Kind regards,\n${company?.name || 'SA Invoice Pro'}`,
+    ].filter(Boolean).join('\n')
+    try {
+      const doc = await buildJobCardPdf(t, company, client)
+      const pdf = new File([doc.output('blob')], String(jobRef).replace(/[^a-z0-9._-]+/gi, '-') + '-job-card.pdf', { type: 'application/pdf' })
+      const { files, skipped } = await getJobCardShareFiles(t, pdf)
+      const shared = await shareFilesWithCaption(files, caption, 'Job card ' + jobRef)
+      if (shared === true) {
+        toast('Job card, available attachments and caption ready — choose WhatsApp and the customer', 'success')
+        if (skipped.length) toast('Some attachments could not be included: ' + skipped.join(', '), 'info')
+        return
+      }
+      if (shared?.cancelled) return
+      files.forEach((file) => {
+        const url = URL.createObjectURL(file)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = file.name
+        a.style.display = 'none'
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        setTimeout(() => URL.revokeObjectURL(url), 60000)
+      })
+      openWhatsAppText(phone, caption)
+      toast('Job-card files downloaded. WhatsApp opened with the caption; attach the downloaded files if file sharing is unavailable.', 'info')
+      if (skipped.length) toast('Some attachments could not be read: ' + skipped.join(', '), 'warning')
+    } catch (error) {
+      toast(error?.message || 'Could not prepare job card for WhatsApp', 'error')
+    }
   }
 
   const sendCloudWhatsApp = async (t) => {
@@ -487,7 +526,7 @@ export default function Tickets() {
                 {detail.description ? <p style={{ fontSize: 13 }}>{detail.description}</p> : null}
                 {detail.workDone ? <p style={{ fontSize: 13 }}><strong>Work done:</strong> {detail.workDone}</p> : null}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => openWhatsApp(detail)} title="Opens WhatsApp app / web">WhatsApp</button>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => openWhatsApp(detail)} title="Share job-card PDF and available attachments with a WhatsApp caption">Send job card + files</button>
                   <button type="button" className="btn btn-primary btn-sm" onClick={() => sendCloudWhatsApp(detail)} title="Send via Meta Cloud API when token is set; else falls back to wa.me">Send Cloud</button>
                   <button type="button" className="btn btn-primary btn-sm" onClick={() => billTicket(detail)} title="One-shot job → invoice">
                     {detail.invoiceId ? 'Open invoice' : 'Snipe → Invoice'}
