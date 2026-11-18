@@ -55,15 +55,16 @@ export async function buildInvoicePdf(invoice, { company, client, payments = [] 
   doc.line(14, y, 196, y)
   y += 6
   for (const line of invoice.lines || []) {
-    if (y > 250) { doc.addPage(); y = 20 }
-    const desc = String(line.description || '').slice(0, 60)
+    const descLines = doc.splitTextToSize(String(line.description || ''), 100)
+    const rowHeight = Math.max(6, descLines.length * 4.5)
+    if (y + rowHeight > 255) { doc.addPage(); y = 20 }
     const qty = Number(line.qty) || 0
     const price = Number(line.price) || 0
     const amt = qty * price
-    doc.text(desc, 14, y)
+    doc.text(descLines, 14, y)
     doc.text(String(qty), 120, y)
     doc.text(formatMoney(amt).replace(/\u00a0/g, ' '), 160, y)
-    y += 6
+    y += rowHeight + 1
   }
   y += 4
   doc.line(14, y, 196, y)
