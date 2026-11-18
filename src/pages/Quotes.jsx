@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
+import { softDelete } from '../lib/recycleBin'
 import { STORES } from '../lib/db'
 import { formatMoney } from '../lib/money'
 import {
@@ -101,7 +102,6 @@ export default function Quotes() {
     pullCloudDecisions({ silent: true })
     const id = setInterval(() => pullCloudDecisions({ silent: true }), 45000)
     return () => clearInterval(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const convert = async (qt) => {
@@ -111,7 +111,7 @@ export default function Quotes() {
       const inv = await convertQuoteToInvoice(qt, { invoices: [], vatRate: vatRate ?? 0.15, vatEnabled: !!vatEnabled })
       await refresh()
       toast(`Invoice created from ${qt.number || 'quote'}`, 'success')
-      nav(`/invoices/${inv.id}`)
+      nav(`/invoices/${inv.invoice?.id || inv.id}`)
     } catch (e) {
       toast(e?.message || 'Convert failed', 'error')
     } finally {
@@ -122,14 +122,14 @@ export default function Quotes() {
   const del = (id) => {
     setConfirm({
       title: 'Delete quote?',
-      message: 'This cannot be undone.',
+      message: 'The quote moves to the recycle bin (Settings → Backup). You can restore it later.',
       danger: true,
       confirmLabel: 'Delete',
       action: async () => {
-        await db.remove(STORES.quotes, id)
+        await softDelete(STORES.quotes, id, { reason: 'user-delete' })
         await refresh()
         setConfirm(null)
-        toast('Deleted', 'success')
+        toast('Quote moved to recycle bin', 'success')
       },
     })
   }
