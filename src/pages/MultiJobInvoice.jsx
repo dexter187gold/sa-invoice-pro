@@ -15,6 +15,8 @@ export default function MultiJobInvoice() {
   const [clientFilter, setClientFilter] = useState('')
   const [busy, setBusy] = useState(false)
   const [focusId, setFocusId] = useState(null)
+  const [billingOptions, setBillingOptions] = useState({ fuelEnabled: false, fuelMode: 'flat', fuelAmount: '', fuelKm: '', fuelRate: '', calloutEnabled: false, calloutAmount: '', diagnosticsEnabled: false, diagnosticsAmount: '', consumablesEnabled: false, consumablesAmount: '', otherEnabled: false, otherDescription: '', otherAmount: '' })
+  const setBilling = (patch) => setBillingOptions((current) => ({ ...current, ...patch }))
 
   const load = useCallback(async () => {
     setTickets((await db.getAll(STORES.tickets)) || [])
@@ -43,6 +45,7 @@ export default function MultiJobInvoice() {
         vatRate: vatRate ?? 0.15,
         vatEnabled: vatEnabled !== false,
         markResolved: true,
+        billingOptions,
       })
       await refresh?.()
       await load()
@@ -97,6 +100,68 @@ export default function MultiJobInvoice() {
           Uninvoiced jobs: {openJobs.length} · Selected: {picked.length}
           {picked.length > 0 && !ticketsShareClient(picked) ? ' · mixed clients' : ''}
         </p>
+      </div>
+
+      <div className="card form-grid" style={{ marginTop: 12 }}>
+        <h3 style={{ margin: 0 }}>Optional invoice charges</h3>
+        <p className="muted" style={{ marginTop: 0 }}>Only enabled charges are added to the customer invoice. Leave any item unticked if you do not want to bill for it.</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 12 }}>
+          <div className="inv-prefs-group">
+            <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 700 }}>
+              <input type="checkbox" checked={billingOptions.fuelEnabled} onChange={(e) => setBilling({ fuelEnabled: e.target.checked })} />
+              Include fuel / travel
+            </label>
+            {billingOptions.fuelEnabled && <>
+              <label className="label">Charge method</label>
+              <select className="select input" value={billingOptions.fuelMode} onChange={(e) => setBilling({ fuelMode: e.target.value })}>
+                <option value="flat">Fixed fuel / travel amount</option>
+                <option value="distance">Distance × rate per km</option>
+              </select>
+              {billingOptions.fuelMode === 'flat' ? <>
+                <label className="label">Description</label>
+                <input className="input" value={billingOptions.fuelDescription || ''} placeholder="Fuel and travelling" onChange={(e) => setBilling({ fuelDescription: e.target.value })} />
+                <label className="label">Amount (R)</label>
+                <input className="input" type="number" min="0" step="0.01" value={billingOptions.fuelAmount} onChange={(e) => setBilling({ fuelAmount: e.target.value })} />
+              </> : <>
+                <label className="label">Distance travelled (km)</label>
+                <input className="input" type="number" min="0" step="0.1" value={billingOptions.fuelKm} onChange={(e) => setBilling({ fuelKm: e.target.value })} />
+                <label className="label">Rate per km (R)</label>
+                <input className="input" type="number" min="0" step="0.01" value={billingOptions.fuelRate} onChange={(e) => setBilling({ fuelRate: e.target.value })} />
+              </>}
+            </>}
+          </div>
+          <div className="inv-prefs-group">
+            <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 700 }}>
+              <input type="checkbox" checked={billingOptions.calloutEnabled} onChange={(e) => setBilling({ calloutEnabled: e.target.checked })} />
+              Include call-out fee
+            </label>
+            {billingOptions.calloutEnabled && <><label className="label">Amount (R)</label><input className="input" type="number" min="0" step="0.01" value={billingOptions.calloutAmount} onChange={(e) => setBilling({ calloutAmount: e.target.value })} /></>}
+          </div>
+          <div className="inv-prefs-group">
+            <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 700 }}>
+              <input type="checkbox" checked={billingOptions.diagnosticsEnabled} onChange={(e) => setBilling({ diagnosticsEnabled: e.target.checked })} />
+              Include diagnostic / assessment fee
+            </label>
+            {billingOptions.diagnosticsEnabled && <><label className="label">Amount (R)</label><input className="input" type="number" min="0" step="0.01" value={billingOptions.diagnosticsAmount} onChange={(e) => setBilling({ diagnosticsAmount: e.target.value })} /></>}
+          </div>
+          <div className="inv-prefs-group">
+            <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 700 }}>
+              <input type="checkbox" checked={billingOptions.consumablesEnabled} onChange={(e) => setBilling({ consumablesEnabled: e.target.checked })} />
+              Include consumables / materials
+            </label>
+            {billingOptions.consumablesEnabled && <><label className="label">Amount (R)</label><input className="input" type="number" min="0" step="0.01" value={billingOptions.consumablesAmount} onChange={(e) => setBilling({ consumablesAmount: e.target.value })} /></>}
+          </div>
+          <div className="inv-prefs-group">
+            <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 700 }}>
+              <input type="checkbox" checked={billingOptions.otherEnabled} onChange={(e) => setBilling({ otherEnabled: e.target.checked })} />
+              Include other charge
+            </label>
+            {billingOptions.otherEnabled && <>
+              <label className="label">Description</label><input className="input" value={billingOptions.otherDescription} placeholder="Additional work / service" onChange={(e) => setBilling({ otherDescription: e.target.value })} />
+              <label className="label">Amount (R)</label><input className="input" type="number" min="0" step="0.01" value={billingOptions.otherAmount} onChange={(e) => setBilling({ otherAmount: e.target.value })} />
+            </>}
+          </div>
+        </div>
       </div>
 
       <div className="ticket-split" style={{ marginTop: 12 }}>
