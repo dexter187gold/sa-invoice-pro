@@ -134,7 +134,7 @@ export default function DevPortal() {
     const phrase = window.prompt('This permanently deletes the account and its active workspace. Type DELETE ' + user.email + ' to continue:')
     if (phrase !== 'DELETE ' + user.email) return
     setBusy(true)
-    try { await devRequest('/api/dev/users/' + encodeURIComponent(user.id), { method: 'DELETE' }); setAccounts(prev => prev.filter(u => u.id !== user.id)); notify('Account and active workspace deleted') }
+    try { await devRequest('/api/dev/users/' + encodeURIComponent(user.id), { method: 'DELETE', body: JSON.stringify({ confirmation: phrase }) }); setAccounts(prev => prev.filter(u => u.id !== user.id)); notify((user.role === 'admin' ? 'Administrator' : 'User') + ' account and active workspace deleted') }
     catch (e) { fail(e.message) } finally { setBusy(false) }
   }
   async function loadReleases() {
@@ -250,14 +250,16 @@ export default function DevPortal() {
       </aside>
       <main style={{ minWidth: 0 }}>
         {section === 'users' && <section>
-          <SectionHead eyebrow="Server account administration" title="Registered users database" detail="Live accounts from the saip-sync server. Password hashes are never displayed. Protected owner and administrator accounts cannot be modified or deleted here." action={<button className="btn btn-outline" onClick={() => loadAccounts().catch(e => fail(e.message))} disabled={busy}>Refresh users</button>} />
+          <SectionHead eyebrow="Server account administration" title="Registered users database" detail="Live accounts from the saip-sync server. Password hashes are never displayed. The primary developer identity is protected; administrator accounts can be permanently removed with explicit confirmation." action={<button className="btn btn-outline" onClick={() => loadAccounts().catch(e => fail(e.message))} disabled={busy}>Refresh users</button>} />
           <div style={{ ...panel, marginBottom: 14 }}>
             <label className="label">Search accounts<input className="input" style={field} value={accountSearch} onChange={e => setAccountSearch(e.target.value)} placeholder="Search email, name or role…" /></label>
             <p style={muted}>{accounts.length} accounts returned from the live server. Changes are written to the active server database and its configured Git-backed persistence.</p>
           </div>
           <div style={{ display: 'grid', gap: 12 }}>
             {accounts.filter(u => (u.email + ' ' + u.name + ' ' + u.role).toLowerCase().includes(accountSearch.toLowerCase())).map(user => {
-              const protectedUser = user.email === 'sainvoicepro@gmail.com' || user.role === 'admin'
+              const ownerProtected = user.email === 'sainvoicepro@gmail.com'
+              const adminAccount = user.role === 'admin'
+              const protectedUser = ownerProtected || adminAccount
               const draft = accountDrafts[user.id] || { email: user.email, name: user.name || '' }
               return <article key={user.id} style={panel}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}><div><strong>{user.name || 'Unnamed account'}</strong><div style={muted}>{user.email}</div></div><span style={{ ...muted, fontWeight: 800, textTransform: 'uppercase' }}>{user.role} · {user.has_workspace ? 'Workspace' : 'No workspace'}</span></div>
@@ -266,7 +268,10 @@ export default function DevPortal() {
                   <label className="label">Display name<input className="input" style={field} disabled={protectedUser} value={draft.name} onChange={e => setAccountDrafts(p => ({ ...p, [user.id]: { ...draft, name: e.target.value } }))} /></label>
                 </div>
                 <div style={{ ...muted, margin: '8px 0' }}>Created: {user.created_at ? new Date(user.created_at).toLocaleString() : 'Unknown'} · Updated: {user.updated_at ? new Date(user.updated_at).toLocaleString() : '—'} · Google: {user.google ? 'Linked' : 'No'}</div>
-                {protectedUser ? <p style={{ ...muted, color: '#b45309' }}>Protected system account. Use the dedicated owner/admin controls for this account.</p> : <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {ownerProtected ? <p style={{ ...muted, color: '#b45309' }}>Primary developer/owner identity is permanently protected from deletion in this database.</p> : adminAccount ? <div>
+                  <p style={{ ...muted, color: '#b45309' }}>Administrator account. Profile editing and password reset remain restricted here, but the developer can permanently remove this admin identity and its active workspace.</p>
+                  <button className="btn" style={{ background: '#7f1d1d', color: '#fff' }} disabled={busy} onClick={() => deleteAccount(user)}>Permanently delete admin account</button>
+                </div> : <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <button className="btn btn-primary" disabled={busy} onClick={() => saveAccount(user)}>Save account</button>
                   <button className="btn btn-outline" disabled={busy} onClick={() => resetAccountPassword(user)}>Reset password</button>
                   <button className="btn" style={{ background: '#7f1d1d', color: '#fff' }} disabled={busy} onClick={() => deleteAccount(user)}>Permanently delete account</button>
