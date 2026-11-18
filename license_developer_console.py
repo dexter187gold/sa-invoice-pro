@@ -114,7 +114,7 @@ def register_developer_console(app, load_fn, now_display_fn=None):
             if not isinstance(record, dict):
                 continue
             key_cards.append(
-                f"""<article class="key-card">
+                f"""<article class="key-card" data-key-state="{'revoked' if record.get('revoked') or record.get('archived') else ('active' if record.get('used') else 'unused')}" data-key-expiry="{_e(record.get('expiresAt') or record.get('expiry') or '')}">
                   <div class="card-top"><code>{_e(key)}</code><span class="status-pill">{'Revoked' if record.get('revoked') else ('Used' if record.get('used') else 'Unused')}</span></div>
                   <div class="status-actions"><button type="button" onclick="navigator.clipboard.writeText({_e(json.dumps(key))})">Copy key</button></div>
                   <div class="meta-grid">
@@ -231,7 +231,7 @@ main{{max-width:1200px;margin:auto;padding:20px}}h1{{font-size:23px;margin:0 0 4
 .status-actions{{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}}button,.btn{{background:#14533d;color:#d1fae5;border:1px solid #287452;border-radius:9px;padding:8px 11px;cursor:pointer;font-size:12px;font-weight:700}}button:hover,.btn:hover{{filter:brightness(1.12)}}button.danger{{background:#552633;border-color:#8b3547;color:#ffe4e6}}form[action*="permanent-delete"]{{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;margin-top:10px}}form[action*="permanent-delete"] input{{margin:0}}form[action*="permanent-delete"] button{{white-space:normal}}.status-actions button{{flex:1 1 70px}}
 label{{display:block;color:var(--muted);font-size:12px;margin:8px 0 4px}}input,select{{width:100%;background:#071b16;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:10px;margin-bottom:8px}}
 .form-grid{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}.empty{{padding:24px;text-align:center;color:var(--muted);border:1px dashed #3a6553;border-radius:12px}}
-.search-wrap{{max-width:440px;margin:12px 0}}.key-category{{margin:22px 0}}.section-heading{{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:0 2px 8px;margin-bottom:10px}}.section-heading span{{font-size:11px;color:var(--muted);background:#102a21;border:1px solid var(--line);padding:4px 9px;border-radius:20px}}.plan-card strong{{display:block;font-size:18px;color:var(--mint)}}.plan-card p{{color:var(--muted);font-size:12px}}
+.search-wrap{{max-width:440px;margin:12px 0}}.key-filters{{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}}.key-category{{margin:22px 0}}.section-heading{{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:0 2px 8px;margin-bottom:10px}}.section-heading span{{font-size:11px;color:var(--muted);background:#102a21;border:1px solid var(--line);padding:4px 9px;border-radius:20px}}.plan-card strong{{display:block;font-size:18px;color:var(--mint)}}.plan-card p{{color:var(--muted);font-size:12px}}
 @media(max-width:650px){{header{{padding:13px}}nav{{padding:8px 12px}}main{{padding:13px}}.form-grid{{grid-template-columns:1fr}}}}
 </style></head><body>
 <header><div class="brand">SA INVOICE PRO <small>DEVELOPER CONTROL CENTRE · private licence operations</small></div><div class="top-actions"><span>{_e(now)}</span><a href="{_e(request.path)}">Refresh</a><a href="/admin/billing">Billing ledger</a><a href="/admin">Payment settings</a><a href="/logout">Sign out</a></div></header>
@@ -241,6 +241,7 @@ label{{display:block;color:var(--muted);font-size:12px;margin:8px 0 4px}}input,s
 {content}
 </main><script>
 function filterDevices(){{const q=(document.getElementById('device-search')?.value||'').toLowerCase();document.querySelectorAll('.device-card').forEach(el=>{{el.hidden=!el.dataset.search.includes(q)}})}}
+function filterKeys(state){{const now=Date.now();document.querySelectorAll('.key-card').forEach(el=>{{const exp=Date.parse(el.dataset.keyExpiry||'');const expired=Number.isFinite(exp)&&exp<now;const actual=el.dataset.keyState==='revoked'?'revoked':(expired?'expired':el.dataset.keyState);el.hidden=state!=='all'&&actual!==state}})}}
 </script></body></html>"""
         return page
 
