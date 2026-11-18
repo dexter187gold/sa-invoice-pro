@@ -245,3 +245,21 @@ export async function downloadPdfBlob(blob, name = 'document.pdf') {
   }
   return name
 }
+
+
+/**
+ * Share real files together with a WhatsApp-ready caption through Android's
+ * native share sheet. Returns false when this browser cannot share files.
+ */
+export async function shareFilesWithCaption(files = [], text = '', title = 'SA Invoice Pro') {
+  const ready = (Array.isArray(files) ? files : []).filter((file) => file instanceof File)
+  if (!ready.length || typeof navigator === 'undefined' || typeof navigator.share !== 'function') return false
+  try {
+    if (!navigator.canShare || !navigator.canShare({ files: ready })) return false
+    await navigator.share({ files: ready, text: String(text || ''), title: String(title || 'SA Invoice Pro') })
+    return true
+  } catch (error) {
+    if (error?.name === 'AbortError') return { cancelled: true }
+    throw error
+  }
+}
