@@ -10,7 +10,7 @@ import time
 import urllib.error
 import urllib.request
 
-DEFAULTS = {"users": {}, "requests": {}, "keys": {}}
+DEFAULTS = {"users": {}, "requests": {}, "keys": {}, "accounts": {}}
 API = "https://api.github.com"
 
 
@@ -74,7 +74,7 @@ def _merge(latest, desired):
     """Merge per-record dictionaries so concurrent device updates don't erase peers."""
     merged = _normalise(dict(latest or {}))
     desired = _normalise(dict(desired or {}))
-    for section in ("users", "requests", "keys"):
+    for section in ("users", "requests", "keys", "accounts"):
         target = dict(merged.get(section) or {})
         for record_id, new_record in (desired.get(section) or {}).items():
             old_record = target.get(record_id)
