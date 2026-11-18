@@ -707,13 +707,12 @@ def owner_revoke_issued():
     if denied:
         return denied
     hwid = _valid_hwid(request.form.get("hwid"))
-    if not hwid:
-        return redirect(url_for("dashboard", msg="Invalid device reference"))
+    key = _valid_key(request.form.get("key"))
     db = load()
-    req = (db.get("requests") or {}).get(hwid) or {}
-    key = _valid_key(req.get("key"))
-    if not key:
-        return redirect(url_for("dashboard", msg="No issued key found for this device"))
+    req = (db.get("requests") or {}).get(hwid) if hwid else None
+    key = key or (_valid_key(req.get("key")) if isinstance(req, dict) else None)
+    if not key or key not in (db.get("keys") or {}):
+        return _developer_console_redirect("No matching issued key was found to revoke.", "/keys")
     record = (db.get("keys") or {}).get(key) or {}
     record["revoked"] = True
     record["revokedAt"] = _now()
@@ -730,7 +729,7 @@ def owner_revoke_issued():
         user["status"] = "suspended"
         user["statusSetAt"] = _now()
     save(db)
-    return redirect(url_for("dashboard", msg="Licence key revoked and removed from the active issued list. Audit history retained."))
+    return _developer_console_redirect("Licence key revoked and removed from the active issued list. Audit history retained.", "/keys")
 
 
 @app.post("/set-status")
@@ -757,7 +756,7 @@ def api_set_status():
     if not hwid or status not in allowed:
         if request.is_json:
             return jsonify({"error": "hwid and valid status required"}), 400
-        return redirect(url_for("dashboard", msg="Invalid status"))
+        return _developer_console_redirect("Invalid status.", "/devices")
     db = load()
     users = db.setdefault("users", {})
     previous = users.get(hwid, {})
@@ -783,7 +782,7 @@ def api_set_status():
     save(db)
     if request.is_json:
         return jsonify({"ok": True, "hwid": hwid, "mode": status})
-    return redirect(url_for("dashboard", msg=f"Status for {hwid} → {status}"))
+    return _developer_console_redirect(f"Status for {hwid} → {status}", "/devices")
 
 
 
