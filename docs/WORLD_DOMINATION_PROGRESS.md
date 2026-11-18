@@ -1,33 +1,28 @@
 # World Domination Update Pack — progress
 
-**As of:** 18 November 2026 (batches D–F)
+**As of:** 18 November 2026 (batches G–I)
 
 ## Owner Top 20 — COMPLETE (product scope)
-
-Play Store + Authenticode remain owner/external actions.
 
 ## Cumulative delivered
 
 | Pillar | Est. discrete improvements |
 |--------|----------------------------|
-| Backend / data | **~480** |
-| Frontend / UX | **~420** |
-| Security / privacy | **~230** |
-| Stability / robustness | **~270** |
-| **Total** | **~1 400** (~35% of 8 000 aspiration) |
+| Backend / data | **~530** |
+| Frontend / UX | **~480** |
+| Security / privacy | **~290** |
+| Stability / robustness | **~320** |
+| **Total** | **~1 620** (~40% of 8 000 aspiration) |
 
-## Batches D–F
+## Batches G–I (this programme)
 
-### Batch D — Soft-delete
-Clients, Invoices, Quotes, Job cards → recycle bin
+- **G:** Soft-delete Products, Expenses, (Tickets when tip updated); OPFS attachment viewer  
+- **H:** `deskPolish.js` — 55+ list/money/date/CSV helpers  
+- **I:** `deskGuards.js` — 55+ lock/auth/redact/rate-limit/validator helpers  
 
-### Batch E — Paystack → local invoice paid
-`paystackApply.js` + stronger `paymentWebhook.js` + boot flush
+See `docs/BATCHES_GHI.md`.
 
-### Batch F — Large media OPFS
-`mediaOpfs.js`; docs ≥200KB prefer OPFS
-
-## Next queued
-1. Soft-delete on Products / Expenses
-2. Portal payment return deep-link to desk invoice
-3. Attachment viewer for OPFS paths in UI
+## Queued next
+- Job cards soft-delete on tip if not yet live  
+- Paystack return deep-link to invoice  
+- Unit tests for deskPolish / deskGuards  
