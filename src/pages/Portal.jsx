@@ -219,7 +219,7 @@ export default function Portal() {
   }
 
   const navBar = (
-    <nav style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16, position: 'sticky', top: 0, zIndex: 5, padding: '8px 0', background: 'var(--bg, #0f172a)' }}>
+    <nav style={{ display: 'flex', gap: 8, flexWrap: 'nowrap', overflowX: 'auto', marginBottom: 18, position: 'sticky', top: 0, zIndex: 5, padding: '10px 0', background: 'var(--bg, #0f172a)' }}>
       {PAGES.map((p) => (
         <button
           key={p.id}
@@ -230,9 +230,11 @@ export default function Portal() {
             border: page === p.id ? '1px solid var(--accent, #e879f9)' : '1px solid rgba(148,163,184,.25)',
             background: page === p.id ? 'rgba(232,121,249,.15)' : 'transparent',
             color: 'inherit',
-            borderRadius: 999,
-            padding: '6px 12px',
-            fontSize: 13,
+            borderRadius: 12,
+            padding: '10px 16px',
+            minHeight: 44,
+            whiteSpace: 'nowrap',
+            fontSize: 14,
             fontWeight: 600,
             cursor: 'pointer',
           }}
@@ -382,7 +384,7 @@ export default function Portal() {
 
   return (
     <div className="portal-public" data-testid="portal-shell" style={shellStyle()}>
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 16px 48px' }}>
+      <div style={{ maxWidth: 980, margin: '0 auto', padding: '24px 16px 48px' }}>
         {header}
         {token ? navBar : null}
         {loading && <div style={cardStyle()}>Loading your portal…</div>}
@@ -407,7 +409,7 @@ export default function Portal() {
             {page === 'invoices' && invoicesBlock}
             {page === 'payments' && paymentsBlock}
             {page === 'service' && serviceBlock}
-            <p style={{ marginTop: 28, fontSize: 12, opacity: 0.55 }}>
+            <p style={{ marginTop: 28, fontSize: 12, opacity: 0.65, lineHeight: 1.6 }}>
               POPIA: this link is personal — do not forward. Contact the shop if anything looks wrong.
               {!wl.hidePoweredBy ? ` Powered by ${APP_NAME}.` : ''}
             </p>
