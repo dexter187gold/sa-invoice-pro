@@ -373,7 +373,7 @@ export function assertStoreName(name, allowed) {
 
 export function paymentReferenceSafe(ref) {
   return String(ref || '')
-    .replace([^\w\-./]+/g, '')
+    .replace(/[^\w\-./]+/g, '')
     .slice(0, 64)
 }
 
