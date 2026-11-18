@@ -3,10 +3,10 @@ import { getLicenseStatus } from './license.js'
 
 const BASIC_PATHS = new Set([
   '/', '/dashboard', '/clients', '/invoices', '/quotes', '/tickets',
-  '/products', '/payments', '/license', '/support', '/about', '/settings',
+  '/products', '/payments', '/license', '/support', '/about', '/settings', '/content-studio',
 ])
 
-const TRIAL_PATHS = new Set(['/clients', '/invoices', '/quotes'])
+const TRIAL_PATHS = new Set(['/clients', '/invoices', '/quotes', '/content-studio'])
 
 const PLAN_FEATURES = {
   solo: new Set([
@@ -72,7 +72,7 @@ export function pathFeatureLabel(pathname) {
     '/sms': 'SMS gateway', '/wa-templates': 'WhatsApp templates',
     '/team': 'Team and seat management', '/sync': 'Advanced sync tools',
     '/inbox': 'Team inbox', '/wa-chase': 'WhatsApp automation',
-    '/documents': 'Business document library', '/tickets': 'Job cards',
+    '/documents': 'Business document library', '/content-studio': 'Document & content studio', '/tickets': 'Job cards',
     '/products': 'Products and services', '/payments': 'Payment management',
     '/dashboard': 'Dashboard', '/settings': 'Settings',
   }
