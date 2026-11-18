@@ -252,6 +252,7 @@ export async function downloadPdfBlob(blob, name = 'document.pdf') {
  * native share sheet. Returns false when this browser cannot share files.
  */
 export async function shareFilesWithCaption(files = [], text = '', title = 'SA Invoice Pro') {
+  if (typeof File === 'undefined') return false
   const ready = (Array.isArray(files) ? files : []).filter((file) => file instanceof File)
   if (!ready.length || typeof navigator === 'undefined' || typeof navigator.share !== 'function') return false
   try {
