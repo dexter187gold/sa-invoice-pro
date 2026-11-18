@@ -9,7 +9,7 @@ def test_save_state_applies_explicit_deletions_after_remote_merge(monkeypatch, t
         "users": {"device-a": {"email": "demo@example.test"}, "device-b": {"email": "other@example.test"}},
         "requests": {"device-a": {"email": "demo@example.test"}},
         "keys": {"KEY-A": {"hwid": "device-a"}, "KEY-B": {"hwid": "device-b"}},
-        "accounts": {"demo@example.test": {"devices": ["device-a"]}},
+        "accounts": {"demo@example.test": {"devices": ["device-a"]}, "other@example.test": {"devices": ["device-b"]}},
     }
     writes = []
 
@@ -39,6 +39,7 @@ def test_save_state_applies_explicit_deletions_after_remote_merge(monkeypatch, t
     assert "device-a" not in persisted["requests"]
     assert "KEY-A" not in persisted["keys"]
     assert "demo@example.test" not in persisted["accounts"]
+    assert "other@example.test" in persisted["accounts"]
     assert "device-b" in persisted["users"]
     assert "KEY-B" in persisted["keys"]
 
