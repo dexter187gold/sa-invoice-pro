@@ -202,7 +202,7 @@ def register_developer_console(app, load_fn, now_display_fn=None):
             "overview": overview,
             "devices": duration_form + '<section class="device-grid">' + "".join(device_cards) + '</section><div class="search-wrap"><input id="device-search" type="search" placeholder="Search devices by email, phone, plan or HWID" oninput="filterDevices()"/></div>',
             "requests": '<section class="request-grid">' + "".join(request_cards) + '</section>',
-            "keys": issue_form + '<section class="key-grid">' + "".join(key_cards) + '</section>',
+            "keys": issue_form + '<div class="key-filters"><a href="/keys?filter=all">All keys</a><a href="/keys?filter=active">Activated</a><a href="/keys?filter=unused">Unused</a><a href="/keys?filter=expired">Expired</a><a href="/keys?filter=revoked">Revoked</a></div><section class="key-grid">' + "".join(key_cards) + '</section>',
             "plans": '<section class="plan-grid">' + plan_cards + '</section>',
         }[view]
         if view == "devices":
