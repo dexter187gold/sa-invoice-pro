@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext'
 import { formatMoney } from '../lib/money'
 import * as db from '../lib/db'
 import { deleteWithUndo, undoLast } from '../lib/undo'
+import { softDelete } from '../lib/recycleBin'
 import { STORES } from '../lib/db'
 import {
   SearchInput, FilterChips, StatusBadge, EmptyState, formatDateZA, matchesQuery,
@@ -97,13 +98,15 @@ export default function Invoices() {
   const delOne = (id) => {
     setConfirm({
       title: 'Delete invoice?',
-      message: 'You can Undo within 30 seconds after deleting.',
+      message: 'Invoice moves to the recycle bin (Settings → Backup). You can restore it later.',
       danger: true,
       confirmLabel: 'Delete',
       action: async () => {
         const row = invoices.find((i) => String(i.id) === String(id))
-        if (row) await deleteWithUndo({ store: STORES.invoices, rows: [row], toast, label: 'Invoice deleted' })
-        else await db.remove(STORES.invoices, id)
+        if (row) {
+          await softDelete(STORES.invoices, id, { reason: 'user-delete' })
+          toast('Invoice moved to recycle bin', 'success')
+        } else await db.remove(STORES.invoices, id)
         await refresh()
         setConfirm(null)
       },
