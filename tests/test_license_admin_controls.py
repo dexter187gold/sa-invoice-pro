@@ -361,3 +361,47 @@ def test_permanent_delete_device_only_removes_keys_for_selected_hwid(monkeypatch
     assert "KEY-A" not in db["keys"]
     assert "KEY-B" in db["keys"]
     assert db["accounts"]["same@example.test"]["devices"] == ["device-b"]
+
+
+def test_dev_portal_internal_delete_removes_all_licence_records_by_email(monkeypatch):
+    import license_server
+
+    db = {
+        "accounts": {"demo@example.test": {"email": "demo@example.test", "key": "KEY-A", "devices": ["device-a", "device-b"]}},
+        "users": {
+            "device-a": {"hwid": "device-a", "email": "demo@example.test"},
+            "device-b": {"hwid": "device-b", "email": "demo@example.test"},
+            "device-c": {"hwid": "other@example.test", "email": "other@example.test"},
+        },
+        "requests": {
+            "device-a": {"hwid": "device-a", "email": "demo@example.test"},
+            "device-b": {"hwid": "device-b", "email": "demo@example.test"},
+        },
+        "keys": {
+            "KEY-A": {"hwid": "device-a", "boundEmail": "demo@example.test"},
+            "KEY-B": {"hwid": "device-b", "email": "demo@example.test"},
+            "KEY-C": {"hwid": "device-c", "boundEmail": "other@example.test"},
+        },
+    }
+    captured = {}
+    monkeypatch.setenv("DEV_PORTAL_SYNC_TOKEN", "unit-test-secret")
+    monkeypatch.setattr(license_server, "load", lambda: db)
+    monkeypatch.setattr(license_server, "save", lambda value, deleted=None: captured.update(deleted=deleted))
+    client = license_server.app.test_client()
+
+    denied = client.post("/api/internal/dev-portal/delete-account", json={"email": "demo@example.test"})
+    assert denied.status_code == 401
+
+    response = client.post(
+        "/api/internal/dev-portal/delete-account",
+        headers={"X-Dev-Portal-Sync-Token": "unit-test-secret"},
+        json={"email": "demo@example.test"},
+    )
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["removed"] == {"account": True, "devices": 2, "requests": 2, "keys": 2}
+    assert "demo@example.test" not in db["accounts"]
+    assert set(db["users"]) == {"device-c"}
+    assert set(db["requests"]) == set()
+    assert set(db["keys"]) == {"KEY-C"}
+    assert set(captured["deleted"]["keys"]) == {"KEY-A", "KEY-B"}
