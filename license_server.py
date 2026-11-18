@@ -695,12 +695,13 @@ def owner_permanent_delete_device():
         if isinstance(account, dict):
             account["devices"] = [device_id for device_id in (account.get("devices") or []) if str(device_id) != hwid]
     removed_keys = 0
+    removed_key_ids = []
     for existing_key, record in list(keys.items()):
         if isinstance(record, dict) and str(record.get("hwid") or "").strip() == hwid:
             del keys[existing_key]
             removed_keys += 1
-    deleted_key_ids = [k for k, r in (load().get("keys") or {}).items() if isinstance(r, dict) and str(r.get("hwid") or "").strip() == hwid]
-    save(db, deleted={"users": [hwid], "requests": [hwid], "keys": deleted_key_ids})
+            removed_key_ids.append(existing_key)
+    save(db, deleted={"users": [hwid], "requests": [hwid], "keys": removed_key_ids})
     message = f"Device registration {'removed' if existed else 'not found'}; {removed_keys} associated key record(s) removed."
     return _developer_console_redirect(message, "/devices")
 
@@ -746,8 +747,7 @@ def owner_permanent_delete_user():
     removed_account = bool(email and accounts.pop(email, None) is not None)
     if not targets and not removed_account and not removed_keys:
         return _developer_console_redirect("No matching registered user, device or licence was found. Nothing was deleted.", "/devices")
-    deleted_key_ids = [k for k, r in (load().get("keys") or {}).items() if isinstance(r, dict) and (str(r.get("hwid") or "").strip() in targets or (email and str(r.get("boundEmail") or r.get("email") or "").strip().lower() == email) or (account_key and str(k).upper() == account_key))]
-    save(db, deleted={"accounts": [email] if email else [], "users": list(targets), "requests": list(targets), "keys": deleted_key_ids})
+    save(db, deleted={"accounts": [email] if email else [], "users": list(targets), "requests": list(targets), "keys": removed_key_ids})
     return _developer_console_redirect(
         f"User removal complete: {'account removed' if removed_account else 'no separate account record'}, {len(targets)} device registration(s), {removed_keys} key record(s) removed.",
         "/devices",
