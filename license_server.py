@@ -603,8 +603,7 @@ def owner_permanent_delete_license():
         if not isinstance(req, dict):
             continue
         req_key = str(req.get("key") or "").strip().upper()
-        req_email = str(req.get("email") or "").strip().lower()
-        if req_key in {str(k).upper() for k in matched} or (device_id in affected_hwids) or (req_email and req_email in affected_emails):
+        if req_key in {str(k).upper() for k in matched} or (device_id in affected_hwids):
             req.pop("key", None)
             if req.get("status") in ("issued", "revoked"):
                 req["status"] = "pending"
@@ -645,7 +644,7 @@ def owner_permanent_delete_device():
             account["devices"] = [device_id for device_id in (account.get("devices") or []) if str(device_id) != hwid]
     removed_keys = 0
     for existing_key, record in list(keys.items()):
-        if isinstance(record, dict) and (str(record.get("hwid") or "").strip() == hwid or (email and str(record.get("boundEmail") or record.get("email") or "").strip().lower() == email)):
+        if isinstance(record, dict) and str(record.get("hwid") or "").strip() == hwid:
             del keys[existing_key]
             removed_keys += 1
     save(db)
