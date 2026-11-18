@@ -6,22 +6,37 @@ import { STORES } from './db.js'
 import { audit } from './auditLog.js'
 
 function matchInvoice(invoices, payload) {
-  const number = String(payload.invoiceNumber || payload.number || payload.reference || '').trim()
+  const number = String(payload.invoiceNumber || payload.number || payload.reference_label || '').trim()
   const id = String(payload.invoiceId || payload.id || '').trim()
+  const ref = String(payload.reference || payload.transactionId || '').trim()
   if (id) {
     const byId = invoices.find((i) => String(i.id) === id)
     if (byId) return byId
   }
   if (number) {
-    return invoices.find((i) => String(i.number || '').toLowerCase() === number.toLowerCase())
+    const byNum = invoices.find((i) => String(i.number || '').toLowerCase() === number.toLowerCase())
+    if (byNum) return byNum
+  }
+  if (ref) {
+    const byRef = invoices.find(
+      (i) =>
+        String(i.paymentReference || '') === ref ||
+        String(i.lastPaymentReference || '') === ref ||
+        String(i.notes || '').includes(ref),
+    )
+    if (byRef) return byRef
   }
   return null
 }
 
 export async function applyPaymentWebhookEvent(payload = {}) {
-  const amount = Number(payload.amount || payload.amountPaid || 0)
+  let amount = Number(payload.amount || payload.amountPaid || 0)
+  if (payload.amount_in_cents != null) amount = Number(payload.amount_in_cents) / 100
+  else if (amount > 0 && payload.unit === 'cents') amount = amount / 100
+
   const status = String(payload.status || payload.event || '').toLowerCase()
-  const paidLike = /paid|success|complete|settled|charge\.success|payment\.success/.test(status) || amount > 0
+  const paidLike =
+    /paid|success|complete|settled|charge\.success|payment\.success/.test(status) || amount > 0
   if (!paidLike) {
     return { ok: false, reason: 'not_a_paid_event', status }
   }
@@ -42,6 +57,8 @@ export async function applyPaymentWebhookEvent(payload = {}) {
     paidAt: fullyPaid ? new Date().toISOString() : inv.paidAt,
     updatedAt: new Date().toISOString(),
     paymentSource: payload.provider || payload.source || 'webhook',
+    paymentReference: payload.reference || inv.paymentReference || '',
+    lastPaymentReference: payload.reference || inv.lastPaymentReference || '',
     lastWebhookAt: new Date().toISOString(),
   }
   await db.put(STORES.invoices, next)
@@ -60,7 +77,12 @@ export async function applyPaymentWebhookEvent(payload = {}) {
   } catch {}
 
   try {
-    await audit('payment.webhook_applied', { invoiceId: inv.id, amount: payAmount, provider: payload.provider })
+    await audit('payment.webhook_applied', {
+      invoiceId: inv.id,
+      amount: payAmount,
+      provider: payload.provider,
+      reference: payload.reference,
+    })
   } catch {}
 
   return { ok: true, invoice: next, fullyPaid }
