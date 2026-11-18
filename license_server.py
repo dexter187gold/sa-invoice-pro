@@ -53,8 +53,8 @@ def load():
     return _git_load_state(DATA)
 
 
-def save(db):
-    _git_save_state(db, DATA)
+def save(db, deleted=None):
+    _git_save_state(db, DATA, deleted=deleted)
 
 
 def _valid_hwid(hwid):
@@ -540,6 +540,58 @@ def heartbeat():
 
 
 
+
+@app.post("/api/internal/dev-portal/delete-account")
+def internal_dev_portal_delete_account():
+    """Idempotent server-to-server deletion from the developer users database."""
+    expected = (os.environ.get("DEV_PORTAL_SYNC_TOKEN") or "").strip()
+    supplied = (request.headers.get("X-Dev-Portal-Sync-Token") or "").strip()
+    import hmac
+    if not expected or not supplied or not hmac.compare_digest(expected, supplied):
+        return jsonify({"ok": False, "error": "Service authentication failed"}), 401
+    payload = request.get_json(silent=True) or {}
+    email = str(payload.get("email") or "").strip().lower()[:254]
+    if not email or "@" not in email:
+        return jsonify({"ok": False, "error": "A valid account email is required"}), 400
+    db = load()
+    users = db.setdefault("users", {})
+    reqs = db.setdefault("requests", {})
+    keys = db.setdefault("keys", {})
+    accounts = db.setdefault("accounts", {})
+    account = accounts.get(email)
+    account_key = _valid_key(account.get("key")) if isinstance(account, dict) else None
+    targets = set()
+    if isinstance(account, dict):
+        targets.update(str(x) for x in (account.get("devices") or []) if _valid_hwid(str(x)))
+    targets.update(str(k) for k, row in users.items()
+                   if isinstance(row, dict) and str(row.get("email") or "").strip().lower() == email)
+    targets.update(str(k) for k, row in reqs.items()
+                   if isinstance(row, dict) and str(row.get("email") or "").strip().lower() == email)
+    removed_users = sum(1 for device_id in targets if device_id in users)
+    removed_requests = sum(1 for device_id in targets if device_id in reqs)
+    for device_id in targets:
+        users.pop(device_id, None)
+        reqs.pop(device_id, None)
+    removed_keys = []
+    for key, row in list(keys.items()):
+        if not isinstance(row, dict):
+            continue
+        row_email = str(row.get("boundEmail") or row.get("email") or row.get("customerEmail") or "").strip().lower()
+        if str(row.get("hwid") or "").strip() in targets or row_email == email or (account_key and str(key).upper() == account_key):
+            removed_keys.append(str(key))
+            keys.pop(key, None)
+    removed_account = accounts.pop(email, None) is not None
+    if targets or removed_keys or removed_account:
+        save(db, deleted={"accounts": [email], "users": list(targets), "requests": list(targets), "keys": removed_keys})
+    return jsonify({
+        "ok": True,
+        "email": email,
+        "removed": {"account": bool(removed_account), "devices": removed_users, "requests": removed_requests, "keys": len(removed_keys)},
+        "alreadyAbsent": not (removed_account or removed_users or removed_requests or removed_keys),
+        "message": "Licence-server records removed." if (removed_account or removed_users or removed_requests or removed_keys) else "No matching licence-server records existed; account is already absent."
+    }), 200
+
+
 def _developer_console_redirect(message, default_path="/"):
     """Return to the originating console section without trusting arbitrary redirects."""
     allowed = {"/", "/devices", "/requests", "/keys", "/plans"}
@@ -615,7 +667,7 @@ def owner_permanent_delete_license():
                 user.pop(field, None)
             user["mode"] = "handshake"
             user["status"] = "handshake"
-    save(db)
+    save(db, deleted={"keys": matched})
     return _developer_console_redirect(f"Permanently deleted {removed} licence key record(s). Device registrations were retained.", "/keys")
 
 
@@ -647,7 +699,8 @@ def owner_permanent_delete_device():
         if isinstance(record, dict) and str(record.get("hwid") or "").strip() == hwid:
             del keys[existing_key]
             removed_keys += 1
-    save(db)
+    deleted_key_ids = [k for k, r in (load().get("keys") or {}).items() if isinstance(r, dict) and str(r.get("hwid") or "").strip() == hwid]
+    save(db, deleted={"users": [hwid], "requests": [hwid], "keys": deleted_key_ids})
     message = f"Device registration {'removed' if existed else 'not found'}; {removed_keys} associated key record(s) removed."
     return _developer_console_redirect(message, "/devices")
 
@@ -693,7 +746,8 @@ def owner_permanent_delete_user():
     removed_account = bool(email and accounts.pop(email, None) is not None)
     if not targets and not removed_account and not removed_keys:
         return _developer_console_redirect("No matching registered user, device or licence was found. Nothing was deleted.", "/devices")
-    save(db)
+    deleted_key_ids = [k for k, r in (load().get("keys") or {}).items() if isinstance(r, dict) and (str(r.get("hwid") or "").strip() in targets or (email and str(r.get("boundEmail") or r.get("email") or "").strip().lower() == email) or (account_key and str(k).upper() == account_key))]
+    save(db, deleted={"accounts": [email] if email else [], "users": list(targets), "requests": list(targets), "keys": deleted_key_ids})
     return _developer_console_redirect(
         f"User removal complete: {'account removed' if removed_account else 'no separate account record'}, {len(targets)} device registration(s), {removed_keys} key record(s) removed.",
         "/devices",
