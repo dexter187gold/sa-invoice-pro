@@ -317,21 +317,27 @@ export default function Tickets() {
         <div className="page-header">
           <div>
             <h1>Job desk</h1>
-            <p className="subtitle">Pipeline · SLA · WhatsApp · Snipe → Invoice</p>
+            <p className="subtitle">
+              Pipeline · SLA · WhatsApp · one-shot Snipe → Invoice when the job is done
+            </p>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Link className="btn btn-outline" to="/inbox">WhatsApp inbox</Link>
+            <Link className="btn btn-outline" to="/tickets/bill">Bill multiple jobs</Link>
             <button type="button" className="btn btn-outline" onClick={exportTicketsCsv}>Export</button>
             <button type="button" className="btn btn-primary" onClick={openNew}>New job</button>
           </div>
         </div>
-        <PageInsightsBar page="tickets" />
+
+      <PageInsightsBar page="tickets" />
+
         <div className="ticket-stats">
           <div className="ticket-stat"><div className="n">{stats.open}</div><div className="l">Open</div></div>
           <div className="ticket-stat"><div className="n">{stats.in_progress}</div><div className="l">In progress</div></div>
           <div className="ticket-stat"><div className="n">{stats.waiting}</div><div className="l">Waiting</div></div>
           <div className="ticket-stat"><div className="n" style={{ color: stats.overdue ? 'var(--danger)' : undefined }}>{stats.overdue}</div><div className="l">SLA risk</div></div>
         </div>
+
         <div className="ticket-toolbar">
           <SearchInput value={q} onChange={setQ} placeholder="Search jobs, client, phone…" />
           <select className="input" style={{ width: 'auto' }} value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
@@ -343,13 +349,15 @@ export default function Tickets() {
             {PRIORITIES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
           </select>
           <label className="muted" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <input type="checkbox" checked={showClosed} onChange={(e) => setShowClosed(e.target.checked)} /> Show closed
+            <input type="checkbox" checked={showClosed} onChange={(e) => setShowClosed(e.target.checked)} />
+            Show closed
           </label>
           <div className="view-toggle" style={{ marginLeft: 'auto' }}>
             <button type="button" className={view === 'kanban' ? 'on' : ''} onClick={() => setView('kanban')}>Board</button>
             <button type="button" className={view === 'list' ? 'on' : ''} onClick={() => setView('list')}>List</button>
           </div>
         </div>
+
         {editing ? (
           <form className="card" onSubmit={save} style={{ padding: 16, display: 'grid', gap: 10 }}>
             <h3 style={{ margin: 0 }}>{editing === 'new' ? 'New job card' : 'Edit job'}</h3>
@@ -367,7 +375,7 @@ export default function Tickets() {
               <select className="input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
                 {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
               </select>
-              <select className="input" value={form.jobType || 'it-repair'} onChange={(e) => setForm({ ...form, jobType: e.target.value })}>
+              <select className="input" value={form.jobType || 'it-repair'} onChange={(e) => setForm({ ...form, jobType: e.target.value })} aria-label="Job card type">
                 <option value="it-repair">IT repair / diagnostics</option>
                 <option value="onsite-service">On-site service call</option>
                 <option value="maintenance">Maintenance / service</option>
@@ -390,6 +398,7 @@ export default function Tickets() {
             </div>
           </form>
         ) : null}
+
         <div className="ticket-split">
           <div>
             {view === 'kanban' ? (
@@ -405,9 +414,19 @@ export default function Tickets() {
                         const sla = slaInfo(t)
                         const c = clientOf(t)
                         return (
-                          <button type="button" key={t.id} className={`ticket-card ${selectedId === t.id ? 'selected' : ''}`} onClick={() => openEdit(t)}>
-                            <strong>{t.title || t.subject || 'Job'}</strong>
-                            <div className="muted" style={{ fontSize: 12 }}>{c?.name || '—'} · {sla.label}</div>
+                          <button
+                            type="button"
+                            key={t.id}
+                            className={`ticket-card ${selectedId === t.id ? 'selected' : ''}`}
+                            onClick={() => { setSelectedId(t.id); setEditing(null) }}
+                          >
+                            <div className="ticket-card-title">{t.title || t.subject || 'Untitled'}</div>
+                            <div className="ticket-card-meta muted">{c?.name || t.contactName || '—'} · {sla.label}</div>
+                            <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+                              <span className="btn btn-outline btn-sm" onClick={(e) => { e.stopPropagation(); billTicket(t) }}>
+                                {t.invoiceId ? 'Invoice' : 'Snipe'}
+                              </span>
+                            </div>
                           </button>
                         )
                       })}
@@ -416,35 +435,90 @@ export default function Tickets() {
                 ))}
               </div>
             ) : (
-              <div>
+              <div className="ticket-list">
                 {!list.length ? (
                   <EmptyState title="No job cards" hint="Create a job to track work and snipe an invoice." />
-                ) : (
-                  list.map((t) => (
-                    <div key={t.id} className="card" style={{ padding: 12, marginBottom: 8, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                      <div>
+                ) : list.map((t) => (
+                  <div key={t.id} className={`card ticket-list-row ${selectedId === t.id ? 'selected' : ''}`} style={{ padding: 12, marginBottom: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                      <button type="button" className="btn-link" style={{ background: 'none', border: 0, textAlign: 'left', cursor: 'pointer' }} onClick={() => { setSelectedId(t.id); setEditing(null) }}>
                         <strong>{t.title || t.subject}</strong>
-                        <div className="muted" style={{ fontSize: 13 }}>{clientOf(t)?.name || '—'} · {ticketLabel(t.status)}</div>
-                      </div>
-                      <button type="button" className="btn btn-outline btn-sm" onClick={() => openEdit(t)}>Open</button>
+                        <div className="muted" style={{ fontSize: 13 }}>{clientOf(t)?.name || '—'} · {ticketLabel(t.status)} · {slaInfo(t).label}</div>
+                      </button>
+                      <button type="button" className="btn btn-outline btn-sm" onClick={() => openEdit(t)}>Edit</button>
                     </div>
-                  ))
-                )}
+                  </div>
+                ))}
               </div>
             )}
           </div>
-          {detail ? (
-            <div className="card" style={{ padding: 16 }}>
-              <h3 style={{ marginTop: 0 }}>{detail.title || detail.subject}</h3>
-              <p className="muted">{detail.description}</p>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                <button type="button" className="btn btn-primary btn-sm" onClick={() => billTicket(detail)}>Snipe → Invoice</button>
-                <button type="button" className="btn btn-outline btn-sm" onClick={() => openWhatsApp(detail)}>WhatsApp</button>
-                <button type="button" className="btn btn-outline btn-sm" onClick={() => openEdit(detail)}>Edit</button>
-                <button type="button" className="btn btn-danger btn-sm" onClick={() => remove(detail.id)}>Delete</button>
-              </div>
-            </div>
-          ) : null}
+
+          <aside className="ticket-detail card" style={{ padding: 16 }}>
+            {!detail ? (
+              <p className="muted">Select a job card to view details, change status, or notify the client.</p>
+            ) : (
+              <>
+                <h3 style={{ marginTop: 0 }}>{detail.title || detail.subject || 'Untitled'}</h3>
+                {detail.invoiceId ? (
+                  <p style={{ fontSize: 13 }}>
+                    Invoiced:{' '}
+                    <button type="button" className="btn-link" style={{ background: 'none', border: 0, color: 'inherit', textDecoration: 'underline', cursor: 'pointer' }} onClick={() => nav(`/invoices/${detail.invoiceId}`)}>
+                      {detail.invoiceNumber || detail.invoiceId}
+                    </button>
+                  </p>
+                ) : (
+                  <p className="muted" style={{ fontSize: 12, margin: '0 0 8px' }}>Not invoiced yet — use <strong>Snipe → Invoice</strong> when work is done.</p>
+                )}
+                <p className="muted" style={{ fontSize: 13 }}>
+                  {clientOf(detail)?.name || detail.contactName || '—'} · {ticketLabel(detail.status)} · {detail.priority || 'normal'}
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                  {STATUSES.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      className={`btn btn-sm ${detail.status === s.id ? 'btn-primary' : 'btn-outline'}`}
+                      onClick={() => setStatus(detail, s.id)}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+                {detail.description ? <p style={{ fontSize: 13 }}>{detail.description}</p> : null}
+                {detail.workDone ? <p style={{ fontSize: 13 }}><strong>Work done:</strong> {detail.workDone}</p> : null}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => openWhatsApp(detail)} title="Opens WhatsApp app / web">WhatsApp</button>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => sendCloudWhatsApp(detail)} title="Send via Meta Cloud API when token is set; else falls back to wa.me">Send Cloud</button>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => billTicket(detail)} title="One-shot job → invoice">
+                    {detail.invoiceId ? 'Open invoice' : 'Snipe → Invoice'}
+                  </button>
+                  {detail.invoiceId ? (
+                    <button type="button" className="btn btn-outline btn-sm" onClick={() => billTicket(detail, { force: true })}>
+                      Bill again
+                    </button>
+                  ) : null}
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => openEdit(detail)}>Edit</button>
+                  <button type="button" className="btn btn-danger btn-sm" onClick={() => remove(detail.id)}>Delete</button>
+                </div>
+                <div style={{ marginTop: 12 }}>
+                  <input className="input" placeholder="Status note or internal comment…" value={note} onChange={(e) => setNote(e.target.value)} />
+                  <button type="button" className="btn btn-outline btn-sm" style={{ marginTop: 6 }} onClick={() => addInternalNote(detail)}>Add note</button>
+                </div>
+                {Array.isArray(detail.statusHistory) && detail.statusHistory.length ? (
+                  <div style={{ marginTop: 14 }}>
+                    <strong style={{ fontSize: 12 }}>History</strong>
+                    <ul style={{ fontSize: 12, paddingLeft: 16, margin: '6px 0' }}>
+                      {detail.statusHistory.slice(-12).reverse().map((h, i) => (
+                        <li key={i} className="muted">
+                          {(h.at ? new Date(h.at).toLocaleString('en-ZA') : '') + ': ' + (h.note || h.to || h.status || '')}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </>
+            )}
+          </aside>
         </div>
       </div>
     </PageFade>
