@@ -31,6 +31,8 @@ export default function ContentStudio() {
   const [selectedId, setSelectedId] = useState('')
   const [clipboardBlock, setClipboardBlock] = useState(null)
   const [pasteText, setPasteText] = useState('')
+  const [tableFilter, setTableFilter] = useState('')
+  const [tableSort, setTableSort] = useState({ column: -1, asc: true })
   const [busy, setBusy] = useState(false)
   const selected = blocks.find((b) => b.id === selectedId) || blocks[0] || null
 
@@ -100,6 +102,18 @@ export default function ContentStudio() {
     setSelectedId(block.id)
     setPasteText('')
     toast?.('Content converted into an editable table', 'success')
+  }
+  const visibleTableRows = (block) => {
+    let rows = [...(block.rows || [])]
+    if (tableFilter.trim()) rows = rows.filter(row => row.some(cell => String(cell ?? '').toLowerCase().includes(tableFilter.toLowerCase())))
+    if (tableSort.column >= 0) rows.sort((a,b) => String(a[tableSort.column] ?? '').localeCompare(String(b[tableSort.column] ?? ''), undefined, { numeric: true, sensitivity: 'base' }) * (tableSort.asc ? 1 : -1))
+    return rows
+  }
+  const exportTableCsv = (block) => {
+    const quote = value => '"' + String(value ?? '').replace(/"/g, '""') + '"'
+    const csv = [block.headers || [], ...(block.rows || [])].map(row => row.map(quote).join(',')).join('\\r\\n')
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+    const a = document.createElement('a'); a.href = url; a.download = (block.title || 'table').replace(/[^\\w.-]+/g, '_') + '.csv'; a.click(); URL.revokeObjectURL(url)
   }
   const billableTotal = (b) => {
     const subtotal = (b.items || []).reduce((s, item) => s + Math.max(0, Number(item.qty) || 0) * Math.max(0, Number(item.rate) || 0), 0)
@@ -193,7 +207,7 @@ export default function ContentStudio() {
           {b.type==='heading'&&<h2>{b.text || 'Heading'}</h2>}
           {(b.type==='text'||b.type==='callout')&&<div style={{whiteSpace:'pre-wrap',padding:10,background:b.type==='callout'?'rgba(0,130,78,.09)':'transparent',borderRadius:8}}>{b.text}</div>}
           {b.type==='checklist'&&(b.items||[]).map((it,i)=><div key={i}>☐ {it.text}</div>)}
-          {b.type==='table'&&<div style={{overflowX:'auto'}}><table className="table"><thead><tr>{(b.headers||[]).map((h,i)=><th key={i}>{h}</th>)}</tr></thead><tbody>{(b.rows||[]).map((row,i)=><tr key={i}>{row.map((v,j)=><td key={j}>{v}</td>)}</tr>)}</tbody></table></div>}
+          {b.type==='table'&&<div><div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:8}}><input className="input" style={{maxWidth:220}} value={tableFilter} onChange={e=>setTableFilter(e.target.value)} placeholder="Filter table rows…"/><button className="btn btn-outline btn-sm" onClick={()=>exportTableCsv(b)}>Export CSV</button></div><div style={{overflowX:'auto'}}><table className="table"><thead><tr>{(b.headers||[]).map((h,i)=><th key={i}><button type="button" className="btn btn-outline btn-sm" onClick={()=>setTableSort(s=>({column:i,asc:s.column===i?!s.asc:true}))}>{h} ↕</button></th>)}</tr></thead><tbody>{visibleTableRows(b).map((row,i)=><tr key={i}>{row.map((v,j)=><td key={j}>{v}</td>)}</tr>)}</tbody></table></div></div>}
           {b.type==='chart'&&<div style={{display:'grid',gap:5}}><small className="muted">{b.source&&b.source!=='manual'?'Live workspace data · '+b.source:'Manual data'} · {b.chartType||'bar'}</small>{(b.values||[]).map((v,i)=><div key={i} style={{display:'grid',gridTemplateColumns:'75px 1fr 55px',gap:8,alignItems:'center'}}><small>{b.labels?.[i]||i+1}</small><div style={{height:12,background:'var(--border,#ddd)',borderRadius:20,overflow:'hidden'}}><div style={{height:'100%',width:(Math.max(0,Number(v))/Math.max(1,...b.values.map(Number))*100)+'%',background:'#07834f'}}/></div><small>{Number(v).toLocaleString('en-ZA')}</small></div>)}</div>}
           {b.type==='billable'&&<div><div className="muted">{(b.items||[]).length} billable lines · Total R{billableTotal(b).total.toFixed(2)}</div>{(b.items||[]).map((it,i)=><div key={i}>{it.description} — {it.qty} × R{Number(it.rate||0).toFixed(2)}</div>)}</div>}
           {b.type==='selector'&&<div>{b.label}: <strong>{b.mode==='multi'?(b.selectedValues||[]).join(', '):b.selected}</strong></div>}
