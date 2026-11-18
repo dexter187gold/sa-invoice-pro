@@ -124,11 +124,14 @@ def register_developer_console(app, load_fn, now_display_fn=None):
                     <div><span>Expiry</span><b>{_e(record.get('expiresAt') or 'Set on activation')}</b></div>
                   </div>
                   <div class="muted-line">HWID · {_e(record.get('hwid') or 'Unbound')}</div>
-                  <form method="post" action="/owner/revoke-issued"><input type="hidden" name="hwid" value="{_e(record.get('hwid') or '')}"/><button type="submit" {'disabled' if record.get('revoked') or not record.get('hwid') else ''}>Revoke &amp; remove (retain history)</button></form>
-                  <form method="post" action="/owner/permanent-delete-license" onsubmit="return confirm('Permanently delete this issued licence key and its request record?');">
+                  <form method="post" action="/owner/revoke-issued"><input type="hidden" name="key" value="{_e(key)}"/><input type="hidden" name="hwid" value="{_e(record.get('hwid') or '')}"/><input type="hidden" name="return_to" value="/keys"/><button type="submit" {'disabled' if record.get('revoked') or not record.get('hwid') else ''}>Revoke &amp; remove (retain history)</button></form>
+                  <form method="post" action="/owner/permanent-delete-license" onsubmit="return confirm('Permanently delete this exact licence key and its linked request record?');">
+                    <input type="hidden" name="key" value="{_e(key)}"/>
                     <input type="hidden" name="hwid" value="{_e(record.get('hwid') or '')}"/>
+                    <input type="hidden" name="email" value="{_e(record.get('boundEmail') or record.get('email') or '')}"/>
+                    <input type="hidden" name="return_to" value="/keys"/>
                     <input name="confirm" required autocomplete="off" placeholder="Type DELETE LICENSE" aria-label="Type DELETE LICENSE to confirm"/>
-                    <button class="danger" type="submit">Permanently delete licence</button>
+                    <button class="danger" type="submit">Permanently delete key</button>
                   </form>
                 </article>"""
             )
@@ -228,7 +231,7 @@ main{{max-width:1200px;margin:auto;padding:20px}}h1{{font-size:23px;margin:0 0 4
 .status-actions{{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}}button,.btn{{background:#14533d;color:#d1fae5;border:1px solid #287452;border-radius:9px;padding:8px 11px;cursor:pointer;font-size:12px;font-weight:700}}button:hover,.btn:hover{{filter:brightness(1.12)}}button.danger{{background:#552633;border-color:#8b3547;color:#ffe4e6}}form[action*="permanent-delete"]{{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;margin-top:10px}}form[action*="permanent-delete"] input{{margin:0}}form[action*="permanent-delete"] button{{white-space:normal}}.status-actions button{{flex:1 1 70px}}
 label{{display:block;color:var(--muted);font-size:12px;margin:8px 0 4px}}input,select{{width:100%;background:#071b16;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:10px;margin-bottom:8px}}
 .form-grid{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}.empty{{padding:24px;text-align:center;color:var(--muted);border:1px dashed #3a6553;border-radius:12px}}
-.search-wrap{{max-width:440px;margin:12px 0}}.plan-card strong{{display:block;font-size:18px;color:var(--mint)}}.plan-card p{{color:var(--muted);font-size:12px}}
+.search-wrap{{max-width:440px;margin:12px 0}}.key-category{{margin:22px 0}}.section-heading{{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:0 2px 8px;margin-bottom:10px}}.section-heading span{{font-size:11px;color:var(--muted);background:#102a21;border:1px solid var(--line);padding:4px 9px;border-radius:20px}}.plan-card strong{{display:block;font-size:18px;color:var(--mint)}}.plan-card p{{color:var(--muted);font-size:12px}}
 @media(max-width:650px){{header{{padding:13px}}nav{{padding:8px 12px}}main{{padding:13px}}.form-grid{{grid-template-columns:1fr}}}}
 </style></head><body>
 <header><div class="brand">SA INVOICE PRO <small>DEVELOPER CONTROL CENTRE · private licence operations</small></div><div class="top-actions"><span>{_e(now)}</span><a href="{_e(request.path)}">Refresh</a><a href="/admin/billing">Billing ledger</a><a href="/admin">Payment settings</a><a href="/logout">Sign out</a></div></header>
