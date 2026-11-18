@@ -15,6 +15,7 @@ import { loadGesturePrefs } from '../lib/deviceAccess'
 import { readAccessStatus, canAccessPath } from '../lib/accessControl'
 import DonateFab from './DonateFab'
 import OfflineBanner from './OfflineBanner'
+import { readUiLayout } from '../lib/uiLayout'
 
 export default function Shell({ children, sections: sectionsProp }) {
   const { user, online, lock, logout, syncNow, toast } = useApp() || {}
@@ -26,6 +27,7 @@ export default function Shell({ children, sections: sectionsProp }) {
   const [syncing, setSyncing] = useState(false)
   const [gesturesOn, setGesturesOn] = useState(() => !!loadGesturePrefs().enabled)
   const [accessStatus, setAccessStatus] = useState(null)
+  const [layoutMode, setLayoutMode] = useState(() => readUiLayout())
   const [navPrefs, setNavPrefs] = useState(() => {
     try {
       const raw = JSON.parse(localStorage.getItem('sa_nav_prefs') || '{}')
@@ -43,13 +45,19 @@ export default function Shell({ children, sections: sectionsProp }) {
     return () => { alive = false; window.removeEventListener('sa-license-updated', refreshAccess) }
   }, [])
 
+  useEffect(() => {
+    const on = (e) => setLayoutMode(e.detail?.mode || readUiLayout())
+    window.addEventListener('sa-ui-layout', on)
+    return () => window.removeEventListener('sa-ui-layout', on)
+  }, [])
+
   const visibleRootNav = ROOT_NAV.filter((item) => item.to !== '/dev-portal' && (
     item.to === '/owner-console' || item.to === '/owner-recovery'
       ? !!(user?.isOwner || user?.role === 'owner' || user?.role === 'Owner')
       : canAccessPath(item.to, accessStatus, !!(user?.isOwner || user?.role === 'owner' || user?.role === 'Owner'))
   ))
 
-  const useBottom = (navPrefs?.layout || 'bottom') !== 'side'
+  const useBottom = layoutMode === 'traditional' ? false : ((navPrefs?.layout || 'bottom') !== 'side')
 
   useEffect(() => {
     const root = document.documentElement
@@ -78,7 +86,6 @@ export default function Shell({ children, sections: sectionsProp }) {
   }, [location.pathname, location.search])
 
   const section = sectionFromPath(location.pathname)
-  const bottomItems = SECTION_NAV[section] || SECTION_NAV.home
   const sections = useMemo(
     () =>
       sectionsProp || [
@@ -115,12 +122,6 @@ export default function Shell({ children, sections: sectionsProp }) {
     } finally {
       nav('/login', { replace: true })
     }
-  }
-
-  const isItemActive = (item) => {
-    if (item.end) return location.pathname === item.to
-    const base = String(item.to || '').split('?')[0]
-    return location.pathname === base || location.pathname.startsWith(base + '/')
   }
 
   return (
