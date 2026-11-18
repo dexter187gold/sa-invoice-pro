@@ -4,7 +4,9 @@ import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
 import { STORES } from '../lib/db'
 import { formatMoney, invoiceTotals } from '../lib/money'
-import { downloadProfessionalPdf, openProfessionalPdf, TEMPLATE_PRESETS } from '../lib/pdfTemplate'
+import { buildProfessionalPdf, downloadProfessionalPdf, openProfessionalPdf, TEMPLATE_PRESETS } from '../lib/pdfTemplate'
+import { shareFilesWithCaption, downloadPdfBlob } from '../lib/pdfOpen'
+import { openWhatsApp } from '../lib/share'
 import { loadInvoiceLayout, DEFAULT_LAYOUT } from '../lib/invoiceLayout'
 import { Sync } from '../lib/sync'
 import PortalCard from '../components/PortalCard'
@@ -229,16 +231,42 @@ export default function InvoiceEdit() {
 
   const gap = layout.formDensity === 'compact' ? 6 : layout.formDensity === 'spacious' ? 14 : 10
 
-  const shareWhatsApp = () => {
+  const shareWhatsApp = async () => {
     const c = clients.find((x) => String(x.id) === String(clientId))
-    const phone = String(c?.phone || '').replace(/\D/g, '')
-    const text = encodeURIComponent(
-      `Hi${c?.name ? ' ' + c.name : ''}, please find ${vatEnabled ? 'tax invoice' : 'invoice'} ${invNumber} for ${formatMoney(totals.total)} (balance due ${formatMoney(balance)}). Thank you — ${company?.name || 'SA Invoice Pro'}.`
-    )
-    const url = phone
-      ? `https://wa.me/${phone.startsWith('0') ? '27' + phone.slice(1) : phone}?text=${text}`
-      : `https://wa.me/?text=${text}`
-    window.open(url, '_blank', 'noopener,noreferrer')
+    const phone = c?.phone || ''
+    const caption = [
+      `Dear ${c?.name || 'Customer'},`,
+      '',
+      `Please find attached ${vatEnabled ? 'tax invoice' : 'invoice'} ${invNumber} from ${company?.name || 'SA Invoice Pro'}.`,
+      `Invoice date: ${date || '—'}`,
+      `Due date: ${dueDate || 'On receipt'}`,
+      `Invoice total: ${formatMoney(totals.total)}`,
+      `Paid: ${formatMoney(paidSum)}`,
+      `Balance due: ${formatMoney(balance)}`,
+      '',
+      existing?.paymentNote || '',
+      'Please use the invoice reference when making payment.',
+      '',
+      `Kind regards,\n${company?.name || 'SA Invoice Pro'}`,
+    ].filter(Boolean).join('\n')
+    try {
+      const payload = existing ? { ...existing, ...buildPayload(), id: existing.id } : buildPayload()
+      const opts = { company, client: c, payments: invPayments, isQuote: false, vatEnabled: !!vatEnabled, vatRate, templateId: payload.templateId || templateId, accountType, layout }
+      const doc = await buildProfessionalPdf(payload, opts)
+      const fileName = String(invNumber || 'invoice').replace(/[^a-z0-9._-]+/gi, '-') + '.pdf'
+      const file = new File([doc.output('blob')], fileName, { type: 'application/pdf' })
+      const shared = await shareFilesWithCaption([file], caption, fileName)
+      if (shared === true) {
+        toast('Invoice and caption shared — choose WhatsApp and the customer', 'success')
+        return
+      }
+      if (shared?.cancelled) return
+      await downloadPdfBlob(file, fileName)
+      openWhatsApp(phone, caption)
+      toast('Invoice PDF downloaded. WhatsApp opened with the caption; attach the downloaded PDF if the share sheet is unavailable.', 'info')
+    } catch (err) {
+      toast(err?.message || 'Could not prepare invoice for WhatsApp', 'error')
+    }
   }
   const shareEmail = () => {
     const c = clients.find((x) => String(x.id) === String(clientId))
