@@ -47,10 +47,21 @@ try { applyWhiteLabel(loadWhiteLabel()) } catch {}
 try { initFont() } catch {}
 try { applyUiLayoutOnBoot() } catch {}
 try {
-  applyPaystackReturnFromUrl().then((r) => {
-    if (r?.ok) console.info('[paystack] local invoice marked from return', r.invoice?.number)
-  }).catch(() => {})
-  flushPendingPaystackRefs().catch(() => {})
+  ;(async () => {
+    try {
+      const r = await applyPaystackReturnFromUrl()
+      const flushed = await flushPendingPaystackRefs()
+      const path = r?.deepLink || flushed?.deepLink
+      if (path && typeof location !== 'undefined') {
+        const here = location.pathname || ''
+        if (!here.startsWith('/invoices/')) {
+          location.assign(path)
+        }
+      }
+    } catch (e) {
+      console.warn('[paystack] return apply', e)
+    }
+  })()
 } catch {}
 
 try {
