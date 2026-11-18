@@ -104,11 +104,25 @@ def load_state(local_path):
     return initial
 
 
-def save_state(data, local_path):
+def save_state(data, local_path, deleted=None):
+    """Persist licence state while applying explicit record deletions remotely.
+
+    Ordinary saves remain merge/upsert operations to protect concurrent device
+    updates. Deletions are explicit tombstones and are applied after the merge,
+    so a stale local snapshot cannot resurrect records removed by an owner.
+    """
     cfg = _config()
     normal = _normalise(dict(data or {}))
+    deleted = deleted if isinstance(deleted, dict) else {}
+    def apply_deletions(state):
+        for section, record_ids in deleted.items():
+            if not isinstance(state.get(section), dict):
+                continue
+            for record_id in record_ids if isinstance(record_ids, (list, tuple, set)) else []:
+                state[section].pop(str(record_id), None)
+        return state
     if not cfg:
-        _write_local(local_path, normal)
+        _write_local(local_path, apply_deletions(normal))
         return
     token, repo, branch, path = cfg
     url = f"{API}/repos/{repo}/contents/{path}"
@@ -117,6 +131,7 @@ def save_state(data, local_path):
         latest, sha = _read_remote(cfg)
         if latest is not None:
             desired = _merge(latest, desired)
+        desired = apply_deletions(desired)
         encoded = base64.b64encode((json.dumps(desired, indent=2, ensure_ascii=False) + "\n").encode("utf-8")).decode("ascii")
         body = {"message": "Persist licence server state", "content": encoded, "branch": branch}
         if sha:
