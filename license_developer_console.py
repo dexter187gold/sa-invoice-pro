@@ -5,6 +5,7 @@ licence APIs and Git-backed state; it does not expose customer-facing admin rout
 """
 import html
 import json
+from datetime import datetime, timezone
 from flask import redirect, request
 
 
@@ -70,7 +71,7 @@ def register_developer_console(app, load_fn, now_display_fn=None):
                   </div>
                   <div class="muted-line">Phone · {_e(phone)}</div>
                   <div class="muted-line">IP · {_e(user.get("lastIp") or "Not recorded")} · Browser · {_e(user.get("browser") or user.get("userAgent") or "Not recorded")} · MAC · unavailable remotely</div>
-                  <form class="status-actions" method="post" action="/set-status">
+                  <form class="status-actions" method="post" action="/set-status"><input type="hidden" name="return_to" value="/devices"/>
                     <input type="hidden" name="hwid" value="{_e(hwid)}"/>
                     <button name="status" value="trial">Trial</button>
                     <button name="status" value="licensed">Activate</button>
@@ -79,13 +80,13 @@ def register_developer_console(app, load_fn, now_display_fn=None):
                     <button name="status" value="expired">Expire</button>
                   </form>
                   <form method="post" action="/owner/permanent-delete-device" onsubmit="return confirm('Permanently delete this device registration and every key/request bound to it? This cannot be undone.');">
-                    <input type="hidden" name="hwid" value="{_e(hwid)}"/>
+                    <input type="hidden" name="hwid" value="{_e(hwid)}"/><input type="hidden" name="return_to" value="/devices"/>
                     <input name="confirm" required autocomplete="off" placeholder="Type DELETE DEVICE" aria-label="Type DELETE DEVICE to confirm"/>
                     <button class="danger" type="submit">Permanently remove device</button>
                   </form>
                   <form method="post" action="/owner/permanent-delete-user" onsubmit="return confirm('Permanently remove this registered user and all devices/licences registered to this email? This cannot be undone.');">
                     <input type="hidden" name="email" value="{_e(email if email != 'No email' else '')}"/>
-                    <input type="hidden" name="hwid" value="{_e(hwid)}"/>
+                    <input type="hidden" name="hwid" value="{_e(hwid)}"/><input type="hidden" name="return_to" value="/devices"/>
                     <input name="confirm" required autocomplete="off" placeholder="Type DELETE USER" aria-label="Type DELETE USER to confirm"/>
                     <button class="danger" type="submit">Permanently remove registered user</button>
                   </form>
@@ -102,7 +103,7 @@ def register_developer_console(app, load_fn, now_display_fn=None):
                   <div class="card-top"><strong>{_e(item.get('email') or item.get('company') or 'New licence request')}</strong><span class="status-pill pending">Pending</span></div>
                   <code>{_e(hwid)}</code>
                   <div class="meta-grid"><div><span>Requested plan</span><b>{_e(item.get('plan') or '—')}</b></div><div><span>Requested</span><b>{_e(item.get('at') or item.get('requestedAt') or '—')}</b></div></div>
-                  <form method="post" action="/issue" class="issue-inline"><input type="hidden" name="hwid" value="{_e(hwid)}"/><select name="plan"><option value="T">Trial</option><option value="S" selected>Solo</option><option value="P">Shop</option><option value="M">Multi-branch</option><option value="L">Lifetime</option><option value="E">Enterprise</option></select><button type="submit">Issue key</button></form>
+                  <form method="post" action="/issue" class="issue-inline"><input type="hidden" name="hwid" value="{_e(hwid)}"/><input type="hidden" name="return_to" value="/requests"/><select name="plan"><option value="T">Trial</option><option value="S" selected>Solo</option><option value="P">Shop</option><option value="M">Multi-branch</option><option value="L">Lifetime</option><option value="E">Enterprise</option></select><button type="submit">Issue key</button></form>
                 </article>"""
             )
         if not request_cards:
@@ -168,7 +169,7 @@ def register_developer_console(app, load_fn, now_display_fn=None):
         issue_form = """
           <section class="panel-card"><h2>Issue a customer-bound licence</h2>
             <p class="muted-line">Create a key bound to the customer's email, phone and device HWID.</p>
-            <form method="post" action="/owner/admin-issue-form">
+            <form method="post" action="/owner/admin-issue-form"><input type="hidden" name="return_to" value="/keys"/>
               <div class="form-grid">
                 <div><label>Customer email</label><input name="email" type="email" required autocomplete="email" placeholder="client@shop.co.za"/></div>
                 <div><label>Customer phone</label><input name="phone" type="tel" placeholder="0821234567"/></div>
@@ -184,7 +185,7 @@ def register_developer_console(app, load_fn, now_display_fn=None):
         duration_form = """
           <section class="panel-card"><h2>Adjust licence duration</h2>
             <p class="muted-line">Set a new expiry from now or extend the current expiry. Hours, days, calendar months and years are supported. The server enforces the expiry.</p>
-            <form method="post" action="/owner/set-duration">
+            <form method="post" action="/owner/set-duration"><input type="hidden" name="return_to" value="/devices"/>
               <label>Device HWID</label><input name="hwid" required maxlength="256" placeholder="Copy the HWID from a device card"/>
               <div class="form-grid">
                 <div><label>Duration</label><input name="duration" type="number" min="1" max="87600" value="30" required/></div>
