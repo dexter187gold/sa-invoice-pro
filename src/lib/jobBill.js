@@ -58,7 +58,7 @@ export async function invoiceFromTickets(tickets, {
       ticket.priority ? `Priority: ${ticket.priority}` : '',
     ].filter(Boolean);
     lines.push({
-      description: [descParts.join(' · ') || 'Job card service', ...detail].join('\\n'),
+      description: [descParts.join(' · ') || 'Job card service', ...detail].join(' · '),
       qty: 1,
       price: labourPrice,
       ticketId: ticket.id,
