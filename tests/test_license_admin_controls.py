@@ -59,7 +59,7 @@ def test_verify_marks_expired_licence_as_expired(monkeypatch):
         }
     }
     monkeypatch.setattr(license_routes_v24, "_load", lambda: db)
-    monkeypatch.setattr(license_routes_v24, "_save", lambda value: None)
+    monkeypatch.setattr(license_routes_v24, "_save", lambda value, deleted=None: None)
     app = Flask(__name__)
     license_routes_v24.register_v24(app)
     response = app.test_client().post(
@@ -99,7 +99,7 @@ def test_duration_form_updates_existing_device_expiry(monkeypatch):
     db = {"users": {"device-2": {"hwid": "device-2", "mode": "licensed", "key": "SAIP-TEST"}}}
     monkeypatch.setattr(license_server, "owner_cookie_authenticated", lambda: True)
     monkeypatch.setattr(license_owner_ops, "_load", lambda: db)
-    monkeypatch.setattr(license_owner_ops, "_save", lambda value: None)
+    monkeypatch.setattr(license_owner_ops, "_save", lambda value, deleted=None: None)
     app = Flask(__name__)
     register_duration_admin(app)
     response = app.test_client().post(
@@ -188,7 +188,7 @@ def test_legacy_expiry_is_not_enforced_until_developer_manages_it(monkeypatch):
         }
     }
     monkeypatch.setattr(license_routes_v24, "_load", lambda: db)
-    monkeypatch.setattr(license_routes_v24, "_save", lambda value: None)
+    monkeypatch.setattr(license_routes_v24, "_save", lambda value, deleted=None: None)
     app = Flask(__name__)
     license_routes_v24.register_v24(app)
     response = app.test_client().post(
@@ -245,7 +245,7 @@ def test_managed_trial_expiry_is_enforced_by_device_status_api(monkeypatch):
         }
     }
     monkeypatch.setattr(license_server, "load", lambda: db)
-    monkeypatch.setattr(license_server, "save", lambda value: None)
+    monkeypatch.setattr(license_server, "save", lambda value, deleted=None: None)
     response = license_server.app.test_client().post(
         "/api/device-status", json={"hwid": "trial-device"}
     )
@@ -263,7 +263,7 @@ def test_duration_admin_sets_trial_end_date(monkeypatch):
     db = {"users": {"trial-device": {"hwid": "trial-device", "mode": "trial"}}}
     monkeypatch.setattr(license_server, "owner_cookie_authenticated", lambda: True)
     monkeypatch.setattr(license_owner_ops, "_load", lambda: db)
-    monkeypatch.setattr(license_owner_ops, "_save", lambda value: None)
+    monkeypatch.setattr(license_owner_ops, "_save", lambda value, deleted=None: None)
     app = Flask(__name__)
     register_duration_admin(app)
     response = app.test_client().post(
@@ -291,7 +291,7 @@ def test_switching_managed_device_to_trial_preserves_trial_expiry(monkeypatch):
     }
     monkeypatch.setattr(license_server, "_owner_api_guard", lambda: None)
     monkeypatch.setattr(license_server, "load", lambda: db)
-    monkeypatch.setattr(license_server, "save", lambda value: None)
+    monkeypatch.setattr(license_server, "save", lambda value, deleted=None: None)
     response = license_server.app.test_client().post(
         "/api/set-status", data={"hwid": "device-3", "status": "trial"}
     )
@@ -319,7 +319,7 @@ def test_permanent_delete_license_uses_exact_key_and_returns_to_keys(monkeypatch
     }
     monkeypatch.setattr(license_server, "_owner_page_guard", lambda: None)
     monkeypatch.setattr(license_server, "load", lambda: db)
-    monkeypatch.setattr(license_server, "save", lambda value: None)
+    monkeypatch.setattr(license_server, "save", lambda value, deleted=None: None)
     response = license_server.app.test_client().post(
         "/owner/permanent-delete-license",
         data={"key": "EXPIRED-KEY", "hwid": "device-a", "confirm": "DELETE LICENSE", "return_to": "/keys"},
@@ -349,7 +349,7 @@ def test_permanent_delete_device_only_removes_keys_for_selected_hwid(monkeypatch
     }
     monkeypatch.setattr(license_server, "_owner_page_guard", lambda: None)
     monkeypatch.setattr(license_server, "load", lambda: db)
-    monkeypatch.setattr(license_server, "save", lambda value: None)
+    monkeypatch.setattr(license_server, "save", lambda value, deleted=None: None)
     response = license_server.app.test_client().post(
         "/owner/permanent-delete-device",
         data={"hwid": "device-a", "confirm": "DELETE DEVICE", "return_to": "/devices"},
