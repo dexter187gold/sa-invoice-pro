@@ -439,3 +439,35 @@ def test_owner_permanent_delete_user_tracks_exact_removed_key_ids(monkeypatch):
     assert set(saved["deleted"]["keys"]) == {"KEY-A", "KEY-B"}
     assert set(saved["deleted"]["users"]) == {"device-a", "device-b"}
     assert saved["deleted"]["accounts"] == ["demo@example.test"]
+
+
+def test_revoke_consistency_delete_key_uses_git_tombstone(monkeypatch):
+    from license_revoke_consistency import register_revoke_consistency
+
+    db = {
+        "keys": {
+            "KEY-A": {"hwid": "device-a", "boundEmail": "demo@example.test"},
+            "KEY-B": {"hwid": "device-b", "boundEmail": "other@example.test"},
+        },
+        "requests": {"device-a": {"key": "KEY-A", "status": "issued"}},
+        "users": {"device-a": {"hwid": "device-a", "key": "KEY-A", "mode": "licensed"}},
+        "accounts": {"demo@example.test": {"key": "KEY-A", "devices": ["device-a"]}},
+    }
+    saved = {}
+    app = Flask(__name__)
+    register_revoke_consistency(
+        app,
+        lambda: db,
+        lambda value, deleted=None: saved.update(deleted=deleted),
+        lambda value: value,
+        lambda: None,
+    )
+    response = app.test_client().post(
+        "/owner/delete-key",
+        data={"key": "KEY-A", "hwid": "device-a"},
+    )
+    assert response.status_code == 302
+    assert "KEY-A" not in db["keys"]
+    assert "KEY-A" in db["keys_archive"]
+    assert "KEY-B" in db["keys"]
+    assert saved["deleted"]["keys"] == ["KEY-A"]
