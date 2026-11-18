@@ -2,6 +2,7 @@ import React, { useMemo, useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
+import { softDelete } from '../lib/recycleBin'
 import { STORES } from '../lib/db'
 import { formatMoney } from '../lib/money'
 import { Sync } from '../lib/sync'
@@ -81,13 +82,13 @@ export default function Clients() {
   const del = (id) => {
     setConfirm({
       title: 'Delete client?',
-      message: 'Invoices linked to this client remain but lose the name link.',
+      message: 'Client moves to the recycle bin (Settings → Backup). Linked invoices keep their data.',
       danger: true,
       confirmLabel: 'Delete',
       action: async () => {
-        await db.remove(STORES.clients, id)
+        await softDelete(STORES.clients, id, { reason: 'user-delete' })
         await refresh()
-        toast('Deleted', 'success')
+        toast('Client moved to recycle bin', 'success')
         setConfirm(null)
       },
     })
@@ -388,17 +389,6 @@ export default function Clients() {
             preparePortal={preparePortal}
             onCreated={(data) => setLastPortal({ ...lastPortal, url: data.url, expires: data.expires })}
           />
-          {lastPortal?.url ? (
-            <div className="card" style={{ marginTop: 8, borderLeft: '4px solid var(--green, #16a34a)' }}>
-              <strong>Active portal link</strong> · {lastPortal.name}
-              <div style={{ fontSize: 13, wordBreak: 'break-all', marginTop: 4 }}>
-                <a href={lastPortal.url} target="_blank" rel="noopener noreferrer">{lastPortal.url}</a>
-              </div>
-              {lastPortal.expires ? (
-                <div className="muted" style={{ fontSize: 12 }}>Expires {formatDateZA(lastPortal.expires)}</div>
-              ) : null}
-            </div>
-          ) : null}
         </div>
       ) : null}
 
