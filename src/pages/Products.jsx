@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import * as db from '../lib/db'
+import { softDelete } from '../lib/recycleBin'
 import { STORES } from '../lib/db'
 import { formatMoney } from '../lib/money'
 import {
@@ -91,15 +92,15 @@ export default function Products() {
     const id = typeof item === 'object' ? item?.id : item
     setConfirm({
       title: 'Delete item?',
-      message: `Remove ${typeof item === 'object' && item?.name ? item.name : 'this item'} permanently?`,
+      message: `Move ${typeof item === 'object' && item?.name ? item.name : 'this item'} to the recycle bin?`,
       danger: true,
       confirmLabel: 'Delete',
       action: async () => {
         try {
           if (id == null) throw new Error('Missing id')
-          await db.remove(store, id)
+          await softDelete(store, id, { reason: 'user-delete' })
           await refresh()
-          toast('Deleted', 'success')
+          toast('Moved to recycle bin', 'success')
           if (form.id != null && String(form.id) === String(id)) setForm(blankForm())
         } catch (err) {
           toast(err?.message || 'Delete failed', 'error')
