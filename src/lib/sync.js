@@ -396,7 +396,6 @@ export const Sync = {
             quotes: (snapshot.quotes || []).filter((q) => String(q.clientId) === String(clientId)),
             invoices: (snapshot.invoices || []).filter((i) => String(i.clientId) === String(clientId)),
             tickets: snapshot.tickets || [], payments: snapshot.payments || [], accountStatement: snapshot.accountStatement || {},
-            tickets: snapshot.tickets || [], payments: snapshot.payments || [], accountStatement: snapshot.accountStatement || {},
           }),
         })
       } else {
@@ -416,6 +415,9 @@ export const Sync = {
             client: snapshot.client || {},
             quotes: (snapshot.quotes || []).filter((q) => String(q.clientId) === String(clientId)),
             invoices: (snapshot.invoices || []).filter((i) => String(i.clientId) === String(clientId)),
+            tickets: snapshot.tickets || [],
+            payments: snapshot.payments || [],
+            accountStatement: snapshot.accountStatement || {},
           }),
           _maxAttempts: 1,
         })
