@@ -39,6 +39,8 @@ export function canAccessPath(pathname, status, isOwner = false) {
   if (path.startsWith('/tickets')) path = '/tickets'
   if (path.startsWith('/portal/')) path = '/portal'
   if (OWNER_ONLY.has(path)) return !!isOwner
+  // Content Studio is a general document-authoring tool for signed-in workspaces, not a paid-plan feature.
+  if (path === '/content-studio') return true
 
   if (status?.licensed) {
     if (path === '/license' || path === '/support' || path === '/about' || path === '/settings') return true
