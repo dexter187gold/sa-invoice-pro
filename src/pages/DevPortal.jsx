@@ -7,6 +7,7 @@ import { APP_VERSION } from '../config'
 
 const NAV = [
   { id: 'overview', label: 'Command overview', icon: '◈' },
+  { id: 'users', label: 'Users database', icon: '♙' },
   { id: 'releases', label: 'Releases & beta', icon: '⇧' },
   { id: 'broadcasts', label: 'User broadcasts', icon: '◉' },
   { id: 'push', label: 'Device push', icon: '⌁' },
@@ -80,6 +81,9 @@ export default function DevPortal() {
   const [opsControls, setOpsControls] = useState({ maintenance: { enabled: false, message: 'SA Invoice Pro is undergoing scheduled maintenance. Please try again shortly.' }, flags: { bankImport: true, clientPortal: true, betaFeatures: false, newDashboard: false } })
   const [opsAudit, setOpsAudit] = useState([])
   const [incidents, setIncidents] = useState([])
+  const [accounts, setAccounts] = useState([])
+  const [accountSearch, setAccountSearch] = useState('')
+  const [accountDrafts, setAccountDrafts] = useState({})
   const [incidentDraft, setIncidentDraft] = useState({ title: '', summary: '', severity: 'medium' })
 
   const notify = (message) => { setToast(message); setError('') }
@@ -107,6 +111,31 @@ export default function DevPortal() {
       notify('Command Centre refreshed')
     } catch (e) { fail(e.message) }
     finally { setBusy(false) }
+  }
+  async function loadAccounts() {
+    const data = await devRequest('/api/dev/users')
+    setAccounts(data.users || [])
+    setAccountDrafts(Object.fromEntries((data.users || []).map(u => [u.id, { email: u.email, name: u.name || '' }])))
+  }
+  async function saveAccount(user) {
+    const draft = accountDrafts[user.id] || {}
+    setBusy(true)
+    try { const data = await devRequest('/api/dev/users/' + encodeURIComponent(user.id), { method: 'PATCH', body: JSON.stringify(draft) }); setAccounts(prev => prev.map(u => u.id === user.id ? data.user : u)); notify('Account details updated') }
+    catch (e) { fail(e.message) } finally { setBusy(false) }
+  }
+  async function resetAccountPassword(user) {
+    const password = window.prompt('Enter a new password (minimum 12 characters). It will not be shown again:')
+    if (!password) return
+    setBusy(true)
+    try { const data = await devRequest('/api/dev/users/' + encodeURIComponent(user.id) + '/reset-password', { method: 'POST', body: JSON.stringify({ password }) }); notify(data.message || 'Password reset') }
+    catch (e) { fail(e.message) } finally { setBusy(false) }
+  }
+  async function deleteAccount(user) {
+    const phrase = window.prompt('This permanently deletes the account and its active workspace. Type DELETE ' + user.email + ' to continue:')
+    if (phrase !== 'DELETE ' + user.email) return
+    setBusy(true)
+    try { await devRequest('/api/dev/users/' + encodeURIComponent(user.id), { method: 'DELETE' }); setAccounts(prev => prev.filter(u => u.id !== user.id)); notify('Account and active workspace deleted') }
+    catch (e) { fail(e.message) } finally { setBusy(false) }
   }
   async function loadReleases() {
     const data = await devRequest('/api/dev/releases')
@@ -195,7 +224,7 @@ export default function DevPortal() {
   if (!authed) return <DevLogin onOk={() => setAuthed(true)} />
 
   const nav = <nav aria-label="Developer sections" style={{ display: 'grid', gap: 6 }}>
-    {NAV.map(item => <button key={item.id} className={section === item.id ? 'btn btn-primary' : 'btn btn-outline'} onClick={() => { setSection(item.id); if (item.id === 'releases') loadReleases().catch(e => fail(e.message)) }} style={{ textAlign: 'left', justifyContent: 'flex-start', whiteSpace: 'normal' }}>{item.icon}　{item.label}</button>)}
+    {NAV.map(item => <button key={item.id} className={section === item.id ? 'btn btn-primary' : 'btn btn-outline'} onClick={() => { setSection(item.id); if (item.id === 'releases') loadReleases().catch(e => fail(e.message)); if (item.id === 'users') loadAccounts().catch(e => fail(e.message)) }} style={{ textAlign: 'left', justifyContent: 'flex-start', whiteSpace: 'normal' }}>{item.icon}　{item.label}</button>)}
   </nav>
 
   return <div style={{ minHeight: '100vh', padding: 'clamp(12px, 2vw, 28px)', background: 'var(--bg, transparent)' }}>
@@ -220,6 +249,34 @@ export default function DevPortal() {
         </div>
       </aside>
       <main style={{ minWidth: 0 }}>
+        {section === 'users' && <section>
+          <SectionHead eyebrow="Server account administration" title="Registered users database" detail="Live accounts from the saip-sync server. Password hashes are never displayed. Protected owner and administrator accounts cannot be modified or deleted here." action={<button className="btn btn-outline" onClick={() => loadAccounts().catch(e => fail(e.message))} disabled={busy}>Refresh users</button>} />
+          <div style={{ ...panel, marginBottom: 14 }}>
+            <label className="label">Search accounts<input className="input" style={field} value={accountSearch} onChange={e => setAccountSearch(e.target.value)} placeholder="Search email, name or role…" /></label>
+            <p style={muted}>{accounts.length} accounts returned from the live server. Changes are written to the active server database and its configured Git-backed persistence.</p>
+          </div>
+          <div style={{ display: 'grid', gap: 12 }}>
+            {accounts.filter(u => (u.email + ' ' + u.name + ' ' + u.role).toLowerCase().includes(accountSearch.toLowerCase())).map(user => {
+              const protectedUser = user.email === 'sainvoicepro@gmail.com' || user.role === 'admin'
+              const draft = accountDrafts[user.id] || { email: user.email, name: user.name || '' }
+              return <article key={user.id} style={panel}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}><div><strong>{user.name || 'Unnamed account'}</strong><div style={muted}>{user.email}</div></div><span style={{ ...muted, fontWeight: 800, textTransform: 'uppercase' }}>{user.role} · {user.has_workspace ? 'Workspace' : 'No workspace'}</span></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 10, marginTop: 12 }}>
+                  <label className="label">Account email<input className="input" style={field} type="email" disabled={protectedUser} value={draft.email} onChange={e => setAccountDrafts(p => ({ ...p, [user.id]: { ...draft, email: e.target.value } }))} /></label>
+                  <label className="label">Display name<input className="input" style={field} disabled={protectedUser} value={draft.name} onChange={e => setAccountDrafts(p => ({ ...p, [user.id]: { ...draft, name: e.target.value } }))} /></label>
+                </div>
+                <div style={{ ...muted, margin: '8px 0' }}>Created: {user.created_at ? new Date(user.created_at).toLocaleString() : 'Unknown'} · Updated: {user.updated_at ? new Date(user.updated_at).toLocaleString() : '—'} · Google: {user.google ? 'Linked' : 'No'}</div>
+                {protectedUser ? <p style={{ ...muted, color: '#b45309' }}>Protected system account. Use the dedicated owner/admin controls for this account.</p> : <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button className="btn btn-primary" disabled={busy} onClick={() => saveAccount(user)}>Save account</button>
+                  <button className="btn btn-outline" disabled={busy} onClick={() => resetAccountPassword(user)}>Reset password</button>
+                  <button className="btn" style={{ background: '#7f1d1d', color: '#fff' }} disabled={busy} onClick={() => deleteAccount(user)}>Permanently delete account</button>
+                </div>}
+              </article>
+            })}
+            {!accounts.length && <div style={panel}><p style={muted}>No registered accounts were returned. Refresh to try again.</p></div>}
+          </div>
+        </section>}
+
         {section === 'overview' && <section>
           <SectionHead eyebrow="Live system snapshot" title="Command overview" detail="A single operational view of users, releases, announcements and core services." action={<button className="btn btn-outline" onClick={checkServices} disabled={busy}>Run service checks</button>} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))', gap: 12, marginBottom: 16 }}>
