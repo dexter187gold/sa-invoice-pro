@@ -12,6 +12,8 @@ const makeBlock = (type) => {
   if (type === 'selector') return { id, type, title: 'Customer selection', label: 'Choose an option', options: ['Standard', 'Priority', 'Premium'], selected: 'Standard', selectedValues: ['Standard'], mode: 'dropdown', required: false }
   if (type === 'checklist') return { id, type, title: 'Checklist', items: [{ text: 'Confirm requirements', done: false }, { text: 'Complete work', done: false }] }
   if (type === 'callout') return { id, type, title: 'Important information', text: 'Add a clear note for the reader.' }
+  if (type === 'heading') return { id, type, title: 'Heading', text: 'Add a heading' }
+  if (type === 'quote') return { id, type, title: 'Customer quote / note', text: 'Add a quoted note or customer statement.' }
   if (type === 'divider') return { id, type }
   return { id, type: 'text', title: 'Content block', text: 'Start writing your detailed content here.' }
 }
@@ -26,7 +28,7 @@ const BILLABLE_CATALOG = [
 ]
 
 const BLOCK_TYPES = [
-  ['text','Text'], ['heading','Heading'], ['callout','Callout'], ['checklist','Checklist'],
+  ['text','Text'], ['heading','Heading'], ['quote','Quote / note'], ['callout','Callout'], ['checklist','Checklist'],
   ['table','Editable table'], ['chart','Graph / chart'], ['billable','Billable items'],
   ['selector','Selection field'], ['divider','Divider'],
 ]
@@ -207,7 +209,7 @@ export default function ContentStudio() {
         ensure(12)
         if (b.type === 'divider') { doc.setDrawColor(190); doc.line(left, y, pageW-left, y); y += 7; continue }
         if (b.type === 'heading') { line(b.text || b.title || 'Heading', 14, true); continue }
-        if (b.type === 'text' || b.type === 'callout') { if (b.title) line(b.title, 11, true); line(b.text || '', 9); continue }
+        if (b.type === 'text' || b.type === 'callout' || b.type === 'quote') { if (b.title) line(b.title, 11, true); line(b.text || '', 9); continue }
         if (b.type === 'checklist') { line(b.title, 11, true); (b.items || []).forEach((x) => line((x.done ? '[x] ' : '[ ] ') + x.text, 9)); continue }
         if (b.type === 'selector') { line(b.title, 11, true); line((b.label || 'Selection') + ': ' + ((b.mode === 'multi' ? (b.selectedValues || []).join(', ') : b.selected) || '—'), 9); continue }
         if (b.type === 'table') {
@@ -256,7 +258,7 @@ export default function ContentStudio() {
         {blocks.map((b,index)=><article key={b.id} onClick={()=>setSelectedId(b.id)} style={{border:selectedId===b.id?'2px solid #07834f':'1px solid var(--border,#d7dedb)',borderRadius:12,padding:12,background:selectedId===b.id?'rgba(0,130,78,.06)':'transparent',minWidth:0}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,marginBottom:8}}><strong>{index+1}. {b.title || b.type}</strong><div style={{display:'flex',gap:4}}><button className="btn btn-outline btn-sm" onClick={e=>{e.stopPropagation();move(b.id,-1)}} disabled={!index}>↑</button><button className="btn btn-outline btn-sm" onClick={e=>{e.stopPropagation();move(b.id,1)}} disabled={index===blocks.length-1}>↓</button><button className="btn btn-outline btn-sm" onClick={e=>{e.stopPropagation();remove(b.id)}}>Remove</button></div></div>
           {b.type==='heading'&&<h2>{b.text || 'Heading'}</h2>}
-          {(b.type==='text'||b.type==='callout')&&<div style={{whiteSpace:'pre-wrap',padding:10,background:b.type==='callout'?'rgba(0,130,78,.09)':'transparent',borderRadius:8}}>{b.text}</div>}
+          {(b.type==='text'||b.type==='callout'||b.type==='quote')&&<div style={{whiteSpace:'pre-wrap',padding:10,background:b.type==='callout'?'rgba(0,130,78,.09)':'transparent',borderRadius:8}}>{b.text}</div>}
           {b.type==='checklist'&&(b.items||[]).map((it,i)=><div key={i}>☐ {it.text}</div>)}
           {b.type==='table'&&<div><div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:8}}><input className="input" style={{maxWidth:220}} value={tableFilter} onChange={e=>setTableFilter(e.target.value)} placeholder="Filter table rows…"/><button className="btn btn-outline btn-sm" onClick={()=>exportTableCsv(b)}>Export CSV</button></div><div style={{overflowX:'auto'}}><table className="table"><thead><tr>{(b.headers||[]).map((h,i)=><th key={i}><button type="button" className="btn btn-outline btn-sm" onClick={()=>setTableSort(s=>({column:i,asc:s.column===i?!s.asc:true}))}>{h} ↕</button></th>)}</tr></thead><tbody>{visibleTableRows(b).map((row,i)=><tr key={i}>{row.map((v,j)=><td key={j}>{v}</td>)}</tr>)}</tbody></table></div></div>}
           {b.type==='chart'&&<div style={{display:'grid',gap:8}}><small className="muted">{b.source&&b.source!=='manual'?'Workspace data · '+b.source:'Manual data'} · {b.chartType||'bar'}</small>{b.chartType==='pie'?<div style={{display:'flex',gap:12,alignItems:'center',flexWrap:'wrap'}}><div style={{width:120,height:120,borderRadius:'50%',background:'conic-gradient('+((b.values||[]).map((v,i)=>{const total=(b.values||[]).reduce((s,x)=>s+Math.max(0,Number(x)||0),0)||1;const start=(b.values||[]).slice(0,i).reduce((s,x)=>s+Math.max(0,Number(x)||0),0)/total*100;const end=start+Math.max(0,Number(v)||0)/total*100;return ['#087f50','#3b82f6','#e0a126','#8b5cf6','#dc5b5b'][i%5]+' '+start+'% '+end+'%'})).join(',')+')'}}/><div style={{display:'grid',gap:3}}>{(b.values||[]).map((v,i)=><small key={i}>{b.labels?.[i]||i+1}: {v}</small>)}</div></div>:b.chartType==='line'?<div style={{overflow:'hidden'}}><svg viewBox="0 0 300 110" width="100%" role="img" aria-label={b.title}><polyline fill="none" stroke="#07834f" strokeWidth="3" points={(b.values||[]).map((v,i)=>`${(i/Math.max(1,b.values.length-1))*280+10},${100-(Math.max(0,Number(v)||0)/Math.max(1,...b.values.map(Number))*85)}`).join(' ')}/>{(b.values||[]).map((v,i)=><circle key={i} cx={(i/Math.max(1,b.values.length-1))*280+10} cy={100-(Math.max(0,Number(v)||0)/Math.max(1,...b.values.map(Number))*85)} r="4" fill="#07834f"/>)}</svg><div style={{display:'flex',justifyContent:'space-between',gap:4}}>{(b.labels||[]).map((label,i)=><small key={i}>{label}</small>)}</div></div>:<div style={{display:'grid',gap:5}}>{(b.values||[]).map((v,i)=><div key={i} style={{display:'grid',gridTemplateColumns:'75px 1fr 55px',gap:8,alignItems:'center'}}><small>{b.labels?.[i]||i+1}</small><div style={{height:12,background:'var(--border,#ddd)',borderRadius:20,overflow:'hidden'}}><div style={{height:'100%',width:(Math.max(0,Number(v))/Math.max(1,...b.values.map(Number))*100)+'%',background:'#07834f'}}/></div><small>{Number(v).toLocaleString('en-ZA')}</small></div>)}</div>}</div>}
@@ -284,6 +286,6 @@ export default function ContentStudio() {
         <section className="card" style={{padding:14}}><h2>Document totals</h2><div>Billable subtotal <strong>R{totals.subtotal.toFixed(2)}</strong></div><div>VAT <strong>R{totals.vat.toFixed(2)}</strong></div><div style={{fontSize:20,marginTop:6}}>Total <strong>R{totals.total.toFixed(2)}</strong></div><p className="muted">Billable blocks are document calculations only. They do not create or change an invoice until you deliberately transfer the reviewed items into an invoice.</p></section>
       </aside>
     </div>
-    <style>{`@media(max-width:800px){.page > div[style*="grid-template-columns"]{grid-template-columns:1fr!important}} .page .input,.page .select{max-width:100%;box-sizing:border-box} .page button{min-height:36px}`}</style>
+    <style>{`@media(max-width:800px){.page > div[style*="grid-template-columns"]{grid-template-columns:1fr!important}} .page .input,.page .select{max-width:100%;box-sizing:border-box} .page button{min-height:36px} @media(max-width:520px){.page .card div[style*='grid-template-columns: 1fr 65px 90px 34px']{grid-template-columns:minmax(0,1fr) 54px 72px 30px!important;gap:4px!important}.page .card input{min-width:0}}`}</style>
   </div>
 }
