@@ -540,42 +540,84 @@ def heartbeat():
 
 
 
+def _developer_console_redirect(message, default_path="/"):
+    """Return to the originating console section without trusting arbitrary redirects."""
+    allowed = {"/", "/devices", "/requests", "/keys", "/plans"}
+    target = str(request.form.get("return_to") or default_path).strip()
+    if target not in allowed:
+        target = default_path if default_path in allowed else "/"
+    from urllib.parse import urlencode
+    return redirect(target + ("?" + urlencode({"msg": str(message)[:500]}) if message else ""))
+
+
 @app.post("/owner/permanent-delete-license")
 def owner_permanent_delete_license():
-    """Permanently remove the issued key/request for one device, keeping its registration."""
+    """Permanently remove one exact issued key and its linked request/entitlement metadata."""
     denied = _owner_page_guard()
     if denied:
         return denied
+    key = _valid_key(request.form.get("key"))
     hwid = _valid_hwid(request.form.get("hwid"))
-    if not hwid or request.form.get("confirm") != "DELETE LICENSE":
-        return redirect(url_for("dashboard", msg="Permanent licence deletion cancelled or invalid."))
+    email = str(request.form.get("email") or "").strip().lower()[:254]
+    if request.form.get("confirm") != "DELETE LICENSE" or not (key or hwid or email):
+        return _developer_console_redirect("Deletion cancelled: confirm the exact licence key, device or customer reference.", "/keys")
     db = load()
-    reqs = db.setdefault("requests", {})
     keys = db.setdefault("keys", {})
-    req = reqs.get(hwid) or {}
+    reqs = db.setdefault("requests", {})
+    users = db.setdefault("users", {})
+    accounts = db.setdefault("accounts", {})
+    matched = []
+    if key and key in keys:
+        matched.append(key)
+    else:
+        # Compatibility for older cards that submitted only HWID/email.
+        for candidate, record in list(keys.items()):
+            if not isinstance(record, dict):
+                continue
+            record_hwid = str(record.get("hwid") or "").strip()
+            record_email = str(record.get("boundEmail") or record.get("email") or "").strip().lower()
+            if (hwid and record_hwid == hwid) or (email and record_email == email):
+                matched.append(candidate)
+    if not matched:
+        return _developer_console_redirect("No matching issued key was found. Nothing was changed.", "/keys")
     removed = 0
-    key = _valid_key(req.get("key")) if isinstance(req, dict) else None
-    key_record = keys.get(key) if key else None
-    if key and isinstance(key_record, dict) and str(key_record.get("hwid") or "") == hwid:
-        del keys[key]
-        removed += 1
-    # Remove any additional key records explicitly bound to this HWID.
-    for existing_key, record in list(keys.items()):
-        if isinstance(record, dict) and str(record.get("hwid") or "") == hwid:
-            del keys[existing_key]
+    affected_hwids = set()
+    affected_emails = set()
+    for candidate in matched:
+        record = keys.pop(candidate, None)
+        if isinstance(record, dict):
             removed += 1
-    reqs.pop(hwid, None)
-    for account in (db.get("accounts") or {}).values():
-        if isinstance(account, dict) and key and str(account.get("key") or "").strip().upper() == key:
-            account.pop("key", None)
-    user = db.setdefault("users", {}).get(hwid)
-    if isinstance(user, dict):
-        for field in ("key", "activationToken", "expiresAt", "expiry", "trialEndsAt", "expiryEnforced", "activatedAt"):
-            user.pop(field, None)
-        user["mode"] = "handshake"
-        user["status"] = "handshake"
+            if record.get("hwid"):
+                affected_hwids.add(str(record.get("hwid")).strip())
+            bound_email = str(record.get("boundEmail") or record.get("email") or "").strip().lower()
+            if bound_email:
+                affected_emails.add(bound_email)
+            for account in accounts.values():
+                if isinstance(account, dict) and str(account.get("key") or "").strip().upper() == str(candidate).upper():
+                    account.pop("key", None)
+    if hwid:
+        affected_hwids.add(hwid)
+    if email:
+        affected_emails.add(email)
+    for device_id, req in list(reqs.items()):
+        if not isinstance(req, dict):
+            continue
+        req_key = str(req.get("key") or "").strip().upper()
+        req_email = str(req.get("email") or "").strip().lower()
+        if req_key in {str(k).upper() for k in matched} or (device_id in affected_hwids) or (req_email and req_email in affected_emails):
+            req.pop("key", None)
+            if req.get("status") in ("issued", "revoked"):
+                req["status"] = "pending"
+            req["updatedAt"] = _now()
+    for device_id in affected_hwids:
+        user = users.get(device_id)
+        if isinstance(user, dict):
+            for field in ("key", "activationToken", "expiresAt", "expiry", "trialEndsAt", "expiryEnforced", "activatedAt"):
+                user.pop(field, None)
+            user["mode"] = "handshake"
+            user["status"] = "handshake"
     save(db)
-    return redirect(url_for("dashboard", msg=f"Permanently removed {removed} issued key record(s) for this device. Device registration retained."))
+    return _developer_console_redirect(f"Permanently deleted {removed} licence key record(s). Device registrations were retained.", "/keys")
 
 
 @app.post("/owner/permanent-delete-device")
@@ -586,24 +628,29 @@ def owner_permanent_delete_device():
         return denied
     hwid = _valid_hwid(request.form.get("hwid"))
     if not hwid or request.form.get("confirm") != "DELETE DEVICE":
-        return redirect(url_for("dashboard", msg="Permanent device deletion cancelled or invalid."))
+        return _developer_console_redirect("Device deletion cancelled or invalid.", "/devices")
     db = load()
     users = db.setdefault("users", {})
     reqs = db.setdefault("requests", {})
     keys = db.setdefault("keys", {})
+    accounts = db.setdefault("accounts", {})
+    user = users.get(hwid) if isinstance(users, dict) else None
+    req = reqs.get(hwid) if isinstance(reqs, dict) else None
+    email = str((user or {}).get("email") or (req or {}).get("email") or "").strip().lower()
     existed = hwid in users or hwid in reqs
     users.pop(hwid, None)
     reqs.pop(hwid, None)
-    for account in (db.get("accounts") or {}).values():
+    for account in accounts.values():
         if isinstance(account, dict):
             account["devices"] = [device_id for device_id in (account.get("devices") or []) if str(device_id) != hwid]
     removed_keys = 0
     for existing_key, record in list(keys.items()):
-        if isinstance(record, dict) and str(record.get("hwid") or "") == hwid:
+        if isinstance(record, dict) and (str(record.get("hwid") or "").strip() == hwid or (email and str(record.get("boundEmail") or record.get("email") or "").strip().lower() == email)):
             del keys[existing_key]
             removed_keys += 1
     save(db)
-    return redirect(url_for("dashboard", msg=f"Device registration {'removed' if existed else 'not found'}; {removed_keys} bound key record(s) permanently removed."))
+    message = f"Device registration {'removed' if existed else 'not found'}; {removed_keys} associated key record(s) removed."
+    return _developer_console_redirect(message, "/devices")
 
 
 @app.post("/owner/permanent-delete-user")
@@ -615,7 +662,7 @@ def owner_permanent_delete_user():
     email = str(request.form.get("email") or "").strip().lower()[:254]
     hwid = _valid_hwid(request.form.get("hwid"))
     if request.form.get("confirm") != "DELETE USER" or (not email and not hwid):
-        return redirect(url_for("dashboard", msg="Permanent user deletion cancelled or invalid."))
+        return _developer_console_redirect("User deletion cancelled or invalid.", "/devices")
     db = load()
     users = db.setdefault("users", {})
     reqs = db.setdefault("requests", {})
@@ -627,31 +674,31 @@ def owner_permanent_delete_user():
     if email:
         if isinstance(account, dict):
             targets.update(str(device_id) for device_id in (account.get("devices") or []) if _valid_hwid(str(device_id)))
-        targets.update(
-            device_id for device_id, record in users.items()
-            if isinstance(record, dict) and str(record.get("email") or "").strip().lower() == email
-        )
-        targets.update(
-            device_id for device_id, record in reqs.items()
-            if isinstance(record, dict) and str(record.get("email") or "").strip().lower() == email
-        )
-    elif hwid:
-        targets.add(hwid)
-    if hwid and not email:
+        targets.update(device_id for device_id, record in users.items()
+                       if isinstance(record, dict) and str(record.get("email") or "").strip().lower() == email)
+        targets.update(device_id for device_id, record in reqs.items()
+                       if isinstance(record, dict) and str(record.get("email") or "").strip().lower() == email)
+    if hwid:
         targets.add(hwid)
     removed_keys = 0
     for device_id in targets:
         users.pop(device_id, None)
         reqs.pop(device_id, None)
     for existing_key, record in list(keys.items()):
-        if isinstance(record, dict) and (str(record.get("hwid") or "") in targets or (email and str(record.get("boundEmail") or record.get("email") or "").strip().lower() == email) or (account_key and existing_key == account_key)):
+        if not isinstance(record, dict):
+            continue
+        record_email = str(record.get("boundEmail") or record.get("email") or "").strip().lower()
+        if str(record.get("hwid") or "").strip() in targets or (email and record_email == email) or (account_key and str(existing_key).upper() == account_key):
             del keys[existing_key]
             removed_keys += 1
     removed_account = bool(email and accounts.pop(email, None) is not None)
-    if email and not targets and not removed_account:
-        return redirect(url_for("dashboard", msg="No registered user or device matched that email. Nothing was deleted."))
+    if not targets and not removed_account and not removed_keys:
+        return _developer_console_redirect("No matching registered user, device or licence was found. Nothing was deleted.", "/devices")
     save(db)
-    return redirect(url_for("dashboard", msg=f"Registered user removal complete: account {'deleted' if removed_account else 'not found'}, {len(targets)} device registration(s) and {removed_keys} key record(s) permanently removed from the active licence database."))
+    return _developer_console_redirect(
+        f"User removal complete: {'account removed' if removed_account else 'no separate account record'}, {len(targets)} device registration(s), {removed_keys} key record(s) removed.",
+        "/devices",
+    )
 
 
 @app.post("/owner/revoke-issued")
