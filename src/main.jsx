@@ -9,6 +9,7 @@ import { registerPwa } from './lib/registerPwa'
 import { loadSavedBusinessType } from './lib/businessTypes'
 import { applyWhiteLabel, loadWhiteLabel } from './lib/whiteLabel'
 import { applyUiLayoutOnBoot } from './lib/uiLayout'
+import { applyPaystackReturnFromUrl, flushPendingPaystackRefs } from './lib/paystackApply'
 
 try {
   const prefs = JSON.parse(localStorage.getItem('sa_nav_prefs') || '{}')
@@ -45,6 +46,12 @@ try { registerPwa() } catch {}
 try { applyWhiteLabel(loadWhiteLabel()) } catch {}
 try { initFont() } catch {}
 try { applyUiLayoutOnBoot() } catch {}
+try {
+  applyPaystackReturnFromUrl().then((r) => {
+    if (r?.ok) console.info('[paystack] local invoice marked from return', r.invoice?.number)
+  }).catch(() => {})
+  flushPendingPaystackRefs().catch(() => {})
+} catch {}
 
 try {
   document.documentElement.style.visibility = 'visible'
