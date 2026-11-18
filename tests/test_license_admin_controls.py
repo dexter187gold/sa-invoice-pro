@@ -405,3 +405,37 @@ def test_dev_portal_internal_delete_removes_all_licence_records_by_email(monkeyp
     assert set(db["requests"]) == set()
     assert set(db["keys"]) == {"KEY-C"}
     assert set(captured["deleted"]["keys"]) == {"KEY-A", "KEY-B"}
+
+
+def test_owner_permanent_delete_user_tracks_exact_removed_key_ids(monkeypatch):
+    import license_server
+
+    db = {
+        "accounts": {"demo@example.test": {"key": "KEY-A", "devices": ["device-a", "device-b"]}},
+        "users": {
+            "device-a": {"hwid": "device-a", "email": "demo@example.test"},
+            "device-b": {"hwid": "device-b", "email": "demo@example.test"},
+            "device-c": {"hwid": "device-c", "email": "other@example.test"},
+        },
+        "requests": {"device-a": {"email": "demo@example.test"}, "device-b": {"email": "demo@example.test"}},
+        "keys": {
+            "KEY-A": {"hwid": "device-a", "boundEmail": "demo@example.test"},
+            "KEY-B": {"hwid": "device-b", "email": "demo@example.test"},
+            "KEY-C": {"hwid": "device-c", "email": "other@example.test"},
+        },
+    }
+    saved = {}
+    monkeypatch.setattr(license_server, "_owner_page_guard", lambda: None)
+    monkeypatch.setattr(license_server, "load", lambda: db)
+    monkeypatch.setattr(license_server, "save", lambda value, deleted=None: saved.update(deleted=deleted))
+    response = license_server.app.test_client().post(
+        "/owner/permanent-delete-user",
+        data={"email": "demo@example.test", "confirm": "DELETE USER", "return_to": "/devices"},
+    )
+    assert response.status_code == 302
+    assert "demo@example.test" not in db["accounts"]
+    assert set(db["users"]) == {"device-c"}
+    assert set(db["keys"]) == {"KEY-C"}
+    assert set(saved["deleted"]["keys"]) == {"KEY-A", "KEY-B"}
+    assert set(saved["deleted"]["users"]) == {"device-a", "device-b"}
+    assert saved["deleted"]["accounts"] == ["demo@example.test"]
