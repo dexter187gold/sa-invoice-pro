@@ -16,6 +16,8 @@ import { readAccessStatus, normalizedPlan } from '../lib/accessControl'
 import { readProfilePrefs, saveProfilePrefs } from '../lib/profilePreferences'
 import CompanyProfileForm from '../components/CompanyProfileForm'
 import ThemePicker from '../components/ThemePicker'
+import LayoutSettingsCard from '../components/LayoutSettingsCard'
+import CompanyLogoField from '../components/CompanyLogoField'
 import { companyToForm, formToCompanyPayload, validateCompanyForm } from '../lib/companyProfile'
 import { loadDemoWorkspace } from '../lib/demoData'
 import { downloadPopiaExport } from '../lib/popiaExport'
@@ -182,6 +184,7 @@ export default function Settings() {
           <>
           <div className="card form-grid" style={{ marginTop: 12 }}>
             <h3 style={{ marginTop: 0 }}>Company profile</h3>
+            <CompanyLogoField form={form} setForm={setForm} />
             <CompanyProfileForm form={form} setForm={setForm} />
             <LoadingButton className="btn btn-primary" busy={busy} onClick={saveCompany}>Save company profile</LoadingButton>
           </div>
@@ -268,7 +271,7 @@ export default function Settings() {
               </div>
             ))}
             <h4>Recycle bin</h4>
-            <p className="muted" style={{ fontSize: 12 }}>Soft-deleted records can be restored. Use bulk/soft-delete helpers where wired.</p>
+            <p className="muted" style={{ fontSize: 12 }}>Soft-deleted records can be restored.</p>
             {bin.length === 0 && <p className="muted">Bin is empty.</p>}
             {bin.slice(0, 20).map((e) => (
               <div key={e.id} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
@@ -303,6 +306,7 @@ export default function Settings() {
         {tab === 'look' && (
           <div className="card form-grid" style={{ marginTop: 12 }}>
             <ThemePicker setTheme={setTheme} toast={toast} />
+            <LayoutSettingsCard toast={toast} />
           </div>
         )}
 
@@ -341,7 +345,7 @@ export default function Settings() {
               <pre style={{ fontSize: 11, overflow: 'auto', maxHeight: 200 }}>{JSON.stringify(health, null, 2)}</pre>
             )}
             <h3>Payment webhook replay</h3>
-            <p className="muted" style={{ fontSize: 12 }}>Paste a paid event JSON (invoiceNumber or invoiceId + amount/status) to mark a local invoice paid.</p>
+            <p className="muted" style={{ fontSize: 12 }}>Paste a paid event JSON to mark a local invoice paid.</p>
             <textarea className="textarea" rows={4} value={webhookJson} onChange={(e) => setWebhookJson(e.target.value)} />
             <LoadingButton className="btn btn-primary" busy={busy} onClick={async () => {
               setBusy(true)
@@ -359,7 +363,7 @@ export default function Settings() {
             <ul className="muted" style={{ fontSize: 13 }}>
               {BANK_PRESETS.map((p) => <li key={p.id}>{p.label}</li>)}
             </ul>
-            <p className="muted" style={{ fontSize: 12 }}>Bank import auto-guesses FNB / Standard / Absa / Nedbank / Capitec headers via <code>bankPresets.js</code>.</p>
+            <p className="muted" style={{ fontSize: 12 }}>Bank import auto-guesses FNB / Standard / Absa / Nedbank / Capitec headers.</p>
             <p><Link to="/bank">Open bank import →</Link> · <Link to="/webhooks">Webhooks →</Link></p>
           </div>
         )}
