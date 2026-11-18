@@ -4,6 +4,7 @@ const ROOT_NAV = [
   { to: '/invoices', label: 'Invoices', icon: '📄', section: 'money' },
   { to: '/clients', label: 'Clients', icon: '👤', section: 'clients' },
   { to: '/tickets', label: 'Job cards', icon: '🎫', section: 'jobs' },
+  { to: '/tickets/bill', label: 'Bill jobs', icon: '🧾', section: 'jobs' },
   { to: '/quotes', label: 'Quotes', icon: '📝', section: 'money' },
   { to: '/payments', label: 'Payments', icon: '💳', section: 'money' },
   { to: '/wa-chase', label: 'WhatsApp follow-ups', icon: '📲', section: 'money' },
@@ -37,55 +38,43 @@ const SECTION_NAV = {
     { to: '/wa-chase', label: 'WhatsApp follow-ups', icon: '📲' },
     { to: '/quotes', label: 'Quotes', icon: '📝' },
     { to: '/tickets', label: 'Job cards', icon: '🎫' },
+    { to: '/tickets/bill', label: 'Bill jobs', icon: '🧾' },
   ],
   clients: [
     { to: '/clients', label: 'Clients', icon: '👤', end: true },
     { to: '/inbox', label: 'Messages', icon: '💬' },
     { to: '/quotes', label: 'Quotes', icon: '📝' },
-    { to: '__root__', label: 'Main', icon: '☰', isRoot: true },
   ],
   jobs: [
     { to: '/tickets', label: 'Job cards', icon: '🎫', end: true },
-    { to: '/documents', label: 'Documents', icon: '📁' },
-    { to: '/inbox', label: 'Messages', icon: '💬' },
+    { to: '/tickets/bill', label: 'Bill jobs', icon: '🧾' },
     { to: '/products', label: 'Products', icon: '📦' },
-    { to: '/invoices', label: 'Bill', icon: '📄' },
-    { to: '__root__', label: 'Main', icon: '☰', isRoot: true },
   ],
   books: [
-    { to: '/expenses', label: 'Expenses', icon: '💸', end: true },
-    { to: '/accounting', label: 'Accounting', icon: '📒' },
-    { to: '/employees', label: 'Staff', icon: '👷' },
-    { to: '/payroll', label: 'Payroll', icon: '💰' },
-    { to: '__root__', label: 'Main', icon: '☰', isRoot: true },
-  ],
-  tools: [
-    { to: '/documents', label: 'Documents', icon: '📎', end: true },
-    { to: '/bank', label: 'Bank', icon: '🏦' },
-    { to: '/excel', label: 'Excel', icon: '📊' },
-    { to: '/sync', label: 'Sync status', icon: '☁️' },
-    { to: '__root__', label: 'Main', icon: '☰', isRoot: true },
+    { to: '/accounting', label: 'Accounting', icon: '📒', end: true },
+    { to: '/expenses', label: 'Expenses', icon: '💸' },
+    { to: '/reports', label: 'Reports', icon: '📈' },
   ],
   settings: [
     { to: '/settings', label: 'Settings', icon: '⚙️', end: true },
-    { to: '/team', label: 'Team', icon: '👥' },
-    { to: '/branches', label: 'Branches', icon: '🏬' },
     { to: '/license', label: 'License', icon: '🔑' },
     { to: '/support', label: 'Help', icon: '🛟' },
     { to: '/about', label: 'About', icon: 'ⓘ' },
-    { to: '__root__', label: 'Main', icon: '☰', isRoot: true },
+  ],
+  tools: [
+    { to: '/documents', label: 'Documents', icon: '📁', end: true },
   ],
 }
 
 function sectionFromPath(pathname) {
-  const p = pathname || '/'
-  if (p === '/' || p === '/dashboard' || p === '/reports' || p === '/inbox') return 'home'
-  if (p.startsWith('/invoices') || p.startsWith('/quotes') || p.startsWith('/payments') || p.startsWith('/wa-chase') || p.startsWith('/bank')) return 'money'
+  const p = String(pathname || '/')
+  if (p.startsWith('/tickets')) return 'jobs'
+  if (p.startsWith('/invoices') || p.startsWith('/quotes') || p.startsWith('/payments') || p.startsWith('/wa-chase')) return 'money'
   if (p.startsWith('/clients')) return 'clients'
-  if (p.startsWith('/tickets') || p.startsWith('/products')) return 'jobs'
-  if (p.startsWith('/expenses') || p.startsWith('/accounting') || p.startsWith('/employees') || p.startsWith('/payroll')) return 'books'
-  if (p.startsWith('/documents') || p.startsWith('/excel') || p.startsWith('/sync') || p.startsWith('/changelog')) return 'tools'
-  if (p.startsWith('/settings') || p.startsWith('/license') || p.startsWith('/team') || p.startsWith('/branches') || p.startsWith('/support') || p.startsWith('/about') || p.startsWith('/dev-portal') || p.startsWith('/owner')) return 'settings'
+  if (p.startsWith('/accounting') || p.startsWith('/expenses') || p.startsWith('/petty') || p.startsWith('/payroll') || p.startsWith('/employees') || p.startsWith('/bank')) return 'books'
+  if (p.startsWith('/settings') || p.startsWith('/license') || p.startsWith('/support') || p.startsWith('/about') || p.startsWith('/owner')) return 'settings'
+  if (p.startsWith('/products')) return 'jobs'
+  if (p.startsWith('/documents')) return 'tools'
   return 'home'
 }
 
