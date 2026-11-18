@@ -1,5 +1,6 @@
 import React from 'react'
-import { addImageAttachments, addDocumentAttachments, listAttachments, listTicketPhotos } from '../lib/attachments'
+import { addImageAttachments, addDocumentAttachments } from '../lib/attachments'
+import OpfsAttachmentViewer from './OpfsAttachmentViewer'
 
 export default function InvoiceAttachmentsPanel({ form, setForm, toast }) {
   if (!form) return null
@@ -47,14 +48,7 @@ export default function InvoiceAttachmentsPanel({ form, setForm, toast }) {
           />
         </label>
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {listTicketPhotos(form).map((p) => (
-          <img key={p.id} src={p.dataUrl} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 6 }} />
-        ))}
-        {listAttachments(form).map((d) => (
-          <span key={d.id} className="muted" style={{ fontSize: 12 }}>{d.name}</span>
-        ))}
-      </div>
+      <OpfsAttachmentViewer record={form} />
     </div>
   )
 }
