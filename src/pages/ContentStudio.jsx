@@ -16,6 +16,15 @@ const makeBlock = (type) => {
   return { id, type: 'text', title: 'Content block', text: 'Start writing your detailed content here.' }
 }
 
+const BILLABLE_CATALOG = [
+  { description: 'Labour / technician time', qty: 1, rate: 450 },
+  { description: 'Call-out fee', qty: 1, rate: 250 },
+  { description: 'Diagnostics / assessment', qty: 1, rate: 180 },
+  { description: 'Travel / distance', qty: 1, rate: 0 },
+  { description: 'Consumables', qty: 1, rate: 0 },
+  { description: 'Parts and materials', qty: 1, rate: 0 },
+]
+
 const BLOCK_TYPES = [
   ['text','Text'], ['heading','Heading'], ['callout','Callout'], ['checklist','Checklist'],
   ['table','Editable table'], ['chart','Graph / chart'], ['billable','Billable items'],
@@ -33,6 +42,8 @@ export default function ContentStudio() {
   const [pasteText, setPasteText] = useState('')
   const [tableFilter, setTableFilter] = useState('')
   const [tableSort, setTableSort] = useState({ column: -1, asc: true })
+  const [undoStack, setUndoStack] = useState([])
+  const [redoStack, setRedoStack] = useState([])
   const [busy, setBusy] = useState(false)
   const selected = blocks.find((b) => b.id === selectedId) || blocks[0] || null
 
@@ -47,7 +58,33 @@ export default function ContentStudio() {
     } catch {}
   }, [storageKey])
 
-  const update = (id, patch) => setBlocks((old) => old.map((b) => b.id === id ? { ...b, ...patch } : b))
+  const commitBlocks = (change) => setBlocks(current => {
+    const next = typeof change === 'function' ? change(current) : change
+    if (next !== current) { setUndoStack(stack => [...stack, current].slice(-40)); setRedoStack([]) }
+    return next
+  })
+  const undo = () => setUndoStack(stack => {
+    if (!stack.length) return stack
+    const previous = stack[stack.length - 1]
+    setBlocks(current => { setRedoStack(items => [...items, current].slice(-40)); return previous })
+    return stack.slice(0, -1)
+  })
+  const redo = () => setRedoStack(stack => {
+    if (!stack.length) return stack
+    const next = stack[stack.length - 1]
+    setBlocks(current => { setUndoStack(items => [...items, current].slice(-40)); return next })
+    return stack.slice(0, -1)
+  })
+  const applyTemplate = (kind) => {
+    const templates = {
+      service: [makeBlock('heading'), { ...makeBlock('text'), title: 'Customer concern', text: 'Describe the reported issue and customer requirements.' }, { ...makeBlock('text'), title: 'Assessment and work performed', text: 'Record diagnostics, actions taken and results.' }, makeBlock('table'), makeBlock('checklist'), makeBlock('billable')],
+      quote: [makeBlock('heading'), { ...makeBlock('text'), title: 'Scope of work', text: 'Describe what is included and excluded.' }, makeBlock('table'), makeBlock('billable'), { ...makeBlock('callout'), title: 'Terms and conditions', text: 'Add validity, payment and acceptance terms.' }],
+      report: [makeBlock('heading'), { ...makeBlock('text'), title: 'Executive summary', text: 'Summarise key findings.' }, makeBlock('chart'), makeBlock('table'), makeBlock('checklist')],
+    }
+    const next = templates[kind] || []
+    commitBlocks(next); setSelectedId(next[0]?.id || '')
+  }
+  const update = (id, patch) => commitBlocks((old) => old.map((b) => b.id === id ? { ...b, ...patch } : b))
   const add = (type) => {
     const block = makeBlock(type)
     setBlocks((old) => [...old, block])
@@ -196,11 +233,11 @@ export default function ContentStudio() {
     </div>
     <div className="card" style={{padding:14,marginBottom:14}}>
       <label className="label">Document title</label><input className="input" value={title} onChange={e=>setTitle(e.target.value)} placeholder="Document title"/>
-      <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:12}}>{BLOCK_TYPES.map(([type,label])=><button key={type} className="btn btn-outline btn-sm" onClick={()=>add(type)}>+ {label}</button>)}</div>
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:12}}>{BLOCK_TYPES.map(([type,label])=><button key={type} className="btn btn-outline btn-sm" onClick={()=>add(type)}>+ {label}</button>)}</div><div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:8}}><span className="muted" style={{alignSelf:'center'}}>Start from template:</span><button className="btn btn-outline btn-sm" onClick={()=>applyTemplate('service')}>Service report</button><button className="btn btn-outline btn-sm" onClick={()=>applyTemplate('quote')}>Quotation</button><button className="btn btn-outline btn-sm" onClick={()=>applyTemplate('report')}>Business report</button></div>
     </div>
     <div style={{display:'grid',gridTemplateColumns:'minmax(0,1.5fr) minmax(280px,1fr)',gap:14,alignItems:'start'}}>
       <section className="card" style={{padding:14,minWidth:0}}>
-        <div style={{display:'flex',justifyContent:'space-between',gap:8,flexWrap:'wrap',alignItems:'center'}}><h2>Document blocks ({blocks.length})</h2><div style={{display:'flex',gap:6,flexWrap:'wrap'}}><button className="btn btn-outline btn-sm" onClick={pasteBlock}>Paste block</button><button className="btn btn-outline btn-sm" onClick={()=>selected&&copyBlock(selected,false)} disabled={!selected}>Copy</button><button className="btn btn-outline btn-sm" onClick={()=>selected&&copyBlock(selected,true)} disabled={!selected}>Cut</button></div></div>
+        <div style={{display:'flex',justifyContent:'space-between',gap:8,flexWrap:'wrap',alignItems:'center'}}><h2>Document blocks ({blocks.length})</h2><div style={{display:'flex',gap:6,flexWrap:'wrap'}}><button className="btn btn-outline btn-sm" onClick={undo} disabled={!undoStack.length}>Undo</button><button className="btn btn-outline btn-sm" onClick={redo} disabled={!redoStack.length}>Redo</button><button className="btn btn-outline btn-sm" onClick={pasteBlock}>Paste block</button><button className="btn btn-outline btn-sm" onClick={()=>selected&&copyBlock(selected,false)} disabled={!selected}>Copy</button><button className="btn btn-outline btn-sm" onClick={()=>selected&&copyBlock(selected,true)} disabled={!selected}>Cut</button></div></div>
         <div style={{display:'grid',gap:10}}>
         {blocks.map((b,index)=><article key={b.id} onClick={()=>setSelectedId(b.id)} style={{border:selectedId===b.id?'2px solid #07834f':'1px solid var(--border,#d7dedb)',borderRadius:12,padding:12,background:selectedId===b.id?'rgba(0,130,78,.06)':'transparent',minWidth:0}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,marginBottom:8}}><strong>{index+1}. {b.title || b.type}</strong><div style={{display:'flex',gap:4}}><button className="btn btn-outline btn-sm" onClick={e=>{e.stopPropagation();move(b.id,-1)}} disabled={!index}>↑</button><button className="btn btn-outline btn-sm" onClick={e=>{e.stopPropagation();move(b.id,1)}} disabled={index===blocks.length-1}>↓</button><button className="btn btn-outline btn-sm" onClick={e=>{e.stopPropagation();remove(b.id)}}>Remove</button></div></div>
@@ -225,7 +262,7 @@ export default function ContentStudio() {
             {selected.type==='checklist'&&<>{(selected.items||[]).map((it,i)=><div key={i} style={{display:'flex',gap:8,marginBottom:6}}><input type="checkbox" checked={!!it.done} onChange={e=>update(selected.id,{items:selected.items.map((x,j)=>j===i?{...x,done:e.target.checked}:x)})}/><input className="input" value={it.text} onChange={e=>update(selected.id,{items:selected.items.map((x,j)=>j===i?{...x,text:e.target.value}:x)})}/><button className="btn btn-outline btn-sm" onClick={()=>update(selected.id,{items:selected.items.filter((_,j)=>j!==i)})}>×</button></div>)}<button className="btn btn-outline btn-sm" onClick={()=>update(selected.id,{items:[...selected.items,{text:'New checklist item',done:false}]})}>Add checklist item</button></>}
             {selected.type==='table'&&<><label className="label">Column headings</label>{(selected.headers||[]).map((h,i)=><input key={i} className="input" style={{marginBottom:5}} value={h} onChange={e=>update(selected.id,{headers:selected.headers.map((x,j)=>j===i?e.target.value:x)})}/>)}<button className="btn btn-outline btn-sm" onClick={()=>update(selected.id,{headers:[...selected.headers,'New column'],rows:selected.rows.map(r=>[...r,''])})}>Add column</button><div style={{overflowX:'auto',marginTop:10}}><table className="table"><tbody>{(selected.rows||[]).map((row,i)=><tr key={i}>{row.map((v,j)=><td key={j}><input className="input" style={{minWidth:90}} value={v} onChange={e=>update(selected.id,{rows:selected.rows.map((r,k)=>k===i?r.map((x,l)=>l===j?e.target.value:x):r)})}/></td>)}<td><button className="btn btn-outline btn-sm" onClick={()=>update(selected.id,{rows:selected.rows.filter((_,k)=>k!==i)})}>×</button></td></tr>)}</tbody></table></div><button className="btn btn-outline btn-sm" onClick={()=>update(selected.id,{rows:[...selected.rows,selected.headers.map(()=> '')]})}>Add row</button></>}
             {selected.type==='chart'&&<><label className="label">Data source</label><select className="select" value={selected.source||'manual'} onChange={e=>applyBusinessSeries(selected,e.target.value)}><option value="manual">Manual data</option><option value="invoices">Invoice totals</option><option value="payments">Payments received</option><option value="expenses">Expenses</option><option value="jobs">Jobs created</option></select><label className="label">Chart type</label><select className="select" value={selected.chartType||'bar'} onChange={e=>update(selected.id,{chartType:e.target.value})}><option value="bar">Bar chart</option><option value="line">Line chart (summary)</option><option value="pie">Category breakdown (summary)</option></select>{(selected.values||[]).map((v,i)=><div key={i} style={{display:'grid',gridTemplateColumns:'1fr 90px 34px',gap:6,marginBottom:6}}><input className="input" value={selected.labels?.[i]||''} onChange={e=>update(selected.id,{labels:selected.labels.map((x,j)=>j===i?e.target.value:x)})}/><input className="input" type="number" value={v} onChange={e=>update(selected.id,{values:selected.values.map((x,j)=>j===i?Number(e.target.value):x)})}/><button className="btn btn-outline btn-sm" onClick={()=>update(selected.id,{labels:selected.labels.filter((_,j)=>j!==i),values:selected.values.filter((_,j)=>j!==i)})}>×</button></div>)}<button className="btn btn-outline btn-sm" onClick={()=>update(selected.id,{labels:[...selected.labels,'New'],values:[...selected.values,0]})}>Add data point</button></>}
-            {selected.type==='billable'&&<><label className="label">VAT rate (%)</label><input className="input" type="number" value={selected.vat} onChange={e=>update(selected.id,{vat:Number(e.target.value)})}/>{(selected.items||[]).map((it,i)=><div key={i} style={{display:'grid',gridTemplateColumns:'1fr 65px 90px 34px',gap:5,marginBottom:6}}><input className="input" value={it.description} onChange={e=>update(selected.id,{items:selected.items.map((x,j)=>j===i?{...x,description:e.target.value}:x)})}/><input className="input" type="number" value={it.qty} onChange={e=>update(selected.id,{items:selected.items.map((x,j)=>j===i?{...x,qty:Number(e.target.value)}:x)})}/><input className="input" type="number" value={it.rate} onChange={e=>update(selected.id,{items:selected.items.map((x,j)=>j===i?{...x,rate:Number(e.target.value)}:x)})}/><button className="btn btn-outline btn-sm" onClick={()=>update(selected.id,{items:selected.items.filter((_,j)=>j!==i)})}>×</button></div>)}<button className="btn btn-outline btn-sm" onClick={()=>update(selected.id,{items:[...selected.items,{description:'New billable item',qty:1,rate:0}]})}>Add billable line</button><p><strong>Subtotal R{billableTotal(selected).subtotal.toFixed(2)} · VAT R{billableTotal(selected).vat.toFixed(2)} · Total R{billableTotal(selected).total.toFixed(2)}</strong></p><button className="btn btn-primary" onClick={()=>sendBillablesToInvoice(selected)}>Use reviewed lines in new invoice</button></>}
+            {selected.type==='billable'&&<><label className="label">VAT rate (%)</label><input className="input" type="number" value={selected.vat} onChange={e=>update(selected.id,{vat:Number(e.target.value)})}/>{(selected.items||[]).map((it,i)=><div key={i} style={{display:'grid',gridTemplateColumns:'1fr 65px 90px 34px',gap:5,marginBottom:6}}><input className="input" value={it.description} onChange={e=>update(selected.id,{items:selected.items.map((x,j)=>j===i?{...x,description:e.target.value}:x)})}/><input className="input" type="number" value={it.qty} onChange={e=>update(selected.id,{items:selected.items.map((x,j)=>j===i?{...x,qty:Number(e.target.value)}:x)})}/><input className="input" type="number" value={it.rate} onChange={e=>update(selected.id,{items:selected.items.map((x,j)=>j===i?{...x,rate:Number(e.target.value)}:x)})}/><button className="btn btn-outline btn-sm" onClick={()=>update(selected.id,{items:selected.items.filter((_,j)=>j!==i)})}>×</button></div>)}<div style={{display:'flex',gap:5,flexWrap:'wrap',marginTop:8}}>{BILLABLE_CATALOG.map((item,i)=><button key={i} className="btn btn-outline btn-sm" onClick={()=>update(selected.id,{items:[...selected.items,{...item}]})}>+ {item.description}</button>)}</div><button className="btn btn-outline btn-sm" onClick={()=>update(selected.id,{items:[...selected.items,{description:'New billable item',qty:1,rate:0}]})}>Add billable line</button><p><strong>Subtotal R{billableTotal(selected).subtotal.toFixed(2)} · VAT R{billableTotal(selected).vat.toFixed(2)} · Total R{billableTotal(selected).total.toFixed(2)}</strong></p><button className="btn btn-primary" onClick={()=>sendBillablesToInvoice(selected)}>Use reviewed lines in new invoice</button></>}
             {selected.type==='selector'&&<><label className="label">Field label</label><input className="input" value={selected.label||''} onChange={e=>update(selected.id,{label:e.target.value})}/><label className="label">Options (one per line)</label><textarea className="input" rows={4} value={(selected.options||[]).join('\n')} onChange={e=>{const options=e.target.value.split('\n');update(selected.id,{options,selected:options.includes(selected.selected)?selected.selected:options[0]||''})}}/><label className="label">Selection control</label><select className="select" value={selected.mode||'dropdown'} onChange={e=>update(selected.id,{mode:e.target.value,selectedValues:selected.mode==='multi'?(selected.selectedValues||[]):[selected.selected||selected.options?.[0]||'']})}><option value="dropdown">Dropdown</option><option value="multi">Multiple selection</option><option value="radio">Radio choices</option><option value="checkbox">Checkbox choices</option></select>{selected.mode==='multi'||selected.mode==='checkbox'?<div>{(selected.options||[]).map((o,i)=><label key={i} style={{display:'block',padding:4}}><input type="checkbox" checked={(selected.selectedValues||[]).includes(o)} onChange={e=>{const values=e.target.checked?[...(selected.selectedValues||[]),o]:(selected.selectedValues||[]).filter(x=>x!==o);update(selected.id,{selectedValues:values})}}/> {o}</label>)}</div>:selected.mode==='radio'?<div>{(selected.options||[]).map((o,i)=><label key={i} style={{display:'block',padding:4}}><input type="radio" name={'selector-'+selected.id} checked={selected.selected===o} onChange={()=>update(selected.id,{selected:o})}/> {o}</label>)}</div>:<><label className="label">Selected value</label><select className="select" value={selected.selected||''} onChange={e=>update(selected.id,{selected:e.target.value})}>{(selected.options||[]).map((o,i)=><option key={i} value={o}>{o}</option>)}</select></>}<label><input type="checkbox" checked={!!selected.required} onChange={e=>update(selected.id,{required:e.target.checked})}/> Required field</label></>}
           </>}
         </section>
