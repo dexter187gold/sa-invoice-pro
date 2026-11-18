@@ -20,7 +20,7 @@ function addDays(iso, n) {
 export default function InvoiceEdit() {
   const { id } = useParams()
   const isNew = !id || id === 'new'
-  const { clients, invoices, products, services, payments, vatRate, vatEnabled, refresh, toast, company } = useApp()
+  const { clients, invoices, tickets, products, services, payments, vatRate, vatEnabled, refresh, toast, company } = useApp()
   const nav = useNavigate()
   const existing = invoices.find((i) => String(i.id) === String(id))
   const invPayments = payments.filter((p) => String(p.invoiceId) === String(id))
@@ -407,7 +407,7 @@ export default function InvoiceEdit() {
 
         {client ? (
           <div className="inv-block">
-            <PortalCard client={client} company={company} invoices={invoices} toast={toast} compact />
+            <PortalCard client={client} company={company} invoices={invoices} tickets={tickets} toast={toast} compact />
           </div>
         ) : null}
 
