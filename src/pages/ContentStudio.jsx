@@ -123,6 +123,20 @@ export default function ContentStudio() {
     setSelectedId(clone.id)
     toast?.('Block pasted', 'success')
   }
+  useEffect(() => {
+    const onShortcut = (event) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) return
+      const key = event.key.toLowerCase()
+      if (key === 'z' && event.shiftKey) { event.preventDefault(); redo(); return }
+      if (key === 'z') { event.preventDefault(); undo(); return }
+      if (key === 'y') { event.preventDefault(); redo(); return }
+      if (key === 'c' && selected) { event.preventDefault(); copyBlock(selected, false); return }
+      if (key === 'x' && selected) { event.preventDefault(); copyBlock(selected, true); return }
+      if (key === 'v') { event.preventDefault(); pasteBlock() }
+    }
+    window.addEventListener('keydown', onShortcut)
+    return () => window.removeEventListener('keydown', onShortcut)
+  }, [selected, undoStack, redoStack, clipboardBlock])
   const saveDraft = () => {
     try {
       localStorage.setItem(storageKey, JSON.stringify({ title, blocks, savedAt: new Date().toISOString() }))
