@@ -134,7 +134,12 @@ export default function DevPortal() {
     const phrase = window.prompt('This permanently deletes the account and its active workspace. Type DELETE ' + user.email + ' to continue:')
     if (phrase !== 'DELETE ' + user.email) return
     setBusy(true)
-    try { await devRequest('/api/dev/users/' + encodeURIComponent(user.id), { method: 'DELETE', body: JSON.stringify({ confirmation: phrase }) }); setAccounts(prev => prev.filter(u => u.id !== user.id)); notify((user.role === 'admin' ? 'Administrator' : 'User') + ' account and active workspace deleted') }
+    try {
+      const result = await devRequest('/api/dev/users/' + encodeURIComponent(user.id), { method: 'DELETE', body: JSON.stringify({ confirmation: phrase }) })
+      await loadAccounts()
+      const removed = result.licenceServer?.removed || {}
+      notify((user.role === 'admin' ? 'Administrator' : 'User') + ' removed from app and licence server · ' + (removed.devices || 0) + ' devices · ' + (removed.keys || 0) + ' keys')
+    }
     catch (e) { fail(e.message) } finally { setBusy(false) }
   }
   async function loadReleases() {
