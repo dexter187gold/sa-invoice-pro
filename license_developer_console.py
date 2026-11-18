@@ -74,10 +74,20 @@ def register_developer_console(app, load_fn, now_display_fn=None):
                   <form class="status-actions" method="post" action="/set-status"><input type="hidden" name="return_to" value="/devices"/>
                     <input type="hidden" name="hwid" value="{_e(hwid)}"/>
                     <button name="status" value="trial">Trial</button>
-                    <button name="status" value="licensed">Activate</button>
                     <button name="status" value="suspended">Suspend</button>
                     <button name="status" value="blocked">Block</button>
                     <button name="status" value="expired">Expire</button>
+                  </form>
+                  <form class="issue-inline" method="post" action="/owner/admin-issue-form">
+                    <input type="hidden" name="email" value="{_e(email if email != 'No email' else '')}"/>
+                    <input type="hidden" name="phone" value="{_e(phone if phone != 'Not supplied' else '')}"/>
+                    <input type="hidden" name="hwid" value="{_e(hwid)}"/>
+                    <input type="hidden" name="return_to" value="/keys"/>
+                    <label>Issue plan</label>
+                    <select name="plan" required><option value="T">Trial</option><option value="S" selected>Solo</option><option value="P">Shop</option><option value="M">Multi-branch</option><option value="L">Lifetime</option><option value="E">Enterprise</option></select>
+                    <input type="number" name="duration" min="1" max="36500" value="365" required aria-label="Duration"/>
+                    <select name="unit" aria-label="Duration unit"><option value="days">Days</option><option value="months">Months</option><option value="years">Years</option></select>
+                    <button type="submit" {'disabled' if email == 'No email' else ''}>Generate key for manual activation</button>
                   </form>
                   <form method="post" action="/owner/permanent-delete-device" onsubmit="return confirm('Permanently delete this device registration and every key/request bound to it? This cannot be undone.');">
                     <input type="hidden" name="hwid" value="{_e(hwid)}"/><input type="hidden" name="return_to" value="/devices"/>
