@@ -1,3 +1,8 @@
+## 6.69.0 — Expanded WhatsApp inbound reply packs
+
+- Added keyword packs for business hours, location/address, network unlock/SIM, laptop/PC/slow/storage, tablet/iPad.
+- Inbox smart-suggest now covers more common SA desk queries with ZA-tone EN + AF options.
+
 ## 6.68.0 — Desktop packages + OPFS recovery
 
 - APK workflow attaches `SA-Invoice-Pro-Lab-v*.apk` to the matching GitHub Release tag.
