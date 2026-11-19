@@ -1,6 +1,6 @@
 {
-  "version": "6.68.0",
-  "codename": "First public beta",
+  "version": "6.69.0",
+  "codename": "Expanded WhatsApp inbound replies",
   "channel": "beta",
-  "shipped": "2026-11-17"
+  "shipped": "2026-11-19"
 }
