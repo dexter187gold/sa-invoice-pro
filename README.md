@@ -1,4 +1,4 @@
-# SA Invoice Pro 6.68.0 — First public beta
+# SA Invoice Pro 6.69.0 — Expanded WhatsApp inbound replies
 
 **Invoicing, quotes, job tickets, and WhatsApp-ready follow-ups built for South African workshops and small businesses.**
 
@@ -79,6 +79,8 @@ Large backups use **streaming import** so low-memory phones do not freeze.
 
 From an invoice or ticket, use share / chase actions to open WhatsApp with a ready message (payment reminder, job ready, quote follow-up).
 
+Use the **Inbox** page to paste inbound client messages and get smart ZA-tone reply suggestions (EN + AF).
+
 ---
 
 ## What is included in the beta
@@ -89,6 +91,7 @@ From an invoice or ticket, use share / chase actions to open WhatsApp with a rea
 - Local recovery snapshots (chunked; large payloads can use OPFS)
 - Licence / portal / cloud hooks for later paid plans
 - Owner-oriented dashboard and command centre views
+- WhatsApp Inbox with smart inbound reply suggestions
 
 Still expanding after beta: extra Settings tabs (brand, nav, comms), deeper sync metrics, code-signed Windows.
 
