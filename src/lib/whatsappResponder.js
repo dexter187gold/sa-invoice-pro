@@ -287,6 +287,47 @@ export function suggestInboundReplies({ message = '', client = {}, company = {},
     })
   }
 
+  // New packs for 6.69
+  if (/hours|open|close|opening|closing|when open|what time|business hours|trading hours/.test(text)) {
+    replies.push({
+      label: 'Business hours',
+      text: `Hi ${name}, from *${shop}*: we are open during normal trading hours (typically Mon–Fri 8:30–17:00, Sat 9:00–13:00 — confirm with us).\n\nYou can drop the device off anytime we are open. Reply if you need the exact address or a specific time.`,
+      af: `Hi ${name}, ons is oop tydens gewone ure. Stuur as jy die adres of ’n spesifieke tyd wil hê.`,
+    })
+  }
+
+  if (/address|where are you|location|directions|find you|map|google maps|how to get there/.test(text)) {
+    replies.push({
+      label: 'Location / address',
+      text: `Hi ${name}, from *${shop}*: you can find us at our usual workshop address (see Google Maps or reply for the pin).\n\nPlease bring the device, ID, and any previous job number. See you soon!`,
+      af: `Hi ${name}, ons is by die gewone adres. Bring die toestel en ID saam.`,
+    })
+  }
+
+  if (/network|sim|unlock|blocked|network lock|carrier|vodacom|mtn|telkom|cell c|imei/.test(text)) {
+    replies.push({
+      label: 'Network unlock / SIM',
+      text: `Hi ${name}, from *${shop}*: network unlock or SIM issue.\n\nReply with the exact model and carrier. We can check IMEI status and advise on unlock options (where legal). Bring the device for testing.`,
+      af: `Hi ${name}, netwerk of SIM. Stuur model en netwerk.`,
+    })
+  }
+
+  if (/laptop|pc|computer|windows|mac|macbook|notebook|slow|virus|malware|storage|full|space|ssd|hard drive/.test(text)) {
+    replies.push({
+      label: 'Laptop / PC / slow',
+      text: `Hi ${name}, from *${shop}*: laptop / PC issue.\n\nReply with the model (or Windows/Mac), what is happening (slow, virus, storage full, not booting, screen, battery). We diagnose and quote before any work. Bring it in or we can advise remotely for simple software.`,
+      af: `Hi ${name}, laptop of rekenaar. Stuur model en wat die probleem is.`,
+    })
+  }
+
+  if (/tablet|ipad|galaxy tab|android tablet/.test(text)) {
+    replies.push({
+      label: 'Tablet / iPad',
+      text: `Hi ${name}, from *${shop}*: tablet / iPad repair.\n\nSame as phones — reply with exact model + issue (screen, battery, not turning on, charge port). We stock many common parts. Bring it in for diagnosis.`,
+      af: `Hi ${name}, tablet of iPad. Stuur model en probleem.`,
+    })
+  }
+
   if (/hello|hi|hey|good morning|good afternoon|howzit|sawubona/.test(text) && replies.length === 0) {
     replies.push({
       label: 'Greeting',
