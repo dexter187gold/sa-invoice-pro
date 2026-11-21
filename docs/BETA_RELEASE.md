@@ -1,37 +1,30 @@
-# SA Invoice Pro — First public beta (v6.68.0)
+# SA Invoice Pro — Beta (critical path **100%**)
 
-**Released:** 2026-11-17  
-**Channel:** Public beta  
-**Tag:** [v6.68.0](https://github.com/dexter187gold/sa-invoice-pro/releases/tag/v6.68.0)
+**Version:** 6.70.0  
+**Channel:** Public beta · pilot-ready  
+**Updated:** 2026-11-21
 
-## Status
+All `BETA_GATES` green — see `src/lib/betaReadiness.js`.
 
-| Check | Result |
-|-------|--------|
-| Production web | Live |
-| e2e-smoke | Green |
-| Signed Android APK | On release |
-| Windows MSI / setup / portable | On release |
-| Streaming backup + OPFS recovery | Shipped |
-| VAT + company settings | Shipped |
+| Gate | Status |
+|------|--------|
+| Invoices, quotes, clients | Done |
+| VAT + PDF | Done |
+| Job cards + multi-bill + soft-delete | Done |
+| Streaming backup + OPFS recovery | Done |
+| License + device limits | Done |
+| Portal link + PIN | Done |
+| Paystack return mark-paid | Done |
+| Android APK path | Done |
+| Windows package path | Done |
+| CI e2e + unit | Done |
+| SME vertical packs | Done |
+| Recycle bin | Done |
+| Onboarding | Done |
+| Feature gating | Done |
+| PWA offline shell | Done |
 
-## Download
+**Web:** https://sa-invoice-pro.pages.dev/  
+**Releases:** https://github.com/dexter187gold/sa-invoice-pro/releases
 
-- **Web (PWA):** https://sa-invoice-pro.pages.dev/
-- **Android APK:** https://github.com/dexter187gold/sa-invoice-pro/releases/download/v6.68.0/SA-Invoice-Pro-Lab-v6.68.0.apk
-- **Windows MSI:** https://github.com/dexter187gold/sa-invoice-pro/releases/download/v6.68.0/SA-Invoice-Pro-v6.68.0-windows.msi
-- **Windows setup:** https://github.com/dexter187gold/sa-invoice-pro/releases/download/v6.68.0/SA-Invoice-Pro-v6.68.0-windows-setup.exe
-- **Windows portable:** https://github.com/dexter187gold/sa-invoice-pro/releases/download/v6.68.0/SA-Invoice-Pro-v6.68.0-windows-portable.exe
-- **All assets:** https://github.com/dexter187gold/sa-invoice-pro/releases/tag/v6.68.0
-
-## Beta expectations
-
-- Safe for pilot shops; always keep a JSON backup (Settings → Backup).
-- Large workspaces use streaming import and OPFS recovery snapshots.
-- Full Settings tabs (brand / nav / comms) still expanding after beta.
-- Windows builds are unsigned (SmartScreen may warn until Authenticode is added).
-- Android APK may use debug signing if keystore secrets are not set.
-
-## Support
-
-sainvoicepro@gmail.com
+Always keep a JSON backup. Windows may show SmartScreen until Authenticode is added.
