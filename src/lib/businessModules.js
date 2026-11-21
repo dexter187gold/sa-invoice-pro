@@ -52,6 +52,16 @@ import {
   LEGAL_ACCOUNT_TYPES,
   LEGAL_DOCUMENT_STUBS,
 } from './legalCatalog.js'
+import { AGRI_SERVICE_PRESETS, AGRI_PRODUCT_PRESETS, AGRI_ACCOUNT_TYPES, AGRI_DOCUMENT_STUBS } from './agricultureCatalog.js'
+import { ACCOUNTING_SERVICE_PRESETS, ACCOUNTING_PRODUCT_PRESETS, ACCOUNTING_ACCOUNT_TYPES, ACCOUNTING_DOCUMENT_STUBS } from './accountingCatalog.js'
+import { LOGISTICS_SERVICE_PRESETS, LOGISTICS_PRODUCT_PRESETS, LOGISTICS_ACCOUNT_TYPES, LOGISTICS_DOCUMENT_STUBS } from './logisticsCatalog.js'
+import { EDU_SERVICE_PRESETS, EDU_PRODUCT_PRESETS, EDU_ACCOUNT_TYPES, EDU_DOCUMENT_STUBS } from './educationCatalog.js'
+import { MFG_SERVICE_PRESETS, MFG_PRODUCT_PRESETS, MFG_ACCOUNT_TYPES, MFG_DOCUMENT_STUBS } from './manufacturingCatalog.js'
+import { PROP_SERVICE_PRESETS, PROP_PRODUCT_PRESETS, PROP_ACCOUNT_TYPES, PROP_DOCUMENT_STUBS } from './propertyCatalog.js'
+import { SEC_SERVICE_PRESETS, SEC_PRODUCT_PRESETS, SEC_ACCOUNT_TYPES, SEC_DOCUMENT_STUBS } from './securityCatalog.js'
+import { CLEAN_SERVICE_PRESETS, CLEAN_PRODUCT_PRESETS, CLEAN_ACCOUNT_TYPES, CLEAN_DOCUMENT_STUBS } from './cleaningCatalog.js'
+import { CREATIVE_SERVICE_PRESETS, CREATIVE_PRODUCT_PRESETS, CREATIVE_ACCOUNT_TYPES, CREATIVE_DOCUMENT_STUBS } from './creativeCatalog.js'
+import { NPO_SERVICE_PRESETS, NPO_PRODUCT_PRESETS, NPO_ACCOUNT_TYPES, NPO_DOCUMENT_STUBS } from './nonprofitCatalog.js'
 
 export const IT_MODULE = {
   id: 'it',
@@ -236,6 +246,156 @@ export const MODULE_REGISTRY = {
       documentStubs: LEGAL_DOCUMENT_STUBS,
     },
   },
+  agriculture: {
+    id: 'agriculture',
+    label: 'Agriculture / Farming',
+    version: '1.0.0',
+    status: 'stable',
+    description: 'Farm services, inputs, seasonal work and field notes.',
+    routes: ['/tickets', '/products', '/documents'],
+    features: { jobCards: true, agriculturePresets: true },
+    catalogs: {
+      servicePresets: AGRI_SERVICE_PRESETS,
+      productPresets: AGRI_PRODUCT_PRESETS,
+      accountTypes: AGRI_ACCOUNT_TYPES,
+      documentStubs: AGRI_DOCUMENT_STUBS,
+    },
+  },
+  accounting: {
+    id: 'accounting',
+    label: 'Accounting / Bookkeeping',
+    version: '1.0.0',
+    status: 'stable',
+    description: 'Bookkeeping packs, compliance packs and professional fee notes.',
+    routes: ['/documents', '/invoices', '/quotes'],
+    features: { documents: true, accountingPresets: true },
+    catalogs: {
+      servicePresets: ACCOUNTING_SERVICE_PRESETS,
+      productPresets: ACCOUNTING_PRODUCT_PRESETS,
+      accountTypes: ACCOUNTING_ACCOUNT_TYPES,
+      documentStubs: ACCOUNTING_DOCUMENT_STUBS,
+    },
+  },
+  logistics: {
+    id: 'logistics',
+    label: 'Logistics / Courier / Transport',
+    version: '1.0.0',
+    status: 'stable',
+    description: 'Trips, deliveries, freight notes and POD-oriented jobs.',
+    routes: ['/tickets', '/products', '/documents'],
+    features: { jobCards: true, logisticsPresets: true },
+    catalogs: {
+      servicePresets: LOGISTICS_SERVICE_PRESETS,
+      productPresets: LOGISTICS_PRODUCT_PRESETS,
+      accountTypes: LOGISTICS_ACCOUNT_TYPES,
+      documentStubs: LOGISTICS_DOCUMENT_STUBS,
+    },
+  },
+  education: {
+    id: 'education',
+    label: 'Education / Training',
+    version: '1.0.0',
+    status: 'stable',
+    description: 'Courses, enrolments, assessments and training packs.',
+    routes: ['/tickets', '/documents', '/invoices'],
+    features: { jobCards: true, educationPresets: true },
+    catalogs: {
+      servicePresets: EDU_SERVICE_PRESETS,
+      productPresets: EDU_PRODUCT_PRESETS,
+      accountTypes: EDU_ACCOUNT_TYPES,
+      documentStubs: EDU_DOCUMENT_STUBS,
+    },
+  },
+  manufacturing: {
+    id: 'manufacturing',
+    label: 'Manufacturing / Light industry',
+    version: '1.0.0',
+    status: 'stable',
+    description: 'Work orders, BOMs-lite, QC and production notes.',
+    routes: ['/tickets', '/products', '/documents'],
+    features: { jobCards: true, manufacturingPresets: true },
+    catalogs: {
+      servicePresets: MFG_SERVICE_PRESETS,
+      productPresets: MFG_PRODUCT_PRESETS,
+      accountTypes: MFG_ACCOUNT_TYPES,
+      documentStubs: MFG_DOCUMENT_STUBS,
+    },
+  },
+  property: {
+    id: 'property',
+    label: 'Real estate / Property',
+    version: '1.0.0',
+    status: 'stable',
+    description: 'Listings support, mandates, inspections and agency fees.',
+    routes: ['/tickets', '/documents', '/invoices'],
+    features: { jobCards: true, propertyPresets: true },
+    catalogs: {
+      servicePresets: PROP_SERVICE_PRESETS,
+      productPresets: PROP_PRODUCT_PRESETS,
+      accountTypes: PROP_ACCOUNT_TYPES,
+      documentStubs: PROP_DOCUMENT_STUBS,
+    },
+  },
+  security: {
+    id: 'security',
+    label: 'Security / Guarding',
+    version: '1.0.0',
+    status: 'stable',
+    description: 'Shifts, sites, patrol and incident-oriented jobs.',
+    routes: ['/tickets', '/documents', '/expenses'],
+    features: { jobCards: true, securityPresets: true },
+    catalogs: {
+      servicePresets: SEC_SERVICE_PRESETS,
+      productPresets: SEC_PRODUCT_PRESETS,
+      accountTypes: SEC_ACCOUNT_TYPES,
+      documentStubs: SEC_DOCUMENT_STUBS,
+    },
+  },
+  cleaning: {
+    id: 'cleaning',
+    label: 'Cleaning / Facilities',
+    version: '1.0.0',
+    status: 'stable',
+    description: 'Contracts, site cleans and consumables.',
+    routes: ['/tickets', '/products', '/documents'],
+    features: { jobCards: true, cleaningPresets: true },
+    catalogs: {
+      servicePresets: CLEAN_SERVICE_PRESETS,
+      productPresets: CLEAN_PRODUCT_PRESETS,
+      accountTypes: CLEAN_ACCOUNT_TYPES,
+      documentStubs: CLEAN_DOCUMENT_STUBS,
+    },
+  },
+  creative: {
+    id: 'creative',
+    label: 'Marketing / Creative agency',
+    version: '1.0.0',
+    status: 'stable',
+    description: 'Retainers, campaigns, deliverables and creative briefs.',
+    routes: ['/tickets', '/documents', '/quotes'],
+    features: { jobCards: true, creativePresets: true },
+    catalogs: {
+      servicePresets: CREATIVE_SERVICE_PRESETS,
+      productPresets: CREATIVE_PRODUCT_PRESETS,
+      accountTypes: CREATIVE_ACCOUNT_TYPES,
+      documentStubs: CREATIVE_DOCUMENT_STUBS,
+    },
+  },
+  nonprofit: {
+    id: 'nonprofit',
+    label: 'Non-profit / NGO / Church',
+    version: '1.0.0',
+    status: 'stable',
+    description: 'Donations support, project notes and donor-facing documents.',
+    routes: ['/documents', '/invoices', '/clients'],
+    features: { documents: true, nonprofitPresets: true },
+    catalogs: {
+      servicePresets: NPO_SERVICE_PRESETS,
+      productPresets: NPO_PRODUCT_PRESETS,
+      accountTypes: NPO_ACCOUNT_TYPES,
+      documentStubs: NPO_DOCUMENT_STUBS,
+    },
+  },
   field: {
     id: 'field',
     label: 'Field service',
@@ -263,18 +423,23 @@ export function filterNavByModules(links, type) {
 }
 
 export function smeModuleScoreboard() {
-  return {
-    core: CORE_MODULE.status || 'stable',
-    it: IT_MODULE.status || 'stable',
-    retail: MODULE_REGISTRY.retail?.status || 'planned',
-    trades: MODULE_REGISTRY.trades?.status || 'planned',
-    automotive: MODULE_REGISTRY.automotive?.status || 'planned',
-    consulting: MODULE_REGISTRY.consulting?.status || 'planned',
-    hospitality: MODULE_REGISTRY.hospitality?.status || 'planned',
-    health_beauty: MODULE_REGISTRY.health_beauty?.status || 'planned',
-    medical: MODULE_REGISTRY.medical?.status || 'planned',
-    legal: MODULE_REGISTRY.legal?.status || 'planned',
+  const keys = [
+    'core', 'it', 'retail', 'trades', 'automotive', 'consulting', 'hospitality',
+    'health_beauty', 'medical', 'legal', 'agriculture', 'accounting', 'logistics',
+    'education', 'manufacturing', 'property', 'security', 'cleaning', 'creative', 'nonprofit',
+  ]
+  const out = {}
+  for (const k of keys) {
+    if (k === 'core') out[k] = CORE_MODULE.status || 'stable'
+    else if (k === 'it') out[k] = IT_MODULE.status || 'stable'
+    else out[k] = MODULE_REGISTRY[k]?.status || 'planned'
   }
+  out._summary = {
+    stable: Object.values(out).filter((s) => s === 'stable').length,
+    planned: Object.values(out).filter((s) => s === 'planned').length,
+    total: keys.length,
+  }
+  return out
 }
 
 export function getVerticalModule(moduleId) {
