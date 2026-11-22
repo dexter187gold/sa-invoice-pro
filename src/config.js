@@ -1,7 +1,7 @@
-export const APP_VERSION = '6.69.0'
+export const APP_VERSION = '6.72.0'
 export const APP_NAME = 'SA Invoice Pro'
 export const APP_COPYRIGHT = '© SA Invoice Pro. All rights reserved.'
-export const APP_CODENAME = '6.69.0 · Expanded WhatsApp inbound reply packs'
+export const APP_CODENAME = '6.72.0 · Deeper WhatsApp inbound reply packs'
 export const OLIVE_REPO = 'https://github.com/dexter187gold/olive-yellow-reef-quartz'
 
 export const DEFAULT_VAT_RATE = 0.15

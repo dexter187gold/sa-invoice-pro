@@ -1,3 +1,9 @@
+## 6.72.0 — Deeper WhatsApp inbound reply packs
+
+- Added keyword packs for delivery/collect, home visit/call-out, price negotiation, turnaround time, backup-first, stolen/IMEI, public holiday, technician query, payment plan, and account statement.
+- Inbox smart-suggest now covers even more real SA desk conversations with ZA-tone EN + AF options.
+- Version alignment fixed across package.json, config.js, version.json, README, CHANGELOG.
+
 ## 6.71.0 — Expanded WhatsApp inbound reply packs (ops depth)
 
 - Added keyword packs for parts delay, quote approval, photo of damage, rush/same-day, trade-in, factory reset/wipe, insurance claim, after-hours, thanks/review request, opt-out/STOP, and collection time change.
