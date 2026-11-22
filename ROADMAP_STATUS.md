@@ -1,6 +1,6 @@
 # SA Invoice Pro — Owner roadmap
 
-**Ship:** **6.69.0** · **Top-100 adjusted readiness rising**
+**Ship:** **6.71.0** · **Top-100 adjusted readiness rising**
 
 | Priority | Shipped | Partial | Open |
 |----------|--------:|--------:|-----:|
@@ -12,7 +12,10 @@
 ### Mode
 Paystack **test keys** until live. Google GIS **ID-token only** (email/name/sub).
 
-### v6.69 batch (just shipped)
+### v6.71 batch (just shipped)
+- Expanded inbound WhatsApp desk reply packs further (parts delay, quote approve, photos, rush/same-day, trade-in, factory wipe, insurance, after-hours, review request, opt-out, collection time).
+
+### v6.69 batch (shipped)
 - Expanded inbound WhatsApp desk reply packs further (hours, location, network unlock, laptop/PC, tablet/iPad).
 
 ### v6.66 batch (shipped)

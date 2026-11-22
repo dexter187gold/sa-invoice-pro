@@ -1,3 +1,8 @@
+## 6.71.0 — Expanded WhatsApp inbound reply packs (ops depth)
+
+- Added keyword packs for parts delay, quote approval, photo of damage, rush/same-day, trade-in, factory reset/wipe, insurance claim, after-hours, thanks/review request, opt-out/STOP, and collection time change.
+- Inbox smart-suggest now covers more real desk conversations with ZA-tone EN + AF options.
+
 ## 6.69.0 — Expanded WhatsApp inbound reply packs
 
 - Added keyword packs for business hours, location/address, network unlock/SIM, laptop/PC/slow/storage, tablet/iPad.

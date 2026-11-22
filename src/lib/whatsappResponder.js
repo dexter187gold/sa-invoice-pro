@@ -328,6 +328,95 @@ export function suggestInboundReplies({ message = '', client = {}, company = {},
     })
   }
 
+  // New packs for 6.71
+  if (/parts|waiting|still waiting|how long for parts|part delay|order the part|when will the part/.test(text)) {
+    replies.push({
+      label: 'Parts delay',
+      text: `Hi ${name}, from *${shop}*: update on parts for your *${device}*.\n\nWe are still waiting on the part. I will WhatsApp the moment it arrives and we start. Reply if you want an estimated arrival or to discuss alternatives.`,
+      af: `Hi ${name}, ons wag nog op die onderdeel. Ek stuur ’n WhatsApp sodra dit hier is.`,
+    })
+  }
+
+  if (/go ahead|approve|yes please|do it|proceed|accept the quote|ok do the repair|book it/.test(text)) {
+    replies.push({
+      label: 'Quote approved',
+      text: `Hi ${name}, thank you — we will go ahead with the repair on your *${device}*.\n\nPlease drop it off (or confirm it is already with us) and bring ID. We will keep you updated on this chat.`,
+      af: `Hi ${name}, dankie, ons gaan voort met die herstel. Bring dit asseblief en ID saam.`,
+    })
+  }
+
+  if (/photo|picture|pic of|send a photo|image of the damage|show the crack/.test(text)) {
+    replies.push({
+      label: 'Photo of damage',
+      text: `Hi ${name}, from *${shop}*: a photo helps a lot.\n\nPlease reply with a clear photo of the damage (screen, port, etc.) and the exact model. We can quote faster and check stock.`,
+      af: `Hi ${name}, stuur asseblief ’n foto van die skade en die model.`,
+    })
+  }
+
+  if (/urgent|same day|today|rush|asap|emergency|quick|fast|how soon/.test(text)) {
+    replies.push({
+      label: 'Rush / same-day',
+      text: `Hi ${name}, from *${shop}*: we understand it is urgent.\n\nReply with the exact model and issue. If we have the part in stock we can often do same-day or next-day. Bring it in as soon as you can.`,
+      af: `Hi ${name}, as dit dringend is, stuur model en probleem. Ons kan dikwels dieselfde dag doen as die onderdeel hier is.`,
+    })
+  }
+
+  if (/trade in|trade-in|sell my|buy my phone|trade my|what will you give|offer on my/.test(text)) {
+    replies.push({
+      label: 'Trade-in / buy',
+      text: `Hi ${name}, from *${shop}*: trade-in or buy.\n\nReply with the exact model, condition (screen, battery, any damage), and whether it is unlocked. Bring it in for a proper offer — we assess on the spot.`,
+      af: `Hi ${name}, inruil of koop. Stuur model en toestand, of bring dit in.`,
+    })
+  }
+
+  if (/factory reset|wipe|erase|delete all|data wipe|clear the phone|format/.test(text)) {
+    replies.push({
+      label: 'Factory reset / wipe',
+      text: `Hi ${name}, from *${shop}*: factory reset or data wipe.\n\nWe can do a full wipe for you (useful before trade-in or sale). Reply with the model and confirm you have a backup of anything important. Bring ID.`,
+      af: `Hi ${name}, fabrieksherstel. Stuur model en bevestig jy het ’n rugsteun.`,
+    })
+  }
+
+  if (/insurance|claim|insure|cover|policy/.test(text)) {
+    replies.push({
+      label: 'Insurance claim',
+      text: `Hi ${name}, from *${shop}*: insurance claim note.\n\nWe can provide a quote and job card for your claim. Reply with the model, what happened, and your insurer if known. Bring the device and any claim number.`,
+      af: `Hi ${name}, versekerings eis. Stuur model en wat gebeur het.`,
+    })
+  }
+
+  if (/after hours|afterhours|emergency|weekend|sunday|closed now|too late/.test(text)) {
+    replies.push({
+      label: 'After hours',
+      text: `Hi ${name}, from *${shop}*: we are currently closed.\n\nDrop a message with the model and issue — we will reply first thing when we open. For true emergencies reply and we will advise if anything can be arranged.`,
+      af: `Hi ${name}, ons is tans toe. Stuur model en probleem, ons antwoord so gou as ons oop is.`,
+    })
+  }
+
+  if (/thank you|thanks|dankie|appreciate|great service|google review|review/.test(text)) {
+    replies.push({
+      label: 'Thanks / review',
+      text: `Hi ${name}, thank you — we appreciate the business from *${shop}*.\n\nIf you have a moment, a Google review helps other clients find us. Reply if you need anything else.`,
+      af: `Hi ${name}, dankie! ’n Google-resensie help baie as jy tyd het.`,
+    })
+  }
+
+  if (/stop|unsubscribe|opt out|remove me|don't message|don't contact|popia/.test(text)) {
+    replies.push({
+      label: 'Opt-out',
+      text: `Hi ${name}, noted — we will not send further marketing or chase messages from *${shop}*.\n\nService updates on an open job will still come through if needed. Reply STOP again if you want everything paused.`,
+      af: `Hi ${name}, ons sal nie verder bemarkingsboodskappe stuur nie.`,
+    })
+  }
+
+  if (/change time|different time|later|earlier|can i collect|collect at|pickup time/.test(text)) {
+    replies.push({
+      label: 'Change collection time',
+      text: `Hi ${name}, from *${shop}*: no problem changing the collection time for your *${device}*.\n\nReply with the day and time that suits you (during opening hours). We will confirm.`,
+      af: `Hi ${name}, stuur die dag en tyd wat jou pas vir afhaal.`,
+    })
+  }
+
   if (/hello|hi|hey|good morning|good afternoon|howzit|sawubona/.test(text) && replies.length === 0) {
     replies.push({
       label: 'Greeting',
