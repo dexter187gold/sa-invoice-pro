@@ -1,6 +1,6 @@
 # SA Invoice Pro — Owner roadmap
 
-**Ship:** **6.71.0** · **Top-100 adjusted readiness rising**
+**Ship:** **6.73.0** · **Top-100 adjusted readiness rising**
 
 | Priority | Shipped | Partial | Open |
 |----------|--------:|--------:|-----:|
@@ -12,22 +12,12 @@
 ### Mode
 Paystack **test keys** until live. Google GIS **ID-token only** (email/name/sub).
 
-### v6.71 batch (just shipped)
+### v6.73 batch (just shipped)
+- Full keyword-aware inbound WhatsApp reply packs now live in suggestInboundReplies (status, parts, quote, payment, hours, common repairs, water, FRP, after-hours).
+- Inbox paste-and-suggest is production-ready for real SA desk conversations.
+
+### v6.71 batch (shipped)
 - Expanded inbound WhatsApp desk reply packs further (parts delay, quote approve, photos, rush/same-day, trade-in, factory wipe, insurance, after-hours, review request, opt-out, collection time).
-
-### v6.69 batch (shipped)
-- Expanded inbound WhatsApp desk reply packs further (hours, location, network unlock, laptop/PC, tablet/iPad).
-
-### v6.66 batch (shipped)
-- Expanded inbound WhatsApp desk reply packs (motherboard, data transfer, drop-off/booking, accessories, load shedding, price negotiation).
-
-### v6.65 batch (shipped)
-1. **Recurring auto-generate** — runs due templates once per day on app open (`autoRunRecurringOncePerDay`)
-2. **Last contact + follow-up** — Clients columns + Mark contacted / Set follow-up actions
-3. **Job-card photos** — up to 6 compressed photos per ticket (camera/file)
-4. **VAT201 helper** — period filter, output/input/net, CSV export on Reports
-5. **Company letterhead on PDFs** — `drawCompanyLetterhead` on invoices + statements
-6. **Workspace ZIP export** — Settings → Download workspace ZIP (manifest + data)
 
 ### Still open (high value)
 - Recurring scheduled background beyond daily open (true cron)

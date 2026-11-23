@@ -1,3 +1,9 @@
+## 6.73.0 — Full inbound WhatsApp desk reply packs
+
+- Implemented complete keyword-aware suggestInboundReplies covering greetings, status, ready/collection, parts waiting, quote/price, payment/invoice, hours/location, screen/battery, water damage, FRP/Google lock, and after-hours/load shedding.
+- All replies in friendly ZA English with short Afrikaans options; ready for Inbox paste-and-suggest.
+- Version aligned across package.json, config.js, version.json, README, CHANGELOG.
+
 ## 6.72.0 — Deeper WhatsApp inbound reply packs
 
 - Added keyword packs for delivery/collect, home visit/call-out, price negotiation, turnaround time, backup-first, stolen/IMEI, public holiday, technician query, payment plan, and account statement.
