@@ -1,6 +1,6 @@
 # SA Invoice Pro — Owner roadmap
 
-**Ship:** **6.73.0** · **Top-100 adjusted readiness rising**
+**Ship:** **6.74.0** · **Top-100 adjusted readiness rising**
 
 | Priority | Shipped | Partial | Open |
 |----------|--------:|--------:|-----:|
@@ -12,12 +12,13 @@
 ### Mode
 Paystack **test keys** until live. Google GIS **ID-token only** (email/name/sub).
 
-### v6.73 batch (just shipped)
-- Full keyword-aware inbound WhatsApp reply packs now live in suggestInboundReplies (status, parts, quote, payment, hours, common repairs, water, FRP, after-hours).
+### v6.74 batch (just shipped)
+- Complete keyword-aware inbound WhatsApp reply packs now live in suggestInboundReplies (all common SA desk scenarios: greeting, status, parts delay, quote/approve/negotiate, payment/plan, hours/delivery/call-out, repairs, water, FRP/wipe, photos, rush, trade-in, insurance, after-hours, review, turnaround/backup).
 - Inbox paste-and-suggest is production-ready for real SA desk conversations.
 
-### v6.71 batch (shipped)
-- Expanded inbound WhatsApp desk reply packs further (parts delay, quote approve, photos, rush/same-day, trade-in, factory wipe, insurance, after-hours, review request, opt-out, collection time).
+### v6.73 batch (shipped)
+- Full keyword-aware inbound WhatsApp reply packs now live in suggestInboundReplies (status, parts, quote, payment, hours, common repairs, water, FRP, after-hours).
+- Inbox paste-and-suggest is production-ready for real SA desk conversations.
 
 ### Still open (high value)
 - Recurring scheduled background beyond daily open (true cron)
