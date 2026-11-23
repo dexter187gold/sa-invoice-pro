@@ -1,3 +1,9 @@
+## 6.74.0 — Complete inbound WhatsApp desk reply packs
+
+- Consolidated and expanded suggestInboundReplies with full keyword packs: greeting, status, ready/collection, parts delay, quote/price/negotiation/approve, payment/invoice/plan, hours/location/delivery/call-out, screen/battery/laptop/tablet/network, water damage, FRP/wipe, photos, rush/same-day, trade-in, insurance, after-hours/load shedding/holiday, review/thanks/opt-out, turnaround/backup/IMEI/tech.
+- All in friendly ZA English + short Afrikaans options. Inbox paste-and-suggest now covers real desk conversations end-to-end.
+- Version aligned across package.json, config.js, version.json, README, CHANGELOG.
+
 ## 6.73.0 — Full inbound WhatsApp desk reply packs
 
 - Implemented complete keyword-aware suggestInboundReplies covering greetings, status, ready/collection, parts waiting, quote/price, payment/invoice, hours/location, screen/battery, water damage, FRP/Google lock, and after-hours/load shedding.

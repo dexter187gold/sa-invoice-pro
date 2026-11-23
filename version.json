@@ -1,6 +1,6 @@
 {
-  "version": "6.73.0",
-  "codename": "Full inbound WhatsApp desk reply packs (status, parts, quote, payment, hours, screen, water, FRP, after-hours)",
+  "version": "6.74.0",
+  "codename": "Complete inbound WhatsApp desk reply packs (all common SA scenarios)",
   "channel": "beta",
   "shipped": "2026-11-23"
 }

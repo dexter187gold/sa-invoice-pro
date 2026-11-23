@@ -1,4 +1,4 @@
-# SA Invoice Pro 6.72.0 — Deeper WhatsApp inbound replies
+# SA Invoice Pro 6.74.0 — Complete WhatsApp inbound replies
 
 **Invoicing, quotes, job tickets, and WhatsApp-ready follow-ups built for South African workshops and small businesses.**
 
@@ -91,7 +91,7 @@ Use the **Inbox** page to paste inbound client messages and get smart ZA-tone re
 - Local recovery snapshots (chunked; large payloads can use OPFS)
 - Licence / portal / cloud hooks for later paid plans
 - Owner-oriented dashboard and command centre views
-- WhatsApp Inbox with smart inbound reply suggestions (now covering delivery, call-out, negotiation, turnaround and more)
+- WhatsApp Inbox with complete smart inbound reply suggestions (covering all common SA desk scenarios)
 
 Still expanding after beta: extra Settings tabs (brand, nav, comms), deeper sync metrics, code-signed Windows.
 

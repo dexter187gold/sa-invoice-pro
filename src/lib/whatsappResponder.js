@@ -92,7 +92,7 @@ export function suggestReplies({ type = 'general', job, invoice, client = {}, co
 /**
  * Keyword-aware suggestions for inbound WhatsApp messages from clients.
  * Context-aware when job / invoice are passed.
- * Expanded pack for common SA phone / IT repair desk queries.
+ * Full expanded pack covering common SA phone / IT repair desk queries.
  */
 export function suggestInboundReplies({ message = '', client = {}, company = {}, job, invoice } = {}) {
   const text = String(message || '').toLowerCase()
@@ -129,8 +129,8 @@ export function suggestInboundReplies({ message = '', client = {}, company = {},
     })
   }
 
-  // Parts waiting
-  if (/parts|onderdeel|waiting|order|still waiting|wanneer/.test(text)) {
+  // Parts waiting / delay
+  if (/parts|onderdeel|waiting|order|still waiting|wanneer|delay|late/.test(text)) {
     replies.push({
       label: 'Waiting on parts',
       text: `Hi ${name}, we are still waiting on the part for your *${device}*.\n\nI will WhatsApp the moment it arrives. Thanks for your patience.`,
@@ -138,8 +138,8 @@ export function suggestInboundReplies({ message = '', client = {}, company = {},
     })
   }
 
-  // Quote / price
-  if (/quote|price|cost|how much|kwotasie|prys|amount/.test(text)) {
+  // Quote / price / negotiation
+  if (/quote|price|cost|how much|kwotasie|prys|amount|cheaper|discount|negotiate/.test(text)) {
     replies.push({
       label: 'Quote / price',
       text: `Hi ${name}, thanks for the enquiry.\n\nI can prepare a quote for your *${device}*. Can you tell me a bit more about the issue so I can give an accurate price?`,
@@ -147,8 +147,17 @@ export function suggestInboundReplies({ message = '', client = {}, company = {},
     })
   }
 
-  // Payment / invoice
-  if (/pay|payment|invoice|faktuur|ef t|bank|account|balance/.test(text)) {
+  // Quote approve
+  if (/approve|go ahead|proceed|yes please|ok go|accept quote/.test(text)) {
+    replies.push({
+      label: 'Quote approved',
+      text: `Hi ${name}, perfect — we will go ahead with the repair on your *${device}*.\n\nI will keep you updated on progress.`,
+      af: `Hi ${name}, ons gaan voort met die herstel. Ek hou jou op hoogte.`,
+    })
+  }
+
+  // Payment / invoice / plan
+  if (/pay|payment|invoice|faktuur|ef t|bank|account|balance|plan|instalment|statement/.test(text)) {
     replies.push({
       label: 'Payment details',
       text: `Hi ${name}, here are the payment details.\n\nBank: ${company.bankName || 'see invoice'}\nAccount: ${company.accountNumber || 'on the PDF'}\n\nPlease use the invoice number as reference. Thank you!`,
@@ -156,20 +165,20 @@ export function suggestInboundReplies({ message = '', client = {}, company = {},
     })
   }
 
-  // Hours / location
-  if (/hours|open|close|where|address|location|ure|oop|adres/.test(text)) {
+  // Hours / location / delivery / call-out
+  if (/hours|open|close|where|address|location|ure|oop|adres|delivery|collect|home visit|call.?out|come to/.test(text)) {
     replies.push({
       label: 'Hours / location',
-      text: `Hi ${name}, *${shop}* is open Monday to Friday 08:30–17:00, Saturday 09:00–13:00.\n\nAddress: ${company.address || 'see our profile'}.\n\nSee you soon!`,
+      text: `Hi ${name}, *${shop}* is open Monday to Friday 08:30–17:00, Saturday 09:00–13:00.\n\nAddress: ${company.address || 'see our profile'}.\n\nWe also do drop-offs and can arrange collection if needed.`,
       af: `Hi ${name}, ons is oop Ma-Vr 08:30–17:00, Saterdag 09:00–13:00.`,
     })
   }
 
-  // Screen / battery / common repairs
-  if (/screen|battery|charging|cracked|broken|not charging|skerm|battery/.test(text)) {
+  // Screen / battery / common repairs / laptop / tablet
+  if (/screen|battery|charging|cracked|broken|not charging|skerm|laptop|pc|tablet|ipad|slow|storage|network|sim|unlock/.test(text)) {
     replies.push({
       label: 'Common repair',
-      text: `Hi ${name}, we can help with the ${/screen|skerm/.test(text) ? 'screen' : 'battery/charging'} on your *${device}*.\n\nWould you like to book a drop-off or get a quote first?`,
+      text: `Hi ${name}, we can help with the issue on your *${device}*.\n\nWould you like to book a drop-off or get a quote first?`,
       af: `Hi ${name}, ons kan help met die herstel. Wil jy 'n afspraak maak?`,
     })
   }
@@ -183,21 +192,75 @@ export function suggestInboundReplies({ message = '', client = {}, company = {},
     })
   }
 
-  // FRP / Google lock
-  if (/frp|google lock|account lock|forgot password|frp bypass/.test(text)) {
+  // FRP / Google lock / wipe
+  if (/frp|google lock|account lock|forgot password|frp bypass|wipe|factory reset|erase/.test(text)) {
     replies.push({
-      label: 'FRP / lock',
-      text: `Hi ${name}, we can assist with FRP / Google account lock on your *${device}*.\n\nPlease bring proof of ownership (invoice or ID matching the account). We will assess on the bench.`,
-      af: `Hi ${name}, ons kan help met die Google-slot. Bring bewys van eienaarskap.`,
+      label: 'FRP / lock / wipe',
+      text: `Hi ${name}, we can assist with FRP / Google account lock or factory wipe on your *${device}*.\n\nPlease bring proof of ownership (invoice or ID matching the account). We will assess on the bench.`,
+      af: `Hi ${name}, ons kan help met die Google-slot of wipe. Bring bewys van eienaarskap.`,
     })
   }
 
-  // After hours / load shedding
-  if (/after hours|load shedding|power|electricity|closed/.test(text)) {
+  // Photos of damage
+  if (/photo|picture|image|send pic|damage photo/.test(text)) {
+    replies.push({
+      label: 'Photo of damage',
+      text: `Hi ${name}, please send a clear photo of the damage on your *${device}* so I can give a better idea of the repair.\n\nThanks!`,
+      af: `Hi ${name}, stuur asseblief 'n foto van die skade.`,
+    })
+  }
+
+  // Rush / same-day
+  if (/rush|urgent|same.?day|asap|today|quick/.test(text)) {
+    replies.push({
+      label: 'Rush / same-day',
+      text: `Hi ${name}, for same-day or rush on your *${device}* please drop it off before 11:00 and we will do our best.\n\nLet me know when you are coming.`,
+      af: `Hi ${name}, vir dieselfde dag, bring dit voor 11:00.`,
+    })
+  }
+
+  // Trade-in
+  if (/trade.?in|sell|buy my|old phone/.test(text)) {
+    replies.push({
+      label: 'Trade-in',
+      text: `Hi ${name}, we do trade-ins. Bring your *${device}* in for a valuation.\n\nCondition and model will determine the offer.`,
+      af: `Hi ${name}, ons doen inruil. Bring dit in vir 'n waardasie.`,
+    })
+  }
+
+  // Insurance
+  if (/insurance|claim|cover|policy/.test(text)) {
+    replies.push({
+      label: 'Insurance',
+      text: `Hi ${name}, we can assist with insurance claims on your *${device}*.\n\nBring the device and any claim number / documents you have.`,
+      af: `Hi ${name}, ons kan help met versekerings eise.`,
+    })
+  }
+
+  // After hours / load shedding / holiday
+  if (/after hours|load shedding|power|electricity|closed|holiday|public holiday/.test(text)) {
     replies.push({
       label: 'After hours / power',
       text: `Hi ${name}, we are closed now but I will reply first thing in the morning.\n\nFor urgent same-day, please drop off before 11:00.`,
       af: `Hi ${name}, ons is toe, maar ek antwoord môreoggend.`,
+    })
+  }
+
+  // Review / thanks / opt-out
+  if (/thanks|thank you|review|rating|star|stop|opt.?out|unsubscribe/.test(text)) {
+    replies.push({
+      label: 'Thanks / review',
+      text: `Hi ${name}, thanks so much! If you have a moment, a quick Google review helps us a lot.\n\nGlad we could help with your *${device}*.`,
+      af: `Hi ${name}, dankie! 'n Google review sal baie help.`,
+    })
+  }
+
+  // Turnaround / backup / IMEI / tech
+  if (/how long|turnaround|when ready|backup|data|imei|stolen|technician|tech/.test(text)) {
+    replies.push({
+      label: 'Turnaround / backup',
+      text: `Hi ${name}, typical turnaround is 1–3 days depending on parts. We always recommend a backup first.\n\nI will keep you posted on your *${device}*.`,
+      af: `Hi ${name}, tipies 1–3 dae. Ons beveel 'n backup aan.`,
     })
   }
 
